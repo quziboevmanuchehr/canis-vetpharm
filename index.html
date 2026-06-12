@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>VET-PHARM · Canis – Stoffwechsel, Blutwerte & Reiseerkrankungen</title>
+<meta name="description" content="Drei interaktive Module zum Hund: Canis Metabolica (Stoffwechselkarte), Canis Hæmatica (Blutwerte-Atlas) und Canis Reiseerkrankungen. Mobil und am PC.">
+<meta name="theme-color" content="#0a0c10">
+<meta property="og:title" content="VET-PHARM · Canis – Stoffwechsel, Blutwerte & Reiseerkrankungen">
+<meta property="og:description" content="Stoffwechselkarte, Blutwerte-Atlas und Reiseerkrankungen des Hundes – interaktiv, mobil, mit 3D.">
+<meta property="og:type" content="website">
+<link rel="icon" href="canis-haematica/icon.svg" type="image/svg+xml">
+<style>
+:root{
+  --bg:#0a0c10; --bg2:#121620; --panel:rgba(20,25,36,.7);
+  --text:#e2e8f0; --muted:#94a3b8;
+  --cyan:#00f2fe; --green:#00ff87; --red:#ff4d4d; --pink:#f35588; --amber:#ffd166;
+  --font:Inter,Segoe UI,Roboto,Arial,system-ui,sans-serif;
+  --tech:Segoe UI,Inter,var(--font); --mono:Cascadia Mono,Consolas,ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100dvh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 18px;
+  background-image:
+    radial-gradient(circle at 18% 20%,rgba(0,242,254,.10),transparent 42%),
+    radial-gradient(circle at 82% 78%,rgba(255,77,77,.10),transparent 45%),
+    linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);
+  background-size:auto,auto,44px 44px,44px 44px}
+.head{text-align:center;margin-bottom:34px;max-width:760px}
+.brand{font-family:var(--mono);font-size:12px;letter-spacing:3px;color:var(--cyan);text-transform:uppercase}
+h1{font-family:var(--tech);font-size:clamp(26px,6vw,42px);letter-spacing:3px;margin:8px 0 12px;
+  background:linear-gradient(90deg,var(--cyan),var(--green),var(--pink),var(--amber));
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.head p{color:var(--muted);font-size:15px;line-height:1.6}
+.menus{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;width:100%;max-width:1120px}
+.tile{display:flex;flex-direction:column;text-decoration:none;color:inherit;background:var(--panel);
+  border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:28px;transition:.25s;position:relative;overflow:hidden}
+.tile::before{content:"";position:absolute;inset:0;opacity:.10;transition:.25s;
+  background:radial-gradient(circle at 30% 0%,var(--accent),transparent 60%)}
+.tile:hover{transform:translateY(-4px);border-color:var(--accent);box-shadow:0 14px 40px rgba(0,0,0,.5)}
+.tile:hover::before{opacity:.2}
+.tile .ico{font-size:38px;margin-bottom:14px}
+.tile h2{font-family:var(--tech);font-size:21px;letter-spacing:1px;margin-bottom:4px;color:#fff}
+.tile .sub{font-family:var(--mono);font-size:11px;letter-spacing:1px;color:var(--accent);text-transform:uppercase;margin-bottom:12px}
+.tile p{color:var(--muted);font-size:13.5px;line-height:1.6;margin-bottom:16px;position:relative}
+.tile ul{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px;position:relative}
+.tile li{font-size:11px;font-family:var(--mono);padding:4px 9px;border-radius:14px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:var(--text)}
+.tile .go{margin-top:auto;align-self:flex-start;font-family:var(--tech);font-weight:700;font-size:13px;
+  letter-spacing:1px;color:#04121a;background:var(--accent);padding:10px 20px;border-radius:8px;position:relative}
+.m1{--accent:var(--cyan)} .m2{--accent:var(--red)} .m3{--accent:var(--amber)}
+.foot{margin-top:30px;text-align:center;color:var(--muted);font-size:11.5px;line-height:1.6;max-width:760px}
+.foot a{color:var(--cyan);text-decoration:none}
+.flow{margin-top:30px;width:100%;max-width:1120px;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+.flow-cap{width:100%;text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.flow .step{display:flex;align-items:center;gap:9px;padding:11px 17px;border-radius:14px;background:var(--panel);
+  border:1px solid rgba(255,255,255,.08);text-decoration:none;color:var(--text);font-size:13.5px;transition:.22s}
+.flow .step b{font-family:var(--tech);letter-spacing:.5px}
+.flow .step:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 10px 26px rgba(0,0,0,.4)}
+.flow .arrow{color:var(--muted);font-size:18px}
+.flow .step.s1{--accent:var(--cyan)} .flow .step.s2{--accent:var(--red)} .flow .step.s3{--accent:var(--amber)}
+@media(max-width:680px){.flow{flex-direction:column}.flow .arrow{transform:rotate(90deg)}}
+@media(max-width:980px){.menus{grid-template-columns:1fr;max-width:560px}.tile{padding:22px}}
+</style>
+<link rel="stylesheet" href="shared/glass.css?v=4">
+<script src="shared/vetpharm-ui.js?v=4"></script>
+</head>
+<body>
+  <div class="head">
+    <div class="brand">VET-PHARM · Canis lupus familiaris</div>
+    <h1>STOFFWECHSEL · BLUTWERTE · REISE</h1>
+    <p>Drei interaktive Module über den Hund – für Handy und PC. Wähle ein Menü.</p>
+  </div>
+
+  <div class="menus">
+    <a class="tile m1" href="canis-metabolica/">
+      <div class="ico">🧬</div>
+      <h2>Canis Metabolica</h2>
+      <div class="sub">Stoffwechselkarte</div>
+      <p>Das Netzwerk der zentralen biochemischen Reaktionen: Glykolyse, Citratzyklus, Lipide, Harnstoff- &amp; Taurin-Stoffwechsel, Atmungskette – mit Formeln und Enzymen.</p>
+      <ul><li>Reaktionswege</li><li>Summenformeln</li><li>Enzyme</li><li>Klinik (Hund)</li></ul>
+      <span class="go">Karte öffnen →</span>
+    </a>
+
+    <a class="tile m2" href="canis-haematica/">
+      <div class="ico">🩸</div>
+      <h2>Canis Hæmatica</h2>
+      <div class="sub">Blutwerte-Atlas</div>
+      <p>Über 50 Blutwerte im Zusammenhang: Bedeutung, Organbezug, Ursachen für ↑/↓, mögliche Erkrankungen, Leitbefund-Muster und 3D-Blutzellen. Rasse-/Alters-/Status-Anpassung.</p>
+      <ul><li>Werte</li><li>Organe</li><li>Muster</li><li>3D-Zellen</li></ul>
+      <span class="go">Atlas öffnen →</span>
+    </a>
+
+    <a class="tile m3" href="canis-reise/">
+      <div class="ico">🧫</div>
+      <h2>Canis Reise</h2>
+      <div class="sub">Reiseerkrankungen</div>
+      <p>Reise- und Importerkrankungen des Hundes: Länder, Vektoren, Symptome, Blutwerte, Diagnostik-Zeitplan, Stoffwechselstörungen, animierte Karte und 3D-Erreger.</p>
+      <ul><li>Leishmania</li><li>Zecken</li><li>Dirofilarien</li><li>PDF-Bericht</li></ul>
+      <span class="go">Reise-Modul öffnen →</span>
+    </a>
+  </div>
+
+  <div class="flow">
+    <div class="flow-cap">So hängt alles zusammen</div>
+    <a class="step s1" href="canis-metabolica/"><span>🧬</span><b>Stoffwechsel</b></a>
+    <span class="arrow">→</span>
+    <a class="step s2" href="canis-haematica/"><span>🩸</span><b>Blutwerte</b></a>
+    <span class="arrow">→</span>
+    <a class="step s3" href="canis-reise/"><span>🧫</span><b>Krankheiten</b></a>
+    <span class="arrow" title="zurück zum Stoffwechsel">↺</span>
+  </div>
+
+  <div class="foot">
+    Lern- und Nachschlagewerk. Referenzbereiche sind labor-/geräteabhängig und ersetzen keine tierärztliche Diagnose.
+  </div>
+</body>
+</html>

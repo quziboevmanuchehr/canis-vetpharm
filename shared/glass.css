@@ -1,0 +1,428 @@
+/* =========================================================================
+   VET-PHARM · Shared "Liquid Glass" theme + unified navigation   ·  v2
+   ---------------------------------------------------------------------------
+   • Light mode (default) = Apple-2026 / iOS-style frosted "Liquid Glass":
+     the chrome (header, sidebars, cards, tabs, menu, overlays) becomes
+     translucent frosted glass; brand colours stay vivid.
+   • The CORE visual canvases are deliberately LEFT DARK in both themes
+     (.canvas-container = metabolic map + anatomy/3D, .canvas-box / .video-box
+     = 3D pathogens / videos, .atlas = the Europe/World maps). They are the
+     "map" and "Hundebild" the user asked never to alter — so they render
+     exactly as designed, framed by the light glass.
+   • Dark mode = the original design, essentially untouched.
+   • Loaded by every page together with shared/vetpharm-ui.js.
+   ========================================================================= */
+
+/* ---------- smooth theme transition ---------- */
+html{transition:background-color .35s ease}
+body,header,.card,.panel-card,.tile,.vp-nav-panel,.btn,.app-action,
+.mode-bar,.tabs,.rail,.sidebar{transition:background-color .3s ease,border-color .3s ease,color .3s ease}
+
+/* =========================================================================
+   1 · LIGHT THEME — per-module CSS-variable overrides
+   ========================================================================= */
+html[data-theme="light"]{
+  /* Start page */
+  --bg:#e9eef7; --bg2:#f4f7fc; --panel:rgba(255,255,255,.62);
+  --text:#15202e; --muted:#56657a;
+  --cyan:#0892b4; --green:#0fa269; --red:#e23b3b; --pink:#d8407a; --amber:#bd820f;
+
+  /* Reise */
+  --panel2:rgba(255,255,255,.48); --line:rgba(20,40,70,.14);
+  --violet:#7c5cff; --blue:#2f7fd6;
+
+  /* Hæmatica / Metabolica */
+  --bg-primary:#e9eef7; --bg-secondary:#eef3f9; --bg-tertiary:#ffffff;
+  --bg-panel:rgba(255,255,255,.64);
+  --border-color:rgba(20,40,70,.14); --border-glow:rgba(8,146,180,.45);
+  --text-main:#15202e; --text-muted:#56657a;
+  --accent:#e23b3b; --accent2:#0892b4;
+  --up:#d9542f; --down:#1d77c0; --next:#0fa269;
+  --color-glycolysis:#0892b4; --color-tca:#cf7322; --color-lipids:#d8407a;
+  --color-urea:#dc2356; --color-taurine:#0fa269; --color-nucleotides:#7c4ddd;
+  --color-etc:#0892b4; --color-amino:#bd820f; --color-tox:#e23b3b;
+
+  color-scheme:light;
+}
+
+/* =========================================================================
+   2 · LIGHT THEME — page background (frosted aurora)
+   ========================================================================= */
+html[data-theme="light"] body{
+  background-color:#e9eef7 !important;
+  background-image:
+    radial-gradient(circle at 10% 6%, rgba(8,146,180,.18), transparent 40%),
+    radial-gradient(circle at 92% 88%, rgba(226,59,122,.13), transparent 44%),
+    radial-gradient(circle at 66% 36%, rgba(15,162,105,.10), transparent 52%),
+    linear-gradient(180deg,#eef3fb,#e3eaf4) !important;
+  background-attachment:fixed !important;
+}
+
+/* =========================================================================
+   3 · LIGHT THEME — frosted-glass chrome surfaces
+   ========================================================================= */
+html[data-theme="light"] header{
+  background:linear-gradient(180deg,rgba(255,255,255,.74),rgba(255,255,255,.6)) !important;
+  -webkit-backdrop-filter:blur(24px) saturate(185%);
+  backdrop-filter:blur(24px) saturate(185%);
+  border-bottom:1px solid rgba(255,255,255,.65) !important;
+  box-shadow:0 6px 26px rgba(28,48,82,.10) !important;
+}
+html[data-theme="light"] .tabs,
+html[data-theme="light"] .mode-bar{
+  background:rgba(255,255,255,.6) !important;
+  -webkit-backdrop-filter:blur(20px) saturate(175%);
+  backdrop-filter:blur(20px) saturate(175%);
+  border-bottom:1px solid rgba(255,255,255,.6) !important;
+}
+
+/* big frosted glass panels */
+html[data-theme="light"] .card,
+html[data-theme="light"] .panel-card,
+html[data-theme="light"] .rail,
+html[data-theme="light"] .sidebar,
+html[data-theme="light"] .tile,
+html[data-theme="light"] .stat,
+html[data-theme="light"] .matrix,
+html[data-theme="light"] .matrix-wrap,
+html[data-theme="light"] .report-sheet{
+  background:linear-gradient(180deg,rgba(255,255,255,.72),rgba(255,255,255,.56)) !important;
+  -webkit-backdrop-filter:blur(22px) saturate(180%);
+  backdrop-filter:blur(22px) saturate(180%);
+  border:1px solid rgba(255,255,255,.72) !important;
+  box-shadow:0 12px 34px rgba(28,48,82,.12), inset 0 1px 0 rgba(255,255,255,.7) !important;
+}
+html[data-theme="light"] .tile{border-radius:22px}
+html[data-theme="light"] .card,
+html[data-theme="light"] .panel-card{border-radius:18px}
+
+/* ---- KEEP THE CORE CANVASES DARK (map / dog image / 3D / videos) ---- */
+html[data-theme="light"] .canvas-container{background:#08090d !important}
+html[data-theme="light"] .canvas-box{
+  background:radial-gradient(circle at 50% 40%,rgba(0,216,255,.10),transparent 38%),#071018 !important;
+  -webkit-backdrop-filter:none !important;backdrop-filter:none !important;
+  border:1px solid rgba(20,40,70,.16) !important;box-shadow:none !important;color:#dfe9f3}
+html[data-theme="light"] .video-box{
+  background:#071018 !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;
+  border:1px solid rgba(20,40,70,.16) !important;box-shadow:none !important}
+/* the real Europe/World map atlas keeps its own JPEG background — never touch */
+
+/* small translucent chips / pills / inputs */
+html[data-theme="light"] .btn,
+html[data-theme="light"] .app-action,
+html[data-theme="light"] .tab,
+html[data-theme="light"] .filter,
+html[data-theme="light"] .mode-tab,
+html[data-theme="light"] .chip,
+html[data-theme="light"] .lab-tag,
+html[data-theme="light"] .organ,
+html[data-theme="light"] .country-card,
+html[data-theme="light"] .disease-btn,
+html[data-theme="light"] .sci,
+html[data-theme="light"] .time-point,
+html[data-theme="light"] .time-body,
+html[data-theme="light"] .media-card,
+html[data-theme="light"] .hit,
+html[data-theme="light"] .atlas-tools button,
+html[data-theme="light"] .model-palette button,
+html[data-theme="light"] .tile li,
+html[data-theme="light"] .status-select,
+html[data-theme="light"] .control-btn,
+html[data-theme="light"] .o3d-btn,
+html[data-theme="light"] .organ-mode-btn,
+html[data-theme="light"] .tag,
+html[data-theme="light"] .coverage-chip,
+html[data-theme="light"] .filter-item,
+html[data-theme="light"] .val-card{
+  background:rgba(255,255,255,.62) !important;
+  border-color:rgba(20,40,70,.14) !important;
+  color:var(--text,#15202e) !important;
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+}
+html[data-theme="light"] .btn:hover,
+html[data-theme="light"] .tab.active,
+html[data-theme="light"] .mode-tab.active,
+html[data-theme="light"] .filter.active,
+html[data-theme="light"] .disease-btn.active,
+html[data-theme="light"] .atlas-tools button.active,
+html[data-theme="light"] .model-palette button.active{
+  background:rgba(255,255,255,.92) !important;
+  box-shadow:0 4px 14px rgba(28,48,82,.12) !important;
+}
+html[data-theme="light"] .search,
+html[data-theme="light"] .search-input{
+  background:rgba(255,255,255,.82) !important;
+  border-color:rgba(20,40,70,.16) !important;color:#15202e !important;
+}
+html[data-theme="light"] .search::placeholder,
+html[data-theme="light"] .search-input::placeholder{color:#7c8a9b !important}
+
+/* sticky matrix header cells (were near-black) */
+html[data-theme="light"] .matrix th,
+html[data-theme="light"] .matrix td:first-child,
+html[data-theme="light"] .matrix th:first-child{
+  background:rgba(240,245,252,.97) !important;color:#15202e !important;
+}
+
+/* =========================================================================
+   4 · LIGHT THEME — text & accent corrections
+   ========================================================================= */
+html[data-theme="light"] header h1{
+  background:linear-gradient(90deg,#0b3b5c,#0892b4) !important;
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent !important;
+}
+html[data-theme="light"] .tile h2,
+html[data-theme="light"] .card h2,
+html[data-theme="light"] .cat-head,
+html[data-theme="light"] .detail-title,
+html[data-theme="light"] .d-sec-h,
+html[data-theme="light"] .vc-name,
+html[data-theme="light"] .tooltip-title,
+html[data-theme="light"] .welcome-box h2,
+html[data-theme="light"] .legend b,
+html[data-theme="light"] .kv b,
+html[data-theme="light"] .matrix th{color:#15202e !important}
+html[data-theme="light"] .detail-body,
+html[data-theme="light"] .d-sec-b,
+html[data-theme="light"] .lead,
+html[data-theme="light"] .kv span{color:#26333f !important}
+html[data-theme="light"] .subtitle{color:var(--accent) !important}
+html[data-theme="light"] .logo,
+html[data-theme="light"] .logo-icon,
+html[data-theme="light"] .logo-icon *{color:#fff !important}
+html[data-theme="light"] .notice{background:rgba(255,243,205,.78) !important;color:#7a5a00 !important}
+html[data-theme="light"] .detail-dog-note{color:#9a2b46 !important}
+html[data-theme="light"] .detail-tox-note{color:#1f7a52 !important}
+
+/* formula / code blocks → light */
+html[data-theme="light"] .detail-formula,
+html[data-theme="light"] .detail-eq,
+html[data-theme="light"] .detail-chemical-bonds{
+  background:rgba(20,40,70,.05) !important;color:#15202e !important;
+}
+
+/* floating overlays that sit ABOVE the dark canvas → frosted, readable */
+html[data-theme="light"] .legend,
+html[data-theme="light"] .controls-overlay,
+html[data-theme="light"] .tooltip,
+html[data-theme="light"] .organ3d-hint,
+html[data-theme="light"] .organ3d-ctrls .o3d-btn{
+  background:rgba(255,255,255,.86) !important;border-color:rgba(20,40,70,.14) !important;
+  color:#26333f !important;
+  -webkit-backdrop-filter:blur(18px) saturate(170%);backdrop-filter:blur(18px) saturate(170%);
+}
+
+/* welcome splash → frosted light */
+html[data-theme="light"] .welcome-overlay{
+  background:rgba(233,238,247,.84) !important;
+  -webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);
+}
+html[data-theme="light"] .welcome-box{
+  background:rgba(255,255,255,.92) !important;border:1px solid rgba(255,255,255,.8) !important;
+  box-shadow:0 22px 60px rgba(28,48,82,.18) !important;
+}
+html[data-theme="light"] .welcome-box p,
+html[data-theme="light"] .welcome-feat,
+html[data-theme="light"] .welcome-disc{color:#3a4856 !important}
+
+/* =========================================================================
+   5 · INJECTED CONTROL — theme toggle (glass pill, both themes)
+   ========================================================================= */
+.vp-theme-toggle{
+  height:36px;min-width:40px;border-radius:11px;cursor:pointer;flex:0 0 auto;
+  display:inline-flex;align-items:center;justify-content:center;line-height:1;
+  border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);
+  color:#eaf1fb;transition:.2s;-webkit-tap-highlight-color:transparent;padding:0 10px}
+.vp-theme-toggle .vp-ti{font-size:16px}
+.vp-theme-toggle:hover{background:rgba(255,255,255,.14);transform:translateY(-1px)}
+.app-action.vp-theme-toggle,.btn.vp-theme-toggle{height:34px}
+html[data-theme="light"] .vp-theme-toggle{
+  border:1px solid rgba(20,40,70,.16);
+  background:linear-gradient(180deg,rgba(255,255,255,.85),rgba(255,255,255,.62));
+  color:#b06a00;-webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%);
+  box-shadow:0 4px 14px rgba(28,48,82,.14), inset 0 1px 0 rgba(255,255,255,.8)}
+
+/* =========================================================================
+   6 · INJECTED CONTROL — hamburger (matches the toggle)
+   ========================================================================= */
+.vp-hamburger{height:36px;width:44px;border-radius:11px;cursor:pointer;flex:0 0 auto;
+  display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#eaf1fb;transition:.2s}
+.vp-hamburger:hover{background:rgba(255,255,255,.14);transform:translateY(-1px)}
+.vp-hamburger span{display:block;width:18px;height:2px;background:currentColor;border-radius:2px;transition:.2s}
+.app-action.vp-hamburger,.btn.vp-hamburger{height:34px;width:42px}
+html[data-theme="light"] .vp-hamburger{
+  border:1px solid rgba(20,40,70,.16);
+  background:linear-gradient(180deg,rgba(255,255,255,.85),rgba(255,255,255,.62));
+  color:#15202e;-webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%);
+  box-shadow:0 4px 14px rgba(28,48,82,.14), inset 0 1px 0 rgba(255,255,255,.8)}
+
+/* floating control pill for pages without a header (Start page) */
+.vp-fab-bar{position:fixed;top:14px;right:14px;z-index:120;display:flex;gap:8px;padding:6px;
+  border-radius:16px;background:rgba(16,20,28,.5);border:1px solid rgba(255,255,255,.12);
+  -webkit-backdrop-filter:blur(20px) saturate(170%);backdrop-filter:blur(20px) saturate(170%);
+  box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.vp-fab-bar .vp-hamburger,.vp-fab-bar .vp-theme-toggle{height:42px;min-width:46px;border-radius:12px}
+.vp-fab-bar .vp-theme-toggle .vp-ti{font-size:18px}
+html[data-theme="light"] .vp-fab-bar{
+  background:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.7);
+  box-shadow:0 12px 32px rgba(28,48,82,.16)}
+
+/* =========================================================================
+   7 · INJECTED — unified drawer (same markup & look on EVERY page)
+   ========================================================================= */
+.vp-nav-overlay{position:fixed;inset:0;z-index:200;background:rgba(8,12,20,.55);
+  -webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);opacity:0;visibility:hidden;transition:.3s}
+.vp-nav-overlay.open{opacity:1;visibility:visible}
+html[data-theme="light"] .vp-nav-overlay{background:rgba(120,140,170,.32)}
+
+.vp-nav-panel{position:absolute;top:0;right:0;height:100%;width:min(360px,90vw);
+  display:flex;flex-direction:column;gap:8px;padding:20px 18px calc(20px + env(safe-area-inset-bottom));
+  background:linear-gradient(165deg,#161d2b,#0b0e14);
+  border-left:1px solid rgba(255,255,255,.08);box-shadow:-16px 0 50px rgba(0,0,0,.55);
+  transform:translateX(102%);transition:transform .34s cubic-bezier(.4,0,.2,1);overflow:auto}
+.vp-nav-overlay.open .vp-nav-panel{transform:translateX(0)}
+html[data-theme="light"] .vp-nav-panel{
+  background:linear-gradient(165deg,rgba(255,255,255,.9),rgba(244,248,253,.82)) !important;
+  -webkit-backdrop-filter:blur(30px) saturate(185%);backdrop-filter:blur(30px) saturate(185%);
+  border-left:1px solid rgba(255,255,255,.85) !important;box-shadow:-18px 0 56px rgba(28,48,82,.20) !important}
+
+.vp-nav-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.vp-brand{display:flex;align-items:center;gap:11px}
+.vp-brand-dot{width:34px;height:34px;border-radius:10px;flex:0 0 auto;
+  background:conic-gradient(from 210deg,#0aa2c4,#16a06a,#e0a020,#e23b6d,#0aa2c4);
+  box-shadow:0 0 18px rgba(10,162,196,.5)}
+.vp-brand-tx{display:flex;flex-direction:column;line-height:1.1}
+.vp-brand-tx b{font:800 15px Segoe UI,Inter,sans-serif;letter-spacing:1.5px;color:#fff}
+.vp-brand-tx i{font:11px Consolas,ui-monospace,monospace;font-style:normal;letter-spacing:1px;color:#9fb0c4;text-transform:uppercase}
+html[data-theme="light"] .vp-brand-tx b{color:#15202e}
+html[data-theme="light"] .vp-brand-tx i{color:#6a7a8d}
+.vp-nav-close{background:none;border:none;color:#94a3b8;font-size:28px;cursor:pointer;line-height:1;padding:0 4px}
+.vp-nav-close:hover{color:#fff}
+html[data-theme="light"] .vp-nav-close{color:#6a7a8d}
+html[data-theme="light"] .vp-nav-close:hover{color:#15202e}
+
+.vp-nav-sec{font:11px Consolas,ui-monospace,monospace;letter-spacing:1.2px;text-transform:uppercase;
+  color:#7c8a9b;margin:14px 4px 4px}
+html[data-theme="light"] .vp-nav-sec{color:#7a889b}
+
+.vp-nav-link{display:flex;align-items:center;gap:13px;padding:13px 14px;border-radius:14px;text-decoration:none;
+  border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);transition:.18s}
+.vp-nav-link:hover{border-color:var(--nl);background:rgba(255,255,255,.07);transform:translateX(-2px)}
+.vp-nav-link .nl-ic{font-size:23px;width:30px;text-align:center;flex:0 0 auto}
+.vp-nav-link .nl-tx{display:flex;flex-direction:column;min-width:0;flex:1}
+.vp-nav-link .nl-tt{font:700 14.5px Segoe UI,Inter,sans-serif;color:#fff}
+.vp-nav-link .nl-sb{font:11.5px Consolas,ui-monospace,monospace;color:#94a3b8}
+.vp-nav-link .nl-go{font-size:22px;color:#54627a;transition:.18s}
+.vp-nav-link:hover .nl-go{color:var(--nl);transform:translateX(3px)}
+.vp-nav-link.active{border-color:var(--nl);background:color-mix(in srgb,var(--nl) 14%,transparent)}
+.vp-nav-link.active .nl-tt{color:var(--nl)}
+html[data-theme="light"] .vp-nav-link{background:rgba(255,255,255,.62);border-color:rgba(20,40,70,.12)}
+html[data-theme="light"] .vp-nav-link:hover{background:rgba(255,255,255,.92)}
+html[data-theme="light"] .vp-nav-link .nl-tt{color:#15202e}
+html[data-theme="light"] .vp-nav-link .nl-sb{color:#566576}
+html[data-theme="light"] .vp-nav-link .nl-go{color:#9aa8bb}
+
+/* quick-links grid (cross-module "Zusammenhang") */
+.vp-qlinks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.vp-qlink{display:flex;align-items:flex-start;gap:9px;padding:11px;border-radius:13px;text-decoration:none;
+  border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);transition:.18s}
+.vp-qlink:hover{background:rgba(255,255,255,.08);transform:translateY(-2px)}
+.vp-qlink .ql-ic{font-size:18px;flex:0 0 auto}
+.vp-qlink .ql-tx{display:flex;flex-direction:column;min-width:0}
+.vp-qlink .ql-tx b{font:700 12px Segoe UI,Inter,sans-serif;color:#e7eef7}
+.vp-qlink .ql-tx span{font:10.5px Consolas,ui-monospace,monospace;color:#8c9bb0;line-height:1.3;margin-top:2px}
+html[data-theme="light"] .vp-qlink{background:rgba(255,255,255,.6);border-color:rgba(20,40,70,.12)}
+html[data-theme="light"] .vp-qlink:hover{background:rgba(255,255,255,.92);box-shadow:0 6px 18px rgba(28,48,82,.12)}
+html[data-theme="light"] .vp-qlink .ql-tx b{color:#15202e}
+html[data-theme="light"] .vp-qlink .ql-tx span{color:#647488}
+
+.vp-nav-foot{margin-top:16px;font:11px Segoe UI,Inter,sans-serif;color:#8c9bb0;line-height:1.55}
+html[data-theme="light"] .vp-nav-foot{color:#647488}
+
+@media(max-width:520px){
+  .vp-qlinks{grid-template-columns:1fr}
+  .vp-fab-bar{top:10px;right:10px}
+}
+
+/* =========================================================================
+   9 · LIGHT THEME — READABILITY FIXES
+   - header title was invisible (gradient-clip reset to border-box by the
+     !important background) → render it as a solid dark title instead.
+   - Leitbefund-Muster cards stayed dark with grey text → light glass + dark.
+   ========================================================================= */
+html[data-theme="light"] header h1{
+  background:none !important;
+  -webkit-background-clip:border-box !important;background-clip:border-box !important;
+  -webkit-text-fill-color:#0b3b5c !important;color:#0b3b5c !important;
+}
+html[data-theme="light"] .subtitle{color:#3f5468 !important}
+
+html[data-theme="light"] .muster-card{
+  background:linear-gradient(180deg,rgba(255,255,255,.80),rgba(255,255,255,.64)) !important;
+  border:1px solid rgba(20,40,70,.12) !important;border-top:3px solid var(--c) !important;
+  -webkit-backdrop-filter:blur(20px) saturate(175%);backdrop-filter:blur(20px) saturate(175%);
+  box-shadow:0 10px 28px rgba(28,48,82,.12), inset 0 1px 0 rgba(255,255,255,.7) !important;
+}
+html[data-theme="light"] .muster-name{color:#15202e !important}
+html[data-theme="light"] .muster-summary{color:#36465a !important}
+html[data-theme="light"] .muster-decisive{
+  background:rgba(20,40,70,.06) !important;color:#1b2734 !important;
+  border:1px solid rgba(20,40,70,.08) !important;
+}
+html[data-theme="light"] .muster-next{color:#36465a !important}
+
+/* generic safety net: muted text sitting on a dark sub-surface in light mode
+   (welcome, detail meta) stays legible */
+html[data-theme="light"] .meta-info,
+html[data-theme="light"] .meta-item{color:#46566a !important}
+html[data-theme="light"] .meta-item span{color:#0892b4 !important}
+
+/* =========================================================================
+   10 · FUTURISTIC VETERINARY POLISH — unified chrome (both themes)
+   Frame only: top accent line, headers, capsule controls, cards, focus.
+   The Europe/World map and the organ dog photo are never touched here.
+   ========================================================================= */
+
+/* one thin animated accent line on top of EVERY page → shared signature */
+.vp-topline{position:fixed;top:0;left:0;right:0;height:3px;z-index:300;pointer-events:none;
+  background:linear-gradient(90deg,#0aa2c4,#16a06a,#e0a020,#e23b6d,#0aa2c4);
+  background-size:300% 100%;animation:vpShimmer 9s linear infinite;
+  box-shadow:0 0 14px rgba(10,162,196,.45)}
+@keyframes vpShimmer{to{background-position:300% 0}}
+
+/* headers: consistent depth + inner highlight across all three modules */
+header{box-shadow:0 6px 26px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.05)}
+html[data-theme="light"] header{box-shadow:0 8px 30px rgba(28,48,82,.10), inset 0 1px 0 rgba(255,255,255,.65)}
+.logo,.logo-icon{box-shadow:0 0 18px rgba(10,162,196,.28)}
+
+/* capsule controls: smooth transitions + subtle hover lift, identical feel */
+.btn,.app-action,.tab,.mode-tab,.filter,.atlas-tools button,.model-palette button,.chip,.lab-tag{
+  transition:transform .18s cubic-bezier(.4,0,.2,1), box-shadow .2s ease, border-color .2s, background .2s !important}
+.btn:hover,.app-action:hover,.tab:hover,.mode-tab:hover,.filter:hover{transform:translateY(-1px)}
+.btn:active,.app-action:active,.tab:active,.mode-tab:active{transform:translateY(0)}
+
+/* active tab / view glow — futuristic medical accent */
+.tab.active,.mode-tab.active{box-shadow:inset 0 0 0 1px rgba(10,162,196,.45), 0 6px 18px rgba(10,162,196,.16)}
+
+/* cards: gentle hover lift + depth, consistent across modules */
+.card,.muster-card,.tile,.stat,.media-card,.sci,.country-card,.time-body{
+  transition:transform .2s cubic-bezier(.4,0,.2,1), box-shadow .25s ease, border-color .2s !important}
+.card:hover,.muster-card:hover,.media-card:hover,.country-card:hover,.tile:hover{transform:translateY(-2px)}
+.muster-card,.stat{box-shadow:0 8px 22px rgba(0,0,0,.22)}
+html[data-theme="light"] .muster-card,
+html[data-theme="light"] .stat{box-shadow:0 10px 26px rgba(28,48,82,.10), inset 0 1px 0 rgba(255,255,255,.65)}
+
+/* video / pathogen frame: subtle neon ring for the futuristic vibe */
+.video-box,.canvas-box{box-shadow:inset 0 0 0 1px rgba(10,162,196,.18), 0 10px 30px rgba(0,0,0,.30)}
+
+/* keyboard focus ring (accessibility + clean look) */
+a:focus-visible,button:focus-visible,input:focus-visible,.tab:focus-visible,.mode-tab:focus-visible{
+  outline:2px solid rgba(10,162,196,.6);outline-offset:2px}
+
+/* honor reduced-motion: stop the shimmer + route animation */
+@media (prefers-reduced-motion: reduce){
+  .vp-topline{animation:none}
+  .route-line{animation:none !important}
+}

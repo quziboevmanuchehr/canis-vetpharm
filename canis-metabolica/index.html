@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Canis Metabolica – Interaktive Stoffwechselkarte des Hundes</title>
+<meta name="description" content="Interaktives, mobiles Dashboard zum umfassenden Stoffwechsel des Haushundes (Canis lupus familiaris), angelehnt an KEGG cfa01100, Reactome und Roche/Expasy.">
+<meta name="theme-color" content="#0a0c10">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Canis Metabolica">
+<meta property="og:title" content="Canis Metabolica">
+<meta property="og:description" content="Interaktive deutsche Hund-Stoffwechselkarte mit Formeln, Enzymen, Touch-Details und klinisch-caninen Hinweisen.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="de_DE">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{
+  --bg-primary:#0a0c10; --bg-secondary:#121620; --bg-tertiary:#1a1f2c;
+  --bg-panel:rgba(18,22,32,.85);
+  --border-color:rgba(0,242,254,.15); --border-glow:rgba(0,242,254,.4);
+  --text-main:#e2e8f0; --text-muted:#94a3b8;
+  --color-glycolysis:#00f2fe; --color-tca:#ff8c00; --color-lipids:#f35588;
+  --color-urea:#ff0055; --color-taurine:#00ff87; --color-nucleotides:#9d4edd;
+  --color-etc:#00e5ff; --color-amino:#ffd166; --color-tox:#ff4d4d;
+  --font-sans:Inter,Segoe UI,Roboto,Arial,system-ui,sans-serif; --font-mono:Cascadia Mono,Consolas,ui-monospace,monospace;
+  --font-tech:Segoe UI,Inter,var(--font-sans);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg-primary);color:var(--text-main);font-family:var(--font-sans);
+  height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+/* Header */
+header{height:60px;background:linear-gradient(90deg,#121620,#0a0c10);
+  border-bottom:1px solid var(--border-color);display:flex;align-items:center;
+  justify-content:space-between;padding:0 24px;position:relative;z-index:10;
+  box-shadow:0 4px 20px rgba(0,0,0,.5)}
+.logo-container{display:flex;align-items:center;gap:12px}
+.logo-icon{width:34px;height:34px;border-radius:7px;
+  background:linear-gradient(135deg,var(--color-glycolysis),var(--color-lipids));
+  display:flex;align-items:center;justify-content:center;font-family:var(--font-tech);
+  font-weight:900;font-size:18px;color:#000;box-shadow:0 0 15px rgba(0,242,254,.4)}
+header h1{font-family:var(--font-tech);font-size:20px;font-weight:700;letter-spacing:2px;
+  background:linear-gradient(90deg,#fff,var(--text-muted));
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.subtitle{font-size:11px;color:var(--color-glycolysis);font-family:var(--font-mono);
+  letter-spacing:1px;text-transform:uppercase}
+.meta-info{display:flex;gap:20px;font-size:12px;font-family:var(--font-mono);color:var(--text-muted)}
+.meta-item span{color:var(--color-glycolysis)}
+.app-actions{display:flex;gap:8px;align-items:center}
+.app-action{height:34px;border-radius:7px;border:1px solid var(--border-color);background:rgba(26,31,44,.75);
+  color:var(--text-main);font-family:var(--font-mono);font-size:11px;padding:0 10px;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:.2s}
+.app-action:hover{border-color:var(--color-glycolysis);color:#fff;box-shadow:0 0 10px rgba(0,242,254,.18)}
+@media(max-width:760px){.meta-info{display:none}}
+
+/* Hamburger-Navigation (Modul-Wechsel · additiv) */
+.hamburger{height:34px;width:40px;border-radius:7px;border:1px solid var(--border-color);
+  background:rgba(26,31,44,.75);color:var(--text-main);cursor:pointer;display:inline-flex;
+  flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:.2s}
+.hamburger:hover{border-color:var(--color-glycolysis);box-shadow:0 0 10px rgba(0,242,254,.18)}
+.hamburger span{display:block;width:18px;height:2px;background:currentColor;border-radius:2px}
+.nav-overlay{position:fixed;inset:0;background:rgba(6,8,12,.72);-webkit-backdrop-filter:blur(6px);
+  backdrop-filter:blur(6px);z-index:100;opacity:0;visibility:hidden;transition:.3s}
+.nav-overlay.open{opacity:1;visibility:visible}
+.nav-panel{position:absolute;top:0;right:0;height:100%;width:min(340px,87vw);
+  background:linear-gradient(160deg,#121620,#0a0c10);border-left:1px solid var(--border-color);
+  box-shadow:-12px 0 40px rgba(0,0,0,.6);padding:22px 18px;display:flex;flex-direction:column;gap:12px;
+  transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.2,1)}
+.nav-overlay.open .nav-panel{transform:translateX(0)}
+.nav-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.nav-head h2{font-family:var(--font-tech);font-size:15px;letter-spacing:2px;color:#fff}
+.nav-close{background:none;border:none;color:var(--text-muted);font-size:24px;cursor:pointer;line-height:1}
+.nav-close:hover{color:#fff}
+.nav-link{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;text-decoration:none;
+  border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);transition:.2s}
+.nav-link:hover{border-color:var(--nl);background:rgba(255,255,255,.05);transform:translateX(-3px)}
+.nav-link .nl-ic{font-size:24px;width:34px;text-align:center;flex-shrink:0}
+.nav-link .nl-tt{font-family:var(--font-tech);font-size:15px;font-weight:700;color:#fff;display:block}
+.nav-link .nl-sb{font-size:11.5px;color:var(--text-muted);font-family:var(--font-mono)}
+.nav-link.active{border-color:var(--nl);background:rgba(0,242,254,.06)}
+.nav-link.active .nl-tt{color:var(--nl)}
+.nav-foot{margin-top:auto;font-size:11px;color:var(--text-muted);line-height:1.5}
+
+/* Layout */
+.dashboard-container{display:flex;flex:1;position:relative;height:calc(100vh - 60px)}
+.sidebar{width:390px;background:var(--bg-panel);border-right:1px solid var(--border-color);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;flex-direction:column;
+  z-index:5;box-shadow:10px 0 30px rgba(0,0,0,.4)}
+.sidebar-scroll{flex:1;overflow-y:auto;padding:20px}
+.sidebar-scroll::-webkit-scrollbar{width:6px}
+.sidebar-scroll::-webkit-scrollbar-thumb{background:rgba(0,242,254,.18);border-radius:3px}
+
+.search-container{position:relative;margin-bottom:16px}
+.search-input{width:100%;padding:12px 16px 12px 40px;background:var(--bg-tertiary);
+  border:1px solid var(--border-color);border-radius:8px;color:#fff;font-family:var(--font-sans);
+  font-size:14px;outline:none;transition:.3s}
+.search-input:focus{border-color:var(--color-glycolysis);box-shadow:0 0 10px rgba(0,242,254,.25)}
+.search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);
+  color:var(--text-muted);pointer-events:none}
+
+.panel-card{background:rgba(26,31,44,.6);border:1px solid rgba(255,255,255,.03);
+  border-radius:12px;padding:16px;margin-bottom:16px}
+.panel-card h3{font-family:var(--font-tech);font-size:13px;color:var(--color-glycolysis);
+  margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;display:flex;
+  align-items:center;justify-content:space-between}
+.reset-link{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);
+  cursor:pointer;text-transform:none;letter-spacing:0}
+.reset-link:hover{color:var(--color-glycolysis)}
+
+.filter-list{display:flex;flex-direction:column;gap:8px}
+.filter-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;
+  background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.03);border-radius:6px;
+  cursor:pointer;font-size:13px;font-weight:500;transition:.2s}
+.filter-item:hover{background:rgba(255,255,255,.05)}
+.filter-item.active{border-color:var(--item-color);background:rgba(var(--item-color-rgb),.10)}
+.filter-color-indicator{width:10px;height:10px;border-radius:50%;background:var(--item-color);
+  box-shadow:0 0 8px var(--item-color);flex-shrink:0}
+.quick-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.quick-actions .app-action{width:100%;height:38px}
+.source-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.source-list a{color:var(--color-glycolysis);text-decoration:none;border-bottom:1px dotted rgba(0,242,254,.35)}
+.source-list a:hover{color:#fff}
+.coverage-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0}
+.coverage-chip{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.06);border-radius:5px;padding:6px}
+
+.detail-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.detail-badge{font-family:var(--font-mono);font-size:9px;padding:3px 7px;border-radius:4px;
+  text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.detail-title{font-family:var(--font-tech);font-size:17px;font-weight:700;color:#fff;line-height:1.2}
+.detail-subtitle{font-family:var(--font-mono);font-size:12px;color:var(--color-glycolysis);
+  margin-bottom:12px;border-bottom:1px solid rgba(255,255,255,.05);padding-bottom:8px}
+.detail-body{font-size:13px;line-height:1.6;color:var(--text-main)}
+.detail-body p{margin-bottom:8px}
+.detail-formula{background:rgba(0,0,0,.3);border-left:2px solid var(--color-glycolysis);
+  padding:8px 12px;font-family:var(--font-mono);font-size:13px;margin:12px 0;border-radius:0 4px 4px 0;
+  display:flex;flex-direction:column;gap:3px}
+.detail-formula span.lbl{font-size:10px;color:var(--text-muted);text-transform:uppercase}
+.detail-chemical-bonds{margin-top:12px;background:rgba(0,242,254,.03);
+  border:1px solid rgba(0,242,254,.08);border-radius:6px;padding:10px}
+.detail-dog-note{margin-top:12px;background:rgba(243,85,136,.06);
+  border:1px dashed rgba(243,85,136,.25);border-radius:6px;padding:10px;font-size:12.5px;color:#ffc4da}
+.detail-dog-note strong{color:var(--color-lipids)}
+.detail-tox-note{margin-top:12px;background:rgba(255,77,77,.08);
+  border:1px solid rgba(255,77,77,.35);border-radius:6px;padding:10px;font-size:12.5px;color:#ffb3b3}
+.detail-tox-note strong{color:var(--color-tox)}
+.detail-struct-svg{width:100%;height:140px;background:rgba(0,0,0,.4);
+  border:1px solid rgba(255,255,255,.05);border-radius:6px;margin-top:14px;
+  display:flex;align-items:center;justify-content:center}
+.detail-eq{font-family:var(--font-mono);font-size:11px;color:var(--text-main);
+  background:rgba(0,0,0,.35);padding:8px 10px;border-radius:6px;margin-top:10px;line-height:1.5;
+  border-left:2px solid var(--item-color,var(--color-tca))}
+
+/* Canvas */
+.canvas-container{flex:1;position:relative;overflow:hidden;background:#08090d}
+.grid-bg{position:absolute;inset:0;background-image:
+  linear-gradient(rgba(0,242,254,.03) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(0,242,254,.03) 1px,transparent 1px);
+  background-size:40px 40px;pointer-events:none}
+.radial-glow{position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(circle at 50% 45%,rgba(20,25,40,0) 38%,rgba(10,12,16,.92) 100%)}
+#metabolic-svg{width:100%;height:100%;cursor:grab;touch-action:none}
+#metabolic-svg:active{cursor:grabbing}
+
+.svg-edge{fill:none;stroke:rgba(255,255,255,.10);stroke-width:2.4;transition:.3s;pointer-events:none}
+.svg-edge-glow{fill:none;stroke:var(--edge-color);stroke-width:6;opacity:.10;transition:.3s;pointer-events:none}
+.svg-edge-flow{fill:none;stroke:var(--edge-color);stroke-width:2.4;stroke-dasharray:7 15;
+  animation:flow 14s linear infinite;opacity:.55;pointer-events:none}
+.edge-on .svg-edge-flow,.svg-node.highlighted~*{}
+@keyframes flow{from{stroke-dashoffset:220}to{stroke-dashoffset:0}}
+
+.svg-node{cursor:pointer;transition:transform .3s cubic-bezier(.16,1,.3,1)}
+.svg-node-circle{fill:var(--node-color);stroke:var(--bg-primary);stroke-width:2;transition:.3s;
+  filter:drop-shadow(0 0 5px var(--node-color))}
+.svg-node:hover .svg-node-circle{stroke-width:3;stroke:#fff;filter:drop-shadow(0 0 12px var(--node-color))}
+.svg-node-text{font-family:var(--font-sans);font-size:11px;font-weight:500;fill:var(--text-muted);
+  pointer-events:none;transition:.3s}
+.svg-node:hover .svg-node-text{fill:#fff;font-weight:700}
+.svg-enzyme{cursor:pointer}
+.svg-enzyme-rect{fill:var(--bg-tertiary);stroke:var(--enzyme-color);stroke-width:1.4;transition:.3s}
+.svg-enzyme:hover .svg-enzyme-rect{fill:var(--enzyme-color);stroke:#fff;
+  filter:drop-shadow(0 0 8px var(--enzyme-color))}
+.svg-enzyme-text{font-family:var(--font-mono);font-size:9px;font-weight:500;fill:var(--enzyme-color);
+  pointer-events:none;text-anchor:middle;dominant-baseline:middle;transition:.3s}
+.svg-enzyme:hover .svg-enzyme-text{fill:#000;font-weight:700}
+
+.svg-node.highlighted .svg-node-circle{stroke:#fff;stroke-width:4;filter:drop-shadow(0 0 16px var(--node-color))}
+.svg-node.highlighted .svg-node-text{fill:#fff;font-weight:700}
+.svg-enzyme.highlighted .svg-enzyme-rect{fill:var(--enzyme-color);stroke:#fff;stroke-width:2.4;
+  filter:drop-shadow(0 0 14px var(--enzyme-color))}
+.svg-enzyme.highlighted .svg-enzyme-text{fill:#000;font-weight:700}
+.blurred{opacity:.08!important}
+
+.svg-map-label{font-family:var(--font-tech);font-size:15px;font-weight:900;fill:#fff;
+  letter-spacing:2px;pointer-events:none;opacity:.9}
+.svg-map-sublabel{font-family:var(--font-mono);font-size:9.5px;fill:var(--text-muted);
+  letter-spacing:1px;pointer-events:none}
+.compartment{fill:none;stroke:rgba(255,255,255,.06);stroke-dasharray:6 8;rx:18}
+.compartment-label{font-family:var(--font-mono);font-size:10px;fill:rgba(255,255,255,.25);
+  letter-spacing:2px;pointer-events:none;text-transform:uppercase}
+
+/* Controls */
+.controls-overlay{position:absolute;bottom:24px;right:24px;background:var(--bg-panel);
+  border:1px solid var(--border-color);backdrop-filter:blur(12px);border-radius:8px;padding:8px;
+  display:flex;gap:6px;z-index:5;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+.control-btn{width:36px;height:36px;border-radius:6px;background:var(--bg-tertiary);
+  border:1px solid rgba(255,255,255,.05);color:var(--text-main);font-size:18px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:.2s}
+.control-btn:hover{background:var(--color-glycolysis);color:#000;border-color:transparent}
+.legend{position:absolute;top:16px;left:16px;background:var(--bg-panel);
+  border:1px solid var(--border-color);border-radius:8px;padding:10px 12px;z-index:4;
+  font-size:10.5px;font-family:var(--font-mono);color:var(--text-muted);max-width:210px;
+  backdrop-filter:blur(10px);pointer-events:none}
+.legend b{display:block;color:#fff;font-family:var(--font-tech);font-size:10px;
+  letter-spacing:1px;margin-bottom:6px}
+.legend .row{display:flex;align-items:center;gap:6px;margin:3px 0}
+.legend .dot{width:8px;height:8px;border-radius:50%}
+@media(max-width:760px){.legend{display:none}}
+
+.tooltip{position:fixed;background:rgba(10,12,16,.96);border:1px solid var(--color-glycolysis);
+  box-shadow:0 8px 32px rgba(0,0,0,.6),0 0 15px rgba(0,242,254,.15);border-radius:8px;
+  padding:12px 16px;font-size:12px;z-index:100;pointer-events:none;opacity:0;transition:opacity .15s;
+  max-width:340px}
+.tooltip-title{font-family:var(--font-tech);font-size:13px;font-weight:700;margin-bottom:4px;color:#fff}
+.tooltip-formula{font-family:var(--font-mono);color:var(--color-glycolysis);margin-bottom:6px}
+.tooltip-desc{color:var(--text-main);line-height:1.45}
+.tooltip-spec{color:var(--color-lipids);font-size:11px;margin-top:6px;font-style:italic}
+.tooltip-hint{color:var(--text-muted);font-size:10px;margin-top:6px}
+
+.welcome-overlay{position:absolute;inset:0;background:rgba(10,12,16,.92);
+  backdrop-filter:blur(10px);z-index:20;display:flex;align-items:center;justify-content:center;
+  opacity:1;transition:opacity .5s}
+.welcome-box{max-width:600px;background:var(--bg-secondary);border:1px solid var(--border-color);
+  border-radius:16px;padding:36px;text-align:center;
+  box-shadow:0 10px 40px rgba(0,0,0,.8),0 0 30px rgba(0,242,254,.1)}
+.welcome-box h2{font-family:var(--font-tech);font-size:23px;color:#fff;margin-bottom:12px;letter-spacing:2px}
+.welcome-box p{color:var(--text-muted);font-size:14px;line-height:1.6;margin-bottom:18px}
+.welcome-feat{text-align:left;margin:14px 0;font-size:13px;color:var(--text-main);
+  border-left:2px solid var(--color-taurine);padding-left:12px;line-height:1.6}
+.welcome-feat ul{margin-left:18px;margin-top:4px}
+.welcome-btn{background:linear-gradient(90deg,var(--color-glycolysis),var(--color-etc));color:#000;
+  font-family:var(--font-tech);font-weight:700;font-size:14px;letter-spacing:1px;padding:12px 32px;
+  border:none;border-radius:8px;cursor:pointer;transition:.3s;box-shadow:0 4px 15px rgba(0,242,254,.3)}
+.welcome-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,242,254,.5)}
+
+@media(max-width:900px){
+  body{height:100dvh}
+  .dashboard-container{height:calc(100dvh - 58px)}
+  .sidebar{width:100%;height:58%;position:absolute;bottom:0;left:0;border-right:none;
+    border-top:1px solid var(--border-color);border-radius:16px 16px 0 0}
+  .dashboard-container{flex-direction:column-reverse}
+  header{height:58px;padding:0 10px}
+  header h1{font-size:15px;letter-spacing:1px}
+  .subtitle{font-size:8.5px;letter-spacing:.3px}
+  .app-actions{gap:6px}
+  .app-action{width:34px;padding:0;font-size:0}
+  .app-action span{font-size:15px}
+  .sidebar-scroll{padding:14px;display:flex;flex-direction:column;gap:12px;scroll-padding-top:12px}
+  .search-container{order:1;margin-bottom:0}
+  .panel-details{order:2;border-color:rgba(0,242,254,.12);background:rgba(20,27,40,.82)}
+  .panel-filters{order:3}
+  .panel-actions{order:4}
+  .panel-card{margin-bottom:0;padding:14px;border-radius:10px}
+  .panel-card h3{font-size:12px;margin-bottom:10px}
+  .search-input{height:46px;font-size:14px}
+  .filter-list{gap:7px}
+  .filter-item{min-height:40px;font-size:12.5px;padding:9px 12px}
+  .quick-actions .app-action{height:42px;font-size:0}
+  .detail-title{font-size:18px;line-height:1.25}
+  .detail-subtitle{font-size:12.5px;margin-bottom:10px}
+  .detail-body{font-size:14px;line-height:1.68}
+  .detail-formula{font-size:13.5px;line-height:1.55}
+  .detail-chemical-bonds,.detail-dog-note,.detail-tox-note{font-size:13.5px;line-height:1.58}
+  .detail-struct-svg{height:96px;margin-top:10px}
+  .coverage-grid{grid-template-columns:1fr 1fr}
+  .controls-overlay{bottom:calc(58% + 12px);right:12px}
+  .control-btn{width:44px;height:44px;font-size:20px}
+  .tooltip{display:none}
+  .welcome-box{width:calc(100% - 28px);padding:24px 20px;max-height:86vh;overflow:auto}
+}
+@media(max-width:430px){
+  .sidebar{height:60%}
+  .controls-overlay{bottom:calc(60% + 12px)}
+  .logo-icon{width:32px;height:32px}
+  header h1{font-size:14px}
+  .detail-title{font-size:17px}
+  .detail-body{font-size:13.5px}
+  .coverage-grid{grid-template-columns:1fr}
+}
+</style>
+<link rel="stylesheet" href="../shared/glass.css?v=4">
+<script src="../shared/vetpharm-ui.js?v=4"></script>
+</head>
+<body>
+<header>
+  <div class="logo-container">
+    <div class="logo-icon">C</div>
+    <div>
+      <h1>CANIS METABOLICA</h1>
+      <div class="subtitle">Stoffwechselkarte &bull; Canis lupus familiaris</div>
+    </div>
+  </div>
+  <div class="meta-info">
+    <div class="meta-item">Referenz: <span>KEGG cfa01100</span></div>
+    <div class="meta-item">Spezies: <span>Hund (canine)</span></div>
+    <div class="meta-item">Version: <span>2.1 WhatsApp/PWA</span></div>
+  </div>
+  <div class="app-actions">
+    <button id="btn-sources" class="app-action" title="Quellen und Abdeckung anzeigen"><span>i</span> Quellen</button>
+    <button id="btn-share" class="app-action" title="Über WhatsApp oder System-Teilen senden"><span>↗</span> Teilen</button>
+    <button id="btn-nav" class="hamburger" title="Module / Menü" aria-label="Menü öffnen"><span></span><span></span><span></span></button>
+  </div>
+</header>
+
+<div id="nav-overlay" class="nav-overlay" role="dialog" aria-modal="true" aria-label="Modul-Navigation">
+  <div class="nav-panel">
+    <div class="nav-head"><h2>VET-PHARM</h2><button id="nav-close" class="nav-close" aria-label="Menü schließen">&times;</button></div>
+    <a class="nav-link active" style="--nl:#00f2fe" href="../canis-metabolica/">
+      <span class="nl-ic">🧬</span><span><span class="nl-tt">Canis Metabolica</span><span class="nl-sb">Stoffwechselkarte</span></span></a>
+    <a class="nav-link" style="--nl:#ff4d4d" href="../canis-haematica/">
+      <span class="nl-ic">🩸</span><span><span class="nl-tt">Canis Hæmatica</span><span class="nl-sb">Blutwerte-Atlas</span></span></a>
+    <a class="nav-link" style="--nl:#00ff87" href="../">
+      <span class="nl-ic">🏠</span><span><span class="nl-tt">Startseite</span><span class="nl-sb">Modul-Auswahl</span></span></a>
+    <div class="nav-foot">Lern- &amp; Nachschlagewerk · ersetzt keine tierärztliche Diagnose.</div>
+  </div>
+</div>
+
+<main class="dashboard-container">
+  <aside class="sidebar">
+    <div class="sidebar-scroll">
+      <div class="search-container">
+        <input type="text" id="search-input" class="search-input" placeholder="Metabolit oder Enzym suchen…">
+        <span class="search-icon">&#128269;</span>
+      </div>
+      <div class="panel-card panel-filters">
+        <h3>Stoffwechselwege <span class="reset-link" id="filter-reset">alle anzeigen</span></h3>
+        <div class="filter-list" id="filter-list"></div>
+      </div>
+      <div class="panel-card panel-actions">
+        <h3>App-Aktionen</h3>
+        <div class="quick-actions">
+          <button id="btn-share-side" class="app-action"><span>↗</span> Teilen</button>
+          <button id="btn-sources-side" class="app-action"><span>i</span> Quellen</button>
+        </div>
+      </div>
+      <div class="panel-card panel-details">
+        <div id="detail-panel-content"></div>
+      </div>
+    </div>
+  </aside>
+
+  <section class="canvas-container">
+    <div class="grid-bg"></div>
+    <div class="radial-glow"></div>
+    <div class="legend" id="legend"></div>
+    <svg id="metabolic-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1180" preserveAspectRatio="xMidYMin meet">
+      <defs>
+        <marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="rgba(255,255,255,.35)"/>
+        </marker>
+      </defs>
+      <g id="main-map-group"></g>
+    </svg>
+    <div class="controls-overlay">
+      <button id="btn-zoom-in" class="control-btn" title="Hineinzoomen">+</button>
+      <button id="btn-zoom-out" class="control-btn" title="Herauszoomen">&minus;</button>
+      <button id="btn-zoom-reset" class="control-btn" title="Ansicht zurücksetzen">&#8635;</button>
+    </div>
+  </section>
+</main>
+
+<div id="map-tooltip" class="tooltip"></div>
+
+<div id="welcome-screen" class="welcome-overlay">
+  <div class="welcome-box">
+    <h2>CANIS METABOLICA</h2>
+    <p>Interaktives Stoffwechsel-Dashboard des Hundes (<em>Canis lupus familiaris</em>). Es zeigt das Netzwerk der zentralen biochemischen Reaktionen, Summenformeln, Bindungsverhältnisse und hundespezifische klinische Besonderheiten – angelehnt an KEGG cfa01100, Reactome und Roche/Expasy.</p>
+    <div class="welcome-feat">
+      <strong>Funktionen:</strong>
+      <ul>
+        <li>Touch/Klick auf Punkte und Enzyme öffnet Formeln, Bindungen, Reaktionsnotizen und Hund-Bezug</li>
+        <li>Zoomen per Mausrad, Plus/Minus oder Zwei-Finger-Geste; Verschieben per Ziehen</li>
+        <li>Summenformeln, Reaktionsgleichungen und 2D-Strukturen</li>
+        <li>Klinik: Taurin/DCM, Arginin-Zwang, Dalmatiner-Urat, Xylit- &amp; Schokoladen-Toxizit&auml;t</li>
+      </ul>
+    </div>
+    <button id="welcome-dismiss" class="welcome-btn">DASHBOARD STARTEN</button>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   CANIS METABOLICA – Datensatz (Metaboliten, Enzyme, Reaktionen)
+   ========================================================================= */
+const PATHWAYS = {
+  glycolysis:{name:"Glykolyse / Gluconeogenese",color:"#00f2fe",rgb:"0,242,254"},
+  ppp:{name:"Pentosephosphatweg",color:"#4dd4ff",rgb:"77,212,255"},
+  tca:{name:"Citratzyklus (TCA)",color:"#ff8c00",rgb:"255,140,0"},
+  lipids:{name:"Lipidstoffwechsel / β-Oxidation",color:"#f35588",rgb:"243,85,136"},
+  amino:{name:"Aminosäure-Stoffwechsel",color:"#ffd166",rgb:"255,209,102"},
+  urea:{name:"Harnstoffzyklus (Entgiftung)",color:"#ff0055",rgb:"255,0,85"},
+  taurine:{name:"Taurin-Stoffwechsel (canin-spezifisch)",color:"#00ff87",rgb:"0,255,135"},
+  nucleotides:{name:"Nukleotid-Stoffwechsel / Purinabbau",color:"#9d4edd",rgb:"157,78,221"},
+  etc:{name:"Atmungskette (Mitochondrien)",color:"#00e5ff",rgb:"0,229,255"},
+  tox:{name:"Klinische Toxikologie (Hund)",color:"#ff4d4d",rgb:"255,77,77"}
+};
+
+const M = {
+  // ---------- GLYKOLYSE / GLUCONEOGENESE ----------
+  glucose:{name:"Glucose (Traubenzucker)",formula:"C₆H₁₂O₆",mw:"180,16 g/mol",pathway:"glycolysis",
+    desc:"Primärer Monosaccharid-Energielieferant. Hunde können Glucose effizient de novo aus glucogenen Aminosäuren und Glycerin synthetisieren (Gluconeogenese).",
+    bonds:"Ringförmiges Halbacetal (α-D-Glucopyranose). In Glykogen über α-1,4-glykosidische Bindungen (Hauptkette) und α-1,6 (Verzweigungen) verknüpft.",
+    dog:"Hunde besitzen – anders als Katzen – mehrere AMY2B-Kopien (Pankreas-Amylase) und verdauen Stärke. Dennoch halten sie den Blutzucker auch ohne Stärke stabil über Gluconeogenese.",
+    struct:"glucose",x:120,y:130},
+  g6p:{name:"Glucose-6-phosphat",formula:"C₆H₁₃O₉P",mw:"260,14 g/mol",pathway:"glycolysis",
+    desc:"Erstes Intermediat. Phosphorylierung lädt das Molekül negativ → kann die Zelle nicht mehr verlassen. Verzweigungspunkt zu Glykogen und Pentosephosphatweg.",
+    bonds:"Phosphorsäureester am C6. Stark polar – im Cytosol „eingesperrt“.",
+    dog:"Die hepatische Glucokinase (Hexokinase IV) ist beim Hund wenig aktiv; Phosphorylierung läuft v.a. über Hexokinase, was die Leber bei Stärkeschwankungen schützt.",
+    struct:"phosphate",x:120,y:230},
+  f6p:{name:"Fructose-6-phosphat",formula:"C₆H₁₃O₉P",mw:"260,14 g/mol",pathway:"glycolysis",
+    desc:"Isomer von G6P, bereit für die zweite Phosphorylierung (geschwindigkeitsbestimmender Schritt).",
+    bonds:"Furanose-Ring mit Phosphorester am C6.",
+    dog:"Weichenmolekül zum Pentosephosphatweg, der NADPH für die Fettsäuresynthese liefert.",
+    struct:"phosphate",x:120,y:330},
+  f16bp:{name:"Fructose-1,6-bisphosphat",formula:"C₆H₁₄O₁₂P₂",mw:"340,12 g/mol",pathway:"glycolysis",
+    desc:"Zweifach phosphoryliert; gebildet durch Phosphofructokinase-1 (PFK-1). Ende der Vorbereitungsphase.",
+    bonds:"Zwei energiereiche Phosphorester an C1 und C6.",
+    dog:"PFK-1 ist allosterisch ATP-/Citrat-sensitiv: in Ruhe gehemmt, bei Flucht/Jagd sofort maximal aktiv.",
+    struct:"phosphate",x:120,y:430},
+  g3p:{name:"Glycerinaldehyd-3-phosphat (GAP)",formula:"C₃H₇O₆P",mw:"170,06 g/mol",pathway:"glycolysis",
+    desc:"Spaltprodukt der Hexosephase; Beginn der Energiegewinnungsphase.",
+    bonds:"Aliphatische Kette, Aldehyd an C1, Ester an C3.",
+    dog:"Glycerin aus der Lipolyse mündet über GAP in den Zuckerstoffwechsel – wichtig bei fettreicher (BARF-)Fütterung.",
+    struct:"triose",x:120,y:530},
+  pep:{name:"Phosphoenolpyruvat (PEP)",formula:"C₃H₅O₆P",mw:"168,04 g/mol",pathway:"glycolysis",
+    desc:"Energiereichstes Phosphat des Stoffwechsels; treibt die Substratkettenphosphorylierung zu ATP.",
+    bonds:"Enol-Phosphatbindung mit sehr hohem Übertragungspotenzial (ΔG°' ≈ −61,9 kJ/mol).",
+    dog:"In der Gluconeogenese aus Oxalacetat via PEP-Carboxykinase (GTP-Verbrauch) – aktiv bei Fasten/eiweißreicher Kost.",
+    struct:"triose",x:120,y:630},
+  pyruvate:{name:"Pyruvat (Brenztraubensäure)",formula:"C₃H₄O₃",mw:"88,06 g/mol",pathway:"glycolysis",
+    desc:"Endprodukt der aeroben Glykolyse, Ausgangspunkt für TCA, Gluconeogenese und Laktat.",
+    bonds:"Monocarbonsäure mit Ketogruppe am C2.",
+    dog:"Wird mitochondrial durch den Pyruvat-Dehydrogenase-Komplex decarboxyliert. Thiaminmangel (Vit. B1) hemmt diesen Schritt → schwere neurologische Ausfälle.",
+    struct:"triose",x:120,y:730},
+  lactate:{name:"Laktat (Milchsäure)",formula:"C₃H₆O₃",mw:"90,08 g/mol",pathway:"glycolysis",
+    desc:"Produkt der anaeroben Gärung; regeneriert cytosolisches NAD⁺.",
+    bonds:"α-Hydroxysäure mit polarer OH-Gruppe am C2.",
+    dog:"Windhunde/Arbeitshunde: Muskellaktat wird rasch in Leber/Herz zu Pyruvat reoxidiert (Cori-Zyklus). Blut-Laktat ist ein Schock-/Perfusionsmarker in der Anästhesie.",
+    struct:"triose",x:290,y:730},
+  glycogen:{name:"Glykogen (Speicherform)",formula:"(C₆H₁₀O₅)ₙ",mw:"bis >10⁶ g/mol",pathway:"glycolysis",
+    desc:"Verzweigtes Glucosepolymer in Leber und Muskel – schnelle Glucosereserve.",
+    bonds:"α-1,4-glykosidische Bindungen in der Kette, α-1,6 an Verzweigungen (≈ alle 8–12 Reste) → kompakte Granula.",
+    dog:"Leberglykogen puffert den Blutzucker zwischen Mahlzeiten; bei Welpen und Toy-Rassen (z.B. Chihuahua) sind die Reserven klein → Hypoglykämie-Risiko bei Fasten/Stress.",
+    struct:"glycogen",x:300,y:130},
+  // ---------- PENTOSEPHOSPHATWEG ----------
+  ribose5p:{name:"Ribose-5-phosphat",formula:"C₅H₁₁O₈P",mw:"230,11 g/mol",pathway:"ppp",
+    desc:"Produkt des Pentosephosphatwegs; Baustein für Nukleotide (RNA/DNA, ATP, NAD⁺).",
+    bonds:"Pentose mit Phosphorester am C5.",
+    dog:"Verbindet Zuckerstoffwechsel und Nukleotidsynthese; der oxidative Teil liefert NADPH.",
+    struct:"phosphate",x:300,y:330},
+  nadph:{name:"NADPH (Reduktionskraft)",formula:"C₂₁H₃₀N₇O₁₇P₃",mw:"744,41 g/mol",pathway:"ppp",
+    desc:"Liefert Elektronen für reduktive Biosynthesen (Fettsäuren, Cholesterin) und antioxidative Systeme (Glutathion).",
+    bonds:"NADP⁺ mit zusätzlicher Phosphatgruppe an der Ribose; Hydrid-Transfer am Nicotinamidring.",
+    dog:"Schützt canine Erythrozyten vor oxidativem Stress (relevant bei Zwiebel-/Knoblauch-induzierter Hämolyse).",
+    struct:"nucleotide",x:300,y:430},
+  // ---------- CITRATZYKLUS ----------
+  acetyl_coa:{name:"Acetyl-Coenzym A",formula:"C₂₃H₃₈N₇O₁₇P₃S",mw:"809,57 g/mol",pathway:"tca",
+    desc:"Universelles Scharniermolekül zwischen Kohlenhydraten, Lipiden und Aminosäuren.",
+    bonds:"Energiereiche Thioesterbindung (Acetyl–S–CoA), resonanzstabilisiert und hydrolyseempfindlich.",
+    dog:"Stammt beim Hund überwiegend aus der β-Oxidation – Fett ist die bevorzugte aerobe Energiequelle.",
+    struct:"thioester",x:560,y:600},
+  citrate:{name:"Citrat (Zitronensäure)",formula:"C₆H₈O₇",mw:"192,12 g/mol",pathway:"tca",
+    desc:"Erstes Intermediat; Kondensation aus Acetyl-CoA + Oxalacetat.",
+    bonds:"Tricarbonsäure mit OH-Gruppe am zentralen C3.",
+    dog:"Cytosolisches Citrat hemmt PFK-1 allosterisch → signalisiert gesättigte Energiebilanz.",
+    struct:"tca",x:680,y:510},
+  isocitrate:{name:"Isocitrat",formula:"C₆H₈O₇",mw:"192,12 g/mol",pathway:"tca",
+    desc:"Citrat-Isomer (über Aconitase), ermöglicht oxidative Decarboxylierung.",
+    bonds:"Tricarbonsäure mit verschobener OH-Gruppe am C4.",
+    dog:"Aconitase enthält einen labilen 4Fe-4S-Cluster, der bei oxidativem Stress (Entzündung) inaktiviert wird.",
+    struct:"tca",x:800,y:510},
+  akg:{name:"α-Ketoglutarat",formula:"C₅H₆O₅",mw:"146,11 g/mol",pathway:"tca",
+    desc:"Schnittstelle von Energie- und Aminosäurestoffwechsel.",
+    bonds:"Dicarbonsäure mit reaktiver Ketogruppe am C2.",
+    dog:"Aminogruppen-Akzeptor bei der Transaminierung → Glutamat → Harnstoffzyklus.",
+    struct:"tca",x:800,y:630},
+  succinyl_coa:{name:"Succinyl-Coenzym A",formula:"C₂₅H₄₀N₇O₁₉P₃S",mw:"867,61 g/mol",pathway:"tca",
+    desc:"Energiereiches Thioester-Intermediat → Substratkettenphosphorylierung (GTP/ATP).",
+    bonds:"Thioesterbindung; Spaltung treibt GTP-Synthese.",
+    dog:"Ausgangsstoff der Häm-Synthese in Erythrozyten – Mangel begünstigt Anämie.",
+    struct:"thioester",x:680,y:730},
+  succinate:{name:"Succinat (Bernsteinsäure)",formula:"C₄H₆O₄",mw:"118,09 g/mol",pathway:"tca",
+    desc:"Wird an der inneren Membran durch Succinat-Dehydrogenase (= Komplex II) oxidiert.",
+    bonds:"C–C-Einfachbindung, die zur Doppelbindung oxidiert wird.",
+    dog:"Physisches Bindeglied zwischen TCA und Atmungskette.",
+    struct:"tca",x:560,y:730},
+  fumarate:{name:"Fumarat (Fumarsäure)",formula:"C₄H₄O₄",mw:"116,07 g/mol",pathway:"tca",
+    desc:"Ungesättigte Dicarbonsäure; Brücke zum Harnstoffzyklus (Aspartat-Argininosuccinat-Shunt).",
+    bonds:"trans-konfigurierte C=C-Doppelbindung.",
+    dog:"Im Harnstoffzyklus freigesetztes Fumarat wird zu Malat und so wieder dem TCA zugeführt.",
+    struct:"tca",x:440,y:730},
+  malate:{name:"Malat (Äpfelsäure)",formula:"C₄H₆O₅",mw:"134,09 g/mol",pathway:"tca",
+    desc:"Vorletztes Intermediat; passiert via Malat-Aspartat-Shuttle die Membran.",
+    bonds:"Hydroxydicarbonsäure mit asymmetrischem C2.",
+    dog:"Das Malat-Aspartat-Shuttle ist beim Hund sehr aktiv (NADH-Transport ins Mitochondrium).",
+    struct:"tca",x:440,y:630},
+  oxalacetate:{name:"Oxalacetat",formula:"C₄H₄O₅",mw:"132,07 g/mol",pathway:"tca",
+    desc:"Akzeptorbasis des TCA; muss ständig regeneriert werden.",
+    bonds:"Ketodicarbonsäure, hochreaktiv gegenüber Acetyl-CoA.",
+    dog:"Bei Kohlenhydratmangel wird OAA für die Gluconeogenese abgezogen → Acetyl-CoA-Überschuss → Ketonkörperbildung.",
+    struct:"tca",x:560,y:510},
+  // ---------- LIPIDE / β-OXIDATION / KETONE ----------
+  triglycerides:{name:"Triglyceride (Neutralfette)",formula:"C₃H₅(OOC-R)₃",mw:"≈ 800–900 g/mol",pathway:"lipids",
+    desc:"Wichtigste Energiespeicherform; im Fettgewebe deponiert.",
+    bonds:"Drei Esterbindungen zwischen Glycerin und drei Fettsäureketten.",
+    dog:"Hunde tolerieren sehr hohe Fettgehalte (bis ~60 % der Energie); ein abrupter fettreicher Exzess kann jedoch eine Pankreatitis auslösen (v.a. Schnauzer).",
+    struct:"lipid",x:620,y:120},
+  fatty_acids:{name:"Freie Fettsäuren (Palmitat)",formula:"C₁₆H₃₂O₂",mw:"256,42 g/mol",pathway:"lipids",
+    desc:"Kohlenwasserstoffketten mit Carboxylgruppe; direkte mitochondriale Verbrennung.",
+    bonds:"Carbonsäure mit gesättigter, unpolarer Alkylkette.",
+    dog:"Im Plasma an Albumin gebunden; Hauptenergiequelle der Muskulatur bei moderater Ausdauerbelastung.",
+    struct:"lipid",x:620,y:210},
+  palmitoyl_coa:{name:"Palmitoyl-Coenzym A",formula:"C₃₇H₆₆N₇O₁₈P₃S",mw:"1005,96 g/mol",pathway:"lipids",
+    desc:"Aktivierte Fettsäure; gelangt nur über das Carnitin-Shuttle in die Matrix.",
+    bonds:"Energiereiche Thioesterbindung Fettsäure–S–CoA.",
+    dog:"Carnitinmangel (u.a. Boxer, Cocker Spaniel) stört die Fettsäureaufnahme ins Mitochondrium → sekundäre Kardiomyopathie.",
+    struct:"thioester",x:620,y:300},
+  enoyl_coa:{name:"trans-Δ²-Enoyl-CoA",formula:"C₃₇H₆₄N₇O₁₈P₃S",mw:"1003,94 g/mol",pathway:"lipids",
+    desc:"Erstes β-Oxidations-Intermediat (Acyl-CoA-Dehydrogenase, FAD-Reduktion).",
+    bonds:"trans-Doppelbindung zwischen C2 und C3.",
+    dog:"Das gebildete FADH₂ speist Elektronen über das ETF direkt in die Atmungskette.",
+    struct:"thioester",x:620,y:390},
+  acetoacetate:{name:"Acetoacetat / β-Hydroxybutyrat (Ketonkörper)",formula:"C₄H₆O₃ / C₄H₈O₃",mw:"102 / 104 g/mol",pathway:"lipids",
+    desc:"Ketonkörper; in der Leber aus Acetyl-CoA-Überschuss gebildet, von Herz, Muskel und Gehirn genutzt.",
+    bonds:"β-Ketosäure bzw. β-Hydroxysäure, wasserlöslich.",
+    dog:"Diabetische Ketoazidose (DKA) ist ein klinischer Notfall: massive Ketonkörper, Azidose, Dehydratation. β-Hydroxybutyrat ist der beste Messparameter.",
+    struct:"ketone",x:470,y:410},
+  // ---------- HARNSTOFFZYKLUS ----------
+  ammonia:{name:"Ammoniak / Ammonium",formula:"NH₃ / NH₄⁺",mw:"17,03 g/mol",pathway:"urea",
+    desc:"Hochtoxisches Abbauprodukt des Proteinstoffwechsels; muss sofort entgiftet werden.",
+    bonds:"Kovalente N–H-Bindungen; in Lösung als NH₄⁺ geladen.",
+    dog:"Hoher Proteindurchsatz bei Karnivoren. Ammoniak-Akkumulation (z.B. portosystemischer Shunt) → hepatische Enzephalopathie.",
+    struct:"nitrogen",x:980,y:470},
+  carbamoyl_phosphate:{name:"Carbamoylphosphat",formula:"CH₄NO₅P",mw:"141,02 g/mol",pathway:"urea",
+    desc:"Aktiviertes Zwischenprodukt aus NH₃ + HCO₃⁻ in den Lebermitochondrien.",
+    bonds:"Hochenergetisches gemischtes Säureanhydrid.",
+    dog:"Bildung durch CPS I, allosterisch durch N-Acetylglutamat aktiviert.",
+    struct:"phosphate",x:1100,y:470},
+  citrulline:{name:"Citrullin",formula:"C₆H₁₃N₃O₃",mw:"175,19 g/mol",pathway:"urea",
+    desc:"Nicht-proteinogene Aminosäure; im Mitochondrium gebildet, ins Cytosol transportiert.",
+    bonds:"Harnstoff-analoge Seitenkette (Ureido-Gruppe).",
+    dog:"Canine Enterozyten bilden kaum Citrullin de novo → starke Abhängigkeit von der Nahrungszufuhr.",
+    struct:"aminoacid",x:1200,y:470},
+  aspartate:{name:"Aspartat (Asparaginsäure)",formula:"C₄H₇NO₄",mw:"133,10 g/mol",pathway:"urea",
+    desc:"Glucogene Aminosäure; liefert das zweite Stickstoffatom des Harnstoffs.",
+    bonds:"Dicarbonsäure-Aminosäure; bildet planare Peptidbindungen.",
+    dog:"Aus Oxalacetat via Transaminierung – verbindet Zucker- und Entgiftungsstoffwechsel.",
+    struct:"aminoacid",x:1300,y:470},
+  argininosuccinate:{name:"Argininosuccinat",formula:"C₁₀H₁₈N₄O₆",mw:"290,27 g/mol",pathway:"urea",
+    desc:"Kondensat aus Citrullin + Aspartat; spaltet sich in Arginin + Fumarat.",
+    bonds:"N–C-Verknüpfung unter ATP-Spaltung (→ AMP + PPi).",
+    dog:"Argininosuccinat-Lyase-Defekt führt zur metabolischen Krise.",
+    struct:"aminoacid",x:1300,y:600},
+  arginine:{name:"L-Arginin",formula:"C₆H₁₄N₄O₂",mw:"174,20 g/mol",pathway:"urea",
+    desc:"Basische Aminosäure und direkte Harnstoff-Vorstufe.",
+    bonds:"Stark basische Guanidinium-Seitenkette.",
+    dog:"Beim Hund essenziell: Ohne exogenes Arginin bricht der Harnstoffzyklus zusammen. Eine einzige argininfreie Mahlzeit kann binnen Stunden Erbrechen, Speicheln, Krämpfe und Koma (Ammoniakintoxikation) auslösen.",
+    struct:"aminoacid",x:1200,y:720},
+  ornithine:{name:"Ornithin",formula:"C₅H₁₂N₂O₂",mw:"132,16 g/mol",pathway:"urea",
+    desc:"Trägermolekül, das den Zyklus schließt.",
+    bonds:"Zwei Aminogruppen an C2 und C5.",
+    dog:"Wird über einen spezifischen Carrier zurück in die Matrix transportiert.",
+    struct:"aminoacid",x:1100,y:720},
+  urea:{name:"Harnstoff",formula:"CH₄N₂O",mw:"60,06 g/mol",pathway:"urea",
+    desc:"Ungiftiges Endprodukt des Stickstoffwechsels; renale Ausscheidung.",
+    bonds:"Zwei Amidgruppen an einer Carbonylgruppe, resonanzstabilisiert.",
+    dog:"Blut-Harnstoff (BUN) ist ein Nieren-Marker, schwankt aber stark mit dem Proteingehalt des Futters.",
+    struct:"urea",x:1100,y:830},
+  // ---------- TAURIN ----------
+  methionine:{name:"Methionin",formula:"C₅H₁₁NO₂S",mw:"149,21 g/mol",pathway:"taurine",
+    desc:"Essenzielle schwefelhaltige Aminosäure; Schwefel-Donor der Cysteinsynthese.",
+    bonds:"Thioether in der Seitenkette.",
+    dog:"Zu wenig Methionin limitiert die nachgelagerte Taurinsynthese.",
+    struct:"aminoacid",x:860,y:120},
+  cysteine:{name:"Cystein",formula:"C₃H₇NO₂S",mw:"121,16 g/mol",pathway:"taurine",
+    desc:"Schwefelhaltige Aminosäure; direkter Ausgangsstoff der Taurinsynthese.",
+    bonds:"Thiolgruppe (–SH); bildet Disulfidbrücken (Proteinfaltung).",
+    dog:"Bei ausreichendem Methionin synthetisierbar.",
+    struct:"aminoacid",x:860,y:210},
+  cysteinesulfinate:{name:"Cysteinsulfinat",formula:"C₃H₇NO₄S",mw:"153,16 g/mol",pathway:"taurine",
+    desc:"Oxidationsprodukt von Cystein (Cysteindioxygenase, CDO).",
+    bonds:"Sulfinsäuregruppe (–SO₂H).",
+    dog:"Die CDO-Aktivität steuert den Fluss Richtung Taurin vs. Sulfat.",
+    struct:"aminoacid",x:860,y:300},
+  hypotaurine:{name:"Hypotaurin",formula:"C₂H₇NO₂S",mw:"109,15 g/mol",pathway:"taurine",
+    desc:"Decarboxylierungsprodukt; direkte Taurin-Vorstufe.",
+    bonds:"Sulfinsäure mit endständiger Aminogruppe.",
+    dog:"Wird rasch zu Taurin oxidiert.",
+    struct:"aminoacid",x:860,y:390},
+  taurine:{name:"Taurin (2-Aminoethansulfonsäure)",formula:"C₂H₇NO₃S",mw:"125,15 g/mol",pathway:"taurine",
+    desc:"Organische Sulfonsäure (keine klassische Aminosäure – keine Carboxylgruppe).",
+    bonds:"Stabile C–S-Bindung; zwitterionisch, sehr gut wasserlöslich.",
+    dog:"Canine Besonderheit: Hunde konjugieren Gallensäuren fast ausschließlich mit Taurin (Taurocholat). Obwohl sie Taurin bilden können, kann der Bedarf bei schlechter Proteinqualität bzw. bei manchen getreidefreien, leguminosenreichen Futtern unterschritten werden → diätassoziierte dilatative Kardiomyopathie (DCM).",
+    struct:"taurine",x:980,y:390},
+  taurocholate:{name:"Taurocholsäure (Gallensäure)",formula:"C₂₆H₄₅NO₇S",mw:"515,70 g/mol",pathway:"taurine",
+    desc:"Konjugierte Gallensäure; emulgiert Fette im Dünndarm.",
+    bonds:"Amidbindung zwischen Cholsäure (Steroid) und Taurin.",
+    dog:"Wird im Ileum rückresorbiert (enterohepatischer Kreislauf). Bestimmte Ballaststoffe binden Gallensäuren und steigern den Taurinverlust.",
+    struct:"lipid",x:1100,y:390},
+  // ---------- NUKLEOTIDE / PURINABBAU ----------
+  amp:{name:"AMP / GMP (Nukleotide)",formula:"C₁₀H₁₄N₅O₇P (AMP)",mw:"347,22 g/mol",pathway:"nucleotides",
+    desc:"Bausteine von RNA/DNA und zentrale Energieträger.",
+    bonds:"N-glykosidische Bindung Ribose–Purinbase; Phosphorester zum Phosphat.",
+    dog:"Purine aus fleischreicher Nahrung werden enzymatisch gespalten und resorbiert.",
+    struct:"nucleotide",x:900,y:950},
+  hypoxanthine:{name:"Hypoxanthin / Xanthin",formula:"C₅H₄N₄O",mw:"136,11 g/mol",pathway:"nucleotides",
+    desc:"Purin-Zwischenprodukte beim Abbau zu Harnsäure.",
+    bonds:"Purin-Doppelring mit Carbonylgruppen.",
+    dog:"Xanthinoxidase oxidiert sie weiter. Allopurinol (Hemmstoff) wird beim Hund gegen Leishmaniose und Uratsteine eingesetzt.",
+    struct:"purine",x:1010,y:950},
+  uric_acid:{name:"Harnsäure",formula:"C₅H₄N₄O₃",mw:"168,11 g/mol",pathway:"nucleotides",
+    desc:"Schwerlösliche Oxidationsstufe des Purinabbaus.",
+    bonds:"Purin-Doppelring mit drei Ketogruppen.",
+    dog:"Dalmatiner-Defekt: Mutation im hepatischen Urat-Transport (SLC2A9) → Harnsäure wird kaum zu Allantoin abgebaut, sondern vermehrt ausgeschieden → Ammoniumurat-Steine.",
+    struct:"purine",x:1120,y:950},
+  allantoin:{name:"Allantoin",formula:"C₄H₆N₄O₃",mw:"158,12 g/mol",pathway:"nucleotides",
+    desc:"Gut lösliches Endprodukt des Purinabbaus bei den meisten Hunderassen.",
+    bonds:"Geöffneter Imidazolring (Harnstoffderivat).",
+    dog:"Entsteht über Uratoxidase (Urikase) in Hepatozyten; wird problemlos renal ausgeschieden.",
+    struct:"urea",x:1230,y:950},
+  // ---------- ATMUNGSKETTE ----------
+  nadh:{name:"NADH / FADH₂ (Elektronenträger)",formula:"C₂₁H₂₇N₇O₁₄P₂ (NADH)",mw:"663,43 g/mol",pathway:"etc",
+    desc:"Reduzierte Coenzyme aus Glykolyse, β-Oxidation und TCA; liefern energiereiche Elektronen.",
+    bonds:"Nicotinamid-Ring nimmt Hydrid (2 e⁻ + H⁺) auf.",
+    dog:"Hauptquelle des mitochondrialen Protonengradienten beim aeroben Training.",
+    struct:"nucleotide",x:230,y:900},
+  complex1:{name:"Komplex I (NADH-Dehydrogenase)",formula:"Proteinkomplex (>40 UE)",mw:"≈ 1.000.000 Da",pathway:"etc",
+    desc:"Erster Protonenpumpkomplex; übergibt Elektronen auf Coenzym Q.",
+    bonds:"FMN + mehrere Eisen-Schwefel-Cluster.",
+    dog:"Pumpt ~4 H⁺ pro oxidiertem NADH in den Intermembranraum.",
+    struct:"etc",x:360,y:900},
+  complex2:{name:"Komplex II (Succinat-Dehydrogenase)",formula:"Proteinkomplex (4 UE)",mw:"≈ 140.000 Da",pathway:"etc",
+    desc:"Zweiter Elektroneneintritt; oxidiert Succinat zu Fumarat ohne Protonen zu pumpen.",
+    bonds:"Kovalent gebundenes FAD; Fe-S-Cluster.",
+    dog:"Direktes Bindeglied von TCA und Atmungskette.",
+    struct:"etc",x:470,y:900},
+  complex3:{name:"Komplex III (Cytochrom-bc₁)",formula:"Proteinkomplex (11 UE)",mw:"≈ 250.000 Da",pathway:"etc",
+    desc:"Pumpt Protonen über den Q-Zyklus; übergibt Elektronen auf Cytochrom c.",
+    bonds:"Cytochrom b, c1 und Rieske-Fe-S-Protein.",
+    dog:"Pumpt ~4 H⁺ pro Elektronenpaar.",
+    struct:"etc",x:580,y:900},
+  complex4:{name:"Komplex IV (Cytochrom-c-Oxidase)",formula:"Proteinkomplex (13 UE)",mw:"≈ 200.000 Da",pathway:"etc",
+    desc:"Finaler Elektronenakzeptor; reduziert O₂ zu Wasser.",
+    bonds:"Häm-a / Häm-a₃ und Kupferzentren (Cu_A, Cu_B).",
+    dog:"Hier wird der eingeatmete Sauerstoff verbraucht. Blockade (z.B. Zyanid) stoppt die ATP-Produktion sofort.",
+    struct:"etc",x:690,y:900},
+  atp:{name:"ATP (Adenosintriphosphat)",formula:"C₁₀H₁₆N₅O₁₃P₃",mw:"507,18 g/mol",pathway:"etc",
+    desc:"Universelle Energiewährung; gebildet durch ATP-Synthase (Komplex V).",
+    bonds:"Zwei energiereiche Phosphoanhydridbindungen; Hydrolyse ≈ −30,5 kJ/mol (Standard).",
+    dog:"Ein aktiver Hund setzt täglich etwa sein eigenes Körpergewicht an ATP um – ständige Resynthese.",
+    struct:"atp",x:820,y:900},
+  // ---------- KLINISCHE TOXIKOLOGIE ----------
+  xylitol:{name:"Xylit (Xylitol)",formula:"C₅H₁₂O₅",mw:"152,15 g/mol",pathway:"tox",
+    desc:"Zuckeralkohol (Süßstoff) – beim Menschen harmlos, beim Hund hochgefährlich.",
+    bonds:"Fünfwertiger Alkohol (5 Hydroxygruppen).",
+    dog:"Toxisch für den Hund: Xylit löst eine massive, dosisabhängige Insulinausschüttung aus → schwere Hypoglykämie binnen 30–60 min; höhere Dosen → akutes Leberversagen. Notfall.",
+    struct:"polyol",x:300,y:600,tox:true},
+  theobromine:{name:"Theobromin (Schokolade)",formula:"C₇H₈N₄O₂",mw:"180,16 g/mol",pathway:"tox",
+    desc:"Methylxanthin in Kakao/Schokolade; verwandt mit Koffein.",
+    bonds:"Purin-ähnlicher Xanthinkern mit zwei N-Methylgruppen.",
+    dog:"Hunde bauen Methylxanthine sehr langsam ab (lange Halbwertszeit) → Erregung, Tachykardie/Arrhythmie, Krämpfe. Dunkle Schokolade/Backkakao ist am gefährlichsten.",
+    struct:"purine",x:430,y:600,tox:true},
+  ethylene_glycol:{name:"Ethylenglykol (Frostschutz)",formula:"C₂H₆O₂",mw:"62,07 g/mol",pathway:"tox",
+    desc:"Süß schmeckendes Frostschutzmittel; wird zu toxischen Metaboliten oxidiert.",
+    bonds:"Zweiwertiger Alkohol (Diol).",
+    dog:"Abbau über Alkohol-/Aldehyddehydrogenase zu Glykolat und Oxalat → schwere metabolische Azidose und Calciumoxalat-Kristalle in der Niere (akutes Nierenversagen). Sehr niedrige letale Dosis.",
+    struct:"polyol",x:560,y:120,tox:true,hideUntilFilter:false}
+};
+
+const R = [
+  // Glykolyse / Gluconeogenese
+  {from:"glucose",to:"g6p",enzyme:"Hexokinase",ec:"EC 2.7.1.1",pw:"glycolysis",note:"verbraucht 1 ATP"},
+  {from:"glucose",to:"glycogen",enzyme:"Glykogen-Synthase",ec:"EC 2.4.1.11",pw:"glycolysis",note:"Speicheraufbau (α-1,4)"},
+  {from:"g6p",to:"f6p",enzyme:"Phosphoglucose-Isomerase",ec:"EC 5.3.1.9",pw:"glycolysis"},
+  {from:"g6p",to:"ribose5p",enzyme:"Glucose-6-P-Dehydrogenase",ec:"EC 1.1.1.49",pw:"ppp",note:"oxidativer PPP → NADPH"},
+  {from:"f6p",to:"f16bp",enzyme:"Phosphofructokinase-1",ec:"EC 2.7.1.11",pw:"glycolysis",note:"verbraucht 1 ATP; Schrittmacher"},
+  {from:"f16bp",to:"g3p",enzyme:"Aldolase",ec:"EC 4.1.2.13",pw:"glycolysis"},
+  {from:"g3p",to:"pep",enzyme:"GAPDH / Enolase",ec:"EC 1.2.1.12",pw:"glycolysis",note:"bildet NADH + ATP"},
+  {from:"pep",to:"pyruvate",enzyme:"Pyruvatkinase",ec:"EC 2.7.1.40",pw:"glycolysis",note:"bildet ATP"},
+  {from:"pyruvate",to:"lactate",enzyme:"Laktatdehydrogenase",ec:"EC 1.1.1.27",pw:"glycolysis",note:"anaerob; regeneriert NAD⁺"},
+  {from:"pyruvate",to:"acetyl_coa",enzyme:"Pyruvat-Dehydrogenase",ec:"EC 1.2.4.1",pw:"glycolysis",note:"Thiamin-abhängig; bildet NADH + CO₂"},
+  {from:"ribose5p",to:"nadph",enzyme:"6-Phosphogluconat-DH",ec:"EC 1.1.1.44",pw:"ppp"},
+  {from:"ribose5p",to:"amp",enzyme:"PRPP / Purinsynthese",ec:"EC 2.4.2.14",pw:"nucleotides",note:"Nukleotidaufbau"},
+  // Citratzyklus
+  {from:"acetyl_coa",to:"citrate",enzyme:"Citrat-Synthase",ec:"EC 2.3.3.1",pw:"tca"},
+  {from:"oxalacetate",to:"citrate",enzyme:"Citrat-Synthase",ec:"EC 2.3.3.1",pw:"tca"},
+  {from:"citrate",to:"isocitrate",enzyme:"Aconitase",ec:"EC 4.2.1.3",pw:"tca"},
+  {from:"isocitrate",to:"akg",enzyme:"Isocitrat-DH",ec:"EC 1.1.1.42",pw:"tca",note:"NADH + CO₂"},
+  {from:"akg",to:"succinyl_coa",enzyme:"α-KG-Dehydrogenase",ec:"EC 1.2.4.2",pw:"tca",note:"NADH + CO₂"},
+  {from:"succinyl_coa",to:"succinate",enzyme:"Succinyl-CoA-Synthetase",ec:"EC 6.2.1.4",pw:"tca",note:"GTP"},
+  {from:"succinate",to:"fumarate",enzyme:"Succinat-DH (Komplex II)",ec:"EC 1.3.5.1",pw:"tca",note:"FADH₂"},
+  {from:"fumarate",to:"malate",enzyme:"Fumarase",ec:"EC 4.2.1.2",pw:"tca"},
+  {from:"malate",to:"oxalacetate",enzyme:"Malat-DH",ec:"EC 1.1.1.37",pw:"tca",note:"NADH"},
+  {from:"oxalacetate",to:"pep",enzyme:"PEP-Carboxykinase",ec:"EC 4.1.1.32",pw:"glycolysis",note:"Gluconeogenese (GTP)"},
+  // Lipide
+  {from:"triglycerides",to:"fatty_acids",enzyme:"Lipase / LPL",ec:"EC 3.1.1.34",pw:"lipids"},
+  {from:"fatty_acids",to:"palmitoyl_coa",enzyme:"Acyl-CoA-Synthetase",ec:"EC 6.2.1.3",pw:"lipids",note:"Aktivierung (ATP→AMP)"},
+  {from:"palmitoyl_coa",to:"enoyl_coa",enzyme:"Acyl-CoA-Dehydrogenase",ec:"EC 1.3.8.7",pw:"lipids",note:"FADH₂; Carnitin-Shuttle"},
+  {from:"enoyl_coa",to:"acetyl_coa",enzyme:"β-Oxidation (Thiolase)",ec:"EC 2.3.1.16",pw:"lipids",note:"je Zyklus 1 Acetyl-CoA + NADH"},
+  {from:"acetyl_coa",to:"acetoacetate",enzyme:"HMG-CoA-Synthase",ec:"EC 2.3.3.10",pw:"lipids",note:"Ketogenese"},
+  // Harnstoffzyklus
+  {from:"ammonia",to:"carbamoyl_phosphate",enzyme:"CPS I",ec:"EC 6.3.4.16",pw:"urea",note:"2 ATP"},
+  {from:"carbamoyl_phosphate",to:"citrulline",enzyme:"Ornithin-Transcarbamylase",ec:"EC 2.1.3.3",pw:"urea"},
+  {from:"ornithine",to:"citrulline",enzyme:"Ornithin-Transcarbamylase",ec:"EC 2.1.3.3",pw:"urea"},
+  {from:"citrulline",to:"argininosuccinate",enzyme:"Argininosuccinat-Synthetase",ec:"EC 6.3.4.5",pw:"urea",note:"ATP→AMP"},
+  {from:"aspartate",to:"argininosuccinate",enzyme:"Argininosuccinat-Synthetase",ec:"EC 6.3.4.5",pw:"urea"},
+  {from:"argininosuccinate",to:"arginine",enzyme:"Argininosuccinat-Lyase",ec:"EC 4.3.2.1",pw:"urea"},
+  {from:"argininosuccinate",to:"fumarate",enzyme:"Argininosuccinat-Lyase",ec:"EC 4.3.2.1",pw:"urea",note:"Brücke zum TCA"},
+  {from:"arginine",to:"ornithine",enzyme:"Arginase",ec:"EC 3.5.3.1",pw:"urea"},
+  {from:"arginine",to:"urea",enzyme:"Arginase",ec:"EC 3.5.3.1",pw:"urea",note:"setzt Harnstoff frei"},
+  // Taurin
+  {from:"methionine",to:"cysteine",enzyme:"Transsulfurierung",ec:"EC 4.2.1.22",pw:"taurine"},
+  {from:"cysteine",to:"cysteinesulfinate",enzyme:"Cysteindioxygenase",ec:"EC 1.13.11.20",pw:"taurine"},
+  {from:"cysteinesulfinate",to:"hypotaurine",enzyme:"Sulfinoalanin-Decarboxylase",ec:"EC 4.1.1.29",pw:"taurine"},
+  {from:"hypotaurine",to:"taurine",enzyme:"Hypotaurin-DH",ec:"EC 1.8.1.3",pw:"taurine"},
+  {from:"taurine",to:"taurocholate",enzyme:"Gallensäure-CoA-Transferase",ec:"EC 2.3.1.65",pw:"taurine"},
+  // Nukleotide
+  {from:"amp",to:"hypoxanthine",enzyme:"Adenosin-Desaminase",ec:"EC 3.5.4.4",pw:"nucleotides"},
+  {from:"hypoxanthine",to:"uric_acid",enzyme:"Xanthinoxidase",ec:"EC 1.17.3.2",pw:"nucleotides",note:"Ziel von Allopurinol"},
+  {from:"uric_acid",to:"allantoin",enzyme:"Uratoxidase (Urikase)",ec:"EC 1.7.3.3",pw:"nucleotides",note:"beim Dalmatiner gestört"},
+  // Atmungskette
+  {from:"nadh",to:"complex1",enzyme:"e⁻-Eintritt",ec:"ETC I",pw:"etc"},
+  {from:"complex1",to:"complex3",enzyme:"Coenzym Q",ec:"Q-Pool",pw:"etc"},
+  {from:"complex2",to:"complex3",enzyme:"Coenzym Q",ec:"Q-Pool",pw:"etc"},
+  {from:"complex3",to:"complex4",enzyme:"Cytochrom c",ec:"Cyt c",pw:"etc"},
+  {from:"complex4",to:"atp",enzyme:"ATP-Synthase (Kompl. V)",ec:"EC 7.1.2.2",pw:"etc",note:"O₂ → H₂O; ATP"},
+  // Querverbindungen
+  {from:"acetyl_coa",to:"nadh",enzyme:"TCA liefert e⁻",ec:"→ ETC",pw:"tca"},
+  // Toxikologie
+  {from:"xylitol",to:"glucose",enzyme:"Insulin-Crash (Hund)",ec:"klinisch",pw:"tox",note:"massive Insulinfreisetzung → Hypoglykämie"},
+  {from:"theobromine",to:"amp",enzyme:"PDE-Hemmung (cAMP↑)",ec:"klinisch",pw:"tox"}
+];
+
+// Summen-/Reaktionsgleichungen je Pathway (für das Detailpanel)
+const EQUATIONS = {
+  glycolysis:"Glucose + 2 NAD⁺ + 2 ADP + 2 Pᵢ → 2 Pyruvat + 2 NADH + 2 H⁺ + 2 ATP + 2 H₂O",
+  tca:"Acetyl-CoA + 3 NAD⁺ + FAD + GDP + Pᵢ + 2 H₂O → 2 CO₂ + 3 NADH + FADH₂ + GTP + CoA-SH",
+  lipids:"Palmitoyl-CoA + 7 FAD + 7 NAD⁺ + 7 CoA + 7 H₂O → 8 Acetyl-CoA + 7 FADH₂ + 7 NADH",
+  urea:"2 NH₃ + CO₂ + 3 ATP + H₂O → Harnstoff + 2 ADP + 4 Pᵢ + AMP",
+  etc:"NADH + H⁺ + ½ O₂ → NAD⁺ + H₂O   (≈ 2,5 ATP / NADH, ≈ 1,5 ATP / FADH₂)",
+  ppp:"Glucose-6-P + 2 NADP⁺ + H₂O → Ribose-5-P + 2 NADPH + 2 H⁺ + CO₂",
+  taurine:"Cystein → Cysteinsulfinat → Hypotaurin → Taurin → Taurocholat (Gallensäure)",
+  nucleotides:"AMP → … → Hypoxanthin → Xanthin → Harnsäure → (Urikase) → Allantoin"
+};
+
+const SOURCES = [
+  {name:"KEGG cfa01100 – Metabolic pathways, Canis lupus familiaris",url:"https://www.kegg.jp/pathway/cfa01100",note:"Globale Hund-Stoffwechselkarte mit KEGG-Modulen und High-Resolution-Ansicht."},
+  {name:"KEGG Organism cfa – Pathway modules",url:"https://www.kegg.jp/kegg-bin/show_organism?menu_type=pathway_modules&org=cfa",note:"Hund-spezifische KEGG-Modulliste, u.a. Glykolyse, TCA, β-Oxidation, Harnstoffzyklus, Nukleotide."},
+  {name:"Reactome – Glucose metabolism, Canis familiaris",url:"https://reactome.org/content/detail/R-CFA-70326",note:"Reactome-Downloads als PDF/SVG/PNG/PPTX; viele Canis-Reaktionen sind per Homologie inferiert."},
+  {name:"Roche – Biochemical Pathways",url:"https://www.roche.com/about/roche-global-citizenship/science-education/biochemical-pathways",note:"Historische Biochemical-Pathways-Wandkarte; Roche schreibt, dass Poster nicht mehr aktualisiert/verteilt werden."},
+  {name:"Roche Biochemical Pathways – Online Reference",url:"https://www.biochemical-pathways.org/",note:"Allgemeine, nicht hund-spezifische biochemische Referenzkarte mit Download-/Browser-Optionen."}
+];
+
+const COVERAGE = [
+  "Kohlenhydrate", "Pentosephosphat", "TCA", "β-Oxidation", "Ketone",
+  "Aminosäuren", "Harnstoff", "Taurin/Galle", "Purinabbau", "Atmungskette",
+  "Cofaktoren", "Klinische Toxine"
+];
+
+/* =========================================================================
+   Rendering & Interaktion
+   ========================================================================= */
+(function(){
+  const svgEl=document.getElementById("metabolic-svg");
+  const G=document.getElementById("main-map-group");
+  const tooltip=document.getElementById("map-tooltip");
+  const searchInput=document.getElementById("search-input");
+  const SVGNS="http://www.w3.org/2000/svg";
+  let scale=0.8,panX=60,panY=30,dragging=false,sx,sy,activePathway=null;
+
+  const pwColor=p=>(PATHWAYS[p]?PATHWAYS[p].color:"#fff");
+  const shortName=n=>n.split(" (")[0];
+  const isMobile=()=>window.matchMedia("(max-width: 900px)").matches;
+  function focusDetail(){
+    if(!isMobile())return;
+    requestAnimationFrame(()=>{
+      const scroller=document.querySelector(".sidebar-scroll");
+      const detail=document.querySelector(".panel-details");
+      if(scroller&&detail)scroller.scrollTo({top:Math.max(0,detail.offsetTop-10),behavior:"smooth"});
+    });
+  }
+
+  // ---- Compartments (visuelle Hintergrundzonen) ----
+  function drawCompartments(){
+    const zones=[
+      {x:60,y:90,w:340,h:720,label:"Cytosol"},
+      {x:420,y:460,w:560,h:360,label:"Mitochondrium – Matrix"},
+      {x:200,y:860,w:760,h:120,label:"Innere Mitochondrienmembran"},
+      {x:1060,y:430,w:300,h:430,label:"Leber – Harnstoffzyklus"},
+      {x:840,y:90,w:420,h:360,label:"Schwefel-/Taurinweg"},
+      {x:860,y:900,w:430,h:110,label:"Purinabbau"}
+    ];
+    zones.forEach(z=>{
+      const r=document.createElementNS(SVGNS,"rect");
+      r.setAttribute("x",z.x);r.setAttribute("y",z.y);
+      r.setAttribute("width",z.w);r.setAttribute("height",z.h);
+      r.setAttribute("rx",18);r.setAttribute("class","compartment");
+      G.appendChild(r);
+      const t=document.createElementNS(SVGNS,"text");
+      t.setAttribute("x",z.x+14);t.setAttribute("y",z.y+22);
+      t.setAttribute("class","compartment-label");t.textContent=z.label;
+      G.appendChild(t);
+    });
+  }
+
+  // ---- Section-Überschriften ----
+  function drawHeaders(){
+    const heads=[
+      {x:90,y:70,t:"GLYKOLYSE / GLUCONEOGENESE",s:"Kohlenhydrat-Energie (Cytosol)"},
+      {x:560,y:480,t:"CITRATZYKLUS",s:"Krebs-Zyklus (Matrix)"},
+      {x:600,y:80,t:"LIPIDSTOFFWECHSEL",s:"β-Oxidation & Ketonkörper"},
+      {x:860,y:80,t:"TAURIN-WEG",s:"Schwefel-AS → Gallensäure (canin)"},
+      {x:1080,y:455,t:"HARNSTOFFZYKLUS",s:"Ammoniak-Entgiftung, Arginin-Zwang"},
+      {x:870,y:935,t:"NUKLEOTID-STOFFWECHSEL",s:"Purinabbau, Dalmatiner-Urat (SLC2A9)"},
+      {x:230,y:885,t:"ATMUNGSKETTE / OXIDATIVE PHOSPHORYLIERUNG",s:"Elektronentransport, ATP-Synthase"},
+      {x:300,y:585,t:"TOXIKOLOGIE (HUND)",s:"Xylit · Schokolade · Frostschutz"}
+    ];
+    heads.forEach(h=>{
+      const a=document.createElementNS(SVGNS,"text");
+      a.setAttribute("x",h.x);a.setAttribute("y",h.y);a.setAttribute("class","svg-map-label");
+      a.textContent=h.t;G.appendChild(a);
+      const b=document.createElementNS(SVGNS,"text");
+      b.setAttribute("x",h.x);b.setAttribute("y",h.y+15);b.setAttribute("class","svg-map-sublabel");
+      b.textContent=h.s;G.appendChild(b);
+    });
+  }
+
+  function edgePath(a,b){
+    if(a.x===b.x||a.y===b.y) return `M ${a.x} ${a.y} L ${b.x} ${b.y}`;
+    const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+    return `M ${a.x} ${a.y} Q ${mx} ${a.y} ${mx} ${my} T ${b.x} ${b.y}`;
+  }
+
+  function render(){
+    drawCompartments();
+    drawHeaders();
+
+    // Edges + Enzyme
+    R.forEach((rx,i)=>{
+      const a=M[rx.from], b=M[rx.to];
+      if(!a||!b)return;
+      const col=pwColor(rx.pw);
+      const d=edgePath(a,b);
+      rx._id="rx"+i;
+
+      const glow=document.createElementNS(SVGNS,"path");
+      glow.setAttribute("d",d);glow.setAttribute("class","svg-edge-glow edge "+rx._id);
+      glow.style.setProperty("--edge-color",col);
+      const base=document.createElementNS(SVGNS,"path");
+      base.setAttribute("d",d);base.setAttribute("class","svg-edge edge "+rx._id);
+      base.setAttribute("marker-end","url(#arrowhead)");
+      const flow=document.createElementNS(SVGNS,"path");
+      flow.setAttribute("d",d);flow.setAttribute("class","svg-edge-flow edge "+rx._id);
+      flow.style.setProperty("--edge-color",col);
+      G.appendChild(glow);G.appendChild(base);G.appendChild(flow);
+
+      const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+      const eg=document.createElementNS(SVGNS,"g");
+      eg.setAttribute("class","svg-enzyme enzyme "+rx._id);
+      eg.style.setProperty("--enzyme-color",col);
+      const w=rx.enzyme.length*5.0+10, h=15;
+      const rect=document.createElementNS(SVGNS,"rect");
+      rect.setAttribute("x",mx-w/2);rect.setAttribute("y",my-h/2);
+      rect.setAttribute("width",w);rect.setAttribute("height",h);
+      rect.setAttribute("rx",3);rect.setAttribute("class","svg-enzyme-rect");
+      const tx=document.createElementNS(SVGNS,"text");
+      tx.setAttribute("x",mx);tx.setAttribute("y",my+0.5);
+      tx.setAttribute("class","svg-enzyme-text");tx.textContent=rx.enzyme;
+      eg.appendChild(rect);eg.appendChild(tx);
+      eg.addEventListener("mouseenter",e=>showTip(e,`
+        <div class="tooltip-title">${rx.enzyme}</div>
+        <div class="tooltip-formula">${rx.ec}</div>
+        <div class="tooltip-desc">${shortName(a.name)} → ${shortName(b.name)}${rx.note?" · "+rx.note:""}</div>
+        <div class="tooltip-hint">Klick für Details</div>`));
+      eg.addEventListener("mousemove",moveTip);
+      eg.addEventListener("mouseleave",hideTip);
+      eg.addEventListener("click",ev=>{ev.stopPropagation();showEnzyme(rx);});
+      G.appendChild(eg);
+    });
+
+    // Nodes
+    Object.keys(M).forEach(k=>{
+      const n=M[k];n.id=k;
+      const col=pwColor(n.pathway);
+      const g=document.createElementNS(SVGNS,"g");
+      g.setAttribute("id","node-"+k);
+      g.setAttribute("class","svg-node node-"+n.pathway+(n.tox?" tox-node":""));
+      g.style.setProperty("--node-color",col);
+      const c=document.createElementNS(SVGNS,"circle");
+      c.setAttribute("cx",n.x);c.setAttribute("cy",n.y);
+      c.setAttribute("r",n.tox?9:7.5);c.setAttribute("class","svg-node-circle");
+      const t=document.createElementNS(SVGNS,"text");
+      t.setAttribute("x",n.x);t.setAttribute("y",n.y-12);
+      t.setAttribute("text-anchor","middle");t.setAttribute("class","svg-node-text");
+      t.textContent=shortName(n.name);
+      g.appendChild(c);g.appendChild(t);
+      g.addEventListener("mouseenter",e=>{
+        const spec=n.tox?`<div class="tooltip-spec">⚠ Toxisch für den Hund</div>`
+          :/(Hund|canin|DCM|Dalmatin|Arginin)/i.test(n.dog)?`<div class="tooltip-spec">★ Hundespezifische Physiologie</div>`:"";
+        showTip(e,`
+          <div class="tooltip-title">${n.name}</div>
+          <div class="tooltip-formula">${n.formula} · ${n.mw}</div>
+          <div class="tooltip-desc">${n.desc}</div>${spec}
+          <div class="tooltip-hint">Klick für vollständige Details</div>`);
+      });
+      g.addEventListener("mousemove",moveTip);
+      g.addEventListener("mouseleave",hideTip);
+      g.addEventListener("click",ev=>{ev.stopPropagation();showMetabolite(n);});
+      G.appendChild(g);
+    });
+  }
+
+  /* ---------- Tooltip ---------- */
+  function showTip(e,html){tooltip.innerHTML=html;tooltip.style.opacity=1;moveTip(e);}
+  function moveTip(e){
+    let x=e.clientX+16, y=e.clientY+16;
+    const tw=tooltip.offsetWidth||320, th=tooltip.offsetHeight||120;
+    if(x+tw>window.innerWidth) x=e.clientX-tw-16;
+    if(y+th>window.innerHeight) y=e.clientY-th-16;
+    tooltip.style.left=x+"px";tooltip.style.top=y+"px";
+  }
+  function hideTip(){tooltip.style.opacity=0;}
+
+  /* ---------- Detail-Panel ---------- */
+  function showDefault(){
+    document.getElementById("detail-panel-content").innerHTML=`
+      <div class="detail-header">
+        <div class="detail-badge" style="background:var(--color-glycolysis);color:#000">ÜBERSICHT</div>
+        <h2 class="detail-title">Canis lupus familiaris</h2>
+      </div>
+      <div class="detail-subtitle">Gesamter Energie- & Baustoffwechsel</div>
+      <div class="detail-body">
+        <p>Interaktive Karte der wichtigsten biochemischen Wege des Hundes, angelehnt an die KEGG-Referenz <strong>cfa01100</strong> und ergänzt durch Reactome/Roche-Orientierung.</p>
+        <p>Das Dashboard ist eine eigene didaktische Verdichtung: Es zeigt die zentralen Knoten, Reaktionsflüsse, Formeln, Bindungen und Hund-Besonderheiten, aber keine ungeprüfte 1:1-Kopie aller Datenbankreaktionen.</p>
+        <div class="coverage-grid">
+          ${COVERAGE.map(x=>`<div class="coverage-chip">${x}</div>`).join("")}
+        </div>
+        <div class="detail-dog-note">
+          <strong>Physiologischer Rahmen:</strong> Der Hund ist ein fakultativer Fleischfresser – sein Stoffwechsel nutzt effizient Lipide und Proteine, kann aber dank AMY2B-Duplikation auch Stärke verwerten.
+        </div>
+        <div class="detail-tox-note">
+          <strong>⚠ Hundespezifische Gifte</strong> sind rot markiert: Xylit (Hypoglykämie/Leberversagen), Theobromin/Schokolade, Ethylenglykol (Frostschutz).
+        </div>
+      </div>
+      <div class="detail-struct-svg">
+        <svg width="100%" height="100%" viewBox="0 0 120 100">
+          <path d="M25,62 C25,42 42,28 60,28 C78,28 95,42 95,62 C95,80 78,88 60,88 C42,88 25,80 25,62 Z" fill="none" stroke="rgba(0,242,254,.25)" stroke-width="1.5"/>
+          <circle cx="48" cy="56" r="3.2" fill="var(--color-glycolysis)"/>
+          <circle cx="72" cy="56" r="3.2" fill="var(--color-glycolysis)"/>
+          <path d="M52,70 C56,74 64,74 68,70" fill="none" stroke="rgba(0,242,254,.5)" stroke-width="1.5"/>
+          <path d="M40,34 L28,20 L34,42 M80,34 L92,20 L86,42" fill="none" stroke="var(--color-lipids)" stroke-width="1.6" stroke-linejoin="round"/>
+        </svg>
+      </div>`;
+  }
+
+  function showSources(){
+    document.getElementById("detail-panel-content").innerHTML=`
+      <div class="detail-header">
+        <div class="detail-badge" style="background:var(--color-taurine);color:#000">QUELLEN</div>
+        <h2 class="detail-title">Abdeckung & Primärquellen</h2>
+      </div>
+      <div class="detail-subtitle" style="color:var(--color-taurine)">KEGG · Reactome · Roche/Expasy</div>
+      <div class="detail-body">
+        <p><strong>Status:</strong> Die Karte ist eine mobile, deutschsprachige Lehr- und Gesprächsansicht des Hundestoffwechsels. Sie deckt die großen metabolischen Achsen ab, ersetzt aber keine vollständige Datenbankabfrage und keine veterinärmedizinische Diagnostik.</p>
+        <div class="coverage-grid">
+          ${COVERAGE.map(x=>`<div class="coverage-chip">${x}</div>`).join("")}
+        </div>
+        <div class="detail-dog-note">
+          <strong>Reactome-Hinweis:</strong> Viele Canis-familiaris-Reaktionen sind computerbasiert aus anderen Spezies per Homologie abgeleitet. In der App sind solche Inhalte als bioinformatische Orientierung behandelt.
+        </div>
+        <div class="source-list">
+          ${SOURCES.map(s=>`<p><a href="${s.url}" target="_blank" rel="noopener">${s.name}</a><br><span style="font-size:12px;color:var(--text-muted)">${s.note}</span></p>`).join("")}
+        </div>
+      </div>`;
+    focusDetail();
+  }
+
+  function shareText(){
+    return `Canis Metabolica – interaktive Hund-Stoffwechselkarte auf Deutsch: ${location.href}`;
+  }
+
+  async function shareApp(){
+    const text=shareText();
+    if(location.protocol==="file:"){
+      showSources();
+      alert("Zum Teilen in WhatsApp bitte diese App zuerst als Webseite hosten, z.B. über GitHub Pages, Netlify oder Cloudflare Pages. Ein lokaler file:// Link funktioniert bei Kollegen nicht zuverlässig.");
+      return;
+    }
+    if(navigator.share){
+      try{await navigator.share({title:"Canis Metabolica",text,url:location.href});return;}catch(e){}
+    }
+    window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank","noopener");
+  }
+
+  function showMetabolite(n){
+    const col=pwColor(n.pathway);
+    const noteClass=n.tox?"detail-tox-note":"detail-dog-note";
+    const noteLabel=n.tox?"⚠ Toxikologische Relevanz (Hund):":"Klinisch-caniner Bezug:";
+    const eq=EQUATIONS[n.pathway]
+      ?`<div class="detail-eq" style="--item-color:${col}"><span class="lbl" style="display:block;color:#94a3b8;font-size:10px;text-transform:uppercase">Weg-Gleichung</span>${EQUATIONS[n.pathway]}</div>`:"";
+    document.getElementById("detail-panel-content").innerHTML=`
+      <div class="detail-header">
+        <div class="detail-badge" style="background:${col};color:#000">${PATHWAYS[n.pathway].name.split(" ")[0].toUpperCase()}</div>
+        <h2 class="detail-title">${n.name}</h2>
+      </div>
+      <div class="detail-subtitle" style="color:${col}">${PATHWAYS[n.pathway].name}</div>
+      <div class="detail-body">
+        <p>${n.desc}</p>
+        <div class="detail-formula" style="border-color:${col}">
+          <span class="lbl">Summenformel</span><strong>${n.formula}</strong>
+          <span class="lbl" style="margin-top:6px">Molekulargewicht</span><span>${n.mw}</span>
+        </div>
+        <div class="detail-chemical-bonds">
+          <strong style="color:${col};font-size:12px;display:block;margin-bottom:4px">Bindungen & Struktur</strong>
+          <span style="font-size:12px;line-height:1.5;display:block">${n.bonds}</span>
+        </div>
+        <div class="${noteClass}"><strong>${noteLabel}</strong><br>${n.dog}</div>
+        ${eq}
+      </div>
+      <div class="detail-struct-svg">${structSVG(n.struct)}</div>`;
+    highlightNode(n.id);
+    focusDetail();
+  }
+
+  function showEnzyme(rx){
+    const col=pwColor(rx.pw);const a=M[rx.from],b=M[rx.to];
+    document.getElementById("detail-panel-content").innerHTML=`
+      <div class="detail-header">
+        <div class="detail-badge" style="background:${col};color:#000">ENZYM</div>
+        <h2 class="detail-title">${rx.enzyme}</h2>
+      </div>
+      <div class="detail-subtitle" style="color:${col}">${rx.ec} · ${PATHWAYS[rx.pw].name}</div>
+      <div class="detail-body">
+        <p>Katalysiert: <strong>${shortName(a.name)}</strong> → <strong>${shortName(b.name)}</strong>.</p>
+        ${rx.note?`<div class="detail-formula" style="border-color:${col}"><span class="lbl">Reaktionsnotiz</span>${rx.note}</div>`:""}
+        <div class="detail-chemical-bonds">
+          <strong style="color:${col};font-size:12px;display:block;margin-bottom:4px">Metabolischer Kontext</strong>
+          <span style="font-size:12px">Teil des Wegs „${PATHWAYS[rx.pw].name}“. Reguliert das Fließgleichgewicht zwischen Substrat und Produkt.</span>
+        </div>
+      </div>
+      <div class="detail-struct-svg">
+        <svg width="100%" height="100%" viewBox="0 0 170 90">
+          <rect x="8" y="36" width="46" height="20" rx="3" fill="none" stroke="#fff" stroke-width="1"/>
+          <text x="31" y="49" fill="#fff" font-size="8" text-anchor="middle">${shortName(a.name).substring(0,8)}</text>
+          <line x1="54" y1="46" x2="116" y2="46" stroke="${col}" stroke-width="2" marker-end="url(#arrowhead)"/>
+          <rect x="62" y="22" width="46" height="14" rx="2" fill="${col}"/>
+          <text x="85" y="31" fill="#000" font-size="7" font-family="monospace" text-anchor="middle">${rx.ec}</text>
+          <rect x="116" y="36" width="46" height="20" rx="3" fill="none" stroke="#fff" stroke-width="1"/>
+          <text x="139" y="49" fill="#fff" font-size="8" text-anchor="middle">${shortName(b.name).substring(0,8)}</text>
+        </svg>
+      </div>`;
+    highlightReaction(rx);
+    focusDetail();
+  }
+
+  /* ---------- Highlight (präzise, nur direkte Nachbarn) ---------- */
+  function dimAll(){
+    G.querySelectorAll(".svg-node").forEach(e=>{e.classList.add("blurred");e.classList.remove("highlighted");});
+    G.querySelectorAll(".svg-enzyme").forEach(e=>{e.classList.add("blurred");e.classList.remove("highlighted");});
+    G.querySelectorAll(".edge").forEach(e=>e.classList.add("blurred"));
+  }
+  function highlightNode(id){
+    dimAll();
+    const node=document.getElementById("node-"+id);
+    if(node){node.classList.remove("blurred");node.classList.add("highlighted");}
+    R.forEach(rx=>{
+      if(rx.from===id||rx.to===id){
+        G.querySelectorAll("."+rx._id).forEach(e=>{e.classList.remove("blurred");if(e.classList.contains("svg-enzyme"))e.classList.add("highlighted");});
+        const partner=rx.from===id?rx.to:rx.from;
+        const pn=document.getElementById("node-"+partner);
+        if(pn)pn.classList.remove("blurred");
+      }
+    });
+  }
+  function highlightReaction(rx){
+    dimAll();
+    G.querySelectorAll("."+rx._id).forEach(e=>{e.classList.remove("blurred");if(e.classList.contains("svg-enzyme"))e.classList.add("highlighted");});
+    [rx.from,rx.to].forEach(id=>{const n=document.getElementById("node-"+id);if(n)n.classList.remove("blurred");});
+  }
+  function clearHL(){
+    G.querySelectorAll(".svg-node,.svg-enzyme").forEach(e=>{e.classList.remove("blurred","highlighted");});
+    G.querySelectorAll(".edge").forEach(e=>e.classList.remove("blurred"));
+  }
+
+  /* ---------- Filter ---------- */
+  function applyFilter(pw){
+    activePathway=pw;
+    G.querySelectorAll(".svg-node").forEach(n=>n.classList.toggle("blurred",!n.classList.contains("node-"+pw)));
+    R.forEach(rx=>{
+      const on=rx.pw===pw;
+      G.querySelectorAll("."+rx._id).forEach(e=>e.classList.toggle("blurred",!on));
+    });
+    // Highlight passenden Wege-Filter
+    document.querySelectorAll(".filter-item").forEach(f=>f.classList.toggle("active",f.dataset.pw===pw));
+    // Wege-Gleichung im Panel zeigen
+    if(EQUATIONS[pw]||PATHWAYS[pw]){
+      const col=pwColor(pw);
+      document.getElementById("detail-panel-content").innerHTML=`
+        <div class="detail-header">
+          <div class="detail-badge" style="background:${col};color:#000">WEG</div>
+          <h2 class="detail-title">${PATHWAYS[pw].name}</h2>
+        </div>
+        <div class="detail-subtitle" style="color:${col}">Gefilterte Ansicht</div>
+        <div class="detail-body">
+          <p>Nur dieser Stoffwechselweg ist hervorgehoben. Klicke auf einzelne Punkte oder Enzyme für Details.</p>
+          ${EQUATIONS[pw]?`<div class="detail-eq" style="--item-color:${col}"><span class="lbl" style="display:block;color:#94a3b8;font-size:10px;text-transform:uppercase">Summen-/Weg-Gleichung</span>${EQUATIONS[pw]}</div>`:""}
+        </div>`;
+      focusDetail();
+    }
+  }
+  function clearFilter(){
+    activePathway=null;
+    clearHL();
+    document.querySelectorAll(".filter-item").forEach(f=>f.classList.remove("active"));
+    showDefault();
+  }
+
+  /* ---------- Sidebar-Filterliste & Legende ---------- */
+  function buildFilters(){
+    const list=document.getElementById("filter-list");
+    const legend=document.getElementById("legend");
+    let lh=`<b>Legende – Wege</b>`;
+    Object.keys(PATHWAYS).forEach(pw=>{
+      const p=PATHWAYS[pw];
+      const item=document.createElement("div");
+      item.className="filter-item";item.dataset.pw=pw;
+      item.style.setProperty("--item-color",p.color);
+      item.style.setProperty("--item-color-rgb",p.rgb);
+      item.innerHTML=`<span>${p.name}</span><div class="filter-color-indicator"></div>`;
+      item.addEventListener("click",()=>{
+        if(item.classList.contains("active")) clearFilter();
+        else applyFilter(pw);
+      });
+      list.appendChild(item);
+      lh+=`<div class="row"><span class="dot" style="background:${p.color}"></span>${p.name}</div>`;
+    });
+    legend.innerHTML=lh;
+  }
+
+  /* ---------- Zoom / Pan ---------- */
+  function apply(){G.setAttribute("transform",`translate(${panX},${panY}) scale(${scale})`);}
+  svgEl.addEventListener("mousedown",e=>{
+    if(e.target===svgEl||e.target.classList.contains("compartment")||e.target.tagName==="path"||e.target.classList.contains("compartment-label")){
+      dragging=true;sx=e.clientX-panX;sy=e.clientY-panY;
+    }
+  });
+  window.addEventListener("mousemove",e=>{if(dragging){panX=e.clientX-sx;panY=e.clientY-sy;apply();}});
+  window.addEventListener("mouseup",()=>dragging=false);
+  svgEl.addEventListener("wheel",e=>{
+    e.preventDefault();
+    const r=svgEl.getBoundingClientRect();
+    const mx=e.clientX-r.left, my=e.clientY-r.top, prev=scale;
+    scale=e.deltaY<0?Math.min(scale+0.08,3):Math.max(scale-0.08,0.3);
+    panX=mx-(mx-panX)*(scale/prev);panY=my-(my-panY)*(scale/prev);apply();
+  },{passive:false});
+  // Touch (mobil): Pan mit einem Finger, Pinch-Zoom mit zwei Fingern
+  let tStartX,tStartY,pinchStart=0,pinchScale=scale,pinchCenter={x:0,y:0};
+  const dist=(a,b)=>Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+  svgEl.addEventListener("touchstart",e=>{
+    if(e.touches.length===1){
+      tStartX=e.touches[0].clientX-panX;tStartY=e.touches[0].clientY-panY;
+    }else if(e.touches.length===2){
+      pinchStart=dist(e.touches[0],e.touches[1]);pinchScale=scale;
+      pinchCenter={x:(e.touches[0].clientX+e.touches[1].clientX)/2,y:(e.touches[0].clientY+e.touches[1].clientY)/2};
+    }
+  },{passive:true});
+  svgEl.addEventListener("touchmove",e=>{
+    if(e.touches.length===1){
+      panX=e.touches[0].clientX-tStartX;panY=e.touches[0].clientY-tStartY;apply();
+    }else if(e.touches.length===2&&pinchStart){
+      e.preventDefault();
+      const r=svgEl.getBoundingClientRect();
+      const mx=pinchCenter.x-r.left,my=pinchCenter.y-r.top,prev=scale;
+      scale=Math.max(0.3,Math.min(3,pinchScale*(dist(e.touches[0],e.touches[1])/pinchStart)));
+      panX=mx-(mx-panX)*(scale/prev);panY=my-(my-panY)*(scale/prev);apply();
+    }
+  },{passive:false});
+
+  document.getElementById("btn-zoom-in").onclick=()=>{scale=Math.min(scale+0.15,3);apply();};
+  document.getElementById("btn-zoom-out").onclick=()=>{scale=Math.max(scale-0.15,0.3);apply();};
+  document.getElementById("btn-zoom-reset").onclick=()=>{scale=0.8;panX=60;panY=30;apply();clearFilter();};
+  document.getElementById("filter-reset").onclick=clearFilter;
+  document.getElementById("btn-share").onclick=shareApp;
+  document.getElementById("btn-share-side").onclick=shareApp;
+  document.getElementById("btn-sources").onclick=showSources;
+  document.getElementById("btn-sources-side").onclick=showSources;
+  svgEl.addEventListener("click",e=>{if(e.target===svgEl||e.target.classList.contains("compartment")){if(!activePathway)clearHL();}});
+
+  /* ---------- Suche ---------- */
+  searchInput.addEventListener("input",e=>{
+    const t=e.target.value.toLowerCase().trim();
+    if(!t){clearHL();return;}
+    let foundId=null;
+    for(const k in M){const m=M[k];
+      if(m.name.toLowerCase().includes(t)||m.formula.toLowerCase().includes(t)||k.includes(t)){foundId=k;break;}}
+    if(foundId){
+      highlightNode(foundId);showMetabolite(M[foundId]);
+      const n=M[foundId], r=svgEl.getBoundingClientRect();
+      panX=r.width/2-n.x*scale;panY=r.height/2-n.y*scale;apply();
+    }else{
+      const rx=R.find(r=>r.enzyme.toLowerCase().includes(t));
+      if(rx){highlightReaction(rx);showEnzyme(rx);}
+    }
+  });
+
+  document.getElementById("welcome-dismiss").onclick=()=>{
+    const w=document.getElementById("welcome-screen");
+    w.style.pointerEvents="none";
+    w.style.opacity=0;setTimeout(()=>w.style.display="none",500);
+  };
+
+  /* ---------- 2D-Strukturzeichnungen ---------- */
+  function structSVG(type){
+    switch(type){
+      case "glucose": return `<svg width="100%" height="100%" viewBox="0 0 120 100">
+        <polygon points="60,25 85,40 85,70 60,85 35,70 35,40" fill="none" stroke="#00f2fe" stroke-width="1.5"/>
+        <text x="83" y="42" fill="#00f2fe" font-size="7" font-weight="bold">O</text>
+        <line x1="85" y1="40" x2="100" y2="35" stroke="#fff" stroke-width="1"/><text x="102" y="37" fill="#fff" font-size="7">OH</text>
+        <line x1="85" y1="70" x2="100" y2="75" stroke="#fff" stroke-width="1"/><text x="102" y="79" fill="#fff" font-size="7">OH</text>
+        <line x1="60" y1="85" x2="60" y2="98" stroke="#fff" stroke-width="1"/><text x="56" y="99" fill="#fff" font-size="7">OH</text>
+        <line x1="35" y1="70" x2="20" y2="75" stroke="#fff" stroke-width="1"/><text x="6" y="79" fill="#fff" font-size="7">OH</text>
+        <line x1="35" y1="40" x2="22" y2="30" stroke="#fff" stroke-width="1"/><text x="2" y="28" fill="#fff" font-size="7">CH₂OH</text></svg>`;
+      case "glycogen": return `<svg width="100%" height="100%" viewBox="0 0 160 100">
+        ${[0,1,2,3].map(i=>`<polygon points="${20+i*30},45 ${32+i*30},52 ${32+i*30},66 ${20+i*30},73 ${8+i*30},66 ${8+i*30},52" fill="none" stroke="#00f2fe" stroke-width="1.3"/>`).join("")}
+        ${[0,1,2].map(i=>`<line x1="${32+i*30}" y1="59" x2="${38+i*30}" y2="59" stroke="#fff" stroke-width="1"/>`).join("")}
+        <text x="60" y="30" fill="#94a3b8" font-size="8">α-1,4-Kette</text>
+        <polygon points="92,12 104,19 104,33 92,40 80,33 80,19" fill="none" stroke="#ff8c00" stroke-width="1.3"/>
+        <line x1="92" y1="40" x2="92" y2="45" stroke="#ff8c00" stroke-width="1"/>
+        <text x="108" y="26" fill="#ff8c00" font-size="7">α-1,6-Verzweigung</text></svg>`;
+      case "phosphate": return `<svg width="100%" height="100%" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="11" fill="none" stroke="#fff" stroke-width="1.5"/><text x="46" y="54" fill="#fff" font-size="11" font-family="monospace">P</text>
+        <line x1="50" y1="39" x2="50" y2="24" stroke="#fff" stroke-width="1.5"/><text x="45" y="21" fill="#ff0055" font-size="9">O⁻</text>
+        <line x1="50" y1="61" x2="50" y2="76" stroke="#fff" stroke-width="1.5"/><text x="45" y="85" fill="#ff0055" font-size="9">O⁻</text>
+        <line x1="39" y1="46" x2="24" y2="39" stroke="#fff" stroke-width="2"/><line x1="41" y1="49" x2="26" y2="42" stroke="#fff" stroke-width="1"/><text x="14" y="38" fill="#ff0055" font-size="9">O</text>
+        <line x1="61" y1="50" x2="80" y2="50" stroke="#fff" stroke-width="1.5"/><text x="82" y="53" fill="#00f2fe" font-size="9">O-R</text></svg>`;
+      case "triose": return `<svg width="100%" height="100%" viewBox="0 0 120 100">
+        <line x1="20" y1="50" x2="45" y2="35" stroke="#fff" stroke-width="1.5"/><line x1="45" y1="35" x2="70" y2="50" stroke="#fff" stroke-width="1.5"/><line x1="70" y1="50" x2="95" y2="35" stroke="#fff" stroke-width="1.5"/>
+        <text x="6" y="54" fill="#00f2fe" font-size="9">C</text><text x="40" y="30" fill="#00f2fe" font-size="9">C</text><text x="66" y="62" fill="#00f2fe" font-size="9">C</text>
+        <text x="98" y="34" fill="#ff0055" font-size="8">PO₃²⁻</text></svg>`;
+      case "tca": return `<svg width="100%" height="100%" viewBox="0 0 120 100">
+        <circle cx="60" cy="50" r="26" fill="none" stroke="#ff8c00" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <text x="60" y="22" fill="#ff8c00" font-size="8" text-anchor="middle">COO⁻</text>
+        <text x="92" y="54" fill="#ff8c00" font-size="8">COO⁻</text>
+        <text x="14" y="54" fill="#ff8c00" font-size="8">COO⁻</text>
+        <text x="60" y="84" fill="#ff8c00" font-size="8" text-anchor="middle">C=O / OH</text></svg>`;
+      case "thioester": return `<svg width="100%" height="100%" viewBox="0 0 150 100">
+        <text x="12" y="54" fill="#94a3b8" font-size="10">R</text>
+        <line x1="24" y1="50" x2="46" y2="50" stroke="#fff" stroke-width="1.5"/><text x="48" y="54" fill="#fff" font-size="10">C</text>
+        <line x1="52" y1="42" x2="52" y2="26" stroke="#ff0055" stroke-width="1.8"/><line x1="55" y1="42" x2="55" y2="26" stroke="#ff0055" stroke-width="1"/><text x="50" y="22" fill="#ff0055" font-size="9">O</text>
+        <line x1="58" y1="50" x2="80" y2="50" stroke="#fff" stroke-width="1.5"/><text x="82" y="54" fill="#ff8c00" font-size="11" font-family="monospace">S</text>
+        <line x1="92" y1="50" x2="112" y2="50" stroke="#fff" stroke-width="1.5"/><text x="114" y="54" fill="#00f2fe" font-size="9">CoA</text>
+        <text x="40" y="80" fill="#94a3b8" font-size="7">energiereiche Thioesterbindung</text></svg>`;
+      case "ketone": return `<svg width="100%" height="100%" viewBox="0 0 120 100">
+        <text x="14" y="54" fill="#f35588" font-size="9">CH₃</text>
+        <line x1="34" y1="50" x2="54" y2="50" stroke="#fff" stroke-width="1.5"/><text x="56" y="54" fill="#fff" font-size="10">C</text>
+        <line x1="60" y1="42" x2="60" y2="26" stroke="#ff0055" stroke-width="1.8"/><line x1="63" y1="42" x2="63" y2="26" stroke="#ff0055" stroke-width="1"/><text x="58" y="22" fill="#ff0055" font-size="9">O</text>
+        <line x1="66" y1="50" x2="84" y2="50" stroke="#fff" stroke-width="1.5"/><text x="86" y="54" fill="#f35588" font-size="9">CH₂</text>
+        <line x1="104" y1="50" x2="112" y2="50" stroke="#fff" stroke-width="1.5"/><text x="100" y="72" fill="#f35588" font-size="8">COO⁻</text></svg>`;
+      case "nitrogen": return `<svg width="100%" height="100%" viewBox="0 0 100 100">
+        <text x="44" y="56" fill="#00ff87" font-size="20" font-family="monospace">N</text>
+        <line x1="50" y1="42" x2="50" y2="26" stroke="#fff" stroke-width="1.3"/><text x="46" y="22" fill="#fff" font-size="8">H</text>
+        <line x1="42" y1="55" x2="26" y2="64" stroke="#fff" stroke-width="1.3"/><text x="18" y="70" fill="#fff" font-size="8">H</text>
+        <line x1="58" y1="55" x2="74" y2="64" stroke="#fff" stroke-width="1.3"/><text x="76" y="70" fill="#fff" font-size="8">H</text></svg>`;
+      case "aminoacid": return `<svg width="100%" height="100%" viewBox="0 0 140 100">
+        <text x="10" y="54" fill="#00ff87" font-size="9">H₂N</text>
+        <line x1="30" y1="50" x2="52" y2="50" stroke="#fff" stroke-width="1.5"/><text x="54" y="54" fill="#fff" font-size="10">Cα</text>
+        <line x1="62" y1="50" x2="84" y2="50" stroke="#fff" stroke-width="1.5"/><text x="86" y="54" fill="#fff" font-size="10">C</text>
+        <line x1="92" y1="42" x2="92" y2="26" stroke="#ff0055" stroke-width="1.8"/><line x1="95" y1="42" x2="95" y2="26" stroke="#ff0055" stroke-width="1"/><text x="89" y="22" fill="#ff0055" font-size="9">O</text>
+        <line x1="98" y1="50" x2="116" y2="50" stroke="#fff" stroke-width="1.5"/><text x="118" y="54" fill="#ff0055" font-size="8">OH</text>
+        <line x1="58" y1="58" x2="58" y2="76" stroke="#fff" stroke-width="1.3"/><text x="52" y="86" fill="#ffd166" font-size="8">R</text></svg>`;
+      case "taurine": return `<svg width="100%" height="100%" viewBox="0 0 160 100">
+        <text x="12" y="54" fill="#00ff87" font-size="9" font-family="monospace">H₂N</text>
+        <line x1="34" y1="50" x2="58" y2="50" stroke="#fff" stroke-width="1.5"/><text x="60" y="54" fill="#94a3b8" font-size="7">CH₂</text>
+        <line x1="78" y1="50" x2="98" y2="50" stroke="#fff" stroke-width="1.5"/><text x="100" y="54" fill="#94a3b8" font-size="7">CH₂</text>
+        <line x1="118" y1="50" x2="128" y2="50" stroke="#fff" stroke-width="1.5"/><text x="130" y="54" fill="#ff0055" font-size="11" font-family="monospace">S</text>
+        <line x1="134" y1="43" x2="134" y2="28" stroke="#ff0055" stroke-width="1.5"/><text x="130" y="24" fill="#ff0055" font-size="8">O</text>
+        <line x1="134" y1="57" x2="134" y2="72" stroke="#ff0055" stroke-width="1.5"/><text x="130" y="82" fill="#ff0055" font-size="8">O</text>
+        <text x="40" y="84" fill="#94a3b8" font-size="7">Sulfonsäure (–SO₃H)</text></svg>`;
+      case "urea": return `<svg width="100%" height="100%" viewBox="0 0 100 100">
+        <text x="46" y="54" fill="#fff" font-size="11">C</text>
+        <line x1="49" y1="42" x2="49" y2="24" stroke="#ff0055" stroke-width="1.8"/><line x1="52" y1="42" x2="52" y2="24" stroke="#ff0055" stroke-width="1"/><text x="47" y="20" fill="#ff0055" font-size="9">O</text>
+        <line x1="43" y1="54" x2="26" y2="66" stroke="#fff" stroke-width="1.5"/><text x="8" y="76" fill="#00ff87" font-size="9">H₂N</text>
+        <line x1="57" y1="54" x2="74" y2="66" stroke="#fff" stroke-width="1.5"/><text x="76" y="76" fill="#00ff87" font-size="9">NH₂</text></svg>`;
+      case "purine": return `<svg width="100%" height="100%" viewBox="0 0 110 100">
+        <polygon points="35,32 56,32 66,50 56,68 35,68 25,50" fill="none" stroke="#9d4edd" stroke-width="1.5"/>
+        <polygon points="56,32 78,40 78,60 56,68" fill="none" stroke="#9d4edd" stroke-width="1.5"/>
+        <text x="29" y="52" fill="#fff" font-size="8">N</text><text x="50" y="40" fill="#fff" font-size="8">N</text>
+        <text x="73" y="52" fill="#fff" font-size="8">N</text><text x="50" y="62" fill="#fff" font-size="8">N</text>
+        <text x="30" y="86" fill="#94a3b8" font-size="7">Purin-Doppelring</text></svg>`;
+      case "nucleotide": return `<svg width="100%" height="100%" viewBox="0 0 150 100">
+        <polygon points="30,30 48,30 56,45 48,60 30,60 22,45" fill="none" stroke="#9d4edd" stroke-width="1.3"/>
+        <polygon points="60,55 78,50 90,60 84,76 66,78" fill="none" stroke="#00f2fe" stroke-width="1.3"/>
+        <line x1="56" y1="48" x2="64" y2="56" stroke="#fff" stroke-width="1"/>
+        <line x1="90" y1="62" x2="108" y2="62" stroke="#fff" stroke-width="1"/>
+        <circle cx="118" cy="62" r="8" fill="none" stroke="#fff" stroke-width="1.3"/><text x="114" y="65" fill="#fff" font-size="8">P</text>
+        <text x="20" y="80" fill="#94a3b8" font-size="7">Base–Ribose–Phosphat</text></svg>`;
+      case "atp": return `<svg width="100%" height="100%" viewBox="0 0 170 100">
+        <polygon points="20,30 38,30 46,45 38,60 20,60 12,45" fill="none" stroke="#9d4edd" stroke-width="1.3"/>
+        <text x="24" y="48" fill="#9d4edd" font-size="7">Adenin</text>
+        <polygon points="50,52 66,48 76,58 70,72 54,74" fill="none" stroke="#00e5ff" stroke-width="1.3"/>
+        ${[0,1,2].map(i=>`<circle cx="${96+i*22}" cy="58" r="9" fill="none" stroke="#fff" stroke-width="1.2"/><text x="${92+i*22}" y="61" fill="#fff" font-size="8">P</text>`).join("")}
+        <line x1="105" y1="58" x2="109" y2="58" stroke="#ff0055" stroke-width="2"/>
+        <line x1="127" y1="58" x2="131" y2="58" stroke="#ff0055" stroke-width="2"/>
+        <text x="78" y="90" fill="#ff0055" font-size="7">~ Phosphoanhydridbindungen (energiereich)</text></svg>`;
+      case "lipid": return `<svg width="100%" height="100%" viewBox="0 0 160 100">
+        <text x="8" y="54" fill="#f35588" font-size="8">Glycerin</text>
+        ${[0,1,2].map(i=>`<line x1="48" y1="${36+i*16}" x2="70" y2="${36+i*16}" stroke="#fff" stroke-width="1.2"/><polyline points="70,${36+i*16} 80,${32+i*16} 90,${40+i*16} 100,${32+i*16} 110,${40+i*16} 120,${32+i*16}" fill="none" stroke="#f35588" stroke-width="1.2"/>`).join("")}
+        <text x="60" y="92" fill="#94a3b8" font-size="7">3 × Esterbindung + Fettsäureketten</text></svg>`;
+      case "polyol": return `<svg width="100%" height="100%" viewBox="0 0 160 100">
+        <polyline points="20,55 40,42 60,55 80,42 100,55 120,42" fill="none" stroke="#ff4d4d" stroke-width="1.6"/>
+        ${[20,40,60,80,100,120].map((x,i)=>`<line x1="${x}" y1="${i%2?42:55}" x2="${x}" y2="${i%2?28:70}" stroke="#fff" stroke-width="1"/><text x="${x-5}" y="${i%2?24:80}" fill="#ff4d4d" font-size="7">OH</text>`).join("")}
+        <text x="40" y="96" fill="#94a3b8" font-size="7">mehrwertiger Alkohol (Polyol)</text></svg>`;
+      case "etc": return `<svg width="100%" height="100%" viewBox="0 0 160 100">
+        ${[0,1,2,3].map(i=>`<rect x="${18+i*34}" y="35" width="26" height="34" rx="3" fill="none" stroke="#00e5ff" stroke-width="1.3"/><text x="${31+i*34}" y="55" fill="#00e5ff" font-size="10" text-anchor="middle">${["I","II","III","IV"][i]}</text>`).join("")}
+        <line x1="18" y1="26" x2="146" y2="26" stroke="#fff" stroke-width="1" stroke-dasharray="3 3"/>
+        <text x="40" y="20" fill="#94a3b8" font-size="7">H⁺-Gradient → ATP-Synthase</text>
+        <text x="56" y="86" fill="#94a3b8" font-size="7">e⁻ → O₂ → H₂O</text></svg>`;
+      default: return `<svg width="100%" height="100%" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="16" fill="none" stroke="rgba(255,255,255,.2)" stroke-dasharray="2 2"/>
+        <circle cx="35" cy="50" r="5" fill="#00f2fe"/><circle cx="65" cy="50" r="5" fill="#f35588"/>
+        <circle cx="50" cy="35" r="5" fill="#ff8c00"/><circle cx="50" cy="65" r="5" fill="#00ff87"/>
+        <line x1="35" y1="50" x2="65" y2="50" stroke="#fff" stroke-width="1"/><line x1="50" y1="35" x2="50" y2="65" stroke="#fff" stroke-width="1"/></svg>`;
+    }
+  }
+
+  // Init
+  render();
+  buildFilters();
+  showDefault();
+  apply();
+  if("serviceWorker" in navigator && location.protocol !== "file:"){
+    navigator.serviceWorker.register("./sw.js").catch(()=>{});
+  }
+})();
+</script>
+<script>
+/* Hamburger-Navigation (additiv, unabhängig von der Stoffwechsel-Logik) */
+(function(){
+  var ov=document.getElementById("nav-overlay"),op=document.getElementById("btn-nav"),cl=document.getElementById("nav-close");
+  function open(){if(ov)ov.classList.add("open");}
+  function close(){if(ov)ov.classList.remove("open");}
+  if(op)op.addEventListener("click",open);
+  if(cl)cl.addEventListener("click",close);
+  if(ov)ov.addEventListener("click",function(e){if(e.target===ov)close();});
+  document.addEventListener("keydown",function(e){if(e.key==="Escape")close();});
+})();
+</script>
+</body>
+</html>

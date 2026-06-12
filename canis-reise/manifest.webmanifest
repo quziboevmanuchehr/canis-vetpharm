@@ -1,0 +1,14 @@
+{
+  "name": "Canis Reiseerkrankungen",
+  "short_name": "Canis Reise",
+  "description": "Interaktives Dashboard zu Reise- und Importerkrankungen des Hundes: Erreger, Länder, Blutwerte, Diagnostik, Stoffwechsel und 3D-Modelle.",
+  "lang": "de-DE",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0c10",
+  "theme_color": "#0a0c10",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Canis Hæmatica">
+  <defs>
+    <linearGradient id="g" x1="120" y1="40" x2="392" y2="470" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ff4d4d"></stop>
+      <stop offset=".55" stop-color="#f35588"></stop>
+      <stop offset="1" stop-color="#00f2fe"></stop>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="11" result="blur"></feGaussianBlur>
+      <feMerge><feMergeNode in="blur"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="#0a0c10"></rect>
+  
+  <path d="M256 92c52 78 96 132 96 188a96 96 0 0 1-192 0c0-56 44-110 96-188Z" fill="none" stroke="url(#g)" stroke-width="22" filter="url(#glow)"></path>
+  
+  <ellipse cx="232" cy="290" rx="44" ry="26" fill="#ff4d4d"></ellipse>
+  <ellipse cx="232" cy="290" rx="17" ry="9" fill="#0a0c10" opacity=".55"></ellipse>
+  
+  <circle cx="312" cy="250" r="22" fill="#00f2fe"></circle>
+  <circle cx="312" cy="250" r="9" fill="#0a0c10" opacity=".5"></circle>
+  
+  <circle cx="300" cy="318" r="11" fill="#f35588"></circle>
+  
+  <path d="M150 408h54l16-30 22 56 18-34h62" fill="none" stroke="#00ff87" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" opacity=".9"></path>
+</svg>

@@ -1,0 +1,26 @@
+{
+  "name": "Canis Hæmatica – Blutwerte-Atlas Hund",
+  "short_name": "Canis Hæmatica",
+  "description": "Interaktiver Blutwerte-Atlas des Hundes: Referenzwerte, Organbezug, Stoffwechsel, ↑/↓-Ursachen, Erkrankungen, Diagnose-Muster und 3D-Blutzellen. Rasse-/Alters-/Status-Anpassung.",
+  "lang": "de",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0c10",
+  "theme_color": "#0a0c10",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "medical", "science"],
+  "share_target": {
+    "action": "./index.html",
+    "method": "GET",
+    "params": { "title": "title", "text": "text", "url": "url" }
+  }
+}
