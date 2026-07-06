@@ -1,4 +1,4 @@
-const CACHE_NAME = "canis-haematica-v3-9";
+const CACHE_NAME = "canis-haematica-v3-10";
 const ASSETS = [
   "./",
   "./index.html",

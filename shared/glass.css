@@ -426,3 +426,42 @@ a:focus-visible,button:focus-visible,input:focus-visible,.tab:focus-visible,.mod
   .vp-topline{animation:none}
   .route-line{animation:none !important}
 }
+
+/* =========================================================================
+   11 · LIGHT THEME — Canis Anæsthesia module components
+   (custom classes get frosted-glass light styling so the default light
+    theme is consistent & readable; dark theme keeps the original design)
+   ========================================================================= */
+html[data-theme="light"] .patient{
+  background:linear-gradient(180deg,rgba(255,255,255,.78),rgba(255,255,255,.62)) !important;
+  border-bottom:1px solid rgba(20,40,70,.12) !important;
+  -webkit-backdrop-filter:blur(20px) saturate(175%);backdrop-filter:blur(20px) saturate(175%);}
+html[data-theme="light"] .sp-chip{background:rgba(255,255,255,.62) !important;border-color:rgba(20,40,70,.14) !important;color:#15202e !important}
+html[data-theme="light"] .sp-chip.active{background:rgba(8,146,180,.14) !important;box-shadow:0 0 0 1px #0aa2c4 inset !important;border-color:#0aa2c4 !important}
+html[data-theme="light"] .pfield input,html[data-theme="light"] .pfield select,html[data-theme="light"] .dsearch{background:rgba(255,255,255,.9) !important;border-color:rgba(20,40,70,.16) !important;color:#15202e !important}
+html[data-theme="light"] .pfield label,html[data-theme="light"] .cat-h,html[data-theme="light"] .dose-cls,html[data-theme="light"] .pchip-note{color:#5a6b7e !important}
+html[data-theme="light"] .inc-btn,
+html[data-theme="light"] .dose-card,
+html[data-theme="light"] .step,
+html[data-theme="light"] .set-row,
+html[data-theme="light"] .ctrl-card{background:rgba(255,255,255,.68) !important;border-color:rgba(20,40,70,.12) !important;color:#1b2734 !important}
+html[data-theme="light"] .inc-btn:hover,html[data-theme="light"] .inc-btn.active{background:rgba(255,255,255,.95) !important}
+html[data-theme="light"] .inc-btn b,html[data-theme="light"] .dose-name,html[data-theme="light"] .set-row .v,html[data-theme="light"] .ctrl-head b,html[data-theme="light"] .card h2{color:#15202e !important}
+html[data-theme="light"] .inc-btn span,html[data-theme="light"] .dose-meta,html[data-theme="light"] .set-row .k,html[data-theme="light"] .set-row .v small{color:#5a6b7e !important}
+html[data-theme="light"] .dpill{background:rgba(20,40,70,.05) !important;color:#1b2734 !important;border-color:rgba(20,40,70,.16) !important}
+html[data-theme="light"] .dpill b{color:#0b3b5c !important}
+html[data-theme="light"] .dpill.ml{background:rgba(15,162,105,.12) !important;border-color:rgba(15,162,105,.5) !important;color:#0a6b45 !important}
+html[data-theme="light"] .dpill.ml b{color:#075a37 !important}
+html[data-theme="light"] .dpill.mg{background:rgba(8,146,180,.12) !important;border-color:rgba(8,146,180,.5) !important;color:#075b74 !important}
+html[data-theme="light"] .dpill.mg b{color:#064a5f !important}
+html[data-theme="light"] .mset{background:rgba(8,146,180,.10) !important;border-color:rgba(8,146,180,.35) !important;color:#0e3d50 !important}
+html[data-theme="light"] .mset b{color:#0a6b8a !important}
+html[data-theme="light"] .thr{color:#7a5a00 !important;background:rgba(255,209,102,.20) !important;border-color:rgba(191,132,16,.4) !important}
+html[data-theme="light"] .dose-caution{color:#7a4a00 !important;background:rgba(255,140,60,.12) !important}
+html[data-theme="light"] .sec-h{color:#b3760a !important}
+html[data-theme="light"] .disc-in{color:#7a1f1f !important;background:rgba(226,59,59,.10) !important;border-color:rgba(226,59,59,.35) !important}
+html[data-theme="light"] .disc-in b{color:#5a0f0f !important}
+html[data-theme="light"] .lead{color:#26333f !important}
+html[data-theme="light"] .ctrl-body .lbl{color:#0a6b8a !important}
+/* 3D canvas stays dark in both themes (WebGL scene) */
+html[data-theme="light"] .canvas3d{background:radial-gradient(circle at 50% 35%,rgba(0,216,255,.10),transparent 45%),#07101a !important}

@@ -62,10 +62,11 @@
   var inModule = location.pathname.indexOf("/canis-") >= 0;
 
   var MODULES = [
-    { seg: "canis-metabolica", ic: "🧬", tt: "Canis Metabolica", sb: "Stoffwechselkarte", nl: "#0aa2c4" },
-    { seg: "canis-haematica",  ic: "🩸", tt: "Canis Hæmatica",  sb: "Blutwerte-Atlas",   nl: "#e23b6d" },
-    { seg: "canis-reise",      ic: "🧫", tt: "Canis Reise",      sb: "Reiseerkrankungen", nl: "#e0a020" },
-    { seg: "__home",           ic: "🏠", tt: "Startseite",       sb: "Modul-Auswahl",     nl: "#16a06a" }
+    { seg: "canis-metabolica",  ic: "🧬", tt: "Canis Metabolica", sb: "Stoffwechselkarte", nl: "#0aa2c4" },
+    { seg: "canis-haematica",   ic: "🩸", tt: "Canis Hæmatica",  sb: "Blutwerte-Atlas",   nl: "#e23b6d" },
+    { seg: "canis-reise",       ic: "🧫", tt: "Canis Reise",      sb: "Reiseerkrankungen", nl: "#e0a020" },
+    { seg: "canis-anaesthesie", ic: "℞", tt: "Canis Anæsthesia", sb: "Narkose & Notfall", nl: "#a78bfa" },
+    { seg: "__home",            ic: "🏠", tt: "Startseite",       sb: "Modul-Auswahl",     nl: "#16a06a" }
   ];
   function hrefFor(seg) { return seg === "__home" ? (BASE || "./") : (BASE + seg + "/"); }
   function isActive(seg) { return seg === "__home" ? !inModule : here(seg); }
@@ -75,7 +76,8 @@
     { ic: "🧬", t: "Stoffwechselwege", s: "Glykolyse · Citratzyklus · Harnstoff", href: BASE + "canis-metabolica/" },
     { ic: "🩸", t: "Blutwert nachschlagen", s: "73 Parameter · Organbezug · ↑/↓", href: BASE + "canis-haematica/" },
     { ic: "🗺️", t: "Reise-Risikokarte", s: "Welt & Europa · Länder-Hotspots", href: BASE + "canis-reise/" },
-    { ic: "🧪", t: "Labor ↔ Krankheit", s: "Welcher Wert bei welcher Reisekrankheit?", href: BASE + "canis-reise/" }
+    { ic: "🧪", t: "Labor ↔ Krankheit", s: "Welcher Wert bei welcher Reisekrankheit?", href: BASE + "canis-reise/" },
+    { ic: "🚨", t: "Narkose-Notfall", s: "Zwischenfall · Dosis · Veta 5", href: BASE + "canis-anaesthesie/" }
   ];
 
   function drawerHTML() {
