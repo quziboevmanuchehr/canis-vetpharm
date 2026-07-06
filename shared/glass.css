@@ -492,3 +492,9 @@ html[data-theme="light"] .dev-row .dr-val{color:#0a6b8a !important}
 html[data-theme="light"] .dev-row .dr-tgt{color:#0a6b45 !important}
 html[data-theme="light"] .dev-row .dr-tgt.off{color:#b3760a !important}
 html[data-theme="light"] .dev-modes button{background:rgba(255,255,255,.62) !important;border-color:rgba(20,40,70,.14) !important;color:#15202e !important}
+/* device readout rows (right card) go light; the device 'image' units stay dark */
+html[data-theme="light"] .devr{background:rgba(255,255,255,.68) !important;border-color:rgba(20,40,70,.12) !important}
+html[data-theme="light"] .devr .dn{color:#15202e !important}
+html[data-theme="light"] .devr .dv{color:#0a6b8a !important}
+html[data-theme="light"] .devr .dt{color:#0a6b45 !important}
+html[data-theme="light"] .devr.off .dt{color:#b3760a !important}

@@ -189,9 +189,39 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 .dev-modes{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
 .dev-modes button{height:32px;border-radius:7px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);padding:0 11px;cursor:pointer;font-size:12px}
 .dev-modes button.active{background:rgba(0,216,255,.16);border-color:var(--cyan);color:#fff}
+/* Integriertes Gerät (Bild) */
+.device{margin-top:14px;display:flex;flex-direction:column;gap:14px}
+.dev-unit{background:linear-gradient(180deg,#1b2431,#0e141d);border:1px solid #2c3a4d;border-radius:16px;padding:12px 14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 10px 26px rgba(0,0,0,.35)}
+.dev-brand{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.dev-brand b{color:#eaf1fb;font-weight:800;letter-spacing:.3px;font-size:13px}
+.dev-brand span{font:11px var(--mono);color:#7d93ad}
+.dev-brand .dm-btn{margin-left:auto;width:30px;height:30px;border-radius:7px;border:1px solid #3a4a5e;background:#e0a020;color:#1a1400;cursor:pointer;font-size:14px}
+.dev-brand .dm-btn.on{background:#39506a;color:#fff}
+.machine{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:14px;align-items:end;justify-items:center}
+.mc-item{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.mc-label{font:11px var(--mono);text-transform:uppercase;letter-spacing:.6px;color:#9fb0c4}
+.flowmeter{height:172px;touch-action:none;cursor:ns-resize}
+.vaporizer{width:128px;height:128px;touch-action:none;cursor:grab}
+.vaporizer:active{cursor:grabbing}
+.mc-val{font:13px var(--mono);font-weight:800;color:var(--cyan);background:#0b1017;border:1px solid #2c3a4d;border-radius:7px;padding:3px 9px}
+.mc-toggle{display:flex;border:1px solid #3a4a5e;border-radius:8px;overflow:hidden}
+.mc-toggle button{border:0;background:#0d1420;color:#aebccc;padding:7px 12px;cursor:pointer;font-size:12px}
+.mc-toggle button.active{background:var(--cyan);color:#04121a;font-weight:700}
+.mc-modes{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}
+.mc-modes button{border:1px solid #3a4a5e;background:#0d1420;color:#cdd8e4;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer}
+.mc-modes button.active{background:rgba(0,216,255,.18);border-color:var(--cyan);color:#fff}
+.mc-flush{border:1px solid #3a4a5e;background:#0d1420;color:#8fd6ff;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:12px;font-weight:700}
+.mc-flush.on{background:var(--cyan);color:#04121a}
+.mc-hint{font:10.5px var(--mono);color:#7d93ad;line-height:1.35}
+.devr{display:grid;grid-template-columns:1fr auto;gap:2px 8px;border:1px solid var(--line);background:rgba(255,255,255,.03);border-radius:9px;padding:8px 10px;margin-bottom:7px}
+.devr.off{border-color:rgba(255,140,60,.5);background:rgba(255,140,60,.08)}
+.devr .dn{font-size:13px;font-weight:600}
+.devr .dv{font:13px var(--mono);color:var(--cyan);font-weight:800;text-align:right}
+.devr .dt{grid-column:1/3;font:11px var(--mono);color:#9bffcf}
+.devr.off .dt{color:#ffcf8a}
 </style>
-<link rel="stylesheet" href="../shared/glass.css?v=7">
-<script src="../shared/vetpharm-ui.js?v=7"></script>
+<link rel="stylesheet" href="../shared/glass.css?v=8">
+<script src="../shared/vetpharm-ui.js?v=8"></script>
 </head>
 <body>
 <header>
@@ -217,9 +247,8 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 
 <nav class="tabs" id="tabs">
   <button class="tab active" data-view="notfall">🚨 Notfall</button>
-  <button class="tab" data-view="monitor">🖥️ Monitor</button>
+  <button class="tab" data-view="geraet">🖥️ Gerät (Monitor + Narkose)</button>
   <button class="tab" data-view="medis">💉 Medikamente</button>
-  <button class="tab" data-view="geraet">🫁 Gerät (Veta 5)</button>
   <button class="tab" data-view="bedienung">📖 Bedienung</button>
   <button class="tab" data-view="settings">⚙️ Einstellungen</button>
   <button class="tab" data-view="info">📋 Info</button>
@@ -233,27 +262,6 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
     </div>
   </section>
 
-  <section class="view" id="monitor">
-    <div class="card">
-      <h3>uMEC12 Vet · Live-Monitor &amp; Kapnograf</h3>
-      <div class="mon-modes">
-        <button class="mon-mode active" data-m="ist">✍️ Ist-Zustand eingeben</button>
-        <button class="mon-mode" data-m="sim">🎬 Szenario simulieren</button>
-      </div>
-      <div class="mon-inputs" id="monInputs"></div>
-      <div class="mon-scenarios" id="monScenarios" style="display:none"></div>
-      <div class="mon-screen"><canvas id="monCanvas"></canvas><div class="mon-alarm" id="monAlarm"></div></div>
-      <div class="mon-tiles" id="monTiles"></div>
-      <div id="monAssess"></div>
-      <p class="muted" style="font-size:12px;margin-top:8px">Ist-Werte von <b id="mSpecies">…</b> eingeben → die Seite erkennt Abweichungen und nennt Medikament + Geräte-Einstellung. Parameter/Kachel antippen → Normbereich &amp; Reaktion.</p>
-      <div id="monDetail"></div>
-    </div>
-    <div class="card">
-      <h3>Kapnograf – Kurvenform erkennen &amp; reagieren</h3>
-      <div class="capno-grid" id="capnoGrid"></div>
-    </div>
-  </section>
-
   <section class="view" id="medis">
     <div class="card">
       <h3>Dosis-Rechner · Anästhesie & Notfall</h3>
@@ -264,17 +272,39 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
   </section>
 
   <section class="view" id="geraet">
-    <div class="grid-2" style="grid-template-columns:minmax(0,1.1fr) minmax(320px,.9fr)">
-      <div class="card"><h3>Mindray Veta 5 Plus · 3D-Scan</h3>
-        <div class="canvas3d" id="c3d"><div class="c3d-load" id="c3dLoad">🫁 3D-Modell wird geladen…<br><span class="muted" style="font-size:12px">Ziehen = drehen · Scrollen/Pinch = zoomen</span></div><div class="c3d-hint">Original-Scan aus der Praxis · ziehen zum Drehen</div></div>
-        <p class="src">3D-Aufnahme des echten Geräts (Photogrammetrie). Bedienelemente rechts antippen für Funktion &amp; Einstellung.</p>
+    <div class="grid-2" style="grid-template-columns:minmax(0,1.3fr) minmax(300px,.75fr)">
+      <div class="card">
+        <h3>Virtuelles Gerät · Monitor + Kapnograf + Narkosegerät</h3>
+        <div class="mon-modes">
+          <button class="mon-mode active" data-m="ist">✍️ Ist-Zustand eingeben</button>
+          <button class="mon-mode" data-m="sim">🎬 Szenario simulieren</button>
+        </div>
+        <div class="mon-inputs" id="monInputs"></div>
+        <div class="mon-scenarios" id="monScenarios" style="display:none"></div>
+        <div class="device">
+          <div class="dev-unit dev-mon">
+            <div class="dev-brand"><b>mindray</b><span>uMEC12 Vet</span><button class="dm-btn" id="dmSilence" title="Alarm stummschalten">🔕</button></div>
+            <div class="mon-screen"><canvas id="monCanvas"></canvas><div class="mon-alarm" id="monAlarm"></div></div>
+            <div class="mon-tiles" id="monTiles"></div>
+          </div>
+          <div class="dev-unit dev-mach">
+            <div class="dev-brand"><b>mindray</b><span>Veta 5 Plus</span></div>
+            <div class="machine" id="machineControls"></div>
+          </div>
+        </div>
+        <p class="muted" style="font-size:12px;margin-top:10px">Werte von <b id="mSpecies">…</b> eintippen · Verdampfer <b>drehen</b> · Flowmeter <b>schieben</b> · Modus wählen. Rechts erkennt die Seite Fehler und nennt Medikament + Soll-Einstellung.<span id="devSpecies" style="display:none"></span></p>
       </div>
-      <aside class="card"><h3>Bedienelemente – jedes antippen</h3><div id="ctrlList"></div></aside>
+      <aside class="card">
+        <h3>🧠 Analyse &amp; Soll-Abgleich</h3>
+        <div id="monAssess"></div>
+        <div class="sec-h">Geräte-Soll für Patient</div>
+        <div class="dev-ctrl" id="devCtrl"></div>
+        <div id="monDetail"></div>
+      </aside>
     </div>
     <div class="card">
-      <h3>Geräte-Steuerung – einstellen &amp; mit Soll abgleichen</h3>
-      <p class="muted" style="font-size:12.5px;margin-top:-4px">Regler bewegen = am Gerät einstellen. Für <b id="devSpecies">…</b> zeigt die Seite den <b>Soll-Wert</b> und warnt bei Abweichung – so findest du Fehleinstellungen am echten Gerät.</p>
-      <div class="dev-ctrl" id="devCtrl" style="margin-top:12px"></div>
+      <h3>Kapnograf – Kurvenform erkennen &amp; reagieren</h3>
+      <div class="capno-grid" id="capnoGrid"></div>
     </div>
   </section>
 
@@ -312,10 +342,7 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
   </section>
 </main>
 
-<script src="anaes-data.js?v=2"></script>
-<script type="importmap">
-{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
-</script>
+<script src="anaes-data.js?v=3"></script>
 <script>
 /* ============ Canis Anæsthesia – Engine ============ */
 (function(){
@@ -588,16 +615,14 @@ function renderDevCtrl(){
   var o2off = state.dev.o2 < t.o2[0]-0.2 || state.dev.o2 > t.o2[1]+1;
   var ir=(t.iso||'').split('–').map(parseFloat); var isoOff = (ir.length===2 && !isNaN(ir[0])) ? (state.dev.iso<ir[0]-0.4||state.dev.iso>ir[1]+0.6) : false;
   var modes=A.machine.ventModes||[]; var mn=modes.find(function(x){return x.id===state.dev.mode;})||modes[0]||{name:''};
+  var rebMin=(((A.machine.settingsBySpecies||{})[state.sp])||{}).rebreatheMin||7;
+  function row(name,val,tgt,off){ return '<div class="devr'+(off?' off':'')+'"><span class="dn">'+name+'</span><span class="dv">'+val+'</span><span class="dt">Soll: '+tgt+' '+(off?'⚠':'✓')+'</span></div>'; }
   box.innerHTML =
-   '<div class="dev-row"><div class="dr-top"><span class="dr-name">🟦 O₂-Frischgasfluss</span><span class="dr-val">'+state.dev.o2.toFixed(1)+' L/min</span></div>'+
-     '<input type="range" min="0" max="4" step="0.1" value="'+state.dev.o2+'" data-d="o2"><div class="dr-tgt'+(o2off?' off':'')+'">Soll '+sp().name+': '+fmtRange(t.o2[0],t.o2[1])+' L/min · '+(o2off?'⚠ Abweichung – anpassen':'✓ passt')+'</div></div>'+
-   '<div class="dev-row"><div class="dr-top"><span class="dr-name">⚪ Isofluran-Verdampfer (V60)</span><span class="dr-val">'+state.dev.iso.toFixed(1)+' Vol%</span></div>'+
-     '<input type="range" min="0" max="6" step="0.1" value="'+state.dev.iso+'" data-d="iso"><div class="dr-tgt'+(isoOff?' off':'')+'">Soll Erhaltung: '+(t.iso||'—')+' Vol% (MAC ~'+t.isoMac+') · '+(isoOff?'⚠ Abweichung':'✓ im Bereich')+'</div></div>'+
-   '<div class="dev-row"><div class="dr-top"><span class="dr-name">🔀 Beatmungs-Modus</span><span class="dr-val">'+(mn.name.split(' – ')[0])+'</span></div>'+
-     '<div class="dev-modes" id="devModes">'+modes.map(function(mo){return '<button data-m="'+mo.id+'"'+(state.dev.mode===mo.id?' class="active"':'')+'>'+mo.name.split(' ')[0]+'</button>';}).join('')+'</div>'+
-     '<div class="dr-tgt">'+(mn.desc||'')+'<br>System: '+t.mode+' · APL '+t.apl+' · Empfehlung: '+(state.wt<7?'kleine Patienten schonend (PCV/Manuell)':'VCV Standard')+'</div></div>';
-  $$('#devCtrl input[type=range]').forEach(function(inp){ inp.addEventListener('input',function(){ state.dev[inp.dataset.d]=parseFloat(inp.value); renderDevCtrl(); }); });
-  $$('#devModes button').forEach(function(b){ b.onclick=function(){ state.dev.mode=b.dataset.m; renderDevCtrl(); }; });
+    row('🟦 O₂-Fluss', state.dev.o2.toFixed(1)+' L/min', fmtRange(t.o2[0],t.o2[1])+' L/min', o2off)+
+    row('⚪ Isofluran', state.dev.iso.toFixed(1)+' Vol%', (t.iso||'—')+' Vol% (MAC '+t.isoMac+')', isoOff)+
+    row('🔀 Beatmung', (state.dev.auto?'Auto':'Manuell')+' · '+mn.name.split(' ')[0], (state.wt<7?'PCV/Manuell schonend':'VCV Standard'), false)+
+    row('🫁 Atemsystem', t.mode, (state.wt<rebMin?'Nicht-Rückatmung':'Kreissystem'), false)+
+    row('🔵 APL-Ventil', t.apl, 'offen bei Spontanatmung', false);
 }
 function showMonParam(id){
   var p=(MON().params||[]).find(function(x){return x.id===id;}); if(!p)return; var v=monVitals(); var band=v[p.vital];
@@ -713,48 +738,51 @@ function renderOperating(){
   $('#opSafety').innerHTML=(o.safety||[]).map(function(s){ return '<div class="op-safe">⚠️ '+s+'</div>'; }).join('');
 }
 
-/* ---------- 3D ---------- */
-var three3dInit=false;
-function init3D(){
-  if(three3dInit) return; three3dInit=true;
-  import('three').then(function(THREE){
-   Promise.all([import('three/addons/controls/OrbitControls.js'), import('three/addons/loaders/GLTFLoader.js')]).then(function(mods){
-    var OrbitControls=mods[0].OrbitControls, GLTFLoader=mods[1].GLTFLoader;
-    var host=$('#c3d'); var W=host.clientWidth,H=host.clientHeight;
-    var renderer=new THREE.WebGLRenderer({antialias:true,alpha:true}); renderer.setPixelRatio(Math.min(2,devicePixelRatio)); renderer.setSize(W,H); host.appendChild(renderer.domElement);
-    var scene=new THREE.Scene();
-    var cam=new THREE.PerspectiveCamera(45,W/H,0.01,100); cam.position.set(0.6,1.4,1.4);
-    scene.add(new THREE.HemisphereLight(0xffffff,0x334455,1.5));
-    var dl=new THREE.DirectionalLight(0xffffff,1.4); dl.position.set(2,4,3); scene.add(dl);
-    var dl2=new THREE.DirectionalLight(0x88bbff,.6); dl2.position.set(-2,2,-2); scene.add(dl2);
-    var ctrls=new OrbitControls(cam,renderer.domElement); ctrls.enableDamping=true; ctrls.autoRotate=true; ctrls.autoRotateSpeed=.6;
-    new GLTFLoader().load('model/veta5.glb?v=1', function(gltf){
-      var obj=gltf.scene;
-      var box=new THREE.Box3().setFromObject(obj); var c=box.getCenter(new THREE.Vector3()); var sz=box.getSize(new THREE.Vector3());
-      obj.position.sub(c); var maxd=Math.max(sz.x,sz.y,sz.z)||1; var sc=1.4/maxd; obj.scale.setScalar(sc);
-      scene.add(obj); ctrls.target.set(0,0,0); cam.position.set(0.5*1.4,0.35*1.4,1.25*1.4); ctrls.update();
-      var l=$('#c3dLoad'); if(l) l.style.display='none';
-    }, function(p){ var l=$('#c3dLoad'); if(l&&p.total) l.innerHTML='🫁 3D-Modell wird geladen… '+Math.round(p.loaded/p.total*100)+'%'; },
-       function(err){ var l=$('#c3dLoad'); if(l) l.innerHTML='3D-Modell konnte nicht geladen werden.<br><span class="muted">Bedienelemente rechts funktionieren weiterhin.</span>'; });
-    (function loop(){ requestAnimationFrame(loop); ctrls.update(); renderer.render(scene,cam); })();
-    host.addEventListener('pointerdown',function(){ ctrls.autoRotate=false; });
-    addEventListener('resize',function(){ var w=host.clientWidth,h=host.clientHeight; if(!w||!h)return; cam.aspect=w/h; cam.updateProjectionMatrix(); renderer.setSize(w,h); });
-   });
-  }).catch(function(){ var l=$('#c3dLoad'); if(l) l.innerHTML='3D benötigt WebGL / Internet.<br><span class="muted">Bedienelemente rechts funktionieren weiterhin.</span>'; });
+/* ---------- interaktives Gerät (Verdampfer drehen, Flowmeter schieben) ---------- */
+function flowmeterSVG(o2){
+  var H=210, top=16, bot=H-16, frac=Math.max(0,Math.min(1,o2/4)), fy=bot-(bot-top)*frac;
+  var ticks=[0,0.5,1,2,3,4].map(function(v){var y=bot-(bot-top)*(v/4);return '<line x1="34" y1="'+y+'" x2="45" y2="'+y+'" stroke="#7d93ad" stroke-width="1.2"/><text x="31" y="'+(y+3.5)+'" font-size="10" fill="#aebccc" text-anchor="end">'+v+'</text>';}).join('');
+  return '<svg class="flowmeter" viewBox="0 0 66 '+H+'" data-ctrl="o2"><rect x="20" y="'+top+'" width="24" height="'+(bot-top)+'" rx="12" fill="#0b1420" stroke="#39506a"/>'+ticks+'<circle cx="32" cy="'+fy.toFixed(1)+'" r="9" fill="#ff4d4d" stroke="#fff" stroke-width="1.6" class="knob-float"/></svg>';
+}
+function vaporizerSVG(iso){
+  var cx=68,cy=68,R=54,a0=140,sweep=260, ang=a0+(Math.max(0,Math.min(6,iso))/6)*sweep, rad=ang*Math.PI/180;
+  var px=(cx+Math.cos(rad)*(R-14)).toFixed(1), py=(cy+Math.sin(rad)*(R-14)).toFixed(1), ticks='';
+  for(var v=0;v<=6;v++){ var ta=(a0+(v/6)*sweep)*Math.PI/180; ticks+='<line x1="'+(cx+Math.cos(ta)*R).toFixed(1)+'" y1="'+(cy+Math.sin(ta)*R).toFixed(1)+'" x2="'+(cx+Math.cos(ta)*(R-9)).toFixed(1)+'" y2="'+(cy+Math.sin(ta)*(R-9)).toFixed(1)+'" stroke="#aebccc" stroke-width="1.6"/><text x="'+(cx+Math.cos(ta)*(R+10)).toFixed(1)+'" y="'+(cy+Math.sin(ta)*(R+10)+3.5).toFixed(1)+'" font-size="11" fill="#cdd8e4" text-anchor="middle">'+v+'</text>'; }
+  return '<svg class="vaporizer" viewBox="0 0 136 136" data-ctrl="iso"><defs><radialGradient id="vgrad"><stop offset="0" stop-color="#f4f6f9"/><stop offset="1" stop-color="#cfd6de"/></radialGradient></defs><circle cx="68" cy="68" r="60" fill="#141b26" stroke="#39506a"/>'+ticks+'<circle cx="68" cy="68" r="36" fill="url(#vgrad)" stroke="#c3ccd6" stroke-width="1.5"/><line x1="68" y1="68" x2="'+px+'" y2="'+py+'" stroke="#e23b3b" stroke-width="4.5" stroke-linecap="round"/><circle cx="68" cy="68" r="7" fill="#2a2a2a"/></svg>';
+}
+function dragCtrl(el, onMove){
+  el.addEventListener('pointerdown',function(e){ e.preventDefault(); try{el.setPointerCapture(e.pointerId);}catch(x){} onMove(e);
+    function mv(ev){ onMove(ev); } function up(){ document.removeEventListener('pointermove',mv); document.removeEventListener('pointerup',up); }
+    document.addEventListener('pointermove',mv); document.addEventListener('pointerup',up); });
+}
+function renderMachine(){
+  var box=$('#machineControls'); if(!box) return;
+  if(state.dev.auto==null) state.dev.auto=false;
+  var modes=A.machine.ventModes||[];
+  box.innerHTML =
+    '<div class="mc-item"><div class="mc-label">O₂-Fluss</div>'+flowmeterSVG(state.dev.o2)+'<div class="mc-val">'+state.dev.o2.toFixed(1)+' L/min</div></div>'+
+    '<div class="mc-item"><div class="mc-label">Isofluran V60</div>'+vaporizerSVG(state.dev.iso)+'<div class="mc-val">'+state.dev.iso.toFixed(1)+' Vol%</div></div>'+
+    '<div class="mc-item"><div class="mc-label">Beatmung</div><div class="mc-toggle" id="mcAuto"><button class="'+(!state.dev.auto?'active':'')+'" data-a="0">Manuell</button><button class="'+(state.dev.auto?'active':'')+'" data-a="1">Auto</button></div>'+
+      '<div class="mc-modes" id="mcModes">'+modes.map(function(mo){return '<button data-m="'+mo.id+'"'+(state.dev.mode===mo.id?' class="active"':'')+'>'+mo.name.split(' ')[0]+'</button>';}).join('')+'</div></div>'+
+    '<div class="mc-item"><div class="mc-label">O₂-Flush / APL</div><button class="mc-flush" id="mcFlush">O₂+ Flush</button><div class="mc-hint">APL offen (2–3)<br>Absorber prüfen</div></div>';
+  var fm=box.querySelector('.flowmeter'); if(fm) dragCtrl(fm,function(e){ var r=fm.getBoundingClientRect(); var sy=r.height/210; var frac=1-(e.clientY-r.top-16*sy)/(178*sy); frac=Math.max(0,Math.min(1,frac)); state.dev.o2=Math.round(frac*40)/10; renderMachine(); renderDevCtrl(); });
+  var vp=box.querySelector('.vaporizer'); if(vp) dragCtrl(vp,function(e){ var r=vp.getBoundingClientRect(); var a=Math.atan2(e.clientY-(r.top+r.height/2), e.clientX-(r.left+r.width/2))*180/Math.PI; if(a<0)a+=360; if(a<140)a+=360; a=Math.max(140,Math.min(400,a)); state.dev.iso=Math.round((a-140)/260*60)/10; renderMachine(); renderDevCtrl(); });
+  $$('#mcAuto button').forEach(function(b){ b.onclick=function(){ state.dev.auto=(b.dataset.a==='1'); renderMachine(); renderDevCtrl(); }; });
+  $$('#mcModes button').forEach(function(b){ b.onclick=function(){ state.dev.mode=b.dataset.m; renderMachine(); renderDevCtrl(); }; });
+  var fl=$('#mcFlush'); if(fl) fl.onclick=function(){ fl.classList.add('on'); setTimeout(function(){fl.classList.remove('on');},600); };
 }
 
 /* ---------- tabs + wiring ---------- */
 function switchTab(v){
   $$('#tabs .tab').forEach(function(t){ t.classList.toggle('active',t.dataset.view===v); });
   $$('.view').forEach(function(x){ x.classList.toggle('active',x.id===v); });
-  if(v==='geraet'){ init3D(); renderDevCtrl(); }
+  if(v==='geraet'){ monStart(); renderMachine(); renderDevCtrl(); } else { monStop(); }
   if(v==='settings') renderSettings();
-  if(v==='monitor') monStart(); else monStop();
   if(v==='bedienung') renderOperating();
 }
-function rerender(){ renderProto(); renderDrugs(); renderSettings(); renderDevCtrl(); if(mon.running) renderMonValues(); }
+function rerender(){ renderProto(); renderDrugs(); renderSettings(); renderMachine(); renderDevCtrl(); if(mon.running) renderMonValues(); }
 function boot(){
-  syncPatient(); renderIncidents(); renderFilters(); renderDrugs(); renderCtrls(); renderInfo(); renderCapno();
+  syncPatient(); renderIncidents(); renderFilters(); renderDrugs(); renderInfo(); renderCapno();
   $$('#tabs .tab').forEach(function(t){ t.onclick=function(){ switchTab(t.dataset.view); }; });
   $('#wt').addEventListener('input',function(e){ var v=parseFloat(e.target.value); state.wt=(v>0?v:0); syncPatient(); rerender(); });
   $('#age').addEventListener('change',function(e){ state.age=e.target.value; renderSettings(); });
