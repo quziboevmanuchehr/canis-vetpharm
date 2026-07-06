@@ -155,9 +155,43 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 .op-step .n{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--cyan),var(--violet));color:#04121a;font-weight:800;display:grid;place-items:center;font-size:13px}
 .op-step b{font-size:14px}.op-step p{margin:3px 0 0;font-size:13px;color:var(--muted);line-height:1.5}
 .op-safe{border:1px solid rgba(255,77,77,.3);background:rgba(255,77,77,.08);border-radius:9px;padding:9px 12px;margin-bottom:7px;font-size:13px;color:#ffd7d7;line-height:1.5}
+/* Monitor: Modus + Ist-Eingabe + Auto-Analyse */
+.mon-modes{display:flex;gap:8px;margin-bottom:10px}
+.mon-mode{flex:1;height:38px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);cursor:pointer;font-size:13px;font-weight:600}
+.mon-mode.active{background:linear-gradient(90deg,var(--cyan),var(--violet));border:0;color:#04121a}
+.mon-inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:8px;margin-bottom:12px}
+.mon-in{display:flex;flex-direction:column;gap:3px;background:#0b1017;border:1px solid rgba(120,150,180,.22);border-radius:9px;padding:7px 9px}
+.mon-in span{font:10px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.mon-in input{height:38px;border-radius:7px;border:1px solid var(--line);background:#0d1219;color:#fff;font-size:18px;font-weight:800;text-align:center;width:100%}
+.mon-in.alarm input{border-color:var(--red);color:#ff9a9a;box-shadow:0 0 0 1px var(--red) inset}
+.assess-ok{border:1px solid rgba(0,255,135,.4);background:rgba(0,255,135,.08);color:#9bffcf;border-radius:10px;padding:12px;font-size:14px;font-weight:600;margin-top:12px}
+.assess-card{border:1px solid rgba(255,77,77,.35);background:rgba(255,77,77,.06);border-left:4px solid var(--red);border-radius:10px;padding:11px 12px;margin-bottom:9px;cursor:pointer;transition:.15s}
+.assess-card.warn{border-color:rgba(255,209,102,.5);border-left-color:var(--amber);background:rgba(255,209,102,.06)}
+.assess-card:hover{filter:brightness(1.12)}
+.assess-h{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
+.assess-h b{font-size:15px}
+.assess-h .an{font:11px var(--mono);color:var(--muted)}
+.assess-inc{margin-left:auto;background:var(--red);color:#fff;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:700}
+.assess-card.warn .assess-inc{background:var(--amber);color:#3a2a00}
+.assess-m{margin-top:6px;font-size:12.5px;color:#bff0ff;line-height:1.45}
+.assess-s{margin-top:4px;font-size:12.5px;line-height:1.45}
+.assess-d{margin-top:5px;font-size:12.5px;color:#baffe0;background:rgba(0,255,135,.08);border:1px solid rgba(0,255,135,.25);border-radius:7px;padding:5px 8px}
+.assess-go{margin-top:7px;font:11px var(--mono);color:var(--amber)}
+/* Geräte-Steuerung */
+.dev-ctrl{display:grid;gap:12px;margin-top:6px}
+.dev-row{border:1px solid var(--line);background:rgba(255,255,255,.03);border-radius:10px;padding:11px 12px}
+.dev-row .dr-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.dev-row .dr-name{font-weight:700;font-size:13.5px}
+.dev-row .dr-val{font:14px var(--mono);color:var(--cyan);font-weight:800}
+.dev-row input[type=range]{width:100%;margin-top:9px;accent-color:var(--cyan)}
+.dev-row .dr-tgt{font:11px var(--mono);color:#9bffcf;margin-top:6px}
+.dev-row .dr-tgt.off{color:#ffcf8a}
+.dev-modes{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.dev-modes button{height:32px;border-radius:7px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);padding:0 11px;cursor:pointer;font-size:12px}
+.dev-modes button.active{background:rgba(0,216,255,.16);border-color:var(--cyan);color:#fff}
 </style>
-<link rel="stylesheet" href="../shared/glass.css?v=6">
-<script src="../shared/vetpharm-ui.js?v=6"></script>
+<link rel="stylesheet" href="../shared/glass.css?v=7">
+<script src="../shared/vetpharm-ui.js?v=7"></script>
 </head>
 <body>
 <header>
@@ -202,10 +236,16 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
   <section class="view" id="monitor">
     <div class="card">
       <h3>uMEC12 Vet · Live-Monitor &amp; Kapnograf</h3>
-      <div class="mon-scenarios" id="monScenarios"></div>
+      <div class="mon-modes">
+        <button class="mon-mode active" data-m="ist">✍️ Ist-Zustand eingeben</button>
+        <button class="mon-mode" data-m="sim">🎬 Szenario simulieren</button>
+      </div>
+      <div class="mon-inputs" id="monInputs"></div>
+      <div class="mon-scenarios" id="monScenarios" style="display:none"></div>
       <div class="mon-screen"><canvas id="monCanvas"></canvas><div class="mon-alarm" id="monAlarm"></div></div>
       <div class="mon-tiles" id="monTiles"></div>
-      <p class="muted" style="font-size:12px;margin-top:8px">Parameter antippen → Normbereich, Alarmgrenze &amp; Reaktion für <b id="mSpecies">…</b>. „Szenario" simuliert Kurven + Werte; der Alarm verlinkt direkt ins Notfall-Protokoll.</p>
+      <div id="monAssess"></div>
+      <p class="muted" style="font-size:12px;margin-top:8px">Ist-Werte von <b id="mSpecies">…</b> eingeben → die Seite erkennt Abweichungen und nennt Medikament + Geräte-Einstellung. Parameter/Kachel antippen → Normbereich &amp; Reaktion.</p>
       <div id="monDetail"></div>
     </div>
     <div class="card">
@@ -230,6 +270,11 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
         <p class="src">3D-Aufnahme des echten Geräts (Photogrammetrie). Bedienelemente rechts antippen für Funktion &amp; Einstellung.</p>
       </div>
       <aside class="card"><h3>Bedienelemente – jedes antippen</h3><div id="ctrlList"></div></aside>
+    </div>
+    <div class="card">
+      <h3>Geräte-Steuerung – einstellen &amp; mit Soll abgleichen</h3>
+      <p class="muted" style="font-size:12.5px;margin-top:-4px">Regler bewegen = am Gerät einstellen. Für <b id="devSpecies">…</b> zeigt die Seite den <b>Soll-Wert</b> und warnt bei Abweichung – so findest du Fehleinstellungen am echten Gerät.</p>
+      <div class="dev-ctrl" id="devCtrl" style="margin-top:12px"></div>
     </div>
   </section>
 
@@ -278,7 +323,7 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 var A = window.ANAES || {drugs:[],incidents:[],machine:{controls:[],ventModes:[]},fluids:[],species:[],vitals:{},info:"",sources:[]};
 var $ = function(s,r){return (r||document).querySelector(s);};
 var $$ = function(s,r){return Array.from((r||document).querySelectorAll(s));};
-var state = { sp: (A.species[0]&&A.species[0].id)||'hund', wt: 10, age:'adult', incident:null, dfilter:'Alle', q:'' };
+var state = { sp: (A.species[0]&&A.species[0].id)||'hund', wt: 10, age:'adult', incident:null, dfilter:'Alle', q:'', monMode:'ist', istVals:null, dev:{o2:1, iso:2, mode:'vcv'} };
 
 /* ---------- helpers: dose math ---------- */
 function parseConc(s){ if(!s) return null; var m = String(s).replace(',','.').match(/([0-9]*\.?[0-9]+)\s*(mg|mcg|µg|g)\s*\/\s*ml/i); if(!m) return null; var v=parseFloat(m[1]); var u=m[2].toLowerCase(); if(u==='g') v=v*1000; if(u==='mcg'||u==='µg') v=v/1000; return v; /* mg per mL */ }
@@ -433,14 +478,25 @@ function MON(){ return A.monitor||{params:[],scenarios:[]}; }
 function monVitals(){ return (A.vitals||{})[state.sp] || (A.vitals||{}).hund || {hr:[60,140],rr:[8,20],spo2:[95,100],etco2:[35,45],map:[70,120],temp:[37,39]}; }
 function midR(a){ return Math.round((a[0]+a[1])/2); }
 function monScen(){ return (MON().scenarios||[]).find(function(s){return s.id===mon.scen;}) || (MON().scenarios||[])[0] || {}; }
+function istInit(){ var v=monVitals(); state.istVals={ hr:midR(v.hr), spo2:Math.min(99,v.spo2[1]), etco2:midR(v.etco2), nibp:midR(v.map), rr:midR(v.rr), temp:midR(v.temp) }; }
 function monResolve(){
-  var sc=monScen(), v=monVitals();
+  var v=monVitals();
+  if(state.monMode==='ist'){
+    if(!state.istVals) istInit(); var iv=state.istVals;
+    return { mode:'ist', v:v, hr:iv.hr, rr:iv.rr, spo2:iv.spo2, etco2:iv.etco2, nibp:iv.nibp, temp:iv.temp,
+      ekg:(iv.hr<=0?'asys':'normal'),
+      pleth:((iv.spo2<=50||iv.hr<=0)?'flat':(iv.spo2<90?'weak':'normal')),
+      capno:((iv.etco2<=0||iv.rr<=0)?'flat':(iv.etco2>50?'high':(iv.etco2<30?'low':'normal'))),
+      alarm:'', incident:null };
+  }
+  var sc=monScen();
   var hr = sc.hr==='brady'?Math.round(v.hr[0]*0.55):sc.hr==='tachy'?Math.round(v.hr[1]*1.3):sc.hr==='asys'?0:(sc.hr==='normal'?midR(v.hr):(sc.hr==null?midR(v.hr):sc.hr));
   var rr = sc.rr==='normal'?midR(v.rr):(sc.rr==null?midR(v.rr):sc.rr);
   var spo2 = sc.spo2==='normal'?Math.min(99,v.spo2[1]):(sc.spo2==null?Math.min(99,v.spo2[1]):sc.spo2);
   var etco2 = sc.etco2==='normal'?midR(v.etco2):(sc.etco2==null?midR(v.etco2):sc.etco2);
   var nibp = sc.nibp==='normal'?midR(v.map):(sc.nibp==null?midR(v.map):sc.nibp);
-  return { sc:sc, v:v, hr:hr, rr:rr, spo2:spo2, etco2:etco2, nibp:nibp, temp:midR(v.temp) };
+  return { mode:'sim', sc:sc, v:v, hr:hr, rr:rr, spo2:spo2, etco2:etco2, nibp:nibp, temp:midR(v.temp),
+    ekg:sc.ekg||'normal', pleth:sc.pleth||'normal', capno:sc.capno||'normal', alarm:sc.alarm||'', incident:sc.incident||null };
 }
 function monAlarms(r){ var v=r.v; function o(x,b){return x<b[0]||x>b[1];}
   return { hr:(r.hr===0||o(r.hr,v.hr)), spo2:r.spo2<v.spo2[0], etco2:(r.etco2===0||r.etco2<v.etco2[0]||r.etco2>v.etco2[1]), nibp:(r.nibp===0||r.nibp<v.map[0]), rr:(r.rr===0||r.rr<v.rr[0]||r.rr>v.rr[1]), temp:o(r.temp,v.temp) }; }
@@ -454,16 +510,94 @@ function renderMonScenarios(){
   $$('#monScenarios .mon-sc').forEach(function(b){ b.onclick=function(){ mon.scen=b.dataset.s; renderMonScenarios(); renderMonValues(); }; });
 }
 function renderMonValues(){
-  var r=monResolve(), al=monAlarms(r); var mm=$('#mSpecies'); if(mm) mm.textContent=sp().name;
+  var r=monResolve(), al=monAlarms(r); var mm=$('#mSpecies'); if(mm) mm.textContent=sp().name+' '+fmt(state.wt)+' kg'; var dsp=$('#devSpecies'); if(dsp) dsp.textContent=sp().name+' '+fmt(state.wt)+' kg';
   $('#monTiles').innerHTML=(MON().params||[]).map(function(p){
     var val=r[p.id]; var isAl=al[p.id];
-    var dash=(val===0);
-    var disp=dash?'– –':val;
+    var disp=(val===0)?'– –':fmt(val);
     return '<div class="mon-tile'+(isAl?' alarm':'')+'" data-p="'+p.id+'" style="--mtc:'+(isAl?'#ff7a7a':p.color)+'"><div class="mt-ab"><span>'+p.abbr+'</span><span>'+p.unit+'</span></div><div class="mt-v">'+disp+'</div><div class="mt-u">'+p.name.replace(/ \(.*/,'')+'</div></div>';
   }).join('');
   $$('#monTiles .mon-tile').forEach(function(t){ t.onclick=function(){ showMonParam(t.dataset.p); }; });
-  var alv=$('#monAlarm');
-  if(alv){ if(r.sc.alarm){ alv.textContent='⚠ '+r.sc.alarm+'  ▸ Protokoll'; alv.classList.add('on'); alv.onclick=function(){ gotoIncident(r.sc.incident); }; } else { alv.classList.remove('on'); alv.onclick=null; } }
+  // sync ist-input alarm outline
+  if(state.monMode==='ist'){ $$('#monInputs .mon-in').forEach(function(l){ l.classList.toggle('alarm', !!al[l.dataset.w]); }); }
+  var alv=$('#monAlarm'); var txt=r.alarm, inc=r.incident;
+  if(state.monMode==='ist'){ var n=(MON().params||[]).filter(function(p){return al[p.id];}).length; txt=n>0?(n+' Wert(e) außerhalb – Analyse unten'):''; inc=null; }
+  if(alv){ if(txt){ alv.textContent='⚠ '+txt+(inc?'  ▸ Protokoll':''); alv.classList.add('on'); alv.onclick=function(){ if(inc) gotoIncident(inc); }; } else { alv.classList.remove('on'); alv.onclick=null; } }
+  renderAssess();
+}
+function renderMonInputs(){
+  if(!state.istVals) istInit();
+  $('#monInputs').innerHTML=(MON().params||[]).map(function(p){
+    return '<label class="mon-in" data-w="'+p.id+'"><span>'+p.abbr+' <small>'+p.unit+'</small></span><input type="number" inputmode="decimal" data-p="'+p.id+'" step="'+(p.id==='temp'?0.1:1)+'" value="'+state.istVals[p.id]+'"></label>';
+  }).join('');
+  $$('#monInputs input').forEach(function(inp){ inp.addEventListener('input',function(){ var val=parseFloat(inp.value); state.istVals[inp.dataset.p]=isNaN(val)?0:val; renderMonValues(); }); });
+}
+function setMonMode(m){
+  state.monMode=m;
+  $$('.mon-mode').forEach(function(b){ b.classList.toggle('active',b.dataset.m===m); });
+  var si=$('#monScenarios'), ip=$('#monInputs'); if(si) si.style.display=(m==='sim')?'flex':'none'; if(ip) ip.style.display=(m==='ist')?'grid':'none';
+  renderMonValues();
+}
+function doseLineCompact(ref){
+  var d=drugById(ref.id); var name=d?d.name:(ref.id||''); var spd=d&&d.species&&d.species[state.sp];
+  var dd={low:ref.low,high:ref.high,unit:ref.unit,conc:ref.conc||(spd&&spd.conc)};
+  if(ref.low==null&&spd){dd.low=spd.low;dd.high=spd.high;dd.unit=spd.unit;}
+  var c=calc(dd,state.wt); if(!c) return name+(ref.route?' '+ref.route:'');
+  var ml=(c.mlLo!=null)?(' ≈ '+fmtRange(c.mlLo,c.mlHi)+' mL'):'';
+  return name+' '+fmtRange(c.amtLo,c.amtHi)+' '+c.amtUnit+ml+(ref.route?' '+ref.route:'');
+}
+function renderAssess(){
+  var box=$('#monAssess'); if(!box) return;
+  if(state.monMode!=='ist'){ box.innerHTML=''; return; }
+  if(!state.istVals) istInit();
+  var v=monVitals(), iv=state.istVals, items=[];
+  (MON().params||[]).forEach(function(p){
+    var band=v[p.vital], x=iv[p.id], dir=null, inc=null;
+    if((p.id==='hr'||p.id==='nibp') && x<=0){ dir='crit'; inc=(p.id==='hr'?'asystolie':p.lowInc); }
+    else if(x<band[0]){ dir='low'; inc=p.lowInc; }
+    else if(x>band[1]){ dir='high'; inc=p.highInc; }
+    if(inc){ var far=(x<band[0])?(band[0]-x)/Math.max(1,band[0]):(x-band[1])/Math.max(1,band[1]); items.push({p:p,x:x,band:band,dir:dir,inc:inc,far:far}); }
+  });
+  if(!items.length){ box.innerHTML='<div class="assess-ok">✓ Alle Werte im Normbereich für '+sp().name+' – Patient stabil.</div>'; return; }
+  var wgt={spo2:6,etco2:5,nibp:5,hr:4,rr:3,temp:2};
+  items.sort(function(a,b){ return (wgt[b.p.id]||1)*(1+b.far) - (wgt[a.p.id]||1)*(1+a.far); });
+  var html='<div class="sec-h">🧠 Auto-Analyse · '+items.length+' Wert(e) außerhalb der Norm</div>';
+  html+=items.map(function(it){
+    var i=(A.incidents||[]).find(function(x){return x.id===it.inc;})||{};
+    var arrow=(it.dir==='high')?'↑':'↓';
+    var warn=(it.dir!=='crit' && it.far<0.12)?' warn':'';
+    var firstStep=(i.steps&&i.steps[0])||'';
+    var drug=(i.drugs&&i.drugs[0]);
+    return '<div class="assess-card'+warn+'" data-inc="'+it.inc+'"><div class="assess-h"><b>'+it.p.abbr+' '+arrow+' '+fmt(it.x)+' '+it.p.unit+'</b><span class="an">Norm '+it.band[0]+'–'+it.band[1]+'</span><span class="assess-inc">'+(i.name||it.inc)+'</span></div>'+
+      (i.machine?'<div class="assess-m">⚙️ '+i.machine+'</div>':'')+
+      (firstStep?'<div class="assess-s">➊ '+firstStep+'</div>':'')+
+      (drug?'<div class="assess-d">💉 '+doseLineCompact(drug)+(drug.note?' · '+drug.note:'')+'</div>':'')+
+      '<div class="assess-go">→ Volles Protokoll, alle Schritte &amp; Dosen</div></div>';
+  }).join('');
+  box.innerHTML=html;
+  $$('#monAssess .assess-card').forEach(function(c){ c.onclick=function(){ gotoIncident(c.dataset.inc); }; });
+}
+/* Geräte-Steuerung (einstellbar, Soll-Abgleich) */
+function devTarget(){
+  var m=(A.machine.settingsBySpecies&&A.machine.settingsBySpecies[state.sp])||{}, w=state.wt;
+  var o2lo=(m.o2&&m.o2.mlkg)?Math.max(m.o2.min||0.2, m.o2.mlkg[0]*w/1000):0.5;
+  var o2hi=(m.o2&&m.o2.mlkg)?Math.max((m.o2.min||0.2)+0.2, m.o2.mlkg[1]*w/1000):1;
+  return { o2:[o2lo,o2hi], iso:(m.iso&&m.iso.maint)||'1.5–2.5', isoMac:(m.iso&&m.iso.mac)||'—', mode:(w<(m.rebreatheMin||7)?'Nicht-Rückatmung':'Kreissystem'), apl:(m.apl||'offen (2–3)') };
+}
+function renderDevCtrl(){
+  var box=$('#devCtrl'); if(!box) return; var t=devTarget(); var ds=$('#devSpecies'); if(ds) ds.textContent=sp().name+' '+fmt(state.wt)+' kg';
+  var o2off = state.dev.o2 < t.o2[0]-0.2 || state.dev.o2 > t.o2[1]+1;
+  var ir=(t.iso||'').split('–').map(parseFloat); var isoOff = (ir.length===2 && !isNaN(ir[0])) ? (state.dev.iso<ir[0]-0.4||state.dev.iso>ir[1]+0.6) : false;
+  var modes=A.machine.ventModes||[]; var mn=modes.find(function(x){return x.id===state.dev.mode;})||modes[0]||{name:''};
+  box.innerHTML =
+   '<div class="dev-row"><div class="dr-top"><span class="dr-name">🟦 O₂-Frischgasfluss</span><span class="dr-val">'+state.dev.o2.toFixed(1)+' L/min</span></div>'+
+     '<input type="range" min="0" max="4" step="0.1" value="'+state.dev.o2+'" data-d="o2"><div class="dr-tgt'+(o2off?' off':'')+'">Soll '+sp().name+': '+fmtRange(t.o2[0],t.o2[1])+' L/min · '+(o2off?'⚠ Abweichung – anpassen':'✓ passt')+'</div></div>'+
+   '<div class="dev-row"><div class="dr-top"><span class="dr-name">⚪ Isofluran-Verdampfer (V60)</span><span class="dr-val">'+state.dev.iso.toFixed(1)+' Vol%</span></div>'+
+     '<input type="range" min="0" max="6" step="0.1" value="'+state.dev.iso+'" data-d="iso"><div class="dr-tgt'+(isoOff?' off':'')+'">Soll Erhaltung: '+(t.iso||'—')+' Vol% (MAC ~'+t.isoMac+') · '+(isoOff?'⚠ Abweichung':'✓ im Bereich')+'</div></div>'+
+   '<div class="dev-row"><div class="dr-top"><span class="dr-name">🔀 Beatmungs-Modus</span><span class="dr-val">'+(mn.name.split(' – ')[0])+'</span></div>'+
+     '<div class="dev-modes" id="devModes">'+modes.map(function(mo){return '<button data-m="'+mo.id+'"'+(state.dev.mode===mo.id?' class="active"':'')+'>'+mo.name.split(' ')[0]+'</button>';}).join('')+'</div>'+
+     '<div class="dr-tgt">'+(mn.desc||'')+'<br>System: '+t.mode+' · APL '+t.apl+' · Empfehlung: '+(state.wt<7?'kleine Patienten schonend (PCV/Manuell)':'VCV Standard')+'</div></div>';
+  $$('#devCtrl input[type=range]').forEach(function(inp){ inp.addEventListener('input',function(){ state.dev[inp.dataset.d]=parseFloat(inp.value); renderDevCtrl(); }); });
+  $$('#devModes button').forEach(function(b){ b.onclick=function(){ state.dev.mode=b.dataset.m; renderDevCtrl(); }; });
 }
 function showMonParam(id){
   var p=(MON().params||[]).find(function(x){return x.id===id;}); if(!p)return; var v=monVitals(); var band=v[p.vital];
@@ -512,7 +646,9 @@ function wCapno(ph,type,etco2){
 }
 function monStart(){
   var c=$('#monCanvas'); if(!c) return;
-  renderMonScenarios(); renderMonValues();
+  renderMonScenarios(); renderMonInputs();
+  $$('.mon-mode').forEach(function(b){ b.onclick=function(){ setMonMode(b.dataset.m); }; });
+  setMonMode(state.monMode);
   mon.dpr=Math.min(2,devicePixelRatio||1);
   mon._resize=function(){ var rect=c.getBoundingClientRect(); mon.W=Math.max(2,Math.floor(rect.width*mon.dpr)); mon.H=Math.max(2,Math.floor(rect.height*mon.dpr)); c.width=mon.W; c.height=mon.H; mon.buf=null; };
   mon._resize(); addEventListener('resize',mon._resize);
@@ -534,9 +670,9 @@ function monFrame(ts){
   var perE=r.hr>0?60/r.hr:9999, perR=r.rr>0?60/r.rr:9999;
   for(var j=0;j<k;j++){
     mon.phE=(mon.phE+colT/perE)%1; mon.phR=(mon.phR+colT/perR)%1;
-    mon.buf.ekg.push(wEkg(mon.phE,r.sc.ekg||'normal')); mon.buf.ekg.shift();
-    mon.buf.pleth.push(wPleth(mon.phE,r.sc.pleth||'normal')); mon.buf.pleth.shift();
-    mon.buf.capno.push(wCapno(mon.phR,r.sc.capno||'normal',r.etco2)); mon.buf.capno.shift();
+    mon.buf.ekg.push(wEkg(mon.phE,r.ekg||'normal')); mon.buf.ekg.shift();
+    mon.buf.pleth.push(wPleth(mon.phE,r.pleth||'normal')); mon.buf.pleth.shift();
+    mon.buf.capno.push(wCapno(mon.phR,r.capno||'normal',r.etco2)); mon.buf.capno.shift();
   }
   // draw
   ctx.clearRect(0,0,W,H); ctx.fillStyle='#05080d'; ctx.fillRect(0,0,W,H);
@@ -611,12 +747,12 @@ function init3D(){
 function switchTab(v){
   $$('#tabs .tab').forEach(function(t){ t.classList.toggle('active',t.dataset.view===v); });
   $$('.view').forEach(function(x){ x.classList.toggle('active',x.id===v); });
-  if(v==='geraet') init3D();
+  if(v==='geraet'){ init3D(); renderDevCtrl(); }
   if(v==='settings') renderSettings();
   if(v==='monitor') monStart(); else monStop();
   if(v==='bedienung') renderOperating();
 }
-function rerender(){ renderProto(); renderDrugs(); renderSettings(); if(mon.running) renderMonValues(); }
+function rerender(){ renderProto(); renderDrugs(); renderSettings(); renderDevCtrl(); if(mon.running) renderMonValues(); }
 function boot(){
   syncPatient(); renderIncidents(); renderFilters(); renderDrugs(); renderCtrls(); renderInfo(); renderCapno();
   $$('#tabs .tab').forEach(function(t){ t.onclick=function(){ switchTab(t.dataset.view); }; });
