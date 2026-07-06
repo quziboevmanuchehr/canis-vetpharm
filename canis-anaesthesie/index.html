@@ -123,9 +123,41 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 
 @media(max-width:900px){.grid-2{grid-template-columns:1fr}.patient{top:56px}.tabs{top:auto;position:sticky}.canvas3d{height:340px}}
 @media(max-width:560px){.pchip-note{display:none}.title p{display:none}.sp-chip{min-width:56px}}
+
+/* Monitor */
+.mon-scenarios{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.mon-sc{height:34px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);padding:0 12px;cursor:pointer;font-size:12.5px}
+.mon-sc:hover{border-color:var(--cyan)}
+.mon-sc.active{background:var(--red);border-color:var(--red);color:#fff;font-weight:700}
+.mon-sc.active[data-ok="1"]{background:#12b866;border-color:#12b866}
+.mon-screen{position:relative;background:#05080d;border:1px solid rgba(120,150,180,.25);border-radius:12px;overflow:hidden;box-shadow:inset 0 0 40px rgba(0,0,0,.6)}
+.mon-screen canvas{display:block;width:100%;height:300px}
+.mon-alarm{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(255,45,45,.92);color:#fff;font-weight:800;font-size:13px;letter-spacing:.5px;padding:6px 14px;border-radius:8px;display:none;box-shadow:0 0 20px rgba(255,45,45,.6);animation:monblink 1s steps(1) infinite}
+.mon-alarm.on{display:block}
+@keyframes monblink{50%{opacity:.35}}
+.mon-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:10px}
+.mon-tile{border:1px solid rgba(120,150,180,.22);background:#0b1017;border-radius:10px;padding:9px 11px;cursor:pointer;transition:.15s}
+.mon-tile:hover{border-color:var(--cyan)}
+.mon-tile .mt-ab{font:11px var(--mono);color:var(--muted);display:flex;justify-content:space-between}
+.mon-tile .mt-v{font-size:26px;font-weight:800;line-height:1.1;margin-top:2px}
+.mon-tile .mt-u{font-size:12px;color:var(--muted);font-weight:400}
+.mon-tile.alarm{border-color:var(--red);background:rgba(255,77,77,.12);animation:monblink 1s steps(1) infinite}
+.mon-tile .mt-v{color:var(--mtc,#fff)}
+.capno-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.capno-card{border:1px solid var(--line);background:rgba(255,255,255,.03);border-radius:10px;padding:10px;cursor:pointer}
+.capno-card:hover{border-color:var(--amber)}
+.capno-card svg{display:block;width:100%;height:60px;background:#05080d;border-radius:7px;margin-bottom:7px}
+.capno-card b{font-size:13px}.capno-card .cc-e{font:11px var(--mono);color:var(--amber);float:right}
+.capno-card .cc-m{font-size:12px;color:var(--muted);line-height:1.45;margin-top:4px}
+.capno-card .cc-r{font-size:12px;color:#bff0d8;margin-top:5px;line-height:1.45}
+/* Bedienung */
+.op-step{display:flex;gap:12px;border:1px solid var(--line);background:rgba(255,255,255,.03);border-radius:10px;padding:11px 12px;margin-bottom:8px;align-items:flex-start}
+.op-step .n{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--cyan),var(--violet));color:#04121a;font-weight:800;display:grid;place-items:center;font-size:13px}
+.op-step b{font-size:14px}.op-step p{margin:3px 0 0;font-size:13px;color:var(--muted);line-height:1.5}
+.op-safe{border:1px solid rgba(255,77,77,.3);background:rgba(255,77,77,.08);border-radius:9px;padding:9px 12px;margin-bottom:7px;font-size:13px;color:#ffd7d7;line-height:1.5}
 </style>
-<link rel="stylesheet" href="../shared/glass.css?v=5">
-<script src="../shared/vetpharm-ui.js?v=5"></script>
+<link rel="stylesheet" href="../shared/glass.css?v=6">
+<script src="../shared/vetpharm-ui.js?v=6"></script>
 </head>
 <body>
 <header>
@@ -151,8 +183,10 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 
 <nav class="tabs" id="tabs">
   <button class="tab active" data-view="notfall">🚨 Notfall</button>
+  <button class="tab" data-view="monitor">🖥️ Monitor</button>
   <button class="tab" data-view="medis">💉 Medikamente</button>
   <button class="tab" data-view="geraet">🫁 Gerät (Veta 5)</button>
+  <button class="tab" data-view="bedienung">📖 Bedienung</button>
   <button class="tab" data-view="settings">⚙️ Einstellungen</button>
   <button class="tab" data-view="info">📋 Info</button>
 </nav>
@@ -162,6 +196,21 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
     <div class="grid-2">
       <aside class="card"><h3>Zwischenfall wählen</h3><div class="inc-list" id="incList"></div></aside>
       <div class="card" id="protoBox"><p class="muted">Wähle links einen Zwischenfall – dann erscheinen Sofortmaßnahmen, Geräte-Einstellung und die für <b id="pSpecies">…</b> (<span id="pWt">…</span>) berechneten Medikamente.</p></div>
+    </div>
+  </section>
+
+  <section class="view" id="monitor">
+    <div class="card">
+      <h3>uMEC12 Vet · Live-Monitor &amp; Kapnograf</h3>
+      <div class="mon-scenarios" id="monScenarios"></div>
+      <div class="mon-screen"><canvas id="monCanvas"></canvas><div class="mon-alarm" id="monAlarm"></div></div>
+      <div class="mon-tiles" id="monTiles"></div>
+      <p class="muted" style="font-size:12px;margin-top:8px">Parameter antippen → Normbereich, Alarmgrenze &amp; Reaktion für <b id="mSpecies">…</b>. „Szenario" simuliert Kurven + Werte; der Alarm verlinkt direkt ins Notfall-Protokoll.</p>
+      <div id="monDetail"></div>
+    </div>
+    <div class="card">
+      <h3>Kapnograf – Kurvenform erkennen &amp; reagieren</h3>
+      <div class="capno-grid" id="capnoGrid"></div>
     </div>
   </section>
 
@@ -181,6 +230,16 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
         <p class="src">3D-Aufnahme des echten Geräts (Photogrammetrie). Bedienelemente rechts antippen für Funktion &amp; Einstellung.</p>
       </div>
       <aside class="card"><h3>Bedienelemente – jedes antippen</h3><div id="ctrlList"></div></aside>
+    </div>
+  </section>
+
+  <section class="view" id="bedienung">
+    <div class="card">
+      <h3 id="opTitle">Bedienung</h3>
+      <p class="muted" style="font-size:12.5px;margin-top:-4px">Startablauf des Praxis-Geräts (aus der Geräte-Anleitung an der Wand + Mindray-Handbuch). Geräte-Einstellungen pro Patient stehen im Tab „Einstellungen".</p>
+      <div class="op-steps" id="opSteps" style="margin-top:12px"></div>
+      <div class="sec-h">⚠️ Sicherheit</div>
+      <div id="opSafety"></div>
     </div>
   </section>
 
@@ -208,7 +267,7 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
   </section>
 </main>
 
-<script src="anaes-data.js?v=1"></script>
+<script src="anaes-data.js?v=2"></script>
 <script type="importmap">
 {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
 </script>
@@ -368,6 +427,156 @@ function renderInfo(){
   $('#sources').innerHTML=(A.sources||[]).map(function(s){ return s.url? '<div>• <a href="'+s.url+'" target="_blank" rel="noopener">'+s.title+'</a></div>':'<div>• '+s.title+'</div>'; }).join('');
 }
 
+/* ---------- MONITOR + KAPNOGRAF ---------- */
+var mon = { scen:'normal', raf:null, running:false, last:0, W:0, H:0, dpr:1, acc:0, phE:0, phR:0, buf:null };
+function MON(){ return A.monitor||{params:[],scenarios:[]}; }
+function monVitals(){ return (A.vitals||{})[state.sp] || (A.vitals||{}).hund || {hr:[60,140],rr:[8,20],spo2:[95,100],etco2:[35,45],map:[70,120],temp:[37,39]}; }
+function midR(a){ return Math.round((a[0]+a[1])/2); }
+function monScen(){ return (MON().scenarios||[]).find(function(s){return s.id===mon.scen;}) || (MON().scenarios||[])[0] || {}; }
+function monResolve(){
+  var sc=monScen(), v=monVitals();
+  var hr = sc.hr==='brady'?Math.round(v.hr[0]*0.55):sc.hr==='tachy'?Math.round(v.hr[1]*1.3):sc.hr==='asys'?0:(sc.hr==='normal'?midR(v.hr):(sc.hr==null?midR(v.hr):sc.hr));
+  var rr = sc.rr==='normal'?midR(v.rr):(sc.rr==null?midR(v.rr):sc.rr);
+  var spo2 = sc.spo2==='normal'?Math.min(99,v.spo2[1]):(sc.spo2==null?Math.min(99,v.spo2[1]):sc.spo2);
+  var etco2 = sc.etco2==='normal'?midR(v.etco2):(sc.etco2==null?midR(v.etco2):sc.etco2);
+  var nibp = sc.nibp==='normal'?midR(v.map):(sc.nibp==null?midR(v.map):sc.nibp);
+  return { sc:sc, v:v, hr:hr, rr:rr, spo2:spo2, etco2:etco2, nibp:nibp, temp:midR(v.temp) };
+}
+function monAlarms(r){ var v=r.v; function o(x,b){return x<b[0]||x>b[1];}
+  return { hr:(r.hr===0||o(r.hr,v.hr)), spo2:r.spo2<v.spo2[0], etco2:(r.etco2===0||r.etco2<v.etco2[0]||r.etco2>v.etco2[1]), nibp:(r.nibp===0||r.nibp<v.map[0]), rr:(r.rr===0||r.rr<v.rr[0]||r.rr>v.rr[1]), temp:o(r.temp,v.temp) }; }
+function incName(id){ var i=(A.incidents||[]).find(function(x){return x.id===id;}); return i?i.name:id; }
+function gotoIncident(id){ if(!id)return; state.incident=id; switchTab('notfall'); renderIncidents(); renderProto(); window.scrollTo({top:0,behavior:'smooth'}); }
+
+function renderMonScenarios(){
+  $('#monScenarios').innerHTML=(MON().scenarios||[]).map(function(s){
+    return '<button class="mon-sc'+(s.id===mon.scen?' active':'')+'" data-ok="'+(s.id==='normal'?1:0)+'" data-s="'+s.id+'">'+s.name+'</button>';
+  }).join('');
+  $$('#monScenarios .mon-sc').forEach(function(b){ b.onclick=function(){ mon.scen=b.dataset.s; renderMonScenarios(); renderMonValues(); }; });
+}
+function renderMonValues(){
+  var r=monResolve(), al=monAlarms(r); var mm=$('#mSpecies'); if(mm) mm.textContent=sp().name;
+  $('#monTiles').innerHTML=(MON().params||[]).map(function(p){
+    var val=r[p.id]; var isAl=al[p.id];
+    var dash=(val===0);
+    var disp=dash?'– –':val;
+    return '<div class="mon-tile'+(isAl?' alarm':'')+'" data-p="'+p.id+'" style="--mtc:'+(isAl?'#ff7a7a':p.color)+'"><div class="mt-ab"><span>'+p.abbr+'</span><span>'+p.unit+'</span></div><div class="mt-v">'+disp+'</div><div class="mt-u">'+p.name.replace(/ \(.*/,'')+'</div></div>';
+  }).join('');
+  $$('#monTiles .mon-tile').forEach(function(t){ t.onclick=function(){ showMonParam(t.dataset.p); }; });
+  var alv=$('#monAlarm');
+  if(alv){ if(r.sc.alarm){ alv.textContent='⚠ '+r.sc.alarm+'  ▸ Protokoll'; alv.classList.add('on'); alv.onclick=function(){ gotoIncident(r.sc.incident); }; } else { alv.classList.remove('on'); alv.onclick=null; } }
+}
+function showMonParam(id){
+  var p=(MON().params||[]).find(function(x){return x.id===id;}); if(!p)return; var v=monVitals(); var band=v[p.vital];
+  var links=[];
+  if(p.lowInc) links.push('<a class="chip" style="cursor:pointer" data-inc="'+p.lowInc+'">↓ '+incName(p.lowInc)+'</a>');
+  if(p.highInc) links.push('<a class="chip" style="cursor:pointer" data-inc="'+p.highInc+'">↑ '+incName(p.highInc)+'</a>');
+  $('#monDetail').innerHTML='<div class="mset" style="margin-top:12px"><b>'+p.name+'</b> · Normbereich '+sp().name+': <b>'+band[0]+'–'+band[1]+' '+p.unit+'</b><br>'+p.explain+
+    (links.length?'<div class="chips" style="margin-top:9px">'+links.join('')+'</div>':'')+'</div>';
+  $$('#monDetail .chip').forEach(function(c){ c.onclick=function(){ gotoIncident(c.dataset.inc); }; });
+}
+
+/* waveform sample functions → return 0..1 (1 = up) */
+function gauss(x,mu,s){ var d=(x-mu)/s; return Math.exp(-0.5*d*d); }
+function wEkg(ph,type){
+  if(type==='asys') return 0.5+0.004*Math.sin(ph*80);
+  var y=0.5;
+  y+=0.07*gauss(ph,0.16,0.028);           // P
+  y-=0.05*gauss(ph,0.30,0.010);           // Q
+  y+=0.42*gauss(ph,0.335,0.010);          // R
+  y-=0.12*gauss(ph,0.365,0.012);          // S
+  y+=0.13*gauss(ph,0.55,0.045);           // T
+  return y;
+}
+function wPleth(ph,type){
+  if(type==='flat') return 0.5;
+  var amp=type==='weak'?0.14:0.34;
+  var pulse; if(ph<0.10){ pulse=ph/0.10; } else { var d=(ph-0.10)/0.90; pulse=Math.exp(-d*3.2)*(1+0.22*Math.cos(d*13)); }
+  pulse=Math.max(0,Math.min(1.15,pulse));
+  return 0.22 + amp*pulse;
+}
+function wCapno(ph,type,etco2){
+  if(type==='flat') return 0.12;
+  var amp=Math.max(0.12,Math.min(0.86,(etco2/50)*0.8));
+  if(type==='low') amp=0.14;
+  if(type==='high') amp=Math.max(amp,0.82);
+  var base=(type==='baseline')?0.34:0.12;
+  if(type==='shark'){ // upsloping, no flat plateau
+    if(ph<0.12) return base;
+    if(ph>0.94) return base + amp*(1-(ph-0.94)/0.06);
+    return base + amp*((ph-0.12)/0.82);
+  }
+  if(ph<0.30) return base;                              // baseline (inspiration)
+  if(ph<0.37) return base + amp*((ph-0.30)/0.07);       // expiratory upstroke
+  if(ph<0.92) return base + amp;                         // alveolar plateau
+  return base + amp*(1-(ph-0.92)/0.08);                 // inspiratory downstroke
+}
+function monStart(){
+  var c=$('#monCanvas'); if(!c) return;
+  renderMonScenarios(); renderMonValues();
+  mon.dpr=Math.min(2,devicePixelRatio||1);
+  mon._resize=function(){ var rect=c.getBoundingClientRect(); mon.W=Math.max(2,Math.floor(rect.width*mon.dpr)); mon.H=Math.max(2,Math.floor(rect.height*mon.dpr)); c.width=mon.W; c.height=mon.H; mon.buf=null; };
+  mon._resize(); addEventListener('resize',mon._resize);
+  mon.running=true; mon.last=performance.now();
+  if(!mon.raf) mon.raf=requestAnimationFrame(monFrame);
+}
+function monStop(){ mon.running=false; if(mon.raf){cancelAnimationFrame(mon.raf); mon.raf=null;} if(mon._resize){removeEventListener('resize',mon._resize); mon._resize=null;} }
+function monFrame(ts){
+  if(!mon.running){ mon.raf=null; return; }
+  mon.raf=requestAnimationFrame(monFrame);
+  var c=$('#monCanvas'); if(!c){return;} var ctx=c.getContext('2d');
+  var W=mon.W,H=mon.H; if(!W||!H){return;}
+  var cols=Math.max(60,Math.floor(W));
+  if(!mon.buf||mon.buf.ekg.length!==cols){ mon.buf={ekg:new Array(cols).fill(0.5),pleth:new Array(cols).fill(0.22),capno:new Array(cols).fill(0.12)}; }
+  var dt=(ts-mon.last)/1000; mon.last=ts; if(dt>0.08)dt=0.033; if(dt<0)dt=0;
+  var r=monResolve();
+  var sweep=6.0; var pxPerSec=cols/sweep; mon.acc+=pxPerSec*dt; var k=Math.floor(mon.acc); if(k>60)k=60; mon.acc-=k;
+  var colT=1/pxPerSec;
+  var perE=r.hr>0?60/r.hr:9999, perR=r.rr>0?60/r.rr:9999;
+  for(var j=0;j<k;j++){
+    mon.phE=(mon.phE+colT/perE)%1; mon.phR=(mon.phR+colT/perR)%1;
+    mon.buf.ekg.push(wEkg(mon.phE,r.sc.ekg||'normal')); mon.buf.ekg.shift();
+    mon.buf.pleth.push(wPleth(mon.phE,r.sc.pleth||'normal')); mon.buf.pleth.shift();
+    mon.buf.capno.push(wCapno(mon.phR,r.sc.capno||'normal',r.etco2)); mon.buf.capno.shift();
+  }
+  // draw
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#05080d'; ctx.fillRect(0,0,W,H);
+  var laneH=H/3; var lanes=[['ekg','#28e07a','EKG II'],['pleth','#00d8ff','Pleth · SpO₂ '+(r.spo2)+'%'],['capno','#ffd166','Kapno · EtCO₂ '+(r.etco2===0?'0':r.etco2)]];
+  ctx.lineWidth=Math.max(1,1.4*mon.dpr);
+  for(var li=0;li<3;li++){
+    var top=li*laneH; var key=lanes[li][0];
+    // grid
+    ctx.strokeStyle='rgba(120,150,180,.10)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(0,top+laneH-0.5); ctx.lineTo(W,top+laneH-0.5); ctx.stroke();
+    // trace
+    ctx.strokeStyle=lanes[li][1]; ctx.lineWidth=Math.max(1.2,1.5*mon.dpr); ctx.beginPath();
+    var b=mon.buf[key];
+    for(var i=0;i<b.length;i++){ var x=i*(W/(b.length-1)); var y=top+(1-b[i])*laneH*0.82+laneH*0.09; if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+    ctx.stroke();
+    // label
+    ctx.fillStyle=lanes[li][1]; ctx.font=(11*mon.dpr)+'px Consolas,monospace'; ctx.fillText(lanes[li][2], 8*mon.dpr, top+14*mon.dpr);
+  }
+}
+function capnoSVG(shape,etco2){
+  var pts=[]; var N=64; for(var i=0;i<=N;i++){ var ph=(i/N); var y=wCapno(ph,shape,parseFloat(etco2)||40); pts.push([i/N*100, 55-(y-0.12)/0.86*46]); }
+  return '<svg viewBox="0 0 100 60" preserveAspectRatio="none"><polyline fill="none" stroke="#ffd166" stroke-width="1.6" points="'+pts.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' ')+'"/></svg>';
+}
+function renderCapno(){
+  var shapeMap={normal:'normal',high:'high',low:'low',baseline:'baseline',shark:'shark',flat:'flat',cleft:'high',rise:'high'};
+  $('#capnoGrid').innerHTML=(A.capno||[]).map(function(cp){
+    var shp=shapeMap[cp.id]||'normal'; var etco=(cp.id==='high')?60:(cp.id==='low')?28:42;
+    return '<div class="capno-card" data-inc="'+(cp.incident||'')+'">'+capnoSVG(shp,etco)+
+      '<span class="cc-e">'+cp.etco2+'</span><b>'+cp.name+'</b><div class="cc-m">'+cp.meaning+'</div><div class="cc-r">→ '+cp.react+'</div></div>';
+  }).join('');
+  $$('#capnoGrid .capno-card').forEach(function(c){ c.onclick=function(){ if(c.dataset.inc) gotoIncident(c.dataset.inc); }; });
+}
+
+/* ---------- Bedienung ---------- */
+function renderOperating(){
+  var o=A.operating||{steps:[],safety:[]};
+  var t=$('#opTitle'); if(t) t.textContent=o.title||'Bedienung';
+  $('#opSteps').innerHTML=(o.steps||[]).map(function(s,i){ return '<div class="op-step"><span class="n">'+(i+1)+'</span><div><b>'+s.t+'</b><p>'+s.d+'</p></div></div>'; }).join('');
+  $('#opSafety').innerHTML=(o.safety||[]).map(function(s){ return '<div class="op-safe">⚠️ '+s+'</div>'; }).join('');
+}
+
 /* ---------- 3D ---------- */
 var three3dInit=false;
 function init3D(){
@@ -404,10 +613,12 @@ function switchTab(v){
   $$('.view').forEach(function(x){ x.classList.toggle('active',x.id===v); });
   if(v==='geraet') init3D();
   if(v==='settings') renderSettings();
+  if(v==='monitor') monStart(); else monStop();
+  if(v==='bedienung') renderOperating();
 }
-function rerender(){ renderProto(); renderDrugs(); renderSettings(); }
+function rerender(){ renderProto(); renderDrugs(); renderSettings(); if(mon.running) renderMonValues(); }
 function boot(){
-  syncPatient(); renderIncidents(); renderFilters(); renderDrugs(); renderCtrls(); renderInfo();
+  syncPatient(); renderIncidents(); renderFilters(); renderDrugs(); renderCtrls(); renderInfo(); renderCapno();
   $$('#tabs .tab').forEach(function(t){ t.onclick=function(){ switchTab(t.dataset.view); }; });
   $('#wt').addEventListener('input',function(e){ var v=parseFloat(e.target.value); state.wt=(v>0?v:0); syncPatient(); rerender(); });
   $('#age').addEventListener('change',function(e){ state.age=e.target.value; renderSettings(); });

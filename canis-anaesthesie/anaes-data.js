@@ -440,3 +440,96 @@ window.ANAES = {
     { title:'Mindray Veta 5 Plus / uMEC12 Vet – Bedienungshandbücher' }
   ]
 };
+
+/* =================== MONITOR (uMEC12 Vet) =================== */
+window.ANAES.monitor = {
+  params: [
+    { id:'hr',   name:'Herzfrequenz (EKG)',          abbr:'HF',    unit:'/min', color:'#28e07a', vital:'hr',
+      explain:'EKG-Ableitung II – Rhythmus + Frequenz. Achte auf Arrhythmien (VES, AV-Block, Vorhofflimmern). Frequenz-Normbereich ist art- & gewichtsabhängig.',
+      lowInc:'bradykardie', highInc:'tachykardie' },
+    { id:'spo2', name:'Sauerstoffsättigung (Pleth)', abbr:'SpO₂',  unit:'%',    color:'#00d8ff', vital:'spo2',
+      explain:'Pulsoxymetrie (Zunge/Ohr/Pfote). ≥ 95 % (auf 100 % O₂ ~99 %). Das Plethysmogramm zeigt die Perfusion; SpO₂ reagiert verzögert (~30 s) → Kapnograf ist schneller.',
+      lowInc:'hypoxaemie' },
+    { id:'etco2',name:'End-CO₂ (Kapnograf)',         abbr:'EtCO₂', unit:'mmHg', color:'#ffd166', vital:'etco2',
+      explain:'Sidestream-Kapnografie – bestätigt Intubation + Ventilation. Die KURVENFORM ist der wichtigste Frühwarner (Diskonnektion, Rückatmung, Obstruktion). Ziel 35–45 mmHg. Veta 5 Alarm: hoch 50 / niedrig 25 / FiCO₂ 4.',
+      lowInc:'apnoe', highInc:'hypoventilation' },
+    { id:'nibp', name:'Blutdruck (NIBP)',            abbr:'MAP',   unit:'mmHg', color:'#f35588', vital:'map',
+      explain:'Oszillometrische Manschette (Pfote/Schwanz). MAP > 60–70 mmHg hält Nieren-/Hirnperfusion. Häufigste Narkose-Hypotension: Isofluran zu hoch → zuerst Verdampfer runter.',
+      lowInc:'hypotension' },
+    { id:'rr',   name:'Atemfrequenz (Resp)',         abbr:'AF',    unit:'/min', color:'#a78bfa', vital:'rr',
+      explain:'Spontan oder beatmet. Hohe AF + hohes EtCO₂ = Hypoventilation trotz schneller Atmung → assistiert beatmen.',
+      lowInc:'apnoe', highInc:'tachypnoe' },
+    { id:'temp', name:'Temperatur',                  abbr:'Temp',  unit:'°C',   color:'#ff8c6b', vital:'temp',
+      explain:'Ösophageal/rektal. Fällt unter Narkose rasch (v.a. kleine Patienten & Exoten) → Isofluran-Bedarf sinkt, sonst relative Überdosis.',
+      lowInc:'hypothermie', highInc:'hyperthermie' }
+  ],
+  /* Szenarien: morphen Kurven + Werte, feuern Alarm, verlinken ins Protokoll.
+     hr/rr: 'brady'|'tachy'|'asys'|'normal'|Zahl · spo2/etco2/nibp: 'normal'|Zahl */
+  scenarios: [
+    { id:'normal',  name:'Normal / stabil',              incident:null,           alarm:'',
+      hr:'normal', rr:'normal', spo2:'normal', etco2:'normal', nibp:'normal', ekg:'normal', pleth:'normal', capno:'normal' },
+    { id:'brady',   name:'Bradykardie',                  incident:'bradykardie',  alarm:'HF NIEDRIG',
+      hr:'brady', rr:'normal', spo2:'normal', etco2:'normal', nibp:60, ekg:'slow', pleth:'normal', capno:'normal' },
+    { id:'tachy',   name:'Tachykardie',                  incident:'tachykardie',  alarm:'HF HOCH',
+      hr:'tachy', rr:'normal', spo2:'normal', etco2:'normal', nibp:'normal', ekg:'fast', pleth:'normal', capno:'normal' },
+    { id:'hypox',   name:'Hypoxämie (SpO₂ ↓)',           incident:'hypoxaemie',   alarm:'SpO₂ NIEDRIG',
+      hr:'tachy', rr:'normal', spo2:85, etco2:'normal', nibp:'normal', ekg:'fast', pleth:'weak', capno:'normal' },
+    { id:'hypovent',name:'Hypoventilation (EtCO₂ ↑)',    incident:'hypoventilation', alarm:'EtCO₂ HOCH',
+      hr:'normal', rr:6, spo2:'normal', etco2:62, nibp:'normal', ekg:'normal', pleth:'normal', capno:'high' },
+    { id:'rebreath',name:'CO₂-Rückatmung (Atemkalk?)',   incident:'hypoventilation', alarm:'FiCO₂ ERHÖHT',
+      hr:'normal', rr:'normal', spo2:'normal', etco2:54, nibp:'normal', ekg:'normal', pleth:'normal', capno:'baseline' },
+    { id:'obstruct',name:'Obstruktion / Bronchospasmus', incident:'hypoxaemie',   alarm:'KAPNO: HAIFISCH',
+      hr:'tachy', rr:'normal', spo2:92, etco2:50, nibp:'normal', ekg:'fast', pleth:'weak', capno:'shark' },
+    { id:'diskon',  name:'Diskonnektion / Apnoe',        incident:'apnoe',        alarm:'APNOE – KEIN CO₂',
+      hr:'normal', rr:0, spo2:88, etco2:0, nibp:'normal', ekg:'normal', pleth:'normal', capno:'flat' },
+    { id:'hypoton', name:'Hypotension (MAP ↓)',          incident:'hypotension',  alarm:'MAP NIEDRIG',
+      hr:'normal', rr:'normal', spo2:'normal', etco2:'normal', nibp:45, ekg:'normal', pleth:'weak', capno:'normal' },
+    { id:'cpr',     name:'Herzstillstand',               incident:'asystolie',    alarm:'ASYSTOLIE → CPR',
+      hr:0, rr:0, spo2:70, etco2:8, nibp:0, ekg:'asys', pleth:'flat', capno:'low' }
+  ]
+};
+
+/* =================== KAPNOGRAF-MUSTER =================== */
+window.ANAES.capno = [
+  { id:'normal',   name:'Normal',                          etco2:'35–45', incident:null,
+    meaning:'Rechteckige Kurve: rascher exspiratorischer Anstieg, ebenes alveoläres Plateau, Rückkehr auf 0. Intubation + Ventilation in Ordnung.', react:'Alles gut – weiter überwachen.' },
+  { id:'high',     name:'Hypoventilation',                 etco2:'> 45–55', incident:'hypoventilation',
+    meaning:'Normale Form, aber erhöhtes Plateau. Zu flache Atmung, zu tiefe Narkose, Opioid, Zwerchfelldruck.', react:'Kontrolliert beatmen (IPPV), Isofluran reduzieren.' },
+  { id:'low',      name:'Hyperventilation',                etco2:'< 35', incident:'tachypnoe',
+    meaning:'Normale Form, niedriges Plateau. Zu schnelle/tiefe Beatmung, Hypothermie, niedriges Herzzeitvolumen.', react:'Beatmung reduzieren; Kreislauf/Temperatur prüfen.' },
+  { id:'baseline', name:'Rückatmung (Atemkalk erschöpft)', etco2:'Basis > 0', incident:'hypoventilation',
+    meaning:'Kurve kehrt nicht auf 0 zurück (FiCO₂ ↑) – eingeatmetes CO₂. Atemkalk verbraucht, zu geringer Frischgasfluss oder defektes Ventil.', react:'Atemkalk wechseln, Frischgasfluss erhöhen, Ventile prüfen.' },
+  { id:'shark',    name:'Obstruktion / Bronchospasmus',    etco2:'variabel', incident:'hypoxaemie',
+    meaning:'„Haifischflosse": verzögerter, schräger Anstieg, kein scharfes Plateau. Bronchospasmus, geknickter/teilverlegter Tubus, felines Asthma.', react:'Tubus prüfen/absaugen; Bronchospasmus behandeln; O₂ 100 %.' },
+  { id:'flat',     name:'Nulllinie – Apnoe / Diskonnektion / ösophageal', etco2:'0', incident:'apnoe',
+    meaning:'Kein CO₂. Diskonnektion, Apnoe, Herzstillstand, ösophageale Intubation oder komplett verlegter Tubus.', react:'SOFORT Tubuslage + Kreissystem prüfen, beatmen; kein Puls → CPR.' },
+  { id:'cleft',    name:'Curare-Kerbe (Eigenatmung)',      etco2:'35–45', incident:'tachypnoe',
+    meaning:'Einkerbung im Plateau: Patient versucht selbst zu atmen (nachlassende Relaxierung / zu flach).', react:'Narkosetiefe / Relaxierung prüfen.' },
+  { id:'rise',     name:'Plötzlicher EtCO₂-Anstieg',       etco2:'↑', incident:'asystolie',
+    meaning:'Sprunghafter Anstieg: Wiederkehr des Kreislaufs (ROSC) unter CPR – oder plötzliche Hypoventilation/Hyperthermie.', react:'Unter CPR: gutes Zeichen (ROSC) – Puls prüfen.' }
+];
+
+/* =================== BEDIENUNG / STARTSEQUENZ =================== */
+window.ANAES.operating = {
+  title:'Startsequenz Mindray Veta 5 Plus (Praxis-Ablauf)',
+  steps:[
+    { t:'Beide Bildschirme einschalten', d:'Monitor oben (uMEC12 Vet) und Narkose-/Ventilator-Bildschirm unten (Veta 5 Plus).' },
+    { t:'Monitor: Tierart & Gewicht eingeben', d:'Oben Tierart und Körpergewicht eingeben – bestimmt die Alarmgrenzen und Referenzwerte.' },
+    { t:'Ventilator: System-/Dichtheitsprüfung', d:'Unten Systemüberprüfung durchführen. Wenig Zeit → auf Standby → „Fall starten".' },
+    { t:'ACGO-Schalter wählen', d:'OFF = großes Kreissystem (Rückatmung, größere Tiere); ON = kleines Nicht-Rückatemsystem (kleine Patienten).' },
+    { t:'APL/ABL auf 2–3 (offen)', d:'APL-Ventil normal offen (MIN/2–3). Für Handbeatmung kurz erhöhen, danach sofort wieder öffnen.' },
+    { t:'Atembeutel-Volumen anpassen', d:'Beutelgröße nach Gewicht: < 10 kg 0.5–1 L · 10–30 kg 2 L · > 30 kg 3 L.' },
+    { t:'Atemkalk prüfen', d:'CO₂-Absorber ansehen – Farbumschlag = verbraucht → Kalk wechseln.' },
+    { t:'Balg / Lungenvolumen anpassen (bei Beatmung)', d:'Groß > 30 kg, Klein < 30 kg (Bellows „UNTER 30KG"). Atemzugvolumen 10–15 mL/kg (siehe Einstellungen).' },
+    { t:'Sauerstoff einstellen', d:'O₂ an, Frischgasfluss ≈ 1–1.5 L/min – an Patient/System anpassen (siehe Tab „Einstellungen").' },
+    { t:'Isofluran einstellen', d:'Verdampfer an, Erhaltung ≈ 1.5–2 Vol% (nach Patient & Narkosetiefe titrieren; Einleitung höher).' },
+    { t:'Beatmung: Manuell → ggf. Automatisch', d:'Erst manuell/beobachten; wenn Spontanatmung nicht ausreicht → Auto/IPPV (VCV oder PCV).' }
+  ],
+  safety:[
+    'APL-Ventil NIE geschlossen lassen (Barotrauma-Gefahr).',
+    'Vor O₂-Flush den Patienten diskonnektieren (Flush umgeht den Verdampfer, verdünnt Narkosegas).',
+    'Absorber-Farbumschlag = Atemkalk sofort wechseln.',
+    'Kapnograf ist der schnellste Alarm – bei Nulllinie zuerst Tubus & Kreissystem prüfen.',
+    'Vor Extubation: Schluckreflex, Kieferspannung, stabile SpO₂.'
+  ]
+};

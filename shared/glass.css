@@ -465,3 +465,14 @@ html[data-theme="light"] .lead{color:#26333f !important}
 html[data-theme="light"] .ctrl-body .lbl{color:#0a6b8a !important}
 /* 3D canvas stays dark in both themes (WebGL scene) */
 html[data-theme="light"] .canvas3d{background:radial-gradient(circle at 50% 35%,rgba(0,216,255,.10),transparent 45%),#07101a !important}
+/* Monitor: screen + value tiles stay dark (real-monitor look); controls go light */
+html[data-theme="light"] .mon-screen{background:#05080d !important}
+html[data-theme="light"] .mon-tile{background:#0b1017 !important;border-color:rgba(120,150,180,.22) !important}
+html[data-theme="light"] .mon-tile .mt-u{color:#9aa8bb !important}
+html[data-theme="light"] .mon-sc{background:rgba(255,255,255,.62) !important;border-color:rgba(20,40,70,.14) !important;color:#15202e !important}
+html[data-theme="light"] .capno-card{background:rgba(255,255,255,.68) !important;border-color:rgba(20,40,70,.12) !important}
+html[data-theme="light"] .capno-card b{color:#15202e !important}
+html[data-theme="light"] .capno-card .cc-r{color:#0a6b45 !important}
+html[data-theme="light"] .op-step{background:rgba(255,255,255,.68) !important;border-color:rgba(20,40,70,.12) !important}
+html[data-theme="light"] .op-step b{color:#15202e !important}
+html[data-theme="light"] .op-step p{color:#5a6b7e !important}
