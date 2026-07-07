@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Canis Anæsthesia · Narkose & Notfall (Kleintier)</title>
-<meta name="description" content="Interaktiver Anästhesie- und Narkose-Notfall-Assistent für die Kleintierpraxis: Zwischenfall-Logik, gewichtsbasierte Dosierung, Mindray Veta 5 Plus in 3D.">
+<meta name="description" content="Interaktiver Anästhesie- und Narkose-Notfall-Assistent für die Kleintierpraxis: Zwischenfall-Logik, gewichtsbasierte Dosierung, uMEC12-Monitor mit EKG-Rhythmen &amp; Kapnografie – ein interaktives Geräte-Cockpit (Mindray Veta 5 Plus).">
 <meta name="theme-color" content="#e9eef7">
 <link rel="icon" href="../canis-haematica/icon.svg" type="image/svg+xml">
 <style>
@@ -96,10 +96,6 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 .dfilter.active{border-color:var(--violet);color:#fff;background:rgba(167,139,250,.14)}
 
 /* machine */
-.canvas3d{height:460px;border:1px solid var(--line);border-radius:12px;background:radial-gradient(circle at 50% 35%,rgba(0,216,255,.10),transparent 45%),#07101a;position:relative;overflow:hidden}
-.canvas3d canvas{display:block;width:100%;height:100%;touch-action:none}
-.c3d-load{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--muted);font-size:13px;padding:20px}
-.c3d-hint{position:absolute;left:10px;bottom:10px;font:11px var(--mono);color:var(--muted);background:rgba(7,16,26,.7);border:1px solid var(--line);border-radius:7px;padding:5px 8px}
 .ctrl-card{border:1px solid var(--line);background:rgba(255,255,255,.035);border-radius:10px;margin-bottom:8px;overflow:hidden}
 .ctrl-head{display:flex;gap:10px;align-items:center;padding:11px 12px;cursor:pointer}
 .ctrl-head .ic{font-size:20px}.ctrl-head b{font-size:14px}.ctrl-head .ch{margin-left:auto;color:var(--muted)}
@@ -121,7 +117,7 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 .src{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5}
 .src a{color:var(--blue)}
 
-@media(max-width:900px){.grid-2{grid-template-columns:1fr}.patient{top:56px}.tabs{top:auto;position:sticky}.canvas3d{height:340px}}
+@media(max-width:900px){.grid-2{grid-template-columns:1fr}.patient{top:56px}.tabs{top:auto;position:sticky}}
 @media(max-width:560px){.pchip-note{display:none}.title p{display:none}.sp-chip{min-width:56px}}
 
 /* Monitor */
@@ -143,6 +139,15 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 .mon-tile .mt-u{font-size:12px;color:var(--muted);font-weight:400}
 .mon-tile.alarm{border-color:var(--red);background:rgba(255,77,77,.12);animation:monblink 1s steps(1) infinite}
 .mon-tile .mt-v{color:var(--mtc,#fff)}
+/* §1 uMEC12: farbcodierte Zahlensäule rechts neben den Kurven (Desktop), auf Handy darunter */
+@media(min-width:760px){
+  .dev-mon{display:grid;grid-template-columns:minmax(0,1fr) 168px;grid-template-areas:"brand brand" "screen tiles";gap:10px 12px;align-items:stretch}
+  .dev-mon .dev-brand{grid-area:brand;margin-bottom:0}
+  .dev-mon .mon-screen{grid-area:screen}
+  .dev-mon .mon-tiles{grid-area:tiles;margin-top:0;grid-template-columns:1fr;align-content:start}
+  .dev-mon .mon-tiles .mon-tile{padding:7px 9px}
+  .dev-mon .mon-tiles .mt-v{font-size:21px}
+}
 .capno-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
 .capno-card{border:1px solid var(--line);background:rgba(255,255,255,.03);border-radius:10px;padding:10px;cursor:pointer}
 .capno-card:hover{border-color:var(--amber)}
@@ -291,6 +296,7 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
           <button class="mon-mode active" data-m="ist">✍️ Ist-Zustand eingeben</button>
           <button class="mon-mode" data-m="sim">🎬 Szenario simulieren</button>
         </div>
+        <div class="chips" id="rhythmChips" style="margin-bottom:10px"></div>
         <div class="mon-inputs" id="monInputs"></div>
         <div class="mon-scenarios" id="monScenarios" style="display:none"></div>
         <div class="device">
@@ -313,6 +319,11 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
         <div class="dev-ctrl" id="devCtrl"></div>
         <div id="monDetail"></div>
       </aside>
+    </div>
+    <div class="card">
+      <h3>EKG-Rhythmen &amp; Herzfehler – erkennen &amp; reagieren</h3>
+      <p class="muted" style="font-size:12px;margin:-4px 0 10px">Ampel zum Anlegen: <b style="color:#ff4d4d">rot</b> re. vorn · <b style="color:#ffd166">gelb</b> li. vorn · <b style="color:#28e07a">grün</b> li. hinten · <b>schwarz</b> Erdung re. hinten · <b style="color:#66a6ff">C1</b> Brustwand. Klick = Protokoll · Chips oben = Rhythmus im Monitor beobachten.</p>
+      <div class="capno-grid" id="ekgGrid"></div>
     </div>
     <div class="card">
       <h3>Kapnograf – Kurvenform erkennen &amp; reagieren</h3>
@@ -354,7 +365,7 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
   </section>
 </main>
 
-<script src="anaes-data.js?v=3"></script>
+<script src="anaes-data.js?v=4"></script>
 <script>
 /* ============ Canis Anæsthesia – Engine ============ */
 (function(){
@@ -362,7 +373,7 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 var A = window.ANAES || {drugs:[],incidents:[],machine:{controls:[],ventModes:[]},fluids:[],species:[],vitals:{},info:"",sources:[]};
 var $ = function(s,r){return (r||document).querySelector(s);};
 var $$ = function(s,r){return Array.from((r||document).querySelectorAll(s));};
-var state = { sp: (A.species[0]&&A.species[0].id)||'hund', wt: 10, age:'adult', incident:null, dfilter:'Alle', q:'', monMode:'ist', istVals:null, dev:{o2:1, iso:2, mode:'vcv'} };
+var state = { sp: (A.species[0]&&A.species[0].id)||'hund', wt: 10, age:'adult', incident:null, dfilter:'Alle', q:'', monMode:'ist', istVals:null, rhythm:'sinus', adrHigh:false, dev:{o2:1, iso:2, mode:'vcv'} };
 
 /* ---------- helpers: dose math ---------- */
 function parseConc(s){ if(!s) return null; var m = String(s).replace(',','.').match(/([0-9]*\.?[0-9]+)\s*(mg|mcg|µg|g)\s*\/\s*ml/i); if(!m) return null; var v=parseFloat(m[1]); var u=m[2].toLowerCase(); if(u==='g') v=v*1000; if(u==='mcg'||u==='µg') v=v/1000; return v; /* mg per mL */ }
@@ -393,6 +404,12 @@ function syncPatient(){
   $('#pWt')&&($('#pWt').textContent=fmt(state.wt)+' kg');
   var v=(A.vitals||{})[state.sp];
   $('#patNote').innerHTML = v? ('Normwerte Narkose · HF '+v.hr[0]+'–'+v.hr[1]+' · AF '+v.rr[0]+'–'+v.rr[1]+' · SpO₂ '+v.spo2[0]+'–'+v.spo2[1]+'% · EtCO₂ '+v.etco2[0]+'–'+v.etco2[1]+' · MAP '+v.map[0]+'–'+v.map[1]) : '';
+  propagateLinks();
+}
+/* §7 Gewicht/Spezies an verlinkte Module weitergeben */
+function propagateLinks(){
+  var qs='?kg='+encodeURIComponent(state.wt)+'&sp='+encodeURIComponent(state.sp);
+  $$('a[href^="../canis-"]').forEach(function(a){ a.href=a.getAttribute('href').split('?')[0]+qs; });
 }
 
 /* ---------- incidents ---------- */
@@ -407,20 +424,26 @@ function renderIncidents(){
   $$('#incList .inc-btn').forEach(function(b){ b.onclick=function(){ state.incident=b.dataset.inc; renderIncidents(); renderProto(); }; });
 }
 function drugById(id){ return A.drugs.find(function(d){return d.id===id;}); }
+/* §7 Lokalanästhetika- & Lidocain-Höchst-Gesamtdosen (mg/kg) */
+var LA_CAPS = { lidocain_iv:{hund:8,katze:2}, lidocain_lok:{hund:6,katze:2,kaninchen:4,meerschwein:4,reptil:4}, bupivacain:{hund:2,katze:1.5,kaninchen:2,meerschwein:2,reptil:2} };
 function doseLine(ref){
   var d=drugById(ref.id); var name = d? d.name : (ref.name||ref.id);
   var spd = d && d.species ? d.species[state.sp] : null;
   var conc = ref.conc || (spd&&spd.conc) || '';
   var dd = { low:ref.low, high:ref.high, unit:ref.unit||'mg/kg', conc:conc };
   if(ref.low==null && spd){ dd.low=spd.low; dd.high=spd.high; dd.unit=spd.unit; }
+  if(ref.id==='adrenalin' && state.adrHigh){ dd.low=0.1; dd.high=0.1; }   // §7 Hochdosis-Adrenalin
   var c=calc(dd, state.wt);
+  var capId=ref.id||(d&&d.id), capV=LA_CAPS[capId]&&LA_CAPS[capId][state.sp], capLine='';
+  if(capV){ var capMg=capV*state.wt, cc2=parseConc(conc), capMl=cc2?(' ≈ '+fmt(capMg/cc2)+' mL'):'', over=c&&c.amtHi!=null&&c.amtHi>capMg+0.001;
+    capLine='<div class="dose-caution"'+(over?' style="border-color:var(--red);background:rgba(255,77,77,.14);color:#ffb0b0"':'')+'>🧪 <b>Höchst-Gesamtdosis '+sp().name+': '+capV+' mg/kg = '+fmt(capMg)+' mg'+capMl+'</b>'+(over?' – ÜBERSCHRITTEN, Dosis kappen!':' – nicht überschreiten')+'</div>'; }
   var mlTxt = c&&c.mlLo!=null ? '<span class="dpill ml">≈ <b>'+fmtRange(c.mlLo,c.mlHi)+' mL</b></span>' : (conc?'':'<span class="dpill">mL: Konz. angeben</span>');
   var amtTxt = c ? '<span class="dpill mg"><b>'+fmtRange(c.amtLo,c.amtHi)+' '+c.amtUnit+'</b></span>' : '';
   var perkg = (dd.low!=null)?('<span class="dose-cls">'+fmtRange(dd.low,dd.high)+' '+(dd.unit||'')+' '+(ref.route||(spd&&spd.route)||'')+'</span>'):'';
   return '<div class="dose-card"><div class="dose-top"><span class="dose-name">'+name+'</span>'+perkg+'</div>'+
     '<div class="dose-calc">'+amtTxt+mlTxt+(conc?'<span class="dpill">'+conc+'</span>':'')+'</div>'+
     (ref.note?'<div class="dose-meta">'+ref.note+'</div>':'')+
-    (spd&&spd.caution?'<div class="dose-caution">⚠️ '+spd.caution+'</div>':'')+'</div>';
+    (spd&&spd.caution?'<div class="dose-caution">⚠️ '+spd.caution+'</div>':'')+capLine+'</div>';
 }
 function renderProto(){
   var i=A.incidents.find(function(x){return x.id===state.incident;});
@@ -433,11 +456,14 @@ function renderProto(){
   if(i.causes&&i.causes.length){ html+='<div class="sec-h">Häufige Ursachen</div><div class="chips">'+i.causes.map(function(c){return '<span class="chip" style="cursor:default">'+c+'</span>';}).join('')+'</div>'; }
   html+='<div class="sec-h">Sofort-Maßnahmen (Reihenfolge)</div><div class="steps">'+(i.steps||[]).map(function(s){return '<div class="step">'+s+'</div>';}).join('')+'</div>';
   if(i.machine) html+='<div class="mset">⚙️ <b>Gerät:</b> '+i.machine+'</div>';
-  if(i.drugs&&i.drugs.length){ html+='<div class="sec-h">Medikamente (für '+s.name+' '+fmt(state.wt)+' kg berechnet)</div>'+i.drugs.map(doseLine).join(''); }
+  if(i.drugs&&i.drugs.length){ html+='<div class="sec-h">Medikamente (für '+s.name+' '+fmt(state.wt)+' kg berechnet)</div>';
+    if(i.drugs.some(function(x){return x.id==='adrenalin';})) html+='<div class="chips" style="margin-bottom:8px"><button class="chip" id="adrTog" style="border-color:'+(state.adrHigh?'var(--red)':'var(--line)')+';color:'+(state.adrHigh?'#ffb0b0':'var(--text)')+'">⚡ Adrenalin: '+(state.adrHigh?'HOCH 0.1':'Niedrig 0.01')+' mg/kg – umschalten (Hoch erst nach mehreren erfolglosen CPR-Zyklen)</button></div>';
+    html+=i.drugs.map(doseLine).join(''); }
   var sn = i.speciesNotes && (i.speciesNotes[state.sp]||i.speciesNotes.all);
   if(sn) html+='<div class="dose-caution" style="margin-top:10px">🐾 <b>'+s.name+':</b> '+sn+'</div>';
   if(i.red&&i.red.length) html+='<div class="thr" style="border-color:rgba(255,77,77,.5);background:rgba(255,77,77,.1);color:#ffd7d7">⛔ '+i.red.join(' · ')+'</div>';
   box.innerHTML=html;
+  var at=$('#adrTog'); if(at) at.onclick=function(){ state.adrHigh=!state.adrHigh; renderProto(); };
 }
 
 /* ---------- drug list ---------- */
@@ -512,19 +538,26 @@ function renderInfo(){
 }
 
 /* ---------- MONITOR + KAPNOGRAF ---------- */
-var mon = { scen:'normal', raf:null, running:false, last:0, W:0, H:0, dpr:1, acc:0, phE:0, phR:0, buf:null };
+var mon = { scen:'normal', raf:null, running:false, last:0, W:0, H:0, dpr:1, acc:0, phE:0, phR:0, buf:null, beatN:0, rrJit:1 };
 function MON(){ return A.monitor||{params:[],scenarios:[]}; }
+function ekgDef(id){ return (A.ekg||[]).find(function(r){return r.id===id;}) || (A.ekg||[])[0] || {w:{}}; }
 function monVitals(){ return (A.vitals||{})[state.sp] || (A.vitals||{}).hund || {hr:[60,140],rr:[8,20],spo2:[95,100],etco2:[35,45],map:[70,120],temp:[37,39]}; }
 function midR(a){ return Math.round((a[0]+a[1])/2); }
 function monScen(){ return (MON().scenarios||[]).find(function(s){return s.id===mon.scen;}) || (MON().scenarios||[])[0] || {}; }
-function istInit(){ var v=monVitals(); state.istVals={ hr:midR(v.hr), spo2:Math.min(99,v.spo2[1]), etco2:midR(v.etco2), nibp:midR(v.map), rr:midR(v.rr), temp:midR(v.temp) }; }
+function istInit(){ var v=monVitals(); var mapMid=midR(v.map);
+  state.istVals={ hr:midR(v.hr), spo2:Math.min(99,v.spo2[1]), etco2:midR(v.etco2),
+    sys:midR(v.nibp||[Math.round(mapMid*1.35),Math.round(mapMid*1.35)]),
+    dia:midR(v.dia||[Math.round(mapMid*0.8),Math.round(mapMid*0.8)]),
+    nibp:mapMid, rr:midR(v.rr), temp:midR(v.temp) }; }
 function monResolve(){
   var v=monVitals();
   if(state.monMode==='ist'){
     if(!state.istVals) istInit(); var iv=state.istVals;
-    return { mode:'ist', v:v, hr:iv.hr, rr:iv.rr, spo2:iv.spo2, etco2:iv.etco2, nibp:iv.nibp, temp:iv.temp,
-      ekg:(iv.hr<=0?'asys':'normal'),
-      pleth:((iv.spo2<=50||iv.hr<=0)?'flat':(iv.spo2<90?'weak':'normal')),
+    var sys=iv.sys||0, dia=iv.dia||0, map=(sys>0&&dia>0)?Math.round(dia+(sys-dia)/3):(iv.nibp||0);
+    var Wr=ekgDef(state.rhythm).w||{}, arrest=(Wr.flat||Wr.chaos);
+    return { mode:'ist', v:v, hr:iv.hr, rr:iv.rr, spo2:iv.spo2, etco2:iv.etco2, nibp:map, sys:sys, dia:dia, temp:iv.temp,
+      ekg:(state.rhythm||'sinus'),
+      pleth:((arrest||iv.spo2<=50||iv.hr<=0)?'flat':(iv.spo2<90?'weak':'normal')),
       capno:((iv.etco2<=0||iv.rr<=0)?'flat':(iv.etco2>50?'high':(iv.etco2<30?'low':'normal'))),
       alarm:'', incident:null };
   }
@@ -534,7 +567,8 @@ function monResolve(){
   var spo2 = sc.spo2==='normal'?Math.min(99,v.spo2[1]):(sc.spo2==null?Math.min(99,v.spo2[1]):sc.spo2);
   var etco2 = sc.etco2==='normal'?midR(v.etco2):(sc.etco2==null?midR(v.etco2):sc.etco2);
   var nibp = sc.nibp==='normal'?midR(v.map):(sc.nibp==null?midR(v.map):sc.nibp);
-  return { mode:'sim', sc:sc, v:v, hr:hr, rr:rr, spo2:spo2, etco2:etco2, nibp:nibp, temp:midR(v.temp),
+  return { mode:'sim', sc:sc, v:v, hr:hr, rr:rr, spo2:spo2, etco2:etco2, nibp:nibp,
+    sys:(nibp>0?Math.round(nibp*1.35):0), dia:(nibp>0?Math.round(nibp*0.82):0), temp:midR(v.temp),
     ekg:sc.ekg||'normal', pleth:sc.pleth||'normal', capno:sc.capno||'normal', alarm:sc.alarm||'', incident:sc.incident||null };
 }
 function monAlarms(r){ var v=r.v; function o(x,b){return x<b[0]||x>b[1];}
@@ -551,9 +585,11 @@ function renderMonScenarios(){
 function renderMonValues(){
   var r=monResolve(), al=monAlarms(r); var mm=$('#mSpecies'); if(mm) mm.textContent=sp().name+' '+fmt(state.wt)+' kg'; var dsp=$('#devSpecies'); if(dsp) dsp.textContent=sp().name+' '+fmt(state.wt)+' kg';
   $('#monTiles').innerHTML=(MON().params||[]).map(function(p){
-    var val=r[p.id]; var isAl=al[p.id];
+    var val=r[p.id]; var isAl=al[p.id]; var ab=p.abbr, nm=p.name.replace(/ \(.*/,'');
     var disp=(val===0)?'– –':fmt(val);
-    return '<div class="mon-tile'+(isAl?' alarm':'')+'" data-p="'+p.id+'" style="--mtc:'+(isAl?'#ff7a7a':p.color)+'"><div class="mt-ab"><span>'+p.abbr+'</span><span>'+p.unit+'</span></div><div class="mt-v">'+disp+'</div><div class="mt-u">'+p.name.replace(/ \(.*/,'')+'</div></div>';
+    if(p.id==='nibp'){ ab='NIBP'; nm='Blutdruck SYS/DIA (MAP)';
+      disp=(r.sys>0&&r.dia>0)?(fmt(r.sys)+'/'+fmt(r.dia)+' <small style="font-size:14px;color:var(--muted)">('+fmt(r.nibp)+')</small>'):'– –'; }
+    return '<div class="mon-tile'+(isAl?' alarm':'')+'" data-p="'+p.id+'" style="--mtc:'+(isAl?'#ff7a7a':p.color)+'"><div class="mt-ab"><span>'+ab+'</span><span>'+p.unit+'</span></div><div class="mt-v">'+disp+'</div><div class="mt-u">'+nm+'</div></div>';
   }).join('');
   $$('#monTiles .mon-tile').forEach(function(t){ t.onclick=function(){ showMonParam(t.dataset.p); }; });
   // sync ist-input alarm outline
@@ -561,19 +597,26 @@ function renderMonValues(){
   var alv=$('#monAlarm'); var txt=r.alarm, inc=r.incident;
   if(state.monMode==='ist'){ var n=(MON().params||[]).filter(function(p){return al[p.id];}).length; txt=n>0?(n+' Wert(e) außerhalb – Analyse unten'):''; inc=null; }
   if(alv){ if(txt){ alv.textContent='⚠ '+txt+(inc?'  ▸ Protokoll':''); alv.classList.add('on'); alv.onclick=function(){ if(inc) gotoIncident(inc); }; } else { alv.classList.remove('on'); alv.onclick=null; } }
-  renderAssess();
+  renderAssess(); renderDevCtrl();
 }
 function renderMonInputs(){
   if(!state.istVals) istInit();
   $('#monInputs').innerHTML=(MON().params||[]).map(function(p){
+    if(p.id==='nibp'){ // §2: SYS + DIA eingeben, MAP automatisch
+      return '<label class="mon-in" data-w="nibp"><span>SYS <small>mmHg</small></span><input type="number" inputmode="decimal" data-p="sys" step="1" value="'+state.istVals.sys+'"></label>'+
+             '<label class="mon-in" data-w="nibp"><span>DIA <small>mmHg</small></span><input type="number" inputmode="decimal" data-p="dia" step="1" value="'+state.istVals.dia+'"></label>';
+    }
     return '<label class="mon-in" data-w="'+p.id+'"><span>'+p.abbr+' <small>'+p.unit+'</small></span><input type="number" inputmode="decimal" data-p="'+p.id+'" step="'+(p.id==='temp'?0.1:1)+'" value="'+state.istVals[p.id]+'"></label>';
   }).join('');
-  $$('#monInputs input').forEach(function(inp){ inp.addEventListener('input',function(){ var val=parseFloat(inp.value); state.istVals[inp.dataset.p]=isNaN(val)?0:val; renderMonValues(); }); });
+  $$('#monInputs input').forEach(function(inp){ inp.addEventListener('input',function(){ var val=parseFloat(inp.value); state.istVals[inp.dataset.p]=isNaN(val)?0:val;
+    if(inp.dataset.p==='sys'||inp.dataset.p==='dia'){ var s=state.istVals.sys||0,d=state.istVals.dia||0; state.istVals.nibp=(s>0&&d>0)?Math.round(d+(s-d)/3):0; }
+    renderMonValues(); }); });
 }
 function setMonMode(m){
   state.monMode=m;
   $$('.mon-mode').forEach(function(b){ b.classList.toggle('active',b.dataset.m===m); });
   var si=$('#monScenarios'), ip=$('#monInputs'); if(si) si.style.display=(m==='sim')?'flex':'none'; if(ip) ip.style.display=(m==='ist')?'grid':'none';
+  renderRhythmChips();
   renderMonValues();
 }
 function doseLineCompact(ref){
@@ -596,10 +639,29 @@ function renderAssess(){
     else if(x>band[1]){ dir='high'; inc=p.highInc; }
     if(inc){ var far=(x<band[0])?(band[0]-x)/Math.max(1,band[0]):(x-band[1])/Math.max(1,band[1]); items.push({p:p,x:x,band:band,dir:dir,inc:inc,far:far}); }
   });
-  if(!items.length){ box.innerHTML='<div class="assess-ok">✓ Alle Werte im Normbereich für '+sp().name+' – Patient stabil.</div>'; return; }
+  /* §4 Kreuz-Analyse: alle Kanäle + Geräteeinstellung zusammen */
+  var r=monResolve(), iso=state.dev.iso, cross=[], W=ekgDef(r.ekg).w||{};
+  var isoTgt=devTarget(), isoSoll=String(isoTgt.iso).split('–').map(parseFloat);
+  var isoHigh=(!isNaN(isoSoll[1])?iso>isoSoll[1]+0.6:(!isNaN(isoSoll[0])?iso>isoSoll[0]+0.8:false));
+  function xc(sev,color,title,tag,cause,fix,inc){ cross.push({sev:sev,color:color,title:title,tag:tag,cause:cause,fix:fix,inc:inc}); }
+  if(W.flat||W.chaos){ xc(5,'#ff2d2d',W.chaos?'Kammerflimmern – Kreislaufstillstand':'Asystolie – Kreislaufstillstand','CPR','Nulllinie/chaotisches EKG mit flacher Kapno- & Pleth-Kurve → kein Kreislauf.','Verdampfer AUF NULL · 100 % O₂/Flush · Kompressionen 100–120/min'+(W.chaos?' · DEFIBRILLIEREN':'')+'.','asystolie'); }
+  else {
+    if(r.ekg==='ves'||r.ekg==='vtach'){ var driven=(r.spo2<v.spo2[0])||(r.etco2>v.etco2[1]);
+      driven ? xc(4,'#ff7b7b',(r.ekg==='vtach'?'VT':'VES')+' – hypoxie-/hyperkapniegetrieben','Erst O₂/Beatmung','Breite Kammerkomplexe mit '+(r.spo2<v.spo2[0]?'niedriger SpO₂ ':'')+(r.etco2>v.etco2[1]?((r.spo2<v.spo2[0]?'+ ':'')+'hohem EtCO₂ '):'')+'→ zuerst Ventilation/O₂, Lidocain nur wenn danach weiter VES.','IPPV/Auto ein, O₂-Fluss ↑ bzw. O₂-Flush; erst danach Lidocain (Hund) langsam IV.','tachykardie')
+             : xc(4,'#ff7b7b',(r.ekg==='vtach'?'Ventrikuläre Tachykardie':'Ventrikuläre Extrasystolen'),'VES/VT','Breite, vorzeitige QRS ohne P. Zuerst Hypoxie/Hyperkapnie/Narkosetiefe/Elektrolyte ausschließen.','Oxygenierung & Narkosetiefe sichern, dann Lidocain (Hund) langsam IV; Katze extrem vorsichtig.','tachykardie'); }
+    var brady=(r.hr>0&&r.hr<v.hr[0])||['sinusbrady','avb2a','avb2b','avb3'].indexOf(r.ekg)>=0;
+    if(brady&&isoHigh&&r.nibp>0&&r.nibp<v.map[0]+8) xc(4,'#66a6ff','Bradykardie bei zu tiefer Narkose','Iso zuerst senken','Niedrige HF + niedriger MAP bei hohem Verdampfer ('+iso.toFixed(1)+' Vol%) → Narkose zu tief.','ZUERST Verdampfer senken Richtung Soll ('+isoTgt.iso+' Vol%) – kein sofortiges Atropin.','bradykardie');
+    else if(r.nibp>0&&r.nibp<v.map[0]&&isoHigh) xc(3,'#ff4d4d','Hypotonie bei tiefer Narkose','MAP ↓','MAP '+r.nibp+' mmHg bei Verdampfer '+iso.toFixed(1)+' Vol% → häufigste Ursache: Narkose zu tief.','ZUERST Verdampfer senken ('+isoTgt.iso+' Vol%), dann Volumenbolus, dann Ephedrin.','hypotension');
+    if(r.capno==='shark') xc(3,'#a3e635','Bronchospasmus / Obstruktion','Atemweg','Kapno-Haifischflosse bei erhaltenem EKG → Problem ist der Atemweg, nicht das Herz.','Tubus prüfen (Knick/Sekret), ggf. vertiefen; β2-Bronchodilatator; O₂ 100 %.','hypoxaemie');
+  }
+  cross.sort(function(a,b){return b.sev-a.sev;});
+  var crossHtml=cross.map(function(cc){ return '<div class="assess-card" style="border-left-color:'+cc.color+';border-color:'+cc.color+'55" data-inc="'+cc.inc+'"><div class="assess-h"><b>'+cc.title+'</b><span class="assess-inc" style="background:'+cc.color+'">'+cc.tag+'</span></div><div class="assess-s">🔧 <b>Gerät:</b> '+cc.fix+'</div><div class="assess-m">'+cc.cause+'</div><div class="assess-go">→ Volles Protokoll, Dosen &amp; Schritte</div></div>'; }).join('');
+  if(!items.length && !cross.length){ box.innerHTML='<div class="assess-ok">✓ Alle Kanäle im Normbereich für '+sp().name+' – Patient stabil.</div>'; return; }
   var wgt={spo2:6,etco2:5,nibp:5,hr:4,rr:3,temp:2};
   items.sort(function(a,b){ return (wgt[b.p.id]||1)*(1+b.far) - (wgt[a.p.id]||1)*(1+a.far); });
-  var html='<div class="sec-h">🧠 Auto-Analyse · '+items.length+' Wert(e) außerhalb der Norm</div>';
+  var html='';
+  if(cross.length) html+='<div class="sec-h">🧠 Kreuz-Analyse · alle Kanäle + Gerät</div>'+crossHtml;
+  if(items.length) html+='<div class="sec-h">Einzelwerte außerhalb der Norm ('+items.length+')</div>';
   html+=items.map(function(it){
     var i=(A.incidents||[]).find(function(x){return x.id===it.inc;})||{};
     var arrow=(it.dir==='high')?'↑':'↓';
@@ -622,6 +684,18 @@ function devTarget(){
   var o2hi=(m.o2&&m.o2.mlkg)?Math.max((m.o2.min||0.2)+0.2, m.o2.mlkg[1]*w/1000):1;
   return { o2:[o2lo,o2hi], iso:(m.iso&&m.iso.maint)||'1.5–2.5', isoMac:(m.iso&&m.iso.mac)||'—', mode:(w<(m.rebreatheMin||7)?'Nicht-Rückatmung':'Kreissystem'), apl:(m.apl||'offen (2–3)') };
 }
+/* §5 Geschlossene Regelschleife: Vorschau-Wirkung der Einstellung (kein Auto-Regler) */
+function loopPreview(){
+  var r=monResolve(); if(r.mode!=='ist') return '<div class="muted" style="font-size:12px">Nur im Ist-Modus.</div>';
+  var t=devTarget(), isoSoll=String(t.iso).split('–').map(parseFloat);
+  var isoMid=(!isNaN(isoSoll[1])?(isoSoll[0]+isoSoll[1])/2:isoSoll[0])||1.8, dIso=state.dev.iso-isoMid;
+  var expMap=r.nibp>0?Math.round(Math.max(20,Math.min(160,r.nibp-dIso*9))):null;
+  var expEt=r.etco2>0?Math.round(state.dev.auto?Math.max(30,r.etco2-12):(r.rr<8?r.etco2+8:r.etco2)):null;
+  var expSp=r.spo2>0?Math.round(Math.max(0,Math.min(100,r.spo2+(state.dev.o2>=t.o2[0]?2:-3)+(state.dev.auto?3:0)))):null;
+  var expAf=r.rr>0?Math.round(Math.max(0,r.rr-dIso*2*(state.dev.auto?0:1))):null; if(state.dev.auto&&expAf<10)expAf=12;
+  function line(lbl,ist,exp){ if(ist==null||exp==null) return ''; var c=exp>ist?'#12b866':(exp<ist?'#e23b3b':'var(--muted)'), ar=exp>ist?'↑':(exp<ist?'↓':'→'); return '<div class="devr"><span class="dn">'+lbl+'</span><span class="dv" style="color:'+c+'">'+ist+' → '+exp+' '+ar+'</span></div>'; }
+  return line('MAP',r.nibp,expMap)+line('EtCO₂',r.etco2,expEt)+line('SpO₂',r.spo2,expSp)+line('AF',r.rr,expAf);
+}
 function renderDevCtrl(){
   var box=$('#devCtrl'); if(!box) return; var t=devTarget(); var ds=$('#devSpecies'); if(ds) ds.textContent=sp().name+' '+fmt(state.wt)+' kg';
   var o2off = state.dev.o2 < t.o2[0]-0.2 || state.dev.o2 > t.o2[1]+1;
@@ -634,7 +708,9 @@ function renderDevCtrl(){
     row('⚪ Isofluran', state.dev.iso.toFixed(1)+' Vol%', (t.iso||'—')+' Vol% (MAC '+t.isoMac+')', isoOff)+
     row('🔀 Beatmung', (state.dev.auto?'Auto':'Manuell')+' · '+mn.name.split(' ')[0], (state.wt<7?'PCV/Manuell schonend':'VCV Standard'), false)+
     row('🫁 Atemsystem', t.mode, (state.wt<rebMin?'Nicht-Rückatmung':'Kreissystem'), false)+
-    row('🔵 APL-Ventil', t.apl, 'offen bei Spontanatmung', false);
+    row('🔵 APL-Ventil', t.apl, 'offen bei Spontanatmung', false)+
+    '<div class="sec-h" style="margin-top:12px">Regelschleife · Ist → erwartet <span style="font:10px var(--mono);color:#04121a;background:var(--amber);border-radius:4px;padding:1px 6px;vertical-align:middle">SIM</span></div>'+
+    loopPreview();
 }
 function showMonParam(id){
   var p=(MON().params||[]).find(function(x){return x.id===id;}); if(!p)return; var v=monVitals(); var band=v[p.vital];
@@ -649,13 +725,23 @@ function showMonParam(id){
 /* waveform sample functions → return 0..1 (1 = up) */
 function gauss(x,mu,s){ var d=(x-mu)/s; return Math.exp(-0.5*d*d); }
 function wEkg(ph,type){
-  if(type==='asys') return 0.5+0.004*Math.sin(ph*80);
-  var y=0.5;
-  y+=0.07*gauss(ph,0.16,0.028);           // P
-  y-=0.05*gauss(ph,0.30,0.010);           // Q
-  y+=0.42*gauss(ph,0.335,0.010);          // R
-  y-=0.12*gauss(ph,0.365,0.012);          // S
-  y+=0.13*gauss(ph,0.55,0.045);           // T
+  var W=ekgDef(type).w||{};
+  if(W.flat) return 0.5+(Math.random()-0.5)*0.02;                      // Asystolie
+  if(W.chaos) return 0.5+0.26*Math.sin(ph*38+mon.beatN)+0.15*Math.sin(ph*67+2)+(Math.random()-0.5)*0.14; // Kammerflimmern
+  var beat=mon.beatN||0, y=0.5;
+  var wide=(W.qrs>1.5), hasP=(W.p&&W.pq!=='diss'), drop=false, tSign=1, ampR=0.42;
+  if(W.drop==='wenckebach'){ var r1=W.ratio||4; if(beat%r1===r1-1) drop=true; }   // gedroppter QRS
+  if(W.drop==='mobitz2'){ var r2=W.ratio||3; if(beat%r2===r2-1) drop=true; }
+  if(W.ectopic && beat%4===3){ if(W.ectopic==='ves'){ wide=true; hasP=false; tSign=-1; ampR=0.5; } else { hasP=true; wide=false; } }
+  var pq=(typeof W.pq==='number')?(W.pq-1)*0.05:(W.pq==='inc'?(beat%(W.ratio||4))*0.028:0); // PQ-Verlängerung
+  if(hasP) y+=0.07*gauss(ph,0.16+pq*0.3,0.028);
+  if(!drop){ var qc=0.335+pq;
+    if(wide){ y+=ampR*gauss(ph,qc+0.02,0.030)-0.13*gauss(ph,qc-0.04,0.02)-0.16*gauss(ph,qc+0.08,0.026)+0.17*(-tSign)*gauss(ph,0.62,0.05); }
+    else { y+=-0.05*gauss(ph,qc-0.03,0.010)+ampR*gauss(ph,qc,0.010)-0.12*gauss(ph,qc+0.03,0.012)+0.13*tSign*gauss(ph,0.55,0.045); }
+  }
+  if(W.flutter) y+=0.06*(2*((ph*4)%1)-1);        // Sägezahn
+  if(W.irregular) y+=(Math.random()-0.5)*0.03;   // Flimmer-Grundlinie
+  if(W.pq==='diss') y+=0.06*gauss((ph*2)%1,0.5,0.05); // unabhängige P (AV-Dissoziation)
   return y;
 }
 function wPleth(ph,type){
@@ -705,8 +791,12 @@ function monFrame(ts){
   var sweep=6.0; var pxPerSec=cols/sweep; mon.acc+=pxPerSec*dt; var k=Math.floor(mon.acc); if(k>60)k=60; mon.acc-=k;
   var colT=1/pxPerSec;
   var perE=r.hr>0?60/r.hr:9999, perR=r.rr>0?60/r.rr:9999;
+  var Wr=ekgDef(r.ekg||'normal').w||{};
   for(var j=0;j<k;j++){
-    mon.phE=(mon.phE+colT/perE)%1; mon.phR=(mon.phR+colT/perR)%1;
+    var prevE=mon.phE;
+    mon.phE=(mon.phE+colT/(perE*(mon.rrJit||1)))%1;
+    if(mon.phE<prevE){ mon.beatN=(mon.beatN||0)+1; mon.rrJit=Wr.irregular?(0.55+Math.random()*0.95):1; }
+    mon.phR=(mon.phR+colT/perR)%1;
     mon.buf.ekg.push(wEkg(mon.phE,r.ekg||'normal')); mon.buf.ekg.shift();
     mon.buf.pleth.push(wPleth(mon.phE,r.pleth||'normal')); mon.buf.pleth.shift();
     mon.buf.capno.push(wCapno(mon.phR,r.capno||'normal',r.etco2)); mon.buf.capno.shift();
@@ -740,6 +830,33 @@ function renderCapno(){
       '<span class="cc-e">'+cp.etco2+'</span><b>'+cp.name+'</b><div class="cc-m">'+cp.meaning+'</div><div class="cc-r">→ '+cp.react+'</div></div>';
   }).join('');
   $$('#capnoGrid .capno-card').forEach(function(c){ c.onclick=function(){ if(c.dataset.inc) gotoIncident(c.dataset.inc); }; });
+}
+/* ---------- EKG-Rhythmen: Mini-Vorschau (nutzt wEkg) + Galerie + Chips ---------- */
+function ekgSVG(def){
+  var pts=[], saveBeat=mon.beatN, N=42, beats=4;
+  for(var b=0;b<beats;b++){ mon.beatN=b;
+    for(var i=0;i<N;i++){ var ph=i/N; var y=wEkg(ph,def.id); pts.push(((b*N+i)/(beats*N)*100).toFixed(1)+','+(55-(y-0.12)/0.86*46).toFixed(1)); }
+  }
+  mon.beatN=saveBeat;
+  return '<svg viewBox="0 0 100 60" preserveAspectRatio="none"><polyline fill="none" stroke="#28e07a" stroke-width="1.5" points="'+pts.join(' ')+'"/></svg>';
+}
+function renderEkgGallery(){
+  var box=$('#ekgGrid'); if(!box) return;
+  box.innerHTML=(A.ekg||[]).map(function(r){
+    return '<div class="capno-card" data-r="'+r.id+'" data-inc="'+(r.incident||'')+'">'+ekgSVG(r)+
+      '<span class="cc-e" style="color:'+(r.emergency?'#ff6b6b':'#28e07a')+'">'+(r.emergency?'NOTFALL':'Sev '+r.severity)+'</span><b>'+r.name+'</b>'+
+      '<div class="cc-m">'+r.recognize+'</div><div class="cc-r" style="color:#bfe0ff">Ursache: '+r.cause+'</div></div>';
+  }).join('');
+  $$('#ekgGrid .capno-card').forEach(function(c){ c.onclick=function(){ state.rhythm=c.dataset.r; renderRhythmChips(); if(mon.running) renderMonValues(); if(c.dataset.inc) gotoIncident(c.dataset.inc); }; });
+}
+function renderRhythmChips(){
+  var box=$('#rhythmChips'); if(!box) return;
+  if(state.monMode!=='ist'){ box.style.display='none'; return; } box.style.display='flex';
+  box.innerHTML='<span class="mc-label" style="align-self:center">Rhythmus beobachtet:</span>'+(A.ekg||[]).map(function(r){
+    var on=state.rhythm===r.id;
+    return '<button class="chip" data-r="'+r.id+'" style="'+(on?'border-color:#28e07a;background:rgba(40,224,122,.16);color:#fff':'')+(r.emergency?';box-shadow:inset 0 0 0 1px rgba(255,77,77,.4)':'')+'">'+r.name+'</button>';
+  }).join('');
+  $$('#rhythmChips .chip').forEach(function(b){ b.onclick=function(){ state.rhythm=b.dataset.r; renderRhythmChips(); if(mon.running) renderMonValues(); }; });
 }
 
 /* ---------- Bedienung ---------- */
@@ -794,7 +911,7 @@ function switchTab(v){
 }
 function rerender(){ renderProto(); renderDrugs(); renderSettings(); renderMachine(); renderDevCtrl(); if(mon.running) renderMonValues(); }
 function boot(){
-  syncPatient(); renderIncidents(); renderFilters(); renderDrugs(); renderInfo(); renderCapno();
+  syncPatient(); renderIncidents(); renderFilters(); renderDrugs(); renderInfo(); renderCapno(); renderEkgGallery();
   $$('#tabs .tab').forEach(function(t){ t.onclick=function(){ switchTab(t.dataset.view); }; });
   $('#wt').addEventListener('input',function(e){ var v=parseFloat(e.target.value); state.wt=(v>0?v:0); syncPatient(); rerender(); });
   $('#age').addEventListener('change',function(e){ state.age=e.target.value; renderSettings(); });

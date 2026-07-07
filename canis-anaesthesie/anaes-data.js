@@ -18,12 +18,13 @@ window.ANAES = {
   ],
 
   /* Normwerte unter Allgemeinanästhesie (Richtwerte) */
+  /* map = MAP-Band; nibp = SYS-Band; dia = DIA-Band. Regel: MAP ≈ DIA + (SYS−DIA)/3 */
   vitals: {
-    hund:        { hr:[60,140],  rr:[8,20],   spo2:[95,100], etco2:[35,45], map:[70,120], temp:[37.5,39.2] },
-    katze:       { hr:[100,180], rr:[8,25],   spo2:[95,100], etco2:[35,45], map:[70,120], temp:[37.5,39.2] },
-    kaninchen:   { hr:[130,250], rr:[30,60],  spo2:[95,100], etco2:[30,45], map:[60,90],  temp:[38.0,40.0] },
-    meerschwein: { hr:[200,300], rr:[40,100], spo2:[95,100], etco2:[30,45], map:[60,90],  temp:[37.2,39.5] },
-    reptil:      { hr:[10,80],   rr:[2,10],   spo2:[90,100], etco2:[15,35], map:[30,60],  temp:[24,32] }
+    hund:        { hr:[60,140],  rr:[8,20],   spo2:[95,100], etco2:[35,45], map:[70,120], nibp:[90,160],  dia:[55,100], temp:[37.5,39.2] },
+    katze:       { hr:[100,180], rr:[8,25],   spo2:[95,100], etco2:[35,45], map:[70,120], nibp:[90,160],  dia:[55,100], temp:[37.5,39.2] },
+    kaninchen:   { hr:[130,250], rr:[30,60],  spo2:[95,100], etco2:[30,45], map:[60,90],  nibp:[80,130],  dia:[50,90],  temp:[38.0,40.0] },
+    meerschwein: { hr:[200,300], rr:[40,100], spo2:[95,100], etco2:[30,45], map:[60,90],  nibp:[80,130],  dia:[50,90],  temp:[37.2,39.5] },
+    reptil:      { hr:[10,80],   rr:[2,10],   spo2:[90,100], etco2:[15,35], map:[30,60],  nibp:[30,90],   dia:[20,50],  temp:[24,32] }
   },
 
   /* =================== MEDIKAMENTE =================== */
@@ -507,6 +508,57 @@ window.ANAES.capno = [
     meaning:'Einkerbung im Plateau: Patient versucht selbst zu atmen (nachlassende Relaxierung / zu flach).', react:'Narkosetiefe / Relaxierung prüfen.' },
   { id:'rise',     name:'Plötzlicher EtCO₂-Anstieg',       etco2:'↑', incident:'asystolie',
     meaning:'Sprunghafter Anstieg: Wiederkehr des Kreislaufs (ROSC) unter CPR – oder plötzliche Hypoventilation/Hyperthermie.', react:'Unter CPR: gutes Zeichen (ROSC) – Puls prüfen.' }
+];
+
+/* =================== EKG-RHYTHMEN (Station 31) ===================
+   w = Wellenform-Flags für den Generator wEkg():
+     p:P-Welle · pq:PQ-Faktor(1|Zahl|'inc'Wenckebach|'diss'AV-Dissoziation) ·
+     qrs:Breitenfaktor(1 schmal, ~2.4 breit) · drop:'wenckebach'|'mobitz2'|null ·
+     ratio:Ausfall alle n · rate:Frequenzfaktor · ectopic:'ves'|'sves' ·
+     irregular:VHF · flutter:Sägezahn · chaos:Kammerflimmern · flat:Asystolie */
+window.ANAES.ekg = [
+  { id:'sinus', name:'Sinusrhythmus', kind:'normal', incident:null, severity:1, emergency:false,
+    recognize:'Vor jedem QRS eine P-Welle, PQ konstant, QRS schmal, RR regelmäßig.',
+    cause:'Physiologisch / adäquate Narkosetiefe.', w:{p:true,pq:1,qrs:1,drop:null,rate:1} },
+  { id:'sinusbrady', name:'Sinusbradykardie', kind:'brady', incident:'bradykardie', severity:3, emergency:false,
+    recognize:'Wie Sinus, aber RR deutlich verlängert, HF unter Norm.',
+    cause:'Zu tiefe Narkose (Iso hoch), Opioide/α2, Vagotonus, Hypothermie, Hyperkaliämie.', w:{p:true,pq:1,qrs:1,drop:null,rate:0.45} },
+  { id:'sinustachy', name:'Sinustachykardie', kind:'tachy', incident:'tachykardie', severity:2, emergency:false,
+    recognize:'Regelmäßig, P vor QRS, QRS schmal, RR kurz, HF über Norm.',
+    cause:'Zu flache Narkose/Schmerz, Hypovolämie, Hyperkapnie, Hyperthermie, Katecholamine.', w:{p:true,pq:1,qrs:1,drop:null,rate:1.9} },
+  { id:'avb1', name:'AV-Block I°', kind:'block', incident:'bradykardie', severity:2, emergency:false,
+    recognize:'PQ-Zeit konstant VERLÄNGERT, aber jedem P folgt ein QRS. Meist benigne, beobachten.',
+    cause:'Vagotonus, α2-Agonisten/Opioide, AV-Knoten-Erkrankung, Elektrolyte.', w:{p:true,pq:2.1,qrs:1,drop:null,rate:0.8} },
+  { id:'avb2a', name:'AV-Block II° Mobitz I (Wenckebach)', kind:'block', incident:'bradykardie', severity:3, emergency:false,
+    recognize:'PQ wird von Schlag zu Schlag LÄNGER, bis ein QRS ausfällt (Lücke).',
+    cause:'Hoher Vagotonus, α2-Agonisten, tiefe Narkose.', w:{p:true,pq:'inc',qrs:1,drop:'wenckebach',ratio:4,rate:0.7} },
+  { id:'avb2b', name:'AV-Block II° Mobitz II', kind:'block', incident:'bradykardie', severity:4, emergency:false,
+    recognize:'PQ KONSTANT, dann fällt unvermittelt ein QRS aus. Höheres Risiko → III°.',
+    cause:'His-Purkinje-/Myokarderkrankung, Medikamenten-/Elektrolyteffekt.', w:{p:true,pq:1.3,qrs:1,drop:'mobitz2',ratio:3,rate:0.75} },
+  { id:'avb3', name:'AV-Block III° (total)', kind:'block', incident:'bradykardie', severity:5, emergency:true,
+    recognize:'P-Wellen und QRS ohne festen Bezug (Dissoziation), QRS langsam & oft breit. NOTFALL.',
+    cause:'Fortgeschrittene Leitungserkrankung, schwere Hyperkaliämie, Digoxin-Toxizität.', w:{p:true,pq:'diss',qrs:2.2,drop:null,rate:0.35} },
+  { id:'sves', name:'Supraventrikuläre Extrasystole (SVES)', kind:'ectopic', incident:null, severity:2, emergency:false,
+    recognize:'Vorzeitiger, SCHMALER QRS; P abnorm/versteckt; keine voll kompensatorische Pause.',
+    cause:'Vorhofdehnung, Elektrolyte, Katecholamine – meist wenig bedrohlich.', w:{p:true,pq:1,qrs:1,drop:null,rate:1,ectopic:'sves'} },
+  { id:'ves', name:'Ventrikuläre Extrasystole (VES/PVC)', kind:'ectopic', incident:'tachykardie', severity:3, emergency:false,
+    recognize:'BREITER, vorzeitiger QRS OHNE P, T entgegengesetzt, danach kompensatorische Pause.',
+    cause:'Hypoxie/Hyperkapnie, falsche Narkosetiefe, Elektrolyte (K⁺/Mg²⁺), Myokardreizung (GDV/Milz), Katecholamine.', w:{p:true,pq:1,qrs:1,drop:null,rate:0.9,ectopic:'ves'} },
+  { id:'vtach', name:'Ventrikuläre Tachykardie', kind:'tachy', incident:'tachykardie', severity:5, emergency:true,
+    recognize:'Schnelle, regelmäßige, BREITE QRS-Serie ohne P-Wellen; RR kurz. Perfusion prüfen!',
+    cause:'Wie VES, ausgeprägter; Myokardhypoxie/-erkrankung, schwere Elektrolytstörung.', w:{p:false,pq:1,qrs:2.4,drop:null,rate:2.2} },
+  { id:'afib', name:'Vorhofflimmern', kind:'tachy', incident:'tachykardie', severity:3, emergency:false,
+    recognize:'KEINE P-Wellen (flimmernde Grundlinie), QRS schmal, RR unregelmäßig-unregelmäßig.',
+    cause:'Vorhofdilatation (DCM/Klappe), große Rassen; kein Akut-Sofortmedikament intraop.', w:{p:false,pq:1,qrs:1,drop:null,rate:1.6,irregular:true} },
+  { id:'aflutter', name:'Vorhofflattern', kind:'tachy', incident:'tachykardie', severity:3, emergency:false,
+    recognize:'SÄGEZAHN-Grundlinie (Flatterwellen), QRS schmal, oft regelmäßige Überleitung (2:1).',
+    cause:'Vorhoferkrankung, Reentry, strukturelle Herzerkrankung.', w:{p:false,pq:1,qrs:1,drop:null,rate:1.4,flutter:true} },
+  { id:'vfib', name:'Kammerflimmern', kind:'arrest', incident:'asystolie', severity:5, emergency:true,
+    recognize:'CHAOTISCHE, unregelmäßige Grundlinie ohne abgrenzbare QRS. Kein Puls → CPR + Defibrillation.',
+    cause:'Myokardhypoxie, schwere Elektrolytstörung, Endpunkt vieler Notfälle.', w:{p:false,pq:1,qrs:1,drop:null,rate:1,chaos:true} },
+  { id:'asys', name:'Asystolie', kind:'arrest', incident:'asystolie', severity:5, emergency:true,
+    recognize:'Flache NULLLINIE (keine P, kein QRS). Sofort CPR.',
+    cause:'Endpunkt schwerer Hypoxie/Hyperkaliämie/tiefer Narkose, progrediente Bradykardie.', w:{p:false,pq:1,qrs:1,drop:null,rate:1,flat:true} }
 ];
 
 /* =================== BEDIENUNG / STARTSEQUENZ =================== */
