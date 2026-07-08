@@ -498,3 +498,125 @@ html[data-theme="light"] .devr .dn{color:#15202e !important}
 html[data-theme="light"] .devr .dv{color:#0a6b8a !important}
 html[data-theme="light"] .devr .dt{color:#0a6b45 !important}
 html[data-theme="light"] .devr.off .dt{color:#b3760a !important}
+
+/* =========================================================================
+   12 · SHARED SETTINGS EFFECTS — applied via data-attributes on <html>
+   (set by vetpharm-ui.js from the Einstellungen drawer, all modules)
+   ========================================================================= */
+:root{--vp-scale:1}
+html[data-vp-fontsize="large"]{--vp-scale:1.12;font-size:112%}
+html[data-vp-fontsize="xl"]{--vp-scale:1.25;font-size:125%}
+
+/* Bewegung reduzieren — like prefers-reduced-motion, on demand */
+html[data-vp-motion="reduce"] *,
+html[data-vp-motion="reduce"] *::before,
+html[data-vp-motion="reduce"] *::after{
+  animation-duration:.001ms !important;animation-iteration-count:1 !important;
+  transition-duration:.001ms !important;scroll-behavior:auto !important}
+html[data-vp-motion="reduce"] .vp-topline,
+html[data-vp-motion="reduce"] .route-line,
+html[data-vp-motion="reduce"] .anat-flow{animation:none !important}
+
+/* Glass-Effekt aus — drop every backdrop blur (perf / low-end devices) */
+html[data-vp-glass="off"] *{-webkit-backdrop-filter:none !important;backdrop-filter:none !important}
+
+/* Hoher Kontrast — stärkere Ränder */
+html[data-vp-contrast="high"] .card,
+html[data-vp-contrast="high"] .panel-card,
+html[data-vp-contrast="high"] .stat,
+html[data-vp-contrast="high"] .chip,
+html[data-vp-contrast="high"] .btn,
+html[data-vp-contrast="high"] .app-action,
+html[data-vp-contrast="high"] .tab,
+html[data-vp-contrast="high"] .mode-tab,
+html[data-vp-contrast="high"] .vp-nav-link,
+html[data-vp-contrast="high"] .inc-btn,
+html[data-vp-contrast="high"] .drug-card{border-color:rgba(10,162,196,.55) !important}
+html[data-theme="dark"][data-vp-contrast="high"] .card,
+html[data-theme="dark"][data-vp-contrast="high"] .inc-btn{border-color:rgba(120,200,230,.5) !important}
+html[data-vp-tips="off"] .vp-tip{display:none !important}
+
+/* =========================================================================
+   13 · INJECTED CONTROL — gear (Einstellungen), matches toggle/hamburger
+   ========================================================================= */
+.vp-gear{height:36px;min-width:40px;border-radius:11px;cursor:pointer;flex:0 0 auto;
+  display:inline-flex;align-items:center;justify-content:center;line-height:1;padding:0 10px;
+  border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#eaf1fb;transition:.2s}
+.vp-gear .vp-gi{font-size:17px;display:inline-block;transition:transform .5s cubic-bezier(.4,0,.2,1)}
+.vp-gear:hover{background:rgba(255,255,255,.14);transform:translateY(-1px)}
+.vp-gear:hover .vp-gi{transform:rotate(90deg)}
+.app-action.vp-gear,.btn.vp-gear{height:34px}
+html[data-theme="light"] .vp-gear{
+  border:1px solid rgba(20,40,70,.16);
+  background:linear-gradient(180deg,rgba(255,255,255,.85),rgba(255,255,255,.62));
+  color:#0b5566;-webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%);
+  box-shadow:0 4px 14px rgba(28,48,82,.14), inset 0 1px 0 rgba(255,255,255,.8)}
+.vp-fab-bar .vp-gear{height:42px;min-width:46px;border-radius:12px}
+.vp-fab-bar .vp-gear .vp-gi{font-size:19px}
+
+/* =========================================================================
+   14 · GLOBAL TOOLTIP — frosted floating hint (data-vp-tip on any element)
+   ========================================================================= */
+.vp-tip{position:fixed;z-index:400;max-width:min(320px,86vw);pointer-events:none;
+  left:0;top:0;opacity:0;transform:translateY(4px) scale(.97);transition:opacity .14s ease,transform .14s ease;
+  padding:9px 12px;border-radius:12px;font-family:Segoe UI,Inter,sans-serif;line-height:1.42;
+  background:linear-gradient(180deg,rgba(22,28,40,.97),rgba(14,18,26,.97));color:#eef4fb;
+  border:1px solid rgba(255,255,255,.14);box-shadow:0 14px 40px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08);
+  -webkit-backdrop-filter:blur(14px) saturate(170%);backdrop-filter:blur(14px) saturate(170%)}
+.vp-tip.show{opacity:1;transform:translateY(0) scale(1)}
+.vp-tip .vp-tip-t{display:block;font-size:calc(12.5px * var(--vp-scale));font-weight:800;color:#8bd6ea;margin-bottom:3px;letter-spacing:.2px}
+.vp-tip .vp-tip-b{display:block;font-size:calc(12.5px * var(--vp-scale));color:#d7e2ee}
+.vp-tip::after{content:"";position:absolute;left:var(--vp-tip-ax,50%);width:11px;height:11px;transform:translateX(-50%) rotate(45deg);
+  background:linear-gradient(135deg,rgba(22,28,40,.97),rgba(14,18,26,.97));border:1px solid rgba(255,255,255,.14)}
+.vp-tip[data-pos="above"]::after{bottom:-6px;border-top:none;border-left:none}
+.vp-tip[data-pos="below"]::after{top:-6px;border-bottom:none;border-right:none}
+html[data-theme="light"] .vp-tip{
+  background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(244,248,253,.98));color:#1a2632;
+  border:1px solid rgba(20,40,70,.16);box-shadow:0 16px 44px rgba(28,48,82,.22),inset 0 1px 0 rgba(255,255,255,.9)}
+html[data-theme="light"] .vp-tip .vp-tip-t{color:#0b6b83}
+html[data-theme="light"] .vp-tip .vp-tip-b{color:#33424f}
+html[data-theme="light"] .vp-tip::after{background:linear-gradient(135deg,rgba(255,255,255,.98),rgba(244,248,253,.98));border:1px solid rgba(20,40,70,.16)}
+
+/* =========================================================================
+   15 · SETTINGS DRAWER (left) — same frosted look as the nav drawer
+   ========================================================================= */
+.vp-set-overlay{position:fixed;inset:0;z-index:210;background:rgba(8,12,20,.55);
+  -webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);opacity:0;visibility:hidden;transition:.3s}
+.vp-set-overlay.open{opacity:1;visibility:visible}
+html[data-theme="light"] .vp-set-overlay{background:rgba(120,140,170,.32)}
+.vp-set-panel{position:absolute;top:0;left:0;height:100%;width:min(380px,92vw);
+  display:flex;flex-direction:column;gap:6px;padding:20px 18px calc(24px + env(safe-area-inset-bottom));
+  background:linear-gradient(165deg,#161d2b,#0b0e14);border-right:1px solid rgba(255,255,255,.08);
+  box-shadow:16px 0 50px rgba(0,0,0,.55);transform:translateX(-102%);
+  transition:transform .34s cubic-bezier(.4,0,.2,1);overflow:auto}
+.vp-set-overlay.open .vp-set-panel{transform:translateX(0)}
+html[data-theme="light"] .vp-set-panel{
+  background:linear-gradient(165deg,rgba(255,255,255,.9),rgba(244,248,253,.82)) !important;
+  -webkit-backdrop-filter:blur(30px) saturate(185%);backdrop-filter:blur(30px) saturate(185%);
+  border-right:1px solid rgba(255,255,255,.85) !important;box-shadow:18px 0 56px rgba(28,48,82,.20) !important}
+.vp-set-close{background:none;border:none;color:#94a3b8;font-size:28px;cursor:pointer;line-height:1;padding:0 4px}
+.vp-set-close:hover{color:#fff}
+html[data-theme="light"] .vp-set-close{color:#6a7a8d}
+html[data-theme="light"] .vp-set-close:hover{color:#15202e}
+.vp-set-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 2px}
+.vp-set-row>label{font:600 13px Segoe UI,Inter,sans-serif;color:#c7d3e0;flex:0 0 auto}
+html[data-theme="light"] .vp-set-row>label{color:#33424f}
+.vp-seg{display:inline-flex;gap:3px;padding:3px;border-radius:11px;background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.1);flex-wrap:wrap;justify-content:flex-end}
+.vp-seg button{border:none;background:transparent;color:#a9b7c8;cursor:pointer;font:700 12px Segoe UI,Inter,sans-serif;
+  padding:6px 11px;border-radius:8px;transition:.18s;white-space:nowrap}
+.vp-seg button:hover{color:#fff;background:rgba(255,255,255,.08)}
+.vp-seg button.on{background:linear-gradient(180deg,#0aa2c4,#0b7f9c);color:#fff;box-shadow:0 3px 10px rgba(10,162,196,.35)}
+html[data-theme="light"] .vp-seg{background:rgba(20,40,70,.06);border-color:rgba(20,40,70,.12)}
+html[data-theme="light"] .vp-seg button{color:#5a6b7d}
+html[data-theme="light"] .vp-seg button:hover{color:#15202e;background:rgba(255,255,255,.7)}
+html[data-theme="light"] .vp-seg button.on{background:linear-gradient(180deg,#0aa2c4,#0b8299);color:#fff}
+.vp-set-actions{margin-top:12px}
+.vp-set-reset{width:100%;height:40px;border-radius:10px;cursor:pointer;font:700 13px Segoe UI,Inter,sans-serif;
+  background:rgba(226,59,59,.12);border:1px solid rgba(226,59,59,.4);color:#ff9a9a;transition:.18s}
+.vp-set-reset:hover{background:rgba(226,59,59,.22);color:#fff}
+html[data-theme="light"] .vp-set-reset{color:#c02b2b;background:rgba(226,59,59,.08)}
+@media(max-width:520px){
+  .vp-seg button{padding:6px 9px;font-size:11.5px}
+  .vp-set-panel{width:94vw}
+}

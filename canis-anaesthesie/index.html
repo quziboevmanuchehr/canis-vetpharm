@@ -237,8 +237,8 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 }
 @media(max-width:380px){ .mon-tiles,.mon-inputs{grid-template-columns:repeat(2,1fr)} }
 </style>
-<link rel="stylesheet" href="../shared/glass.css?v=8">
-<script src="../shared/vetpharm-ui.js?v=8"></script>
+<link rel="stylesheet" href="../shared/glass.css?v=9">
+<script src="../shared/vetpharm-ui.js?v=9"></script>
 </head>
 <body>
 <header>
@@ -263,12 +263,13 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 </div></div>
 
 <nav class="tabs" id="tabs">
-  <button class="tab active" data-view="notfall">🚨 Notfall</button>
-  <button class="tab" data-view="geraet">🖥️ Gerät (Monitor + Narkose)</button>
-  <button class="tab" data-view="medis">💉 Medikamente</button>
-  <button class="tab" data-view="bedienung">📖 Bedienung</button>
-  <button class="tab" data-view="settings">⚙️ Einstellungen</button>
-  <button class="tab" data-view="info">📋 Info</button>
+  <button class="tab active" data-view="notfall" data-vp-tip="Narkosezwischenfälle mit Schwellen, Sofortmaßnahmen, Geräte-Einstellung & berechneten Dosen – jetzt mit Ursache über Blutwerte/Stoffwechsel/Reise">🚨 Notfall</button>
+  <button class="tab" data-view="geraet" data-vp-tip="Virtueller Monitor (EKG/Kapno) + Narkosegerät: Verdampfer drehen, Flowmeter schieben, Werte eingeben">🖥️ Gerät (Monitor + Narkose)</button>
+  <button class="tab" data-view="medis" data-vp-tip="Gewichtsgenauer Dosis-Rechner für 33 Wirkstoffe (mg & mL)">💉 Medikamente</button>
+  <button class="tab" data-view="bedienung" data-vp-tip="Startablauf, Sicherheit und Geräte-Dichtigkeitstest (Leak-Test) vor der Narkose">📖 Bedienung &amp; Dichtigkeit</button>
+  <button class="tab" data-view="modelle" data-vp-tip="Drehbare 3D-Molekülmodelle der Anästhetika mit Wirkmechanismus">🧪 3D-Moleküle</button>
+  <button class="tab" data-view="settings" data-vp-tip="Geräte-Startwerte (O₂, Isofluran, AZV, PIP …) pro Patient">⚙️ Einstellungen</button>
+  <button class="tab" data-view="info" data-vp-tip="Über das Modul, Quellen und Verknüpfungen">📋 Info</button>
 </nav>
 
 <main class="shell">
@@ -339,6 +340,18 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
       <div class="sec-h">⚠️ Sicherheit</div>
       <div id="opSafety"></div>
     </div>
+
+    <div class="card" id="leakCard">
+      <h3>🔧 Dichtigkeitstest &amp; Prä-Anästhesie-Check</h3>
+      <p class="muted" style="font-size:12.5px;margin-top:-4px">Ein undichter Narkosekreis ist eine häufige, vermeidbare Ursache für Hypoxämie. Der Low-Pressure-Leak-Test dauert unter einer Minute – <b>vor jeder Narkose</b> durchführen.</p>
+      <div class="sec-h">Low-Pressure-Dichtigkeitstest (Leak-Test) · Schritt für Schritt</div>
+      <div class="op-steps" id="leakSteps"></div>
+      <div class="vp-note" style="margin-top:10px">Kein stabiler Druck = <b>Leck</b>: Schläuche, Y-Stück, Absorberdichtung, Beutel und Verdampfer-Sitz prüfen und erneut testen. Erst nach bestandenem Test den Patienten anschließen.</div>
+      <div class="sec-h" style="margin-top:16px">Prä-Anästhesie-Checkliste <span id="chkCount" style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">0/…</span></div>
+      <div class="vp-chk-bar"><i id="chkBar"></i></div>
+      <div id="chkList" style="margin-top:8px"></div>
+      <div style="margin-top:10px"><button class="chip" id="chkReset" data-vp-tip="Alle Häkchen zurücksetzen">↺ Zurücksetzen</button></div>
+    </div>
   </section>
 
   <section class="view" id="settings">
@@ -361,6 +374,21 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
         <a class="chip" href="../canis-reise/">🧫 Reiseerkrankungen</a>
         <a class="chip" href="../canis-metabolica/">🧬 Stoffwechsel</a>
       </div>
+    </div>
+  </section>
+  <section class="view" id="modelle">
+    <div class="card">
+      <h3>🧪 3D-Molekülmodelle der Anästhetika</h3>
+      <p class="muted" style="font-size:12.5px;margin-top:-4px">Drehbare, schematische 3D-Modelle (Schweratom-Gerüst) der wichtigsten Narkosemittel. Wähle unten ein Molekül – rechts steht der Wirkmechanismus. Ziehen dreht, Scrollen/Kneifen zoomt.</p>
+      <div class="grid-2" style="margin-top:12px;grid-template-columns:minmax(0,1.1fr) minmax(280px,.9fr)">
+        <div>
+          <div class="vp-mol-stage" id="molStage"><div class="vp-mol-load">3D-Szene wird geladen … (Three.js benötigt Internet/WebGL)</div></div>
+          <div class="vp-mol-legend" id="molLegend"></div>
+          <div class="vp-mol-pal" id="molPalette"></div>
+        </div>
+        <aside class="card" id="molInfo" style="align-self:start"></aside>
+      </div>
+      <p class="muted" style="font-size:11.5px;margin-top:10px">Modelle sind didaktisch vereinfacht (Wasserstoffatome & exakte Bindungswinkel teils reduziert) und dienen dem Verständnis, nicht der kristallografischen Genauigkeit.</p>
     </div>
   </section>
 </main>
@@ -451,7 +479,7 @@ function renderProto(){
   if(!i){ box.innerHTML='<p class="muted">Wähle links einen Zwischenfall.</p>'; return; }
   var s=sp();
   var thr=(i.thresholds&&(i.thresholds[state.sp]||i.thresholds.all))||'';
-  var html='<div class="proto-head"><span class="ic">'+i.icon+'</span><div><h2 style="margin:0">'+i.name+'</h2><span class="dose-cls">'+i.cat+' · Patient: '+s.name+' '+fmt(state.wt)+' kg</span></div><span class="badge" style="--c:'+(i.color||'var(--red)')+';margin-left:auto">'+(i.tag||i.cat)+'</span></div>';
+  var html='<div class="proto-head"><span class="ic">'+i.icon+'</span><div><h2 style="margin:0">'+i.name+'</h2><span class="dose-cls">'+(i.cat||i.tag||'Zwischenfall')+' · Patient: '+s.name+' '+fmt(state.wt)+' kg</span></div><span class="badge" style="--c:'+(i.color||'var(--red)')+';margin-left:auto">'+(i.tag||i.cat)+'</span></div>';
   if(thr) html+='<div class="thr">🎯 <b>Schwelle '+s.name+':</b> '+thr+'</div>';
   if(i.causes&&i.causes.length){ html+='<div class="sec-h">Häufige Ursachen</div><div class="chips">'+i.causes.map(function(c){return '<span class="chip" style="cursor:default">'+c+'</span>';}).join('')+'</div>'; }
   html+='<div class="sec-h">Sofort-Maßnahmen (Reihenfolge)</div><div class="steps">'+(i.steps||[]).map(function(s){return '<div class="step">'+s+'</div>';}).join('')+'</div>';
@@ -921,6 +949,208 @@ function boot(){
   try{ var q=new URLSearchParams(location.search); if(q.get('kg')){state.wt=parseFloat(q.get('kg'))||state.wt; $('#wt').value=state.wt;} if(q.get('sp')&&A.species.find(function(s){return s.id===q.get('sp');})){state.sp=q.get('sp');} syncPatient(); rerender(); }catch(e){}
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
+})();
+</script>
+
+<style>
+/* VET-PHARM additive: Dichtigkeitstest-Checkliste, Zwischenfall-Verknüpfung, 3D-Moleküle */
+.vp-note{border:1px dashed rgba(255,209,102,.42);background:rgba(255,209,102,.08);border-radius:9px;padding:10px 12px;color:#ffe7a8;font-size:12.5px;line-height:1.5}
+html[data-theme="light"] .vp-note{background:rgba(255,243,205,.78) !important;color:#7a5a00 !important;border-color:rgba(189,130,15,.4) !important}
+.vp-chk-bar{height:10px;border-radius:6px;background:rgba(255,255,255,.08);overflow:hidden;margin:4px 0}
+html[data-theme="light"] .vp-chk-bar{background:rgba(20,40,70,.1)}
+.vp-chk-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--violet),var(--green));transition:width .3s}
+.vp-chk{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-top:1px solid var(--line);cursor:pointer}
+.vp-chk:first-child{border-top:none}
+.vp-chk .bx{width:21px;height:21px;flex:0 0 auto;border-radius:6px;border:2px solid var(--line);margin-top:1px;display:flex;align-items:center;justify-content:center;color:transparent;font-weight:900;transition:.15s}
+.vp-chk.done .bx{background:var(--green);border-color:var(--green);color:#04121a}
+.vp-chk .tx{font-size:13px;line-height:1.5;color:var(--text)}
+.vp-chk .tx b{color:#fff}
+html[data-theme="light"] .vp-chk .tx b{color:#15202e}
+.vp-chk.done .tx{color:var(--muted)}
+.vp-chk .grp{font:10.5px var(--mono);text-transform:uppercase;letter-spacing:.5px;color:var(--violet);margin-right:6px}
+.vp-cause{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.vp-cause .ch{font:12px var(--mono);text-transform:uppercase;letter-spacing:.8px;color:var(--violet);margin-bottom:8px}
+.vp-cause .row{border:1px solid var(--line);border-radius:9px;padding:9px 11px;margin-bottom:8px;background:rgba(255,255,255,.03)}
+html[data-theme="light"] .vp-cause .row{background:rgba(255,255,255,.6)}
+.vp-cause .rt{font:700 12.5px var(--tech,Segoe UI,Inter,sans-serif);color:var(--text);margin-bottom:6px}
+.vp-cause .lk{display:flex;flex-wrap:wrap;gap:6px}
+.vp-xl{display:inline-flex;align-items:center;gap:5px;text-decoration:none;border:1px solid var(--line);border-radius:20px;padding:5px 10px;font-size:11.5px;color:var(--text);background:rgba(255,255,255,.04);transition:.16s}
+.vp-xl:hover{transform:translateY(-1px);border-color:var(--cyan);background:rgba(0,216,255,.1)}
+.vp-xl.blut{border-color:rgba(255,77,77,.4)}.vp-xl.blut:hover{background:rgba(255,77,77,.12)}
+.vp-xl.reise{border-color:rgba(255,209,102,.45)}.vp-xl.reise:hover{background:rgba(255,209,102,.14)}
+.vp-xl.stoff{border-color:rgba(0,216,255,.45)}
+.vp-mol-stage{position:relative;height:min(52vh,440px);border:1px solid var(--line);border-radius:12px;background:radial-gradient(circle at 50% 42%,rgba(139,124,246,.1),transparent 42%),#06080d;overflow:hidden;touch-action:none}
+.vp-mol-stage canvas{display:block;width:100%;height:100%;cursor:grab}
+.vp-mol-stage canvas:active{cursor:grabbing}
+.vp-mol-load{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#9aa8bb;font-size:13px;text-align:center;padding:20px;line-height:1.6}
+.vp-mol-pal{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.vp-mol-pal button{border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.04);color:var(--text);padding:8px 12px;cursor:pointer;font-size:12.5px;transition:.16s}
+html[data-theme="light"] .vp-mol-pal button{background:rgba(255,255,255,.62)}
+.vp-mol-pal button.on{border-color:var(--violet);background:rgba(139,124,246,.16);color:#fff}
+html[data-theme="light"] .vp-mol-pal button.on{color:#15202e;background:rgba(139,124,246,.2)}
+.vp-mol-legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.vp-mol-atom{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.vp-mol-atom i{width:13px;height:13px;border-radius:50%;display:inline-block}
+</style>
+
+<script>
+/* ============ VET-PHARM additive: Dichtigkeitstest · Ursachen-Verknüpfung · 3D-Moleküle ============ */
+(function(){
+"use strict";
+var A = window.ANAES || {incidents:[]};
+function $(s){return document.querySelector(s);}
+
+/* ---------- Leak-Test-Schritte ---------- */
+var LEAK=[
+ "APL-Ventil (Überdruck) vollständig <b>schließen</b> und das Y-Stück (Patientenanschluss) mit dem Daumen dicht verschließen.",
+ "Mit dem O₂-Flush den Kreis füllen, bis der Manometer-Zeiger auf etwa <b>30 cmH₂O</b> steht.",
+ "Frischgasfluss auf ca. <b>0</b> reduzieren. Der Druck muss stehen bleiben – ein Abfall zeigt ein Leck.",
+ "Akzeptabel ist eine Leckage von <b>&lt; 300 mL/min</b> bei 30 cmH₂O bzw. ein stabiler Druck über ~10–20 s.",
+ "APL-Ventil öffnen, um den Druck kontrolliert abzulassen – niemals den Patienten mit geschlossenem APL anschließen.",
+ "Hochdruckseite prüfen: O₂-Leitung/Reserveflasche, Verdampfer gefüllt &amp; verriegelt, Absaugung/Narkosegas-Fortleitung angeschlossen, Atemkalk aktiv."
+];
+var ls=$("#leakSteps");
+if(ls) ls.innerHTML=LEAK.map(function(t,i){return '<div class="op-step"><span class="n">'+(i+1)+'</span><div><p style="margin:0">'+t+'</p></div></div>';}).join("");
+
+/* ---------- Prä-Anästhesie-Checkliste ---------- */
+var CHK=[
+ ["Patient","Gewicht exakt bestimmt &amp; ASA-Status festgelegt"],
+ ["Patient","Klinische Untersuchung (Herz/Lunge, Schleimhäute, Hydratation)"],
+ ["Patient","Reise-/Importhistorie erfragt (Zeckenkrankheiten, Herzwurm)"],
+ ["Labor","Blutbild &amp; Chemie passend zu ASA/Alter"],
+ ["Labor","Elektrolyte (K⁺, Ca²⁺) bei Risiko/Erbrechen/Niere"],
+ ["Labor","Blutzucker bei Welpe/Toy/Sepsis"],
+ ["Vorbereitung","Nüchternheit geplant (Welpen kürzer – Hypoglykämie)"],
+ ["Vorbereitung","IV-Zugang gelegt &amp; durchgängig"],
+ ["Vorbereitung","Präoxygenierung (v. a. brachyzephal/kritisch)"],
+ ["Gerät","O₂-Vorrat/Reserveflasche geprüft"],
+ ["Gerät","Verdampfer gefüllt, eingesetzt &amp; verriegelt · Atemkalk aktiv"],
+ ["Gerät","Narkosekreis DICHT (Leak-Test bestanden)"],
+ ["Gerät","Tuben passender Größe + Ersatz, Cuff &amp; Laryngoskop geprüft"],
+ ["Monitoring","SpO₂ + EtCO₂ + EKG + Blutdruck angeschlossen"],
+ ["Monitoring","Temperatursonde + aktive Wärmung bereit"],
+ ["Notfall","Notfalldosen vorberechnet · Ambubeutel · Reversal bereit"]
+];
+var cl=$("#chkList"), bar=$("#chkBar"), cnt=$("#chkCount");
+function updChk(){var items=document.querySelectorAll("#chkList .vp-chk"),d=0;items.forEach(function(x){if(x.classList.contains("done"))d++;});
+  if(bar)bar.style.width=(items.length?Math.round(d/items.length*100):0)+"%";
+  if(cnt)cnt.textContent=d+"/"+items.length+(d===items.length&&items.length?" ✓ bereit":"");}
+if(cl){
+  cl.innerHTML=CHK.map(function(c,i){return '<div class="vp-chk" data-i="'+i+'"><div class="bx">✓</div><div class="tx"><span class="grp">'+c[0]+'</span>'+c[1]+'</div></div>';}).join("");
+  cl.querySelectorAll(".vp-chk").forEach(function(x){x.addEventListener("click",function(){x.classList.toggle("done");updChk();});});
+  var rs=$("#chkReset");if(rs)rs.addEventListener("click",function(){cl.querySelectorAll(".vp-chk.done").forEach(function(x){x.classList.remove("done");});updChk();});
+  updChk();
+}
+
+/* ---------- Zwischenfall → Ursache in Blutwerten / Stoffwechsel / Reise ---------- */
+function L(mod,id,label){
+  var href=mod==="blut"?("../canis-haematica/?w="+id):mod==="reise"?("../canis-reise/?d="+id):("../canis-metabolica/?q="+encodeURIComponent(id));
+  var ic=mod==="blut"?"🩸":mod==="reise"?"🧫":"🧬";
+  var tip=mod==="blut"?"Im Blutwerte-Atlas öffnen":mod==="reise"?"In den Reisekrankheiten öffnen":"In der Stoffwechselkarte suchen";
+  return '<a class="vp-xl '+mod+'" href="'+href+'" data-vp-tip="'+tip+'">'+ic+' '+label+'</a>';
+}
+var CAUSE={
+ hypotension:[
+   ["Hypoalbuminämie → mehr freie Wirkstofffraktion + niedriger onkotischer Druck",[L("blut","albumin","Albumin"),L("blut","gesamtprotein","Gesamtprotein")]],
+   ["Anämie / Hypovolämie",[L("blut","hkt","HKT / PCV")]],
+   ["Reisekrankheit (Anämie/Schock/Niere)",[L("reise","babesia","Babesiose"),L("reise","leish","Leishmaniose")]],
+   ["Gewebe-Minderperfusion → Laktat ↑",[L("blut","laktat","Laktat"),L("stoff","laktat","Glykolyse/Laktat")]]
+ ],
+ bradykardie:[
+   ["Hyperkaliämie / Elektrolyte → Reizleitung",[L("blut","kalium","Kalium (K⁺)"),L("blut","calcium","Calcium")]]
+ ],
+ tachykardie:[
+   ["Anämie / Hypovolämie (Kompensation)",[L("blut","hkt","HKT / PCV"),L("reise","babesia","Babesiose")]],
+   ["Hypoperfusion / metabolische Azidose",[L("blut","laktat","Laktat"),L("stoff","laktat","Glykolyse")]]
+ ],
+ tachypnoe:[
+   ["Anämie / metabolische Azidose",[L("blut","hkt","HKT"),L("blut","laktat","Laktat")]],
+   ["Lungen-/Herz-Reisekrankheit",[L("reise","angiostrongylus","Angiostrongylose"),L("reise","diroimmitis","Herzwurm")]]
+ ],
+ hypoxaemie:[
+   ["Anämie → O₂-Transport ↓ trotz guter Sättigung",[L("blut","hkt","HKT / PCV")]],
+   ["Herz-/Lungen-Reisekrankheit",[L("reise","diroimmitis","Herzwurm"),L("reise","angiostrongylus","Angiostrongylose"),L("reise","babesia","Babesiose")]]
+ ],
+ asystolie:[
+   ["Hyperkaliämie / Elektrolyte",[L("blut","kalium","Kalium"),L("blut","calcium","Calcium")]],
+   ["Schwere Hypoperfusion / Azidose",[L("blut","laktat","Laktat")]],
+   ["Myokarditis (Reisekrankheit)",[L("reise","trypanosoma","Chagas/Trypanosomose")]]
+ ]
+};
+var NAME2ID={}; (A.incidents||[]).forEach(function(i){NAME2ID[(i.name||"").trim()]=i.id;});
+var pbox=$("#protoBox");
+function injectCause(){
+  if(!pbox||pbox.querySelector(".vp-cause"))return;
+  var h=pbox.querySelector(".proto-head h2"); if(!h)return;
+  var id=NAME2ID[h.textContent.trim()]; if(!id||!CAUSE[id])return;
+  var rows=CAUSE[id].map(function(c){return '<div class="row"><div class="rt">'+c[0]+'</div><div class="lk">'+c[1].join("")+'</div></div>';}).join("");
+  var div=document.createElement("div"); div.className="vp-cause";
+  div.innerHTML='<div class="ch">🔗 Ursache in anderen Modulen finden</div>'+rows;
+  pbox.appendChild(div);
+}
+if(pbox){ new MutationObserver(injectCause).observe(pbox,{childList:true}); injectCause(); }
+
+/* ---------- 3D-Molekülmodelle ---------- */
+var EL={C:{c:0x5b6472,r:0.34},O:{c:0xef4444,r:0.32},N:{c:0x3b82f6,r:0.33},F:{c:0x86efac,r:0.27},Cl:{c:0x38d15a,r:0.5},H:{c:0xe8edf2,r:0.2}};
+function benzene(){var a=[],ang;for(var i=0;i<6;i++){ang=Math.PI/2+i*Math.PI/3;a.push(["C",1.4*Math.cos(ang),1.4*Math.sin(ang),0]);}return a;}
+var MOL={
+ propofol:{name:"Propofol",moa:"Positiver GABAA-Modulator: verstärkt den Chlorid-Einstrom → schnelle, glatte Hypnose. Sehr lipophil (Lipidemulsion), rasche Umverteilung → kurze Wirkung, kein Analgetikum, dosisabhängige Apnoe/Hypotonie.",
+   atoms:(function(){var a=benzene();a.push(["O",0,2.6,0]);a.push(["C",-2.45,1.4,0.3]);a.push(["C",-3.6,0.8,0]);a.push(["C",-2.55,2.55,0.9]);a.push(["C",2.45,1.4,0.3]);a.push(["C",3.6,0.8,0]);a.push(["C",2.55,2.55,0.9]);return a;})(),
+   bonds:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,0],[0,6],[1,7],[7,8],[7,9],[5,10],[10,11],[10,12]]},
+ isofluran:{name:"Isofluran",moa:"Halogenierter Ether. Verstärkt hemmende GABAA-/Glycin-Ströme und dämpft erregende Kanäle → Bewusstlosigkeit & Immobilität. Wird kaum verstoffwechselt (Ausatmung), gut steuerbar; dosisabhängige Vasodilatation.",
+   atoms:[["C",0,0,0],["F",-0.7,0.9,0.4],["F",-0.7,-0.9,0.4],["F",0.3,0,-1.05],["C",1.3,0.35,0.5],["Cl",1.65,1.95,0.2],["O",2.2,-0.6,0.0],["C",3.5,-0.4,0.35],["F",4.1,0.7,-0.15],["F",4.2,-1.5,0.05]],
+   bonds:[[0,1],[0,2],[0,3],[0,4],[4,5],[4,6],[6,7],[7,8],[7,9]]},
+ sevofluran:{name:"Sevofluran",moa:"Fluorierter Ether mit schnellerem An-/Abfluten und geringer Atemwegsreizung – ideal für Maskeneinleitung. Wirkmechanismus wie Isofluran (GABAA/Glycin-Verstärkung). Etwas höhere MAC (weniger potent).",
+   atoms:[["C",0,0,0],["F",-1.0,0.6,0.3],["O",1.2,0.4,-0.3],["C",2.4,-0.3,0.2],["C",3.2,0.7,1.1],["F",4.1,0.2,1.6],["F",3.7,1.7,0.6],["F",2.7,1.1,2.0],["C",3.1,-1.3,-0.6],["F",4.2,-1.6,-0.2],["F",2.8,-1.0,-1.9],["F",3.0,-2.4,0.15]],
+   bonds:[[0,1],[0,2],[2,3],[3,4],[4,5],[4,6],[4,7],[3,8],[8,9],[8,10],[8,11]]},
+ n2o:{name:"Distickstoffmonoxid (N₂O)",moa:"„Lachgas“: NMDA-Rezeptor-Antagonist mit analgetischem Zusatzeffekt. Als zweites Gas beschleunigt es die Aufnahme des Inhalationsnarkotikums (second-gas effect). Immer mit ausreichend O₂ und Vorsicht bei luftgefüllten Räumen.",
+   atoms:[["N",-1.15,0,0],["N",0,0,0],["O",1.18,0,0]],bonds:[[0,1],[1,2]]}
+};
+var ORDER=["propofol","isofluran","sevofluran","n2o"], molSel="propofol", molBuilt=false;
+var leg=$("#molLegend"); if(leg) leg.innerHTML=Object.keys(EL).map(function(e){return '<span class="vp-mol-atom"><i style="background:#'+EL[e].c.toString(16).padStart(6,"0")+'"></i>'+e+'</span>';}).join("");
+var pal=$("#molPalette");
+function renderMolInfo(){var m=MOL[molSel];var box=$("#molInfo");if(box)box.innerHTML='<h3>'+m.name+'</h3><p class="lead" style="font-size:13px">'+m.moa+'</p>';}
+function renderPal(){if(!pal)return;pal.innerHTML=ORDER.map(function(k){return '<button data-m="'+k+'"'+(k===molSel?' class="on"':"")+'>'+MOL[k].name.split(" (")[0]+'</button>';}).join("");
+  pal.querySelectorAll("button").forEach(function(b){b.addEventListener("click",function(){molSel=b.getAttribute("data-m");pal.querySelectorAll("button").forEach(function(x){x.classList.toggle("on",x===b);});renderMolInfo();if(window.__anaesMol)window.__anaesMol(molSel);});});}
+renderPal(); renderMolInfo();
+function loadThree(){return new Promise(function(res,rej){if(window.THREE)return res();var s=document.createElement("script");s.src="https://unpkg.com/three@0.160.0/build/three.min.js";s.onload=res;s.onerror=rej;document.head.appendChild(s);setTimeout(function(){if(!window.THREE)rej();},8000);});}
+function initMol(){
+  var stage=$("#molStage");if(!stage||!window.THREE)return;stage.innerHTML="";var THREE=window.THREE;
+  var w=stage.clientWidth,h=stage.clientHeight||420;
+  var scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(45,w/h,0.1,100);camera.position.set(0,0,9);
+  var renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setSize(w,h);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  stage.appendChild(renderer.domElement);var cv=renderer.domElement;
+  scene.add(new THREE.AmbientLight(0xffffff,0.72));
+  var key=new THREE.DirectionalLight(0xffffff,1.0);key.position.set(5,8,7);scene.add(key);
+  var rim=new THREE.PointLight(0x8b7cf6,0.7);rim.position.set(-7,3,5);scene.add(rim);
+  var g=new THREE.Group();scene.add(g);
+  var sph=new THREE.SphereGeometry(1,26,20),cyl=new THREE.CylinderGeometry(1,1,1,12),up=new THREE.Vector3(0,1,0);
+  function build(k){while(g.children.length)g.remove(g.children[0]);var m=MOL[k],at=m.atoms,ctr=new THREE.Vector3();
+    at.forEach(function(a){ctr.x+=a[1];ctr.y+=a[2];ctr.z+=a[3];});ctr.multiplyScalar(1/at.length);
+    var pos=at.map(function(a){return new THREE.Vector3(a[1]-ctr.x,a[2]-ctr.y,a[3]-ctr.z);});
+    m.bonds.forEach(function(b){var a=pos[b[0]],c=pos[b[1]],dir=new THREE.Vector3().subVectors(c,a),len=dir.length();
+      var mesh=new THREE.Mesh(cyl,new THREE.MeshStandardMaterial({color:0x9fb0c4,roughness:0.5,metalness:0.1}));
+      mesh.scale.set(0.08,len,0.08);mesh.position.copy(a).add(c).multiplyScalar(0.5);
+      mesh.quaternion.setFromUnitVectors(up,dir.clone().normalize());g.add(mesh);});
+    at.forEach(function(a,i){var e=EL[a[0]]||EL.C;var mesh=new THREE.Mesh(sph,new THREE.MeshStandardMaterial({color:e.c,roughness:0.35,emissive:e.c,emissiveIntensity:0.12}));mesh.scale.setScalar(e.r);mesh.position.copy(pos[i]);g.add(mesh);});
+  }
+  window.__anaesMol=build;build(molSel);
+  var theta=-0.5,phi=1.25,thetaG=theta,phiG=phi,dist=9,ptrs=new Map(),lastPinch=0;
+  function apply(){var st=Math.sin(phi);camera.position.set(dist*st*Math.sin(theta),dist*Math.cos(phi),dist*st*Math.cos(theta));camera.lookAt(0,0,0);}
+  cv.style.touchAction="none";
+  cv.addEventListener("pointerdown",function(e){cv.setPointerCapture&&cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});});
+  cv.addEventListener("pointermove",function(e){if(!ptrs.has(e.pointerId))return;var p=ptrs.get(e.pointerId),dx=e.clientX-p.x,dy=e.clientY-p.y;ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(ptrs.size===1){thetaG-=dx*0.007;phiG=Math.max(0.25,Math.min(Math.PI-0.25,phiG-dy*0.007));}
+    else if(ptrs.size===2){var a=Array.from(ptrs.values()),d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);if(lastPinch)dist=Math.max(4,Math.min(20,dist*lastPinch/d));lastPinch=d;}});
+  function endp(e){ptrs.delete(e.pointerId);lastPinch=0;}
+  cv.addEventListener("pointerup",endp);cv.addEventListener("pointercancel",endp);
+  cv.addEventListener("wheel",function(e){e.preventDefault();dist=Math.max(4,Math.min(20,dist*(1+Math.sign(e.deltaY)*0.09)));},{passive:false});
+  var ro=new ResizeObserver(function(){var W=stage.clientWidth,H=stage.clientHeight||420;if(W)renderer.setSize(W,H);camera.aspect=(W||1)/(H||1);camera.updateProjectionMatrix();});ro.observe(stage);
+  var reduce=(window.VP&&window.VP.get&&window.VP.get("motion")==="reduce");
+  (function loop(){requestAnimationFrame(loop);if(ptrs.size===0&&!reduce)thetaG+=0.0016;theta+=(thetaG-theta)*0.1;phi+=(phiG-phi)*0.1;apply();renderer.render(scene,camera);})();
+}
+var mv=$("#modelle");
+if(mv){ new MutationObserver(function(){ if(mv.classList.contains("active")&&!molBuilt){molBuilt=true;loadThree().then(initMol).catch(function(){var st=$("#molStage");if(st)st.innerHTML='<div class="vp-mol-load">3D benötigt Internet (Three.js) oder WebGL.<br>Der Wirkmechanismus rechts funktioniert trotzdem.</div>';}); } }).observe(mv,{attributes:true,attributeFilter:["class"]}); }
 })();
 </script>
 </body>

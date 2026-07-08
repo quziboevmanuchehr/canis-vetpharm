@@ -238,3 +238,6 @@
   try { if (typeof renderMatrix === "function") renderMatrix(); } catch (e) {}
   try { if (typeof renderMap === "function") renderMap(); } catch (e) {}
 })();
+
+/* Deep-Link ?d=<id> — Erkrankung direkt öffnen (z. B. aus Canis Anæsthesie) */
+;(function(){try{var d=new URLSearchParams(location.search).get("d");if(d&&typeof selectDisease==="function"&&typeof diseases!=="undefined"&&diseases.some(function(x){return x.id===d;})){selectDisease(d);}}catch(e){}})();
