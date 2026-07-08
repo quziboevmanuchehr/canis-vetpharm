@@ -267,7 +267,6 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
   <button class="tab" data-view="geraet" data-vp-tip="Virtueller Monitor (EKG/Kapno) + Narkosegerät: Verdampfer drehen, Flowmeter schieben, Werte eingeben">🖥️ Gerät (Monitor + Narkose)</button>
   <button class="tab" data-view="medis" data-vp-tip="Gewichtsgenauer Dosis-Rechner für 33 Wirkstoffe (mg & mL)">💉 Medikamente</button>
   <button class="tab" data-view="bedienung" data-vp-tip="Startablauf, Sicherheit und Geräte-Dichtigkeitstest (Leak-Test) vor der Narkose">📖 Bedienung &amp; Dichtigkeit</button>
-  <button class="tab" data-view="modelle" data-vp-tip="Drehbare 3D-Molekülmodelle der Anästhetika mit Wirkmechanismus">🧪 3D-Moleküle</button>
   <button class="tab" data-view="settings" data-vp-tip="Geräte-Startwerte (O₂, Isofluran, AZV, PIP …) pro Patient">⚙️ Einstellungen</button>
   <button class="tab" data-view="info" data-vp-tip="Über das Modul, Quellen und Verknüpfungen">📋 Info</button>
 </nav>
@@ -374,21 +373,6 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
         <a class="chip" href="../canis-reise/">🧫 Reiseerkrankungen</a>
         <a class="chip" href="../canis-metabolica/">🧬 Stoffwechsel</a>
       </div>
-    </div>
-  </section>
-  <section class="view" id="modelle">
-    <div class="card">
-      <h3>🧪 3D-Molekülmodelle der Anästhetika</h3>
-      <p class="muted" style="font-size:12.5px;margin-top:-4px">Drehbare, schematische 3D-Modelle (Schweratom-Gerüst) der wichtigsten Narkosemittel. Wähle unten ein Molekül – rechts steht der Wirkmechanismus. Ziehen dreht, Scrollen/Kneifen zoomt.</p>
-      <div class="grid-2" style="margin-top:12px;grid-template-columns:minmax(0,1.1fr) minmax(280px,.9fr)">
-        <div>
-          <div class="vp-mol-stage" id="molStage"><div class="vp-mol-load">3D-Szene wird geladen … (Three.js benötigt Internet/WebGL)</div></div>
-          <div class="vp-mol-legend" id="molLegend"></div>
-          <div class="vp-mol-pal" id="molPalette"></div>
-        </div>
-        <aside class="card" id="molInfo" style="align-self:start"></aside>
-      </div>
-      <p class="muted" style="font-size:11.5px;margin-top:10px">Modelle sind didaktisch vereinfacht (Wasserstoffatome & exakte Bindungswinkel teils reduziert) und dienen dem Verständnis, nicht der kristallografischen Genauigkeit.</p>
     </div>
   </section>
 </main>
@@ -991,6 +975,17 @@ html[data-theme="light"] .vp-mol-pal button.on{color:#15202e;background:rgba(139
 .vp-mol-legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .vp-mol-atom{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
 .vp-mol-atom i{width:13px;height:13px;border-radius:50%;display:inline-block}
+/* enriched connection rows */
+.vp-cause .grt{font:700 12px var(--tech,Segoe UI,Inter,sans-serif);color:var(--text);margin:12px 0 6px;display:flex;align-items:center;gap:6px}
+html[data-theme="light"] .vp-cause .grt{color:#15202e}
+.vp-cause .row{display:flex;flex-wrap:wrap;align-items:center;gap:5px 9px;border:1px solid var(--line);border-radius:9px;padding:8px 11px;margin-bottom:7px;background:rgba(255,255,255,.03)}
+html[data-theme="light"] .vp-cause .row{background:rgba(255,255,255,.6)}
+.vp-cause .row .why{color:var(--muted);font-size:11.5px;line-height:1.45;flex:1;min-width:150px}
+/* dynamisches 3D-Herz */
+.vp-heart-stage{position:relative;height:230px;border:1px solid var(--line);border-radius:12px;background:radial-gradient(circle at 50% 42%,rgba(255,77,77,.16),transparent 55%),#0a0e14;overflow:hidden}
+.vp-heart-stage canvas{display:block;width:100%;height:100%}
+.vp-heart-lbl{position:absolute;left:12px;bottom:10px;font:12px var(--mono);color:#ffc2c2;background:rgba(8,10,14,.62);padding:5px 10px;border-radius:8px;pointer-events:none}
+.vp-heart-flag{position:absolute;right:12px;top:10px;font:11px var(--mono);padding:4px 9px;border-radius:20px;background:rgba(8,10,14,.62);color:#ffd166;pointer-events:none}
 </style>
 
 <script>
@@ -1049,108 +1044,198 @@ function L(mod,id,label){
   var tip=mod==="blut"?"Im Blutwerte-Atlas öffnen":mod==="reise"?"In den Reisekrankheiten öffnen":"In der Stoffwechselkarte suchen";
   return '<a class="vp-xl '+mod+'" href="'+href+'" data-vp-tip="'+tip+'">'+ic+' '+label+'</a>';
 }
+/* Verifizierte Verknüpfungen (Fable-5-Workflow, adversarial an Plumb's/ACVAA/Merck geprüft).
+   blut:[Label(mit ↑/↓), Hæmatica-ID, klinische Begründung] · reise:[Name, Reise-ID, Begründung] */
 var CAUSE={
- hypotension:[
-   ["Hypoalbuminämie → mehr freie Wirkstofffraktion + niedriger onkotischer Druck",[L("blut","albumin","Albumin"),L("blut","gesamtprotein","Gesamtprotein")]],
-   ["Anämie / Hypovolämie",[L("blut","hkt","HKT / PCV")]],
-   ["Reisekrankheit (Anämie/Schock/Niere)",[L("reise","babesia","Babesiose"),L("reise","leish","Leishmaniose")]],
-   ["Gewebe-Minderperfusion → Laktat ↑",[L("blut","laktat","Laktat"),L("stoff","laktat","Glykolyse/Laktat")]]
- ],
- bradykardie:[
-   ["Hyperkaliämie / Elektrolyte → Reizleitung",[L("blut","kalium","Kalium (K⁺)"),L("blut","calcium","Calcium")]]
- ],
- tachykardie:[
-   ["Anämie / Hypovolämie (Kompensation)",[L("blut","hkt","HKT / PCV"),L("reise","babesia","Babesiose")]],
-   ["Hypoperfusion / metabolische Azidose",[L("blut","laktat","Laktat"),L("stoff","laktat","Glykolyse")]]
- ],
- tachypnoe:[
-   ["Anämie / metabolische Azidose",[L("blut","hkt","HKT"),L("blut","laktat","Laktat")]],
-   ["Lungen-/Herz-Reisekrankheit",[L("reise","angiostrongylus","Angiostrongylose"),L("reise","diroimmitis","Herzwurm")]]
- ],
- hypoxaemie:[
-   ["Anämie → O₂-Transport ↓ trotz guter Sättigung",[L("blut","hkt","HKT / PCV")]],
-   ["Herz-/Lungen-Reisekrankheit",[L("reise","diroimmitis","Herzwurm"),L("reise","angiostrongylus","Angiostrongylose"),L("reise","babesia","Babesiose")]]
- ],
- asystolie:[
-   ["Hyperkaliämie / Elektrolyte",[L("blut","kalium","Kalium"),L("blut","calcium","Calcium")]],
-   ["Schwere Hypoperfusion / Azidose",[L("blut","laktat","Laktat")]],
-   ["Myokarditis (Reisekrankheit)",[L("reise","trypanosoma","Chagas/Trypanosomose")]]
- ]
+ bradykardie:{
+   blut:[["Kalium ↑","kalium","Hyperkaliämie → Sinus-/AV-Block bis Asystolie; Atropin oft wirkungslos → kausal (Ca-Glukonat, Glukose/Insulin)."],
+         ["Calcium ↓ (ion.)","calcium","Ionisiertes Ca stabilisiert das Myokard – Zielwert der Ca-Glukonat-Therapie bei Hyperkaliämie."],
+         ["Natrium ↓","natrium","Addison-Krise: Na↓ + K↑ (Na:K < 27) – dekompensiert unter Narkose."],
+         ["Glucose ↓","glucose","Schwere Hypoglykämie (Sepsis, Babesiose, Welpe) als Spätzeichen."],
+         ["Laktat ↑","laktat","Niedriges HZV/Hypoperfusion – hämodynamische Relevanz der Brady einschätzen."]],
+   reise:[["Chagas / Trypanosomose","trypanosoma","T.-cruzi-Myokarditis → AV-Block/Sinusknoten-Dysfunktion – DIREKT & atropinresistent."],
+          ["Leptospirose","lepto","Akutes Nierenversagen → Hyperkaliämie → Bradykardie."],
+          ["Babesiose","babesia","AKI → K↑ (beim Hund via Niere, nicht via Hämolyse – Erys kaliumarm)."]],
+   note:"Sinusbradykardie/AV-Block: an Hyperkaliämie (Niere, Addison, Reperfusion) + Vagotonus denken. Bei hyperkaliämischer Brady ist Atropin meist wirkungslos – kausal behandeln."
+ },
+ tachykardie:{
+   blut:[["Kalium ↓","kalium","Hypokaliämie – wichtigster direkt arrhythmogener Elektrolyt (Erbrechen, Diurese, Insulin/Glukose, Alkalose)."],
+         ["Laktat ↑","laktat","Hypoperfusion/O₂-Schuld – Tachykardie ist die Kompensation."],
+         ["HKT (variabel)","hkt","Anämie→Tachykardie; akute Blutung anfangs normal/hoch (Splenokontraktion), Dehydratation→hoch."],
+         ["Glucose ↓","glucose","Hypoglykämie → Katecholaminschub → Tachykardie."],
+         ["Calcium ↓ (ion.)","calcium","Ionisierte Hypokalzämie begünstigt Tachyarrhythmien/Hypotension."]],
+   reise:[["Herzwurm","diroimmitis","Dirofilaria → Rechtsherz/pulmonale Hypertonie, Arrhythmien."],
+          ["Babesiose","babesia","Hämolytische Anämie + SIRS → kompensatorische Tachykardie."],
+          ["Ehrlichiose","ehrlich","Anämie/Fieber/SIRS."],
+          ["Angiostrongylose","angiostrongylus","Kardiopulmonale Belastung."]],
+   note:"Sinustachykardie ist ein Symptom – Ursache (Schmerz/Volumen/CO₂/Anämie) behandeln, nicht blind die Frequenz senken."
+ },
+ tachypnoe:{
+   blut:[["Laktat ↑","laktat","Metabolische Azidose → kompensatorische Tachypnoe."],
+         ["HKT ↓","hkt","Anämie → wenig O₂-Träger."],
+         ["Kalium ↑","kalium","Azidose-assoziiert."],
+         ["CK ↑","ck","Muskelaktivität/Hyperthermie."]],
+   reise:[["Angiostrongylose","angiostrongylus","Lungenwurm → Husten/Blutung/pulmonale Hypertonie."],
+          ["Herzwurm","diroimmitis","Pulmonale Gefäße."],
+          ["Babesiose","babesia","Hämolyse/Azidose."]],
+   note:"Hohe AF + hohes EtCO₂ = Hypoventilation trotz schneller Atmung – Kapnografie & Blutgas (pH/HCO₃⁻) entscheiden."
+ },
+ hypoxaemie:{
+   blut:[["HKT ↓","hkt","Wenig O₂-Träger trotz guter Sättigung."],
+         ["Laktat ↑","laktat","Gewebehypoxie."],
+         ["Thrombozyten ↓","thrombozyten","Lungenblutung/Gerinnungsstörung bei Angiostrongylus."],
+         ["Kalium ↑","kalium","Azidose/Spätzeichen."]],
+   reise:[["Herzwurm","diroimmitis","Pulmonale Hypertonie/Thromboembolie."],
+          ["Angiostrongylose","angiostrongylus","Lungenblutung + Gerinnungsstörung."],
+          ["Babesiose","babesia","Hämolyse/ARDS-Risiko."]],
+   note:"SpO₂ < 90 % zuerst Gerät/Tubus prüfen (Blutgas PaO₂ bestätigt); Anämie & Herz-/Lungen-Reisekrankheiten erhöhen das Risiko."
+ },
+ hypoventilation:{
+   blut:[["Albumin ↓","albumin","Mehr freie Wirkstofffraktion → tiefere Atemdepression."],
+         ["Kalium ↓","kalium","Hypokaliämie → Atemmuskelschwäche."],
+         ["Glucose ↓","glucose","Schwere Hypoglykämie → ZNS-Depression."]],
+   reise:[["Leishmaniose","leish","Protein-Losing-Nephropathie → Hypalbuminämie → mehr freies Anästhetikum."],
+          ["Angiostrongylose","angiostrongylus","Pulmonal."],
+          ["Herzwurm","diroimmitis","Kardiopulmonal."]],
+   note:"Meist Anästhetika/Atemmechanik. Blutgas (pCO₂↑, pH↓) sichert die Diagnose; niedriges Albumin & Hypokaliämie verstärken."
+ },
+ hypotension:{
+   blut:[["Laktat ↑","laktat","Hypoperfusion/Schock."],
+         ["Calcium ↓ (ion.)","calcium","Kontraktilität & Gefäßtonus."],
+         ["Albumin ↓","albumin","Onkotischer Druck + mehr freies Anästhetikum."],
+         ["Gesamtprotein ↓","gesamtprotein","Volumen/Onkotik."],
+         ["HKT (variabel)","hkt","Anämie/Blutung."],
+         ["Kalium ↑ / Natrium ↓","kalium","Addison-Krise."]],
+   reise:[["Babesiose","babesia","Hämolyse/Schock/Niere."],["Leishmaniose","leish","Hypalbuminämie/Niere."],
+          ["Ehrlichiose","ehrlich","SIRS/Blutung."],["Herzwurm","diroimmitis","Rechtsherzbelastung."]],
+   note:"Iso zu hoch ist die häufigste Ursache – zuerst Verdampfer runter, dann Volumen/Vasopressor. Niedriges Albumin & ion. Ca beachten."
+ },
+ apnoe:{
+   blut:[["Albumin ↓","albumin","Mehr freie Wirkstofffraktion."],
+         ["Glucose ↓","glucose","Schwere Hypoglykämie → Koma/Apnoe."],
+         ["Laktat ↑","laktat","Hypoxie/Hypoperfusion (präterminal)."]],
+   reise:[["Angiostrongylose","angiostrongylus","Pulmonal/neurologisch."],
+          ["Herzwurm","diroimmitis","Kardiopulmonal."],["Babesiose","babesia","Schock."]],
+   note:"Meist Anästhetika-Überhang – Antagonisten (Naloxon/Atipamezol/Flumazenil) bereit. Blutgas (pCO₂↑) & Hypoglykämie prüfen."
+ },
+ asystolie:{
+   blut:[["Kalium ↑","kalium","Hyperkaliämie → Asystolie."],
+         ["Calcium (ion.)","calcium","Membranstabilisierung (Ca-Glukonat)."],
+         ["Laktat ↑","laktat","Schwere metabolische Azidose."],
+         ["HKT ↓","hkt","Anämie/Blutung als reversible Ursache."],
+         ["Glucose","glucose","Hypo-/Hyperglykämie – reversible Ursache."]],
+   reise:[["Herzwurm","diroimmitis","Akute Thromboembolie/Rechtsherzversagen."],
+          ["Chagas / Trypanosomose","trypanosoma","Reizleitungs-Myokarditis."],
+          ["Leptospirose","lepto","AKI → Hyperkaliämie."],["Babesiose","babesia","Schock/AKI."]],
+   note:"Reversible Ursachen (Hypoxie, Hypovolämie, Hyperkaliämie, Azidose) parallel zur CPR behandeln – RECOVER."
+ },
+ hyperthermie:{
+   blut:[["Kalium ↑","kalium","Rhabdomyolyse/maligne Hyperthermie → K↑."],
+         ["CK ↑","ck","Muskelschaden/maligne Hyperthermie."],
+         ["Laktat ↑","laktat","Hypermetaboler Zustand."],
+         ["Phosphat ↑","phosphat","Zelluntergang (MH/Rhabdo)."],
+         ["Glucose ↑","glucose","Stress/Hypermetabolismus."]],
+   reise:[["Babesiose","babesia","Fieberhaft – Ausgangstemperatur."],
+          ["Ehrlichiose","ehrlich","Fieberhaft."],["Anaplasmose","anaplasma","Fieberhaft."]],
+   note:"Bei rasantem Anstieg + steigendem EtCO₂ an maligne Hyperthermie denken (CK, K⁺, PO₄, Laktat). Fieberhafte Reiseinfektionen heben die Basis-Temperatur."
+ },
+ hypothermie:{
+   blut:[["Glucose (variabel)","glucose","Kleiner/kranker Patient → Hypoglykämie."],
+         ["Laktat ↑","laktat","Minderperfusion."],
+         ["CK ↑","ck","Kältezittern/Muskel."]],
+   reise:[["Leishmaniose","leish","Kachektisch → auskühlungsgefährdet."],
+          ["Babesiose","babesia","Krank/anämisch."],["Ehrlichiose","ehrlich","Chronisch krank."]],
+   note:"Verlängert das Aufwachen und verstärkt die Iso-Wirkung – Verdampfer zurück, Blutzucker mitkontrollieren."
+ }
 };
+
+/* Herz-Verhalten je Zwischenfall (für das dynamische 3D-Herz) */
+var HRMAP={
+ bradykardie:{bpm:42,amp:0.17,flag:"langsam"}, tachykardie:{bpm:185,amp:0.2,flag:"schnell"},
+ tachypnoe:{bpm:120,amp:0.16,flag:"erhöht"}, hypoxaemie:{bpm:130,amp:0.16,flag:"Hypoxie"},
+ hypoventilation:{bpm:100,amp:0.15,flag:"CO₂ ↑"}, hypotension:{bpm:110,amp:0.07,flag:"schwacher Puls"},
+ apnoe:{bpm:95,amp:0.15,flag:"Atemstillstand"}, asystolie:{bpm:0,amp:0,flat:true,flag:"STILLSTAND"},
+ hyperthermie:{bpm:170,amp:0.2,flag:"heiß/schnell"}, hypothermie:{bpm:50,amp:0.13,flag:"kalt/langsam"}
+};
+var heartState={bpm:85,amp:0.16,flat:false};
+function setHeart(id){
+  var h=HRMAP[id]||{bpm:85,amp:0.16,flag:""};
+  heartState.bpm=h.bpm; heartState.amp=h.amp; heartState.flat=!!h.flat;
+  var lbl=$("#heartLbl"), fl=$("#heartFlag");
+  var inc=(A.incidents||[]).find(function(x){return x.id===id;});
+  if(lbl) lbl.innerHTML='💓 '+(inc?inc.name:'Ruhe')+' · '+(h.flat?'0/min':'~'+h.bpm+'/min');
+  if(fl) fl.textContent=h.flag||'';
+}
 var NAME2ID={}; (A.incidents||[]).forEach(function(i){NAME2ID[(i.name||"").trim()]=i.id;});
 var pbox=$("#protoBox");
+function curIncId(){ var h=pbox&&pbox.querySelector(".proto-head h2"); return h?NAME2ID[h.textContent.trim()]:null; }
+function blutRows(a){return (a||[]).map(function(x){return '<div class="row">'+L("blut",x[1],"🩸 "+x[0])+'<span class="why">'+x[2]+'</span></div>';}).join("");}
+function reiseRows(a){return (a||[]).map(function(x){return '<div class="row">'+L("reise",x[1],"🧫 "+x[0])+'<span class="why">'+x[2]+'</span></div>';}).join("");}
 function injectCause(){
-  if(!pbox||pbox.querySelector(".vp-cause"))return;
-  var h=pbox.querySelector(".proto-head h2"); if(!h)return;
-  var id=NAME2ID[h.textContent.trim()]; if(!id||!CAUSE[id])return;
-  var rows=CAUSE[id].map(function(c){return '<div class="row"><div class="rt">'+c[0]+'</div><div class="lk">'+c[1].join("")+'</div></div>';}).join("");
-  var div=document.createElement("div"); div.className="vp-cause";
-  div.innerHTML='<div class="ch">🔗 Ursache in anderen Modulen finden</div>'+rows;
-  pbox.appendChild(div);
+  if(!pbox)return;
+  var id=curIncId();
+  if(id && CAUSE[id] && !pbox.querySelector(".vp-cause")){
+    var c=CAUSE[id];
+    var div=document.createElement("div"); div.className="vp-cause";
+    div.innerHTML='<div class="ch">🔗 Logisch verbunden – jetzt beachten</div>'+
+      (c.blut&&c.blut.length?'<div class="grt">🩸 Blutwerte beachten (Klick → Blutwerte-Atlas)</div>'+blutRows(c.blut):'')+
+      (c.reise&&c.reise.length?'<div class="grt">🧫 Reise-/Import-Bezug (Klick → Reisekrankheiten)</div>'+reiseRows(c.reise):'')+
+      (c.note?'<div class="vp-note" style="margin-top:8px">'+c.note+'</div>':'');
+    pbox.appendChild(div);
+  }
+  setHeart(id);
+}
+/* dynamisches 3D-Herz als persistente Karte im Notfall-Tab */
+var nf=$("#notfall");
+if(nf && !$("#heartCard")){
+  var hc=document.createElement("div"); hc.className="card"; hc.id="heartCard";
+  hc.innerHTML='<h3>💓 3D-Herz – reagiert live auf den Zwischenfall</h3>'+
+    '<p class="muted" style="font-size:12px;margin:-4px 0 10px">Das Modell schlägt nach dem gewählten Zwischenfall: Bradykardie langsam, Tachykardie schnell, Hypotension schwach, Asystolie steht still.</p>'+
+    '<div class="vp-heart-stage" id="heartStage"><div class="vp-mol-load" id="heartLoad">3D-Herz lädt … (Three.js/WebGL)</div><div class="vp-heart-flag" id="heartFlag"></div><div class="vp-heart-lbl" id="heartLbl">💓 Ruhe</div></div>';
+  nf.appendChild(hc);
 }
 if(pbox){ new MutationObserver(injectCause).observe(pbox,{childList:true}); injectCause(); }
 
-/* ---------- 3D-Molekülmodelle ---------- */
-var EL={C:{c:0x5b6472,r:0.34},O:{c:0xef4444,r:0.32},N:{c:0x3b82f6,r:0.33},F:{c:0x86efac,r:0.27},Cl:{c:0x38d15a,r:0.5},H:{c:0xe8edf2,r:0.2}};
-function benzene(){var a=[],ang;for(var i=0;i<6;i++){ang=Math.PI/2+i*Math.PI/3;a.push(["C",1.4*Math.cos(ang),1.4*Math.sin(ang),0]);}return a;}
-var MOL={
- propofol:{name:"Propofol",moa:"Positiver GABAA-Modulator: verstärkt den Chlorid-Einstrom → schnelle, glatte Hypnose. Sehr lipophil (Lipidemulsion), rasche Umverteilung → kurze Wirkung, kein Analgetikum, dosisabhängige Apnoe/Hypotonie.",
-   atoms:(function(){var a=benzene();a.push(["O",0,2.6,0]);a.push(["C",-2.45,1.4,0.3]);a.push(["C",-3.6,0.8,0]);a.push(["C",-2.55,2.55,0.9]);a.push(["C",2.45,1.4,0.3]);a.push(["C",3.6,0.8,0]);a.push(["C",2.55,2.55,0.9]);return a;})(),
-   bonds:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,0],[0,6],[1,7],[7,8],[7,9],[5,10],[10,11],[10,12]]},
- isofluran:{name:"Isofluran",moa:"Halogenierter Ether. Verstärkt hemmende GABAA-/Glycin-Ströme und dämpft erregende Kanäle → Bewusstlosigkeit & Immobilität. Wird kaum verstoffwechselt (Ausatmung), gut steuerbar; dosisabhängige Vasodilatation.",
-   atoms:[["C",0,0,0],["F",-0.7,0.9,0.4],["F",-0.7,-0.9,0.4],["F",0.3,0,-1.05],["C",1.3,0.35,0.5],["Cl",1.65,1.95,0.2],["O",2.2,-0.6,0.0],["C",3.5,-0.4,0.35],["F",4.1,0.7,-0.15],["F",4.2,-1.5,0.05]],
-   bonds:[[0,1],[0,2],[0,3],[0,4],[4,5],[4,6],[6,7],[7,8],[7,9]]},
- sevofluran:{name:"Sevofluran",moa:"Fluorierter Ether mit schnellerem An-/Abfluten und geringer Atemwegsreizung – ideal für Maskeneinleitung. Wirkmechanismus wie Isofluran (GABAA/Glycin-Verstärkung). Etwas höhere MAC (weniger potent).",
-   atoms:[["C",0,0,0],["F",-1.0,0.6,0.3],["O",1.2,0.4,-0.3],["C",2.4,-0.3,0.2],["C",3.2,0.7,1.1],["F",4.1,0.2,1.6],["F",3.7,1.7,0.6],["F",2.7,1.1,2.0],["C",3.1,-1.3,-0.6],["F",4.2,-1.6,-0.2],["F",2.8,-1.0,-1.9],["F",3.0,-2.4,0.15]],
-   bonds:[[0,1],[0,2],[2,3],[3,4],[4,5],[4,6],[4,7],[3,8],[8,9],[8,10],[8,11]]},
- n2o:{name:"Distickstoffmonoxid (N₂O)",moa:"„Lachgas“: NMDA-Rezeptor-Antagonist mit analgetischem Zusatzeffekt. Als zweites Gas beschleunigt es die Aufnahme des Inhalationsnarkotikums (second-gas effect). Immer mit ausreichend O₂ und Vorsicht bei luftgefüllten Räumen.",
-   atoms:[["N",-1.15,0,0],["N",0,0,0],["O",1.18,0,0]],bonds:[[0,1],[1,2]]}
-};
-var ORDER=["propofol","isofluran","sevofluran","n2o"], molSel="propofol", molBuilt=false;
-var leg=$("#molLegend"); if(leg) leg.innerHTML=Object.keys(EL).map(function(e){return '<span class="vp-mol-atom"><i style="background:#'+EL[e].c.toString(16).padStart(6,"0")+'"></i>'+e+'</span>';}).join("");
-var pal=$("#molPalette");
-function renderMolInfo(){var m=MOL[molSel];var box=$("#molInfo");if(box)box.innerHTML='<h3>'+m.name+'</h3><p class="lead" style="font-size:13px">'+m.moa+'</p>';}
-function renderPal(){if(!pal)return;pal.innerHTML=ORDER.map(function(k){return '<button data-m="'+k+'"'+(k===molSel?' class="on"':"")+'>'+MOL[k].name.split(" (")[0]+'</button>';}).join("");
-  pal.querySelectorAll("button").forEach(function(b){b.addEventListener("click",function(){molSel=b.getAttribute("data-m");pal.querySelectorAll("button").forEach(function(x){x.classList.toggle("on",x===b);});renderMolInfo();if(window.__anaesMol)window.__anaesMol(molSel);});});}
-renderPal(); renderMolInfo();
+/* ---------- dynamisches 3D-Herz (Three.js, schlägt nach Zwischenfall) ---------- */
 function loadThree(){return new Promise(function(res,rej){if(window.THREE)return res();var s=document.createElement("script");s.src="https://unpkg.com/three@0.160.0/build/three.min.js";s.onload=res;s.onerror=rej;document.head.appendChild(s);setTimeout(function(){if(!window.THREE)rej();},8000);});}
-function initMol(){
-  var stage=$("#molStage");if(!stage||!window.THREE)return;stage.innerHTML="";var THREE=window.THREE;
-  var w=stage.clientWidth,h=stage.clientHeight||420;
-  var scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(45,w/h,0.1,100);camera.position.set(0,0,9);
-  var renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setSize(w,h);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-  stage.appendChild(renderer.domElement);var cv=renderer.domElement;
-  scene.add(new THREE.AmbientLight(0xffffff,0.72));
-  var key=new THREE.DirectionalLight(0xffffff,1.0);key.position.set(5,8,7);scene.add(key);
-  var rim=new THREE.PointLight(0x8b7cf6,0.7);rim.position.set(-7,3,5);scene.add(rim);
-  var g=new THREE.Group();scene.add(g);
-  var sph=new THREE.SphereGeometry(1,26,20),cyl=new THREE.CylinderGeometry(1,1,1,12),up=new THREE.Vector3(0,1,0);
-  function build(k){while(g.children.length)g.remove(g.children[0]);var m=MOL[k],at=m.atoms,ctr=new THREE.Vector3();
-    at.forEach(function(a){ctr.x+=a[1];ctr.y+=a[2];ctr.z+=a[3];});ctr.multiplyScalar(1/at.length);
-    var pos=at.map(function(a){return new THREE.Vector3(a[1]-ctr.x,a[2]-ctr.y,a[3]-ctr.z);});
-    m.bonds.forEach(function(b){var a=pos[b[0]],c=pos[b[1]],dir=new THREE.Vector3().subVectors(c,a),len=dir.length();
-      var mesh=new THREE.Mesh(cyl,new THREE.MeshStandardMaterial({color:0x9fb0c4,roughness:0.5,metalness:0.1}));
-      mesh.scale.set(0.08,len,0.08);mesh.position.copy(a).add(c).multiplyScalar(0.5);
-      mesh.quaternion.setFromUnitVectors(up,dir.clone().normalize());g.add(mesh);});
-    at.forEach(function(a,i){var e=EL[a[0]]||EL.C;var mesh=new THREE.Mesh(sph,new THREE.MeshStandardMaterial({color:e.c,roughness:0.35,emissive:e.c,emissiveIntensity:0.12}));mesh.scale.setScalar(e.r);mesh.position.copy(pos[i]);g.add(mesh);});
-  }
-  window.__anaesMol=build;build(molSel);
-  var theta=-0.5,phi=1.25,thetaG=theta,phiG=phi,dist=9,ptrs=new Map(),lastPinch=0;
-  function apply(){var st=Math.sin(phi);camera.position.set(dist*st*Math.sin(theta),dist*Math.cos(phi),dist*st*Math.cos(theta));camera.lookAt(0,0,0);}
-  cv.style.touchAction="none";
-  cv.addEventListener("pointerdown",function(e){cv.setPointerCapture&&cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});});
-  cv.addEventListener("pointermove",function(e){if(!ptrs.has(e.pointerId))return;var p=ptrs.get(e.pointerId),dx=e.clientX-p.x,dy=e.clientY-p.y;ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
-    if(ptrs.size===1){thetaG-=dx*0.007;phiG=Math.max(0.25,Math.min(Math.PI-0.25,phiG-dy*0.007));}
-    else if(ptrs.size===2){var a=Array.from(ptrs.values()),d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);if(lastPinch)dist=Math.max(4,Math.min(20,dist*lastPinch/d));lastPinch=d;}});
-  function endp(e){ptrs.delete(e.pointerId);lastPinch=0;}
-  cv.addEventListener("pointerup",endp);cv.addEventListener("pointercancel",endp);
-  cv.addEventListener("wheel",function(e){e.preventDefault();dist=Math.max(4,Math.min(20,dist*(1+Math.sign(e.deltaY)*0.09)));},{passive:false});
-  var ro=new ResizeObserver(function(){var W=stage.clientWidth,H=stage.clientHeight||420;if(W)renderer.setSize(W,H);camera.aspect=(W||1)/(H||1);camera.updateProjectionMatrix();});ro.observe(stage);
-  var reduce=(window.VP&&window.VP.get&&window.VP.get("motion")==="reduce");
-  (function loop(){requestAnimationFrame(loop);if(ptrs.size===0&&!reduce)thetaG+=0.0016;theta+=(thetaG-theta)*0.1;phi+=(phiG-phi)*0.1;apply();renderer.render(scene,camera);})();
+function initHeart(){
+  var stage=$("#heartStage"); if(!stage||!window.THREE) return;
+  var load=$("#heartLoad"); if(load) load.remove();
+  var THREE=window.THREE, w=stage.clientWidth, h=stage.clientHeight||230;
+  var scene=new THREE.Scene(), camera=new THREE.PerspectiveCamera(45,w/h,0.1,100); camera.position.set(0,0.15,4.5);
+  var renderer=new THREE.WebGLRenderer({antialias:true,alpha:true}); renderer.setSize(w,h); renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  stage.insertBefore(renderer.domElement, stage.firstChild);
+  scene.add(new THREE.AmbientLight(0xffffff,0.55));
+  var key=new THREE.DirectionalLight(0xffffff,1.15); key.position.set(4,6,6); scene.add(key);
+  var rim=new THREE.PointLight(0xff4d6a,0.9); rim.position.set(-5,2,4); scene.add(rim);
+  var heart=new THREE.Group(); scene.add(heart);
+  var mat=new THREE.MeshStandardMaterial({color:0xd6304a,roughness:0.34,metalness:0.05,emissive:0x5a0f1c,emissiveIntensity:0.5});
+  var sph=new THREE.SphereGeometry(1,32,24);
+  var lobeL=new THREE.Mesh(sph,mat); lobeL.position.set(-0.52,0.62,0); lobeL.scale.set(0.9,0.88,0.85); heart.add(lobeL);
+  var lobeR=new THREE.Mesh(sph,mat); lobeR.position.set(0.52,0.62,0); lobeR.scale.set(0.9,0.88,0.85); heart.add(lobeR);
+  var body=new THREE.Mesh(sph,mat); body.position.set(0,0.2,0); body.scale.set(1.15,0.95,0.95); heart.add(body);
+  var apex=new THREE.Mesh(new THREE.ConeGeometry(1.18,1.5,36), mat); apex.position.set(0,-0.62,0); apex.rotation.x=Math.PI; apex.scale.set(1,1,0.82); heart.add(apex);
+  var notch=new THREE.Mesh(sph,new THREE.MeshStandardMaterial({color:0x0a0e14,transparent:true,opacity:0.9})); notch.position.set(0,1.12,0.2); notch.scale.set(0.26,0.3,0.26); heart.add(notch);
+  var vmat=new THREE.MeshStandardMaterial({color:0xb0243a,roughness:0.5,emissive:0x3a0a14,emissiveIntensity:0.3});
+  [[-0.34,1.2,0,0.13],[0.34,1.2,0,0.13],[0,1.32,0,0.17]].forEach(function(v){var t=new THREE.Mesh(new THREE.CylinderGeometry(v[3],v[3],0.7,12),vmat);t.position.set(v[0],v[1],v[2]);heart.add(t);});
+  heart.scale.setScalar(0.8);
+  var ro=new ResizeObserver(function(){var W=stage.clientWidth,H=stage.clientHeight||230;if(W){renderer.setSize(W,H);camera.aspect=W/H;camera.updateProjectionMatrix();}}); ro.observe(stage);
+  var beat=0, last=0, reduce=(window.VP&&window.VP.get&&window.VP.get("motion")==="reduce");
+  (function loop(now){ requestAnimationFrame(loop);
+    if(!last)last=now||0; var dt=((now||0)-last)/1000; if(dt>0.1)dt=0.1; last=now||0;
+    if(!reduce) heart.rotation.y += 0.006;
+    var s=1;
+    if(!heartState.flat && heartState.bpm>0){
+      beat += dt*(heartState.bpm/60);
+      var ph=beat%1, pulse=Math.pow(Math.max(0,Math.sin(ph*Math.PI)),2.2);
+      s = 1 + heartState.amp*(reduce?0.4:1)*pulse;
+      mat.emissiveIntensity = 0.4 + 0.55*pulse;
+    } else { s=0.97; mat.emissiveIntensity=0.18; }
+    heart.scale.setScalar(0.8*s);
+    renderer.render(scene,camera);
+  })(0);
 }
-var mv=$("#modelle");
-if(mv){ new MutationObserver(function(){ if(mv.classList.contains("active")&&!molBuilt){molBuilt=true;loadThree().then(initMol).catch(function(){var st=$("#molStage");if(st)st.innerHTML='<div class="vp-mol-load">3D benötigt Internet (Three.js) oder WebGL.<br>Der Wirkmechanismus rechts funktioniert trotzdem.</div>';}); } }).observe(mv,{attributes:true,attributeFilter:["class"]}); }
+loadThree().then(function(){ initHeart(); setHeart(curIncId()); }).catch(function(){ var l=$("#heartLoad"); if(l) l.textContent="3D-Herz benötigt Internet (Three.js)/WebGL."; });
 })();
 </script>
 </body>
