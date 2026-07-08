@@ -986,6 +986,17 @@ html[data-theme="light"] .vp-cause .row{background:rgba(255,255,255,.6)}
 .vp-heart-stage canvas{display:block;width:100%;height:100%}
 .vp-heart-lbl{position:absolute;left:12px;bottom:10px;font:12px var(--mono);color:#ffc2c2;background:rgba(8,10,14,.62);padding:5px 10px;border-radius:8px;pointer-events:none}
 .vp-heart-flag{position:absolute;right:12px;top:10px;font:11px var(--mono);padding:4px 9px;border-radius:20px;background:rgba(8,10,14,.62);color:#ffd166;pointer-events:none}
+.vp-heart-leg{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.vp-heart-leg button{border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);border-radius:20px;padding:5px 10px;cursor:pointer;font-size:11.5px;display:inline-flex;align-items:center;gap:6px;transition:.15s}
+.vp-heart-leg button .dot{width:9px;height:9px;border-radius:50%;background:var(--hc);box-shadow:0 0 6px var(--hc)}
+.vp-heart-leg button:hover{border-color:var(--hc)}
+.vp-heart-leg button.on{border-color:var(--hc);background:color-mix(in srgb,var(--hc) 20%,transparent);color:#fff}
+html[data-theme="light"] .vp-heart-leg button{background:rgba(255,255,255,.62)}
+html[data-theme="light"] .vp-heart-leg button.on{color:#15202e}
+.vp-heart-info{margin-top:10px;border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:calc(12.5px*var(--sc,1));line-height:1.55;background:rgba(255,255,255,.03);color:var(--text)}
+html[data-theme="light"] .vp-heart-info{background:rgba(255,255,255,.6)}
+.vp-heart-info b{color:#ffd166}
+html[data-theme="light"] .vp-heart-info b{color:#b3760a}
 </style>
 
 <script>
@@ -1189,73 +1200,121 @@ function injectCause(){
 var nf=$("#notfall");
 if(nf && !$("#heartCard")){
   var hc=document.createElement("div"); hc.className="card"; hc.id="heartCard";
-  hc.innerHTML='<h3>💓 3D-Herz – reagiert live auf den Zwischenfall</h3>'+
-    '<p class="muted" style="font-size:12px;margin:-4px 0 10px">Das Modell schlägt nach dem gewählten Zwischenfall: Bradykardie langsam, Tachykardie schnell, Hypotension schwach, Asystolie steht still.</p>'+
-    '<div class="vp-heart-stage" id="heartStage"><div class="vp-mol-load" id="heartLoad">3D-Herz lädt … (Three.js/WebGL)</div><div class="vp-heart-flag" id="heartFlag"></div><div class="vp-heart-lbl" id="heartLbl">💓 Ruhe</div></div>';
+  hc.innerHTML='<h3>💓 3D-Herz (Hund) – anatomisch, beschriftet, schlägt live</h3>'+
+    '<p class="muted" style="font-size:12px;margin:-4px 0 10px">Echtes Herzmodell: <b>Punkt am Herzen antippen</b> oder unten wählen → Name &amp; Funktion (Kammern, Vorhöfe, Klappen, Gefäße). Es schlägt nach dem gewählten Zwischenfall (Bradykardie langsam, Tachykardie schnell, Hypotension schwach, Asystolie Stillstand). Ziehen dreht, Scrollen zoomt.</p>'+
+    '<div class="vp-heart-stage" id="heartStage"><div class="vp-mol-load" id="heartLoad">Herzmodell lädt … (Three.js/WebGL)</div><div class="vp-heart-flag" id="heartFlag"></div><div class="vp-heart-lbl" id="heartLbl">💓 Ruhe</div></div>'+
+    '<div class="vp-heart-leg" id="heartLegend"></div>'+
+    '<div class="vp-heart-info" id="heartInfo">Tippe einen Punkt am Herzen oder eine Beschriftung an – z. B. eine Klappe.</div>';
   nf.appendChild(hc);
 }
 if(pbox){ new MutationObserver(injectCause).observe(pbox,{childList:true}); injectCause(); }
 
 /* ---------- dynamisches 3D-Herz (Three.js, schlägt nach Zwischenfall) ---------- */
 function loadThree(){return new Promise(function(res,rej){if(window.THREE)return res();var s=document.createElement("script");s.src="https://unpkg.com/three@0.160.0/build/three.min.js";s.onload=res;s.onerror=rej;document.head.appendChild(s);setTimeout(function(){if(!window.THREE)rej();},8000);});}
+/* ---------- anatomische Beschriftungspunkte (auf dem echten Modell kalibriert) ---------- */
+var ANAT=[
+ {id:'apex',n:'Herzspitze (Apex cordis)',p:[-0.05,-0.9,0.12],c:0xffd166,
+  d:'Unteres, spitzes Ende des Herzens – v. a. von der <b>linken Kammer</b> gebildet. Hier liegt der tastbare Herzspitzenstoß (Ictus cordis).'},
+ {id:'lv',n:'Linke Herzkammer (Ventriculus sinister)',p:[-0.52,-0.5,-0.05],c:0xff6b6b,
+  d:'Dickwandigste Kammer; pumpt sauerstoffreiches Blut über die <b>Aorta</b> in den Körperkreislauf. Bildet den Apex.'},
+ {id:'rv',n:'Rechte Herzkammer (Ventriculus dexter)',p:[0.24,-0.34,0.56],c:0xff9d5c,
+  d:'Bildet die vordere Herzfläche; pumpt sauerstoffarmes Blut über den <b>Truncus pulmonalis</b> in die Lunge.'},
+ {id:'atria',n:'Vorhöfe & Herzohren (Atria)',p:[0.42,0.48,0.06],c:0x8ab4ff,
+  d:'<b>Rechter Vorhof</b> nimmt das Körpervenenblut (Hohlvenen) auf, <b>linker Vorhof</b> das Lungenvenenblut. Die „Herzohren" (Auriculae) sind ihre Anhänge.'},
+ {id:'av',n:'Segelklappen (AV-Klappen)',p:[0.06,0.16,0.44],c:0x00ff87,
+  d:'In der Ventilebene zwischen Vorhof und Kammer: rechts die <b>Trikuspidalklappe</b> (3 Segel, RA→RV), links die <b>Mitral-/Bikuspidalklappe</b> (2 Segel, LA→LV). Schließen in der Systole → kein Rückfluss in die Vorhöfe.'},
+ {id:'semi',n:'Taschenklappen (Semilunarklappen)',p:[0.0,0.56,0.12],c:0x00d8ff,
+  d:'An den Ausflussbahnen: <b>Aortenklappe</b> (LV→Aorta) und <b>Pulmonalklappe</b> (RV→Truncus pulmonalis), je 3 Taschen. Schließen in der Diastole → kein Rückfluss aus den Arterien.'},
+ {id:'aorta',n:'Aorta & Aortenbogen',p:[0.0,0.95,-0.12],c:0xe0a3a3,
+  d:'Größte Körperarterie; führt sauerstoffreiches Blut aus der linken Kammer in den Körperkreislauf.'},
+ {id:'pulm',n:'Truncus pulmonalis & Hohlvenen',p:[-0.26,0.82,0.36],c:0x9ab6e6,
+  d:'Der <b>Truncus pulmonalis</b> führt sauerstoffarmes Blut zur Lunge; die <b>Venae cavae</b> (cranialis/caudalis) bringen Körpervenenblut zum rechten Vorhof.'},
+ {id:'coron',n:'Herzkranzgefäße (Koronararterien)',p:[0.16,-0.12,0.55],c:0xffb366,
+  d:'Laufen in den Herzfurchen (Sulci) und versorgen das Myokard selbst. Verschluss → Myokardischämie & Arrhythmie.'}
+];
+var heartFocus=null, heartMarkers=[];
+function heartInfoShow(a){
+  var box=$("#heartInfo"); if(box) box.innerHTML=a?('<b>'+a.n+'</b><br>'+a.d):'Tippe einen Punkt am Herzen oder eine Beschriftung an – z. B. eine Klappe.';
+  Array.prototype.forEach.call(document.querySelectorAll("#heartLegend button"),function(b){b.classList.toggle("on",!!a&&b.getAttribute("data-id")===a.id);});
+  if(window.__heartFocus) window.__heartFocus(a?a.id:null);
+}
+(function buildHeartLegend(){ var lg=$("#heartLegend"); if(!lg) return;
+  lg.innerHTML=ANAT.map(function(a){return '<button data-id="'+a.id+'" style="--hc:#'+a.c.toString(16).padStart(6,"0")+'"><span class="dot"></span>'+a.n.split(" (")[0]+'</button>';}).join("");
+  Array.prototype.forEach.call(lg.querySelectorAll("button"),function(b){b.addEventListener("click",function(){heartInfoShow(ANAT.find(function(x){return x.id===b.getAttribute("data-id");}));});});
+})();
 function initHeart(){
   var stage=$("#heartStage"); if(!stage||!window.THREE) return;
-  var load=$("#heartLoad"); if(load) load.remove();
   var THREE=window.THREE, w=stage.clientWidth, h=stage.clientHeight||230;
-  var scene=new THREE.Scene(), camera=new THREE.PerspectiveCamera(45,w/h,0.1,100); camera.position.set(0,0.15,4.5);
+  var scene=new THREE.Scene(), camera=new THREE.PerspectiveCamera(42,w/h,0.1,100);
   var renderer=new THREE.WebGLRenderer({antialias:true,alpha:true}); renderer.setSize(w,h); renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-  stage.insertBefore(renderer.domElement, stage.firstChild);
-  scene.add(new THREE.AmbientLight(0xffffff,0.55));
+  stage.insertBefore(renderer.domElement, stage.firstChild); var cv=renderer.domElement;
+  scene.add(new THREE.AmbientLight(0xffffff,0.62));
   var key=new THREE.DirectionalLight(0xffffff,1.15); key.position.set(4,6,6); scene.add(key);
-  var rim=new THREE.PointLight(0xff4d6a,0.9); rim.position.set(-5,2,4); scene.add(rim);
+  var rim=new THREE.PointLight(0xff6b7e,0.85); rim.position.set(-5,2,5); scene.add(rim);
   var heart=new THREE.Group(); scene.add(heart);
-  var hin=new THREE.Group(); heart.add(hin);                 // innere, anatomisch gekippte Gruppe
-  var mat=new THREE.MeshStandardMaterial({color:0xa8323f,roughness:0.52,metalness:0.03,emissive:0x4a0e18,emissiveIntensity:0.4});
-  var sph=new THREE.SphereGeometry(1,32,24);
-  function V(x,y,z){return new THREE.Vector3(x,y,z);}
-  function tube(pts,r,m){var c=new THREE.CatmullRomCurve3(pts.map(function(p){return V(p[0],p[1],p[2]);}));return new THREE.Mesh(new THREE.TubeGeometry(c,44,r,16,false),m);}
-  /* Ventrikelmasse: Lathe-Profil, spitzer Apex unten → runde Basis oben, front-back abgeflacht */
-  var vprof=[[0.02,-1.5],[0.30,-1.28],[0.56,-0.98],[0.78,-0.6],[0.93,-0.18],[1.0,0.25],[0.96,0.58],[0.82,0.84],[0.55,1.0],[0.26,1.06],[0.0,1.07]];
-  var vent=new THREE.Mesh(new THREE.LatheGeometry(vprof.map(function(p){return new THREE.Vector2(p[0],p[1]);}),56),mat);
-  vent.scale.set(1.02,1.0,0.8); hin.add(vent);
-  /* rechter Ventrikel als vorderer Wulst (Asymmetrie) */
-  var rv=new THREE.Mesh(sph,mat); rv.scale.set(0.66,0.92,0.4); rv.position.set(0.34,-0.12,0.5); hin.add(rv);
-  /* AV-/Koronarfurche (dunkler Torus an der Basis) */
-  var grooveMat=new THREE.MeshStandardMaterial({color:0x7c2030,roughness:0.62,emissive:0x2a0810,emissiveIntensity:0.22});
-  var groove=new THREE.Mesh(new THREE.TorusGeometry(0.9,0.07,12,44),grooveMat); groove.position.y=0.66; groove.rotation.x=Math.PI/2; groove.scale.set(1.02,0.8,1); hin.add(groove);
-  /* Herzohren (linker & rechter Vorhof-Anhang) */
-  function auricle(x,y,z,ry,rz){var g=new THREE.Group();var a=new THREE.Mesh(sph,mat);a.scale.set(0.36,0.26,0.24);g.add(a);var b=new THREE.Mesh(sph,mat);b.scale.set(0.22,0.19,0.17);b.position.set(0.2,0.05,0.02);g.add(b);g.position.set(x,y,z);g.rotation.set(0,ry,rz);return g;}
-  hin.add(auricle(-0.7,0.92,0.5,0.5,0.35));
-  hin.add(auricle(0.72,0.92,-0.15,-0.6,-0.35));
-  /* große Gefäße */
-  var aortaMat=new THREE.MeshStandardMaterial({color:0xd98f8f,roughness:0.5,emissive:0x3a1414,emissiveIntensity:0.14});
-  var paMat=new THREE.MeshStandardMaterial({color:0x8aa2d4,roughness:0.5,emissive:0x152139,emissiveIntensity:0.14});
-  var venMat=new THREE.MeshStandardMaterial({color:0x6f8fc0,roughness:0.55,emissive:0x121e34,emissiveIntensity:0.12});
-  hin.add(tube([[0.08,0.85,0.02],[0.14,1.25,-0.02],[0.08,1.62,-0.14],[-0.16,1.86,-0.38],[-0.58,1.86,-0.5],[-0.92,1.62,-0.5]],0.19,aortaMat)); // Aorta + Bogen
-  hin.add(tube([[0.36,0.82,0.42],[0.2,1.2,0.34],[-0.06,1.5,0.18],[-0.42,1.64,-0.06],[-0.74,1.52,-0.32]],0.18,paMat));                     // Truncus pulmonalis
-  hin.add(tube([[0.9,1.55,0.05],[0.82,1.2,0.12],[0.72,0.95,0.14]],0.15,venMat));                                                          // kraniale Hohlvene
-  hin.add(tube([[-0.85,1.05,-0.35],[-0.7,0.95,-0.15],[-0.55,0.9,0.0]],0.12,venMat));                                                      // Lungenvenen (Andeutung)
-  /* Koronararterien im Sulcus */
-  var coronMat=new THREE.MeshStandardMaterial({color:0xc23a44,roughness:0.5,emissive:0x3a0c12,emissiveIntensity:0.2});
-  hin.add(tube([[0.02,0.66,0.62],[-0.02,0.2,0.74],[-0.04,-0.4,0.6],[-0.02,-0.95,0.32]],0.035,coronMat));  // R. interventricularis (LAD)
-  hin.add(tube([[0.5,0.66,0.28],[0.16,0.62,0.62],[-0.2,0.6,0.58]],0.03,coronMat));                          // R. circumflexus
-  hin.rotation.set(0.12,0.0,-0.16);   // Apex ventral-links, leicht kranial
-  hin.position.y=-0.22;
-  camera.position.set(0,0.12,5.35); camera.lookAt(0,0.0,0);
-  heart.scale.setScalar(0.8);
+  var mat=new THREE.MeshStandardMaterial({color:0xb23a48,roughness:0.55,metalness:0.03,emissive:0x3a0a12,emissiveIntensity:0.35});
+  /* schwebendes Namensschild (Sprite) für den gewählten Punkt */
+  var lblCanvas=document.createElement("canvas"); lblCanvas.width=512; lblCanvas.height=128;
+  var lblSprite=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,depthTest:false})); lblSprite.scale.set(1.0,0.25,1); lblSprite.visible=false; scene.add(lblSprite);
+  function setLbl(text,color){ var x=lblCanvas.getContext("2d"); x.clearRect(0,0,512,128);
+    x.font="bold 42px Segoe UI,Arial,sans-serif"; var tw=Math.min(x.measureText(text).width,452), bw=tw+40, bx=(512-bw)/2;
+    x.fillStyle="rgba(8,10,14,.85)"; x.beginPath(); if(x.roundRect){x.roundRect(bx,26,bw,76,16);}else{x.rect(bx,26,bw,76);} x.fill();
+    x.strokeStyle=color; x.lineWidth=3; x.stroke(); x.fillStyle="#fff"; x.textAlign="center"; x.textBaseline="middle"; x.fillText(text,256,64,452);
+    lblSprite.material.map=new THREE.CanvasTexture(lblCanvas); lblSprite.material.needsUpdate=true; }
+  var loadEl=$("#heartLoad");
+  fetch("heart.bin").then(function(r){return r.arrayBuffer();}).then(function(buf){
+    if(loadEl) loadEl.remove();
+    var hdr=new Uint32Array(buf,0,2),V=hdr[0],I=hdr[1];
+    var pos=new Float32Array(buf,8,V*3), idx=new Uint32Array(buf,8+V*3*4,I);
+    var geo=new THREE.BufferGeometry(); geo.setAttribute("position",new THREE.BufferAttribute(pos,3));
+    geo.setIndex(new THREE.BufferAttribute(idx,1)); geo.computeVertexNormals();
+    var mesh=new THREE.Mesh(geo,mat); heart.add(mesh);
+    var mkGeo=new THREE.SphereGeometry(0.055,14,12), rc=new THREE.Raycaster();
+    ANAT.forEach(function(a){
+      var col=new THREE.Color(a.c);
+      /* Marker auf die Oberfläche projizieren (radial von außen nach innen) */
+      var dir=new THREE.Vector3(a.p[0],a.p[1],a.p[2]); if(dir.length()<0.001)dir.set(0,-1,0); dir.normalize();
+      rc.set(dir.clone().multiplyScalar(3.6), dir.clone().negate());
+      var hit=rc.intersectObject(mesh,false)[0];
+      var P=hit?hit.point.clone().addScaledVector(dir,0.03):new THREE.Vector3(a.p[0],a.p[1],a.p[2]);
+      var halo=new THREE.Mesh(new THREE.SphereGeometry(0.1,12,10),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.22})); halo.position.copy(P); heart.add(halo);
+      var mk=new THREE.Mesh(mkGeo,new THREE.MeshBasicMaterial({color:col})); mk.position.copy(P); mk.userData.id=a.id; mk.userData.halo=halo; heart.add(mk); heartMarkers.push(mk);
+    });
+    heart.scale.setScalar(0.72);
+  }).catch(function(){ if(loadEl) loadEl.textContent="Herzmodell (heart.bin) konnte nicht geladen werden."; });
+  window.__heartFocus=function(id){ heartFocus=id;
+    heartMarkers.forEach(function(mk){var on=mk.userData.id===id; mk.scale.setScalar(on?1.9:1); if(mk.userData.halo)mk.userData.halo.material.opacity=on?0.6:0.22;});
+    var a=id?ANAT.find(function(x){return x.id===id;}):null;
+    if(a){ setLbl(a.n.split(" (")[0], "#"+a.c.toString(16).padStart(6,"0")); lblSprite.visible=true; } else lblSprite.visible=false;
+  };
+  var theta=0.35,phi=1.45,thetaG=theta,phiG=phi,dist=3.05,ptrs=new Map(),lastPinch=0,moved=false,dn=[0,0];
+  function apply(){var st=Math.sin(phi);camera.position.set(dist*st*Math.sin(theta),dist*Math.cos(phi),dist*st*Math.cos(theta));camera.lookAt(0,0,0);}
+  cv.style.touchAction="none";
+  cv.addEventListener("pointerdown",function(e){cv.setPointerCapture&&cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});moved=false;dn=[e.clientX,e.clientY];});
+  cv.addEventListener("pointermove",function(e){if(!ptrs.has(e.pointerId))return;var p=ptrs.get(e.pointerId),dx=e.clientX-p.x,dy=e.clientY-p.y;ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(Math.abs(e.clientX-dn[0])+Math.abs(e.clientY-dn[1])>4)moved=true;
+    if(ptrs.size===1){thetaG-=dx*0.008;phiG=Math.max(0.2,Math.min(Math.PI-0.2,phiG-dy*0.008));}
+    else if(ptrs.size===2){var a=Array.from(ptrs.values()),d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);if(lastPinch)dist=Math.max(1.8,Math.min(6,dist*lastPinch/d));lastPinch=d;}});
+  var ray=new THREE.Raycaster(), m2=new THREE.Vector2();
+  cv.addEventListener("pointerup",function(e){ptrs.delete(e.pointerId);lastPinch=0;
+    if(!moved&&heartMarkers.length){var r=cv.getBoundingClientRect();m2.x=((e.clientX-r.left)/r.width)*2-1;m2.y=-((e.clientY-r.top)/r.height)*2+1;
+      ray.setFromCamera(m2,camera); var hit=ray.intersectObjects(heartMarkers,false)[0];
+      if(hit){var a=ANAT.find(function(x){return x.id===hit.object.userData.id;}); if(a)heartInfoShow(a);}}});
+  cv.addEventListener("pointercancel",function(e){ptrs.delete(e.pointerId);lastPinch=0;});
+  cv.addEventListener("wheel",function(e){e.preventDefault();dist=Math.max(1.8,Math.min(6,dist*(1+Math.sign(e.deltaY)*0.09)));},{passive:false});
   var ro=new ResizeObserver(function(){var W=stage.clientWidth,H=stage.clientHeight||230;if(W){renderer.setSize(W,H);camera.aspect=W/H;camera.updateProjectionMatrix();}}); ro.observe(stage);
-  var beat=0, last=0, reduce=(window.VP&&window.VP.get&&window.VP.get("motion")==="reduce");
-  (function loop(now){ requestAnimationFrame(loop);
-    if(!last)last=now||0; var dt=((now||0)-last)/1000; if(dt>0.1)dt=0.1; last=now||0;
-    if(!reduce) heart.rotation.y += 0.006;
+  var beat=0,last=0,reduce=(window.VP&&window.VP.get&&window.VP.get("motion")==="reduce"),tmp=new THREE.Vector3();
+  (function loop(now){requestAnimationFrame(loop);
+    if(!last)last=now||0;var dt=((now||0)-last)/1000;if(dt>0.1)dt=0.1;last=now||0;
+    if(ptrs.size===0&&!reduce&&!heartFocus) thetaG+=0.0032;
+    theta+=(thetaG-theta)*0.12;phi+=(phiG-phi)*0.12;apply();
     var s=1;
-    if(!heartState.flat && heartState.bpm>0){
-      beat += dt*(heartState.bpm/60);
-      var ph=beat%1, pulse=Math.pow(Math.max(0,Math.sin(ph*Math.PI)),2.2);
-      s = 1 + heartState.amp*(reduce?0.4:1)*pulse;
-      mat.emissiveIntensity = 0.4 + 0.55*pulse;
-    } else { s=0.97; mat.emissiveIntensity=0.18; }
-    heart.scale.setScalar(0.8*s);
+    if(!heartState.flat&&heartState.bpm>0){beat+=dt*(heartState.bpm/60);var ph=beat%1,pulse=Math.pow(Math.max(0,Math.sin(ph*Math.PI)),2.2);
+      s=1+heartState.amp*(reduce?0.4:1)*pulse; mat.emissiveIntensity=0.35+0.5*pulse;}
+    else {s=0.98;mat.emissiveIntensity=0.16;}
+    heart.scale.setScalar(0.72*s);
+    if(lblSprite.visible&&heartFocus){var mk=heartMarkers.find(function(x){return x.userData.id===heartFocus;});
+      if(mk){mk.getWorldPosition(tmp);tmp.y+=0.22;lblSprite.position.copy(tmp);}}
     renderer.render(scene,camera);
   })(0);
 }
