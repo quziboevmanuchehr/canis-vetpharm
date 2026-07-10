@@ -700,7 +700,22 @@ window.ANAES.injection = [
     cautions:'Sedations-Variante niedriger (Ket 3–5 + Med 0,1). Bordetella-Risiko.' },
   { id:'m-topup', sp:'meerschwein', kind:'Nachdosierung', name:'Ketamin (reduziert)', route:'IP/IM', onset:'—', duration:'verlängert',
     indication:'Reduzierte Ketamin-Dosis nachtitrieren.', comp:[ {n:'Ketamin (verdünnt)', mgkg:[10,20], conc:100} ],
-    expect:'Nicht α2 wiederholen.', reversal:['atipamezol'], cautions:'O₂/Wärme fortführen.' }
+    expect:'Nicht α2 wiederholen.', reversal:['atipamezol'], cautions:'O₂/Wärme fortführen.' },
+
+  { id:'k-medbut', sp:'katze', kind:'Sedierung', name:'Medetomidin + Butorphanol', route:'IM', onset:'5–10 min', duration:'~30–45 min (reversibel)',
+    indication:'Reversible Analgosedierung (Diagnostik/kleine Eingriffe).',
+    comp:[ {n:'Medetomidin (Domitor)', mgkg:[0.005,0.02], conc:1}, {n:'Butorphanol', mgkg:[0.1,0.4], conc:10} ],
+    expect:'Bradykardie (α2), mild atemdeprimiert; voll reversibel.',
+    reversal:['atipamezol'], cautions:'Katze: Atipamezol HALBES Domitor-Volumen. Nicht bei kardial instabilen Tieren.' },
+  { id:'r-topup2', sp:'kaninchen', kind:'Nachdosierung', name:'Praxis: Triple nachlegen (Med+Ket s.c. + Butorphanol i.m.)', route:'SC + IM', onset:'—', duration:'verlängert',
+    indication:'Praxis-Variante: Medetomidin+Ketamin subkutan + Butorphanol intramuskulär nachdosieren.',
+    comp:[ {n:'Medetomidin s.c. (reduziert)', mgkg:[0.1,0.15], conc:1}, {n:'Ketamin s.c.', mgkg:[5,7], conc:100}, {n:'Butorphanol i.m.', mgkg:[0.2,0.4], conc:10} ],
+    expect:'Kreislaufdepression kann kumulieren – O₂ + Wärme + Monitoring Pflicht.',
+    reversal:['atipamezol'], cautions:'α2 nur reduziert wiederholen (Standard: nur Ketamin) – engmaschig überwachen; alternativ auf Iso-Erhaltung wechseln.' },
+  { id:'m-topup2', sp:'meerschwein', kind:'Nachdosierung', name:'Praxis: Triple nachlegen (Med+Ket s.c. + Butorphanol i.m.)', route:'SC + IM', onset:'—', duration:'verlängert',
+    indication:'Praxis-Variante analog Kaninchen.',
+    comp:[ {n:'Medetomidin s.c. (reduziert)', mgkg:[0.1,0.2], conc:1}, {n:'Ketamin s.c.', mgkg:[10,20], conc:100}, {n:'Butorphanol i.m.', mgkg:[0.2,0.4], conc:10} ],
+    expect:'Variables Ansprechen; Kreislauf schonen.', reversal:['atipamezol'], cautions:'α2 nicht voll kumulieren; O₂/Wärme.' }
 ];
 
 /* =================== ANTAGONISTEN / REVERSAL =================== */

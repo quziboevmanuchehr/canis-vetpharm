@@ -259,6 +259,8 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
   <div class="pfield"><label>Gewicht (kg)</label><input class="wt" id="wt" type="number" inputmode="decimal" min="0.05" step="0.1" value="10"></div>
   <div class="pfield"><label>Alter</label><select id="age">
     <option value="adult">adult</option><option value="pediatric">Jungtier / neonatal</option><option value="senior">geriatrisch</option></select></div>
+  <div class="pfield"><label>Narkose-Typ</label><select id="anMode" data-vp-tip="Bestimmt die Logik: Gasnarkose (Iso), Injektion als Einleitung mit anschließendem Gas, oder NUR Injektion ohne Gas (Iso aus → reine Spontanatmung).">
+    <option value="gas">Gasnarkose (Iso)</option><option value="inj-ind">Injektion → dann Gas</option><option value="inj-only">Nur Injektion (ohne Gas)</option></select></div>
   <div class="pchip-note" id="patNote"></div>
 </div></div>
 
@@ -330,6 +332,8 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
         <div id="monAssess"></div>
         <div class="sec-h">Geräte-Soll für Patient</div>
         <div class="dev-ctrl" id="devCtrl"></div>
+        <div class="sec-h" data-vp-tip="Konkrete Beatmungs-/Frischgas-Einstellungen und gezielte Hilfe je nach EtCO₂/SpO₂/Kapno-Form & Blutdruck">Beatmungs- &amp; Kapnograf-Coach</div>
+        <div id="ventCoach"></div>
         <div id="monDetail"></div>
       </aside>
     </div>
@@ -398,7 +402,7 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 var A = window.ANAES || {drugs:[],incidents:[],machine:{controls:[],ventModes:[]},fluids:[],species:[],vitals:{},info:"",sources:[]};
 var $ = function(s,r){return (r||document).querySelector(s);};
 var $$ = function(s,r){return Array.from((r||document).querySelectorAll(s));};
-var state = { sp: (A.species[0]&&A.species[0].id)||'hund', wt: 10, age:'adult', incident:null, dfilter:'Alle', q:'', monMode:'ist', istVals:null, rhythm:'sinus', adrHigh:false, dev:{o2:1, iso:2, mode:'vcv'} };
+var state = { sp: (A.species[0]&&A.species[0].id)||'hund', wt: 10, age:'adult', incident:null, dfilter:'Alle', q:'', monMode:'ist', istVals:null, rhythm:'sinus', adrHigh:false, anMode:'gas', dev:{o2:1, iso:2, mode:'vcv'} };
 
 /* ---------- helpers: dose math ---------- */
 function parseConc(s){ if(!s) return null; var m = String(s).replace(',','.').match(/([0-9]*\.?[0-9]+)\s*(mg|mcg|µg|g)\s*\/\s*ml/i); if(!m) return null; var v=parseFloat(m[1]); var u=m[2].toLowerCase(); if(u==='g') v=v*1000; if(u==='mcg'||u==='µg') v=v/1000; return v; /* mg per mL */ }
@@ -622,7 +626,7 @@ function renderMonValues(){
   var alv=$('#monAlarm'); var txt=r.alarm, inc=r.incident;
   if(state.monMode==='ist'){ var n=(MON().params||[]).filter(function(p){return al[p.id];}).length; txt=n>0?(n+' Wert(e) außerhalb – Analyse unten'):''; inc=null; }
   if(alv){ if(txt){ alv.textContent='⚠ '+txt+(inc?'  ▸ Protokoll':''); alv.classList.add('on'); alv.onclick=function(){ if(inc) gotoIncident(inc); }; } else { alv.classList.remove('on'); alv.onclick=null; } }
-  renderAssess(); renderDevCtrl();
+  renderAssess(); renderDevCtrl(); ventCoach();
 }
 function renderMonInputs(){
   if(!state.istVals) istInit();
@@ -927,6 +931,30 @@ function renderMachine(){
 }
 
 /* ---------- tabs + wiring ---------- */
+/* ---------- Beatmungs- & Kapnograf-Coach (Modus/PEEP/VT/Frischgas + gezielte Hilfe) ---------- */
+function ventCoach(){
+  var box=$('#ventCoach'); if(!box) return;
+  var r=monResolve(), v=monVitals(), w=state.wt, s=sp();
+  var vtLo=Math.round(10*w), vtHi=Math.round(15*w);
+  var afLo=(state.sp==='katze'?10:8), afHi=(state.sp==='katze'?20:15);
+  var nrb=w<=7, fgf=nrb?Math.max(500,Math.round(w*250)):Math.max(500,Math.round(w*30));
+  var tips=[];
+  if(state.anMode==='inj-only') tips.push(['#a78bfa','Nur Injektion – Iso aus, reine Spontanatmung','Kein Volatil zum Nachsteuern. Bei EtCO₂ ↑ intubieren + manuell/IPPV beatmen (Beutel/Ambu). Narkosetiefe nur über Injektion, Antagonisten bereit. Reicht die Injektion? Bei Abwehr/flach → Analgesie/Tiefe prüfen, NICHT bei hohem CO₂ nachdosieren.',null]);
+  else if(state.anMode==='inj-ind') tips.push(['#66a6ff','Injektions-Einleitung → auf Gas übergehen','Nach Einleitung Iso titrieren + Beatmung nach Zielwerten (unten). Frischgas s.u.',null]);
+  if(r.etco2>v.etco2[1]) tips.push(['#ffd166','EtCO₂ '+r.etco2+' hoch → Ventilation ↑','Minutenvolumen erhöhen: zuerst AF +2–4/min, dann VT +1–2 mL/kg (bis '+vtHi+' mL / Pmax 20 cmH₂O). >60 mmHg → kontrolliert beatmen (IPPV). Angehobene Baseline/FiCO₂>0 → Atemkalk/Frischgas prüfen.'+(state.anMode!=='gas'?' Ohne Gerät: Beutel/Ambu.':''),null]);
+  else if(r.etco2>0&&r.etco2<v.etco2[0]) tips.push(['#67e8f9','EtCO₂ '+r.etco2+' niedrig','Hyperventilation → AF −2–4/min. ACHTUNG: plötzlicher Abfall = zuerst Kreislauf prüfen (Puls/BD/EKG), nicht stärker beatmen.',null]);
+  if(r.spo2>0&&r.spo2<v.spo2[0]) tips.push(['#ff4d4d','SpO₂ '+r.spo2+' % niedrig trotz O₂','Recruitment (Paw 15–20 cmH₂O für 5–10 s) + PEEP 5–10 cmH₂O; Tubuslage/einseitige Intubation prüfen; alle 30–60 min wiederholen. Vorher Volumen/Blutdruck sichern.',null]);
+  if(r.capno==='shark') tips.push(['#a3e635','Kapno-Haifischflosse → Obstruktion/Bronchospasmus','Exspiration verlängern (AF ↓, I:E 1:3+), auf PCV wechseln (Druck begrenzen), β2-Bronchodilatator; Tubus prüfen/absaugen; auf Air-Trapping achten.',null]);
+  if(r.capno==='baseline') tips.push(['#fcd34d','Rückatmung (Baseline > 0)','Atemkalk erschöpft → wechseln; Frischgasfluss erhöhen. Nicht „gegen-beatmen".',null]);
+  if(r.nibp>0&&r.nibp<v.map[0]) tips.push(['#f35588','MAP '+r.nibp+' niedrig → Blutdruck stützen','Häufigste Ursache Iso zu tief → Verdampfer senken; dann Kristalloid-Bolus 3–10 mL/kg; persistiert → Ephedrin, dann Dopamin/Dobutamin CRI.',{inc:'hypotension'}]);
+  else if(r.nibp>v.map[1]) tips.push(['#ff8c6b','MAP '+r.nibp+' hoch → Ursache klären','Zu flach/Schmerz → Analgesie/Tiefe; Hyperkapnie → beatmen; α2-Phase → abwarten, KEIN Atropin. Nur schwer/persistierend gezielt senken.',{inc:'hypertension'}]);
+  var tgt='<div class="devr"><span class="dn">Zielwerte '+s.name+' '+fmt(w)+' kg</span><span class="dv"></span><span class="dt">Tidalvol. '+vtLo+'–'+vtHi+' mL (10–15 mL/kg) · AF '+afLo+'–'+afHi+'/min · PEEP 3–5 · Pmax ≤20 cmH₂O · EtCO₂ 35–45</span></div>'+
+    '<div class="devr"><span class="dn">Frischgas ('+(nrb?'Nicht-Rückatem ≤7 kg':'Kreissystem >7 kg')+')</span><span class="dv">'+(fgf/1000).toFixed(fgf<1000?2:1)+' L/min</span><span class="dt">'+(nrb?'~'+w+'×250 mL/min (2–3× AMV)':'~'+w+'×30 mL/min (Low-Flow ×15)')+' · Min. 0,5 L/min · Wash-in höher</span></div>'+
+    '<div class="devr"><span class="dn">Modus-Wahl</span><span class="dv">'+String(state.dev.mode||'—').toUpperCase()+'</span><span class="dt">VCV Routine · PCV kleine Katze/nicht-compliant/Laparoskopie · SIMV+PSV Weaning · Manuell Notfall/Recruitment</span></div>';
+  var tipsHtml=tips.length? tips.map(function(t){ var warn=(t[0]==='#ffd166'||t[0]==='#67e8f9'||t[0]==='#fcd34d')?' warn':''; return '<div class="assess-card'+warn+'" style="border-left-color:'+t[0]+';border-color:'+t[0]+'55"'+(t[3]&&t[3].inc?' data-inc="'+t[3].inc+'"':'')+'><div class="assess-h"><b>'+t[1]+'</b></div><div class="assess-s">🔧 '+t[2]+'</div>'+(t[3]&&t[3].inc?'<div class="assess-go">→ Protokoll</div>':'')+'</div>'; }).join('') : '<div class="assess-d" style="margin-top:6px">✓ Ventilation, Kapno & Blutdruck im Zielbereich – Zielwerte oben halten.</div>';
+  box.innerHTML=tgt+'<div style="margin-top:8px">'+tipsHtml+'</div>';
+  $$('#ventCoach [data-inc]').forEach(function(b){ b.onclick=function(){ gotoIncident(b.dataset.inc); }; });
+}
 /* ---------- Injektionsnarkose (Kombinationen + Antagonisten, mL-genau) ---------- */
 function compLine(c){
   var w=state.wt, per, mg='', ml='';
@@ -980,6 +1008,7 @@ function boot(){
   $$('#tabs .tab').forEach(function(t){ t.onclick=function(){ switchTab(t.dataset.view); }; });
   $('#wt').addEventListener('input',function(e){ var v=parseFloat(e.target.value); state.wt=(v>0?v:0); syncPatient(); rerender(); });
   $('#age').addEventListener('change',function(e){ state.age=e.target.value; renderSettings(); });
+  if($('#anMode')) $('#anMode').addEventListener('change',function(e){ state.anMode=e.target.value; if(state.anMode==='inj-only') state.dev.iso=0; renderMachine(); renderDevCtrl(); if(mon.running) renderMonValues(); else ventCoach(); });
   $('#dSearch').addEventListener('input',function(e){ state.q=e.target.value; renderDrugs(); });
   $('#btnPanic').addEventListener('click',function(){ var cpr=A.incidents.find(function(i){return i.id==='asystolie'||i.id==='cpr';}); if(cpr){ state.incident=cpr.id; switchTab('notfall'); renderIncidents(); renderProto(); window.scrollTo({top:0,behavior:'smooth'}); } });
   // deep link ?w=weight&s=species
