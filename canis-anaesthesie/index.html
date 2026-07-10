@@ -958,9 +958,19 @@ function ventCoach(){
 /* ---------- Injektionsnarkose (Kombinationen + Antagonisten, mL-genau) ---------- */
 function compLine(c){
   var w=state.wt, per, mg='', ml='';
+  if(c.titr){ return '<div class="dose-card" style="margin:0 0 6px;background:rgba(255,255,255,.02)"><div class="dose-top"><span class="dose-name" style="font-size:13px">'+c.n+'</span><span class="dose-cls">nach Wirkung</span></div><div class="dose-meta">💧 '+c.titr+'</div></div>'; }
   if(c.mlkg){ per=fmtRange(c.mlkg[0],c.mlkg[1])+' mL/kg'; ml='<span class="dpill ml">≈ <b>'+fmtRange(c.mlkg[0]*w,c.mlkg[1]*w)+' mL</b></span>'; }
   else { per=fmtRange(c.mgkg[0],c.mgkg[1])+' mg/kg'+(c.conc?' · '+c.conc+' mg/mL':''); mg='<span class="dpill mg"><b>'+fmtRange(c.mgkg[0]*w,c.mgkg[1]*w)+' mg</b></span>'; if(c.conc) ml='<span class="dpill ml">≈ <b>'+fmtRange(c.mgkg[0]*w/c.conc,c.mgkg[1]*w/c.conc)+' mL</b></span>'; }
   return '<div class="dose-card" style="margin:0 0 6px;background:rgba(255,255,255,.02)"><div class="dose-top"><span class="dose-name" style="font-size:13px">'+c.n+'</span><span class="dose-cls">'+per+'</span></div><div class="dose-calc">'+mg+ml+'</div></div>';
+}
+function loadInjScenario(sc){
+  if(!state.istVals) istInit();
+  ['hr','spo2','etco2','rr','temp','sys','dia'].forEach(function(k){ if(sc[k]!=null) state.istVals[k]=sc[k]; });
+  if(sc.sys!=null&&sc.dia!=null) state.istVals.nibp=Math.round(sc.dia+(sc.sys-sc.dia)/3);
+  if(sc.rhythm) state.rhythm=sc.rhythm;
+  state.monMode='ist';
+  switchTab('geraet'); renderMonInputs(); renderMonValues();
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 function renderInjection(){
   var box=$('#injCombos'); if(!box) return; var s=sp();
@@ -978,7 +988,7 @@ function renderInjection(){
         c.comp.map(compLine).join('')+
         '<div class="assess-m" style="margin-top:6px">📟 <b>Erwartet:</b> '+c.expect+'</div>'+
         (c.cautions?'<div class="dose-caution">⚠️ '+c.cautions+'</div>':'')+
-        (rev?'<div class="chips" style="margin-top:8px"><span class="dose-cls" style="align-self:center">Antagonist:</span>'+rev+'</div>':'')+'</div>';
+        (function(){ var a=''; if(rev) a+='<span class="dose-cls" style="align-self:center">Antagonist:</span>'+rev; if(c.scenario) a+='<button class="chip" data-scn="'+c.id+'" style="cursor:pointer;border-color:var(--cyan);color:#bff0ff" data-vp-tip="Erwartete Werte in den Monitor laden – Coach &amp; Analyse erklären Folge und Reaktion">▶ Folge im Monitor</button>'; if(c.incident) a+='<button class="chip" data-inc="'+c.incident+'" style="cursor:pointer" data-vp-tip="Protokoll: Ursache &amp; Reaktion">→ Zwischenfall</button>'; return a?'<div class="chips" style="margin-top:8px">'+a+'</div>':''; })()+'</div>';
     }).join('');
   }).join(''); }
   var rb=$('#injReversal'); if(rb) rb.innerHTML=(A.reversal||[]).map(function(r){
@@ -993,6 +1003,7 @@ function renderInjection(){
       '<div class="dose-caution">⚠️ '+r.caution+'</div></div>';
   }).join('');
   $$('#injektion [data-inc]').forEach(function(b){ b.onclick=function(){ gotoIncident(b.dataset.inc); }; });
+  $$('#injektion [data-scn]').forEach(function(b){ b.onclick=function(){ var c=(A.injection||[]).find(function(x){return x.id===b.dataset.scn;}); if(c&&c.scenario) loadInjScenario(c.scenario); }; });
   $$('#injektion [data-rev]').forEach(function(b){ b.onclick=function(){ var el=$('#rev-'+b.dataset.rev); if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); el.style.boxShadow='0 0 0 2px var(--cyan)'; setTimeout(function(){el.style.boxShadow='';},1400); } }; });
 }
 function switchTab(v){
