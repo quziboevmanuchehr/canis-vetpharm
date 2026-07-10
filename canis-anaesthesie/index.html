@@ -286,6 +286,7 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
     <div class="card">
       <h3>Injektionsnarkose ohne Narkosegerät · <span id="injSp">…</span></h3>
       <p class="muted" style="font-size:12.5px;margin-top:-4px">Kombinationen für Einleitung, Nachdosierung (oft mit 0,9 % NaCl verdünnt) und Sedierung – Dosen berechnet für <b id="injPat">…</b>. Reine Spontanatmung → <b>O₂-Zufuhr + Monitoring</b> (SpO₂/EtCO₂) und Antagonisten bereithalten.</p>
+      <div id="injRecord" style="margin-top:10px"></div>
       <div id="injCase" style="margin-top:10px"></div>
       <div id="injCombos" style="margin-top:12px"></div>
       <div class="sec-h">Antagonisten / Reversal (für <span id="injSp2">…</span> berechnet)</div>
@@ -402,7 +403,7 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 var A = window.ANAES || {drugs:[],incidents:[],machine:{controls:[],ventModes:[]},fluids:[],species:[],vitals:{},info:"",sources:[]};
 var $ = function(s,r){return (r||document).querySelector(s);};
 var $$ = function(s,r){return Array.from((r||document).querySelectorAll(s));};
-var state = { sp: (A.species[0]&&A.species[0].id)||'hund', wt: 10, age:'adult', incident:null, dfilter:'Alle', q:'', monMode:'ist', istVals:null, rhythm:'sinus', adrHigh:false, anMode:'gas', dev:{o2:1, iso:2, mode:'vcv'} };
+var state = { sp: (A.species[0]&&A.species[0].id)||'hund', wt: 10, age:'adult', incident:null, dfilter:'Alle', q:'', monMode:'ist', istVals:null, rhythm:'sinus', adrHigh:false, anMode:'gas', injInduction:null, injTopups:[], dev:{o2:1, iso:2, mode:'vcv'} };
 
 /* ---------- helpers: dose math ---------- */
 function parseConc(s){ if(!s) return null; var m = String(s).replace(',','.').match(/([0-9]*\.?[0-9]+)\s*(mg|mcg|µg|g)\s*\/\s*ml/i); if(!m) return null; var v=parseFloat(m[1]); var u=m[2].toLowerCase(); if(u==='g') v=v*1000; if(u==='mcg'||u==='µg') v=v/1000; return v; /* mg per mL */ }
@@ -425,7 +426,7 @@ function renderSpecies(){
   $('#spChips').innerHTML = A.species.map(function(s){
     return '<button class="sp-chip'+(s.id===state.sp?' active':'')+'" data-sp="'+s.id+'"><span class="ic">'+s.icon+'</span><span class="nm">'+s.name+'</span></button>';
   }).join('');
-  $$('#spChips .sp-chip').forEach(function(b){ b.onclick=function(){ state.sp=b.dataset.sp; syncPatient(); rerender(); }; });
+  $$('#spChips .sp-chip').forEach(function(b){ b.onclick=function(){ if(b.dataset.sp!==state.sp){ state.injInduction=null; state.injTopups=[]; } state.sp=b.dataset.sp; syncPatient(); rerender(); }; });
 }
 function syncPatient(){
   renderSpecies();
@@ -931,14 +932,36 @@ function renderMachine(){
 }
 
 /* ---------- tabs + wiring ---------- */
+/* ---------- Narkose-Kontext: welche Wirkstoffe hat das Tier bekommen (global) ---------- */
+function injContext(){
+  var ids=[]; if(state.injInduction) ids.push(state.injInduction); (state.injTopups||[]).forEach(function(x){ if(ids.indexOf(x)<0) ids.push(x); });
+  var names=''; ids.forEach(function(id){ var c=(A.injection||[]).find(function(x){return x.id===id;}); if(c){ names+=' '+c.name+' '+c.comp.map(function(k){return k.n;}).join(' '); } });
+  var f={ any:ids.length>0, ids:ids,
+    alpha2:/Medetomidin|Dexmed|Xylazin/i.test(names), ketamine:/Ketamin/i.test(names),
+    opioid:/Polamivet|Levometh|Butorphanol|Methadon|Buprenorph|Fentanyl/i.test(names),
+    barb:/Narkodorm|Pentobarb|Barbiturat/i.test(names), benzo:/Midazolam|Diazepam/i.test(names) };
+  f.reversible=f.alpha2||f.opioid||f.benzo;
+  f.indName=state.injInduction? ((A.injection||[]).find(function(x){return x.id===state.injInduction;})||{}).name : null;
+  f.topNames=(state.injTopups||[]).map(function(id){ var c=(A.injection||[]).find(function(x){return x.id===id;}); return c?c.name:id; });
+  return f;
+}
 /* ---------- Beatmungs- & Kapnograf-Coach (Modus/PEEP/VT/Frischgas + gezielte Hilfe) ---------- */
 function ventCoach(){
   var box=$('#ventCoach'); if(!box) return;
-  var r=monResolve(), v=monVitals(), w=state.wt, s=sp();
+  var r=monResolve(), v=monVitals(), w=state.wt, s=sp(), ctx=injContext();
   var vtLo=Math.round(10*w), vtHi=Math.round(15*w);
   var afLo=(state.sp==='katze'?10:8), afHi=(state.sp==='katze'?20:15);
   var nrb=w<=7, fgf=nrb?Math.max(500,Math.round(w*250)):Math.max(500,Math.round(w*30));
   var tips=[];
+  if(ctx.any) tips.push(['#22d3ee','Verabreichte Injektionsnarkose berücksichtigt','Gegeben: '+(ctx.indName||'(keine Einleitung)')+(ctx.topNames.length?' + Nachdosierung: '+ctx.topNames.join(' + '):'')+'. '+
+    (ctx.barb?'⚠ Barbiturat (Narkodorm) → KEIN Antidot: bei EtCO₂ ↑ beatmen, nicht nachlegen. ':'')+
+    (ctx.alpha2?'α2 → Bradykardie/initiale Hypertonie erwartet; KEIN Atropin in der Hypertonie-Phase; reversibel mit Atipamezol. ':'')+
+    (ctx.ketamine?'Ketamin → HF/BD eher ↑. ':'')+
+    (ctx.opioid?'Opioid → Atemdepression; Naloxon reversibel (Polamivet: Fenpipramid-Überhang → Tachykardie). ':''),null]);
+  if(state.anMode==='inj-only'){
+    if(r.etco2>v.etco2[1]) tips.push(['#a78bfa','Nur Injektion + EtCO₂ hoch → NICHT vertiefen','Beatmen (intubieren + Beutel/Ambu). '+(ctx.reversible?'Ggf. reversibel antagonisieren (α2/Opioid). ':'')+(ctx.barb?'Barbiturat unter Beatmung abwarten (kein Antidot).':''),null]);
+    else if(r.hr>v.hr[1]||r.nibp>v.map[1]) tips.push(['#c4b5fd','Reicht die Injektion? – Zeichen für zu flach','Tachykardie/Hypertonie ohne CO₂-Problem → Narkose evtl. zu flach: Analgesie/Tiefe erhöhen – entweder schonend nachdosieren ODER Gasnarkose (Isofluran) ergänzen (dann Beatmung nach Zielwerten).',null]);
+  }
   if(state.anMode==='inj-only') tips.push(['#a78bfa','Nur Injektion – Iso aus, reine Spontanatmung','Kein Volatil zum Nachsteuern. Bei EtCO₂ ↑ intubieren + manuell/IPPV beatmen (Beutel/Ambu). Narkosetiefe nur über Injektion, Antagonisten bereit. Reicht die Injektion? Bei Abwehr/flach → Analgesie/Tiefe prüfen, NICHT bei hohem CO₂ nachdosieren.',null]);
   else if(state.anMode==='inj-ind') tips.push(['#66a6ff','Injektions-Einleitung → auf Gas übergehen','Nach Einleitung Iso titrieren + Beatmung nach Zielwerten (unten). Frischgas s.u.',null]);
   if(r.etco2>v.etco2[1]) tips.push(['#ffd166','EtCO₂ '+r.etco2+' hoch → Ventilation ↑','Minutenvolumen erhöhen: zuerst AF +2–4/min, dann VT +1–2 mL/kg (bis '+vtHi+' mL / Pmax 20 cmH₂O). >60 mmHg → kontrolliert beatmen (IPPV). Angehobene Baseline/FiCO₂>0 → Atemkalk/Frischgas prüfen.'+(state.anMode!=='gas'?' Ohne Gerät: Beutel/Ambu.':''),null]);
@@ -976,6 +999,10 @@ function renderInjection(){
   var box=$('#injCombos'); if(!box) return; var s=sp();
   ['injSp','injSp2'].forEach(function(id){ var e=$('#'+id); if(e) e.textContent=s.name; });
   var ip=$('#injPat'); if(ip) ip.textContent=s.name+' '+fmt(state.wt)+' kg';
+  var ctx=injContext(); var recEl=$('#injRecord');
+  if(recEl){ recEl.innerHTML = ctx.any
+    ? '<div class="mset" style="margin:0"><b>💉 Am Tier verabreicht:</b> '+(ctx.indName||'(keine Einleitung gewählt)')+(ctx.topNames.length?' &nbsp;·&nbsp; <b>Nachdosierung:</b> '+ctx.topNames.join(' + '):'')+' &nbsp; <button class="chip" id="injReset" style="cursor:pointer">✕ zurücksetzen</button><div style="margin-top:5px;font-size:11.5px;color:var(--muted)">Gerät, Analyse &amp; Coach berücksichtigen jetzt diese Wirkstoffe.</div></div>'
+    : '<div class="dose-caution" style="border-color:rgba(0,216,255,.35);background:rgba(0,216,255,.07);color:#bff0ff">👉 Markiere unten bei <b>Einleitung</b> und <b>Nachdosierung</b> „○ als gegeben" – dann weiß die ganze App (Gerät/Analyse/Coach), welche Narkose das Tier bekommen hat.</div>'; }
   var ic=$('#injCase'); if(ic) ic.innerHTML='<div class="thr" style="border-color:rgba(255,140,60,.5);background:rgba(255,140,60,.1);color:#ffd7a8">⚠️ <b>EtCO₂ hoch (z.B. ~70) unter Injektionsnarkose?</b> α2-Agonist + Opioid + Barbiturat dämpfen additiv das Atemzentrum → Hypoventilation, und ohne Gerät kann das CO₂ nicht abgeatmet werden. Vorgehen: <b>intubieren + manuell beatmen (Beutel/Ambu) + O₂</b>; α2 mit Atipamezol, Opioid mit Naloxon antagonisieren (Barbiturat hat KEIN Antidot → Beatmung ist tragend). <b>NICHT tiefer nachdosieren!</b> <button class="chip" data-inc="hypoventilation" style="cursor:pointer;margin-top:6px">→ Protokoll Hypoventilation</button></div>';
   var combos=(A.injection||[]).filter(function(c){return c.sp===state.sp;});
   if(!combos.length){ box.innerHTML='<p class="muted">Für '+s.name+' sind (noch) keine Injektions-Kombinationen hinterlegt – gängige Praxis-Protokolle bestehen v.a. für Hund, Katze, Kaninchen, Frettchen und Meerschwein.</p>'; }
@@ -983,12 +1010,14 @@ function renderInjection(){
     var list=combos.filter(function(c){return c.kind===k;}); if(!list.length) return '';
     return '<div class="cat-h">'+k+(k==='Nachdosierung'?' (mit NaCl verdünnt, titriert)':'')+'</div>'+list.map(function(c){
       var rev=(c.reversal||[]).map(function(rid){ var r=(A.reversal||[]).find(function(x){return x.id===rid;}); return r?'<button class="chip" data-rev="'+rid+'" style="cursor:pointer" data-vp-tip="'+r.name+' gegen '+r.target+'">↩ '+r.name.split(' ')[0]+'</button>':''; }).join('');
-      return '<div class="dose-card" style="margin-bottom:11px"><div class="dose-top"><span class="dose-name">'+c.name+'</span><span class="dose-cls">'+c.route+' · '+c.onset+' · '+c.duration+'</span></div>'+
+      var sel=(c.kind==='Nachdosierung')?((state.injTopups||[]).indexOf(c.id)>=0):(state.injInduction===c.id);
+      var give='<button class="chip" data-give="'+c.id+'" data-kind="'+c.kind+'" style="cursor:pointer;'+(sel?'border-color:var(--green);color:#9bffcf;background:rgba(0,255,135,.12)':'')+'" data-vp-tip="Als am Tier verabreicht markieren – die ganze App (Gerät/Analyse/Coach) rechnet diese Narkose dann mit">'+(sel?'✓ gegeben':'○ als gegeben')+'</button>';
+      return '<div class="dose-card" style="margin-bottom:11px'+(sel?';border-color:var(--green);box-shadow:0 0 0 1px var(--green) inset':'')+'"><div class="dose-top"><span class="dose-name">'+c.name+'</span><span class="dose-cls">'+c.route+' · '+c.onset+' · '+c.duration+'</span></div>'+
         '<div class="dose-meta" style="margin:3px 0 8px">'+c.indication+'</div>'+
         c.comp.map(compLine).join('')+
         '<div class="assess-m" style="margin-top:6px">📟 <b>Erwartet:</b> '+c.expect+'</div>'+
         (c.cautions?'<div class="dose-caution">⚠️ '+c.cautions+'</div>':'')+
-        (function(){ var a=''; if(rev) a+='<span class="dose-cls" style="align-self:center">Antagonist:</span>'+rev; if(c.scenario) a+='<button class="chip" data-scn="'+c.id+'" style="cursor:pointer;border-color:var(--cyan);color:#bff0ff" data-vp-tip="Erwartete Werte in den Monitor laden – Coach &amp; Analyse erklären Folge und Reaktion">▶ Folge im Monitor</button>'; if(c.incident) a+='<button class="chip" data-inc="'+c.incident+'" style="cursor:pointer" data-vp-tip="Protokoll: Ursache &amp; Reaktion">→ Zwischenfall</button>'; return a?'<div class="chips" style="margin-top:8px">'+a+'</div>':''; })()+'</div>';
+        (function(){ var a=give; if(rev) a+='<span class="dose-cls" style="align-self:center">Antagonist:</span>'+rev; if(c.scenario) a+='<button class="chip" data-scn="'+c.id+'" style="cursor:pointer;border-color:var(--cyan);color:#bff0ff" data-vp-tip="Erwartete Werte in den Monitor laden – Coach &amp; Analyse erklären Folge und Reaktion">▶ Folge im Monitor</button>'; if(c.incident) a+='<button class="chip" data-inc="'+c.incident+'" style="cursor:pointer" data-vp-tip="Protokoll: Ursache &amp; Reaktion">→ Zwischenfall</button>'; return '<div class="chips" style="margin-top:8px">'+a+'</div>'; })()+'</div>';
     }).join('');
   }).join(''); }
   var rb=$('#injReversal'); if(rb) rb.innerHTML=(A.reversal||[]).map(function(r){
@@ -1005,6 +1034,12 @@ function renderInjection(){
   $$('#injektion [data-inc]').forEach(function(b){ b.onclick=function(){ gotoIncident(b.dataset.inc); }; });
   $$('#injektion [data-scn]').forEach(function(b){ b.onclick=function(){ var c=(A.injection||[]).find(function(x){return x.id===b.dataset.scn;}); if(c&&c.scenario) loadInjScenario(c.scenario); }; });
   $$('#injektion [data-rev]').forEach(function(b){ b.onclick=function(){ var el=$('#rev-'+b.dataset.rev); if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); el.style.boxShadow='0 0 0 2px var(--cyan)'; setTimeout(function(){el.style.boxShadow='';},1400); } }; });
+  $$('#injektion [data-give]').forEach(function(b){ b.onclick=function(){ var id=b.dataset.give, kind=b.dataset.kind;
+    if(kind==='Nachdosierung'){ var ix=state.injTopups.indexOf(id); if(ix>=0) state.injTopups.splice(ix,1); else state.injTopups.push(id); }
+    else { state.injInduction=(state.injInduction===id)?null:id; }
+    renderInjection(); if(mon.running) renderMonValues(); else ventCoach();
+  }; });
+  var ir=$('#injReset'); if(ir) ir.onclick=function(){ state.injInduction=null; state.injTopups=[]; renderInjection(); if(mon.running) renderMonValues(); else ventCoach(); };
 }
 function switchTab(v){
   $$('#tabs .tab').forEach(function(t){ t.classList.toggle('active',t.dataset.view===v); });
