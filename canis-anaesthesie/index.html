@@ -265,6 +265,7 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 <nav class="tabs" id="tabs">
   <button class="tab active" data-view="notfall" data-vp-tip="Narkosezwischenfälle mit Schwellen, Sofortmaßnahmen, Geräte-Einstellung & berechneten Dosen – jetzt mit Ursache über Blutwerte/Stoffwechsel/Reise">🚨 Notfall</button>
   <button class="tab" data-view="geraet" data-vp-tip="Virtueller Monitor (EKG/Kapno) + Narkosegerät: Verdampfer drehen, Flowmeter schieben, Werte eingeben">🖥️ Gerät (Monitor + Narkose)</button>
+  <button class="tab" data-view="injektion" data-vp-tip="Injektionsnarkose OHNE Gerät: Kombinationen (Einleitung/Nachdosierung/Sedierung) + Antagonisten, mL-genau pro Patient">💤 Injektionsnarkose</button>
   <button class="tab" data-view="medis" data-vp-tip="Gewichtsgenauer Dosis-Rechner für 33 Wirkstoffe (mg & mL)">💉 Medikamente</button>
   <button class="tab" data-view="bedienung" data-vp-tip="Startablauf, Sicherheit und Geräte-Dichtigkeitstest (Leak-Test) vor der Narkose">📖 Bedienung &amp; Dichtigkeit</button>
   <button class="tab" data-view="settings" data-vp-tip="Geräte-Startwerte (O₂, Isofluran, AZV, PIP …) pro Patient">⚙️ Einstellungen</button>
@@ -276,6 +277,18 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
     <div class="grid-2">
       <aside class="card"><h3>Zwischenfall wählen</h3><div class="inc-list" id="incList"></div></aside>
       <div class="card" id="protoBox"><p class="muted">Wähle links einen Zwischenfall – dann erscheinen Sofortmaßnahmen, Geräte-Einstellung und die für <b id="pSpecies">…</b> (<span id="pWt">…</span>) berechneten Medikamente.</p></div>
+    </div>
+  </section>
+
+  <section class="view" id="injektion">
+    <div class="card">
+      <h3>Injektionsnarkose ohne Narkosegerät · <span id="injSp">…</span></h3>
+      <p class="muted" style="font-size:12.5px;margin-top:-4px">Kombinationen für Einleitung, Nachdosierung (oft mit 0,9 % NaCl verdünnt) und Sedierung – Dosen berechnet für <b id="injPat">…</b>. Reine Spontanatmung → <b>O₂-Zufuhr + Monitoring</b> (SpO₂/EtCO₂) und Antagonisten bereithalten.</p>
+      <div id="injCase" style="margin-top:10px"></div>
+      <div id="injCombos" style="margin-top:12px"></div>
+      <div class="sec-h">Antagonisten / Reversal (für <span id="injSp2">…</span> berechnet)</div>
+      <div id="injReversal"></div>
+      <div class="src" style="margin-top:10px">Quellen: Plumb's Veterinary Drug Handbook · BSAVA / Carpenter Exotic Animal Formulary · Fachinfos (Ketamin 10 %, L-Polamivet, Domitor/Antisedan) · Hedenqvist et al. Alle Angaben Trainings-/Entscheidungshilfe – vor Gabe gegen Fachinfo & Patient prüfen.</div>
     </div>
   </section>
 
@@ -914,6 +927,46 @@ function renderMachine(){
 }
 
 /* ---------- tabs + wiring ---------- */
+/* ---------- Injektionsnarkose (Kombinationen + Antagonisten, mL-genau) ---------- */
+function compLine(c){
+  var w=state.wt, per, mg='', ml='';
+  if(c.mlkg){ per=fmtRange(c.mlkg[0],c.mlkg[1])+' mL/kg'; ml='<span class="dpill ml">≈ <b>'+fmtRange(c.mlkg[0]*w,c.mlkg[1]*w)+' mL</b></span>'; }
+  else { per=fmtRange(c.mgkg[0],c.mgkg[1])+' mg/kg'+(c.conc?' · '+c.conc+' mg/mL':''); mg='<span class="dpill mg"><b>'+fmtRange(c.mgkg[0]*w,c.mgkg[1]*w)+' mg</b></span>'; if(c.conc) ml='<span class="dpill ml">≈ <b>'+fmtRange(c.mgkg[0]*w/c.conc,c.mgkg[1]*w/c.conc)+' mL</b></span>'; }
+  return '<div class="dose-card" style="margin:0 0 6px;background:rgba(255,255,255,.02)"><div class="dose-top"><span class="dose-name" style="font-size:13px">'+c.n+'</span><span class="dose-cls">'+per+'</span></div><div class="dose-calc">'+mg+ml+'</div></div>';
+}
+function renderInjection(){
+  var box=$('#injCombos'); if(!box) return; var s=sp();
+  ['injSp','injSp2'].forEach(function(id){ var e=$('#'+id); if(e) e.textContent=s.name; });
+  var ip=$('#injPat'); if(ip) ip.textContent=s.name+' '+fmt(state.wt)+' kg';
+  var ic=$('#injCase'); if(ic) ic.innerHTML='<div class="thr" style="border-color:rgba(255,140,60,.5);background:rgba(255,140,60,.1);color:#ffd7a8">⚠️ <b>EtCO₂ hoch (z.B. ~70) unter Injektionsnarkose?</b> α2-Agonist + Opioid + Barbiturat dämpfen additiv das Atemzentrum → Hypoventilation, und ohne Gerät kann das CO₂ nicht abgeatmet werden. Vorgehen: <b>intubieren + manuell beatmen (Beutel/Ambu) + O₂</b>; α2 mit Atipamezol, Opioid mit Naloxon antagonisieren (Barbiturat hat KEIN Antidot → Beatmung ist tragend). <b>NICHT tiefer nachdosieren!</b> <button class="chip" data-inc="hypoventilation" style="cursor:pointer;margin-top:6px">→ Protokoll Hypoventilation</button></div>';
+  var combos=(A.injection||[]).filter(function(c){return c.sp===state.sp;});
+  if(!combos.length){ box.innerHTML='<p class="muted">Für '+s.name+' sind (noch) keine Injektions-Kombinationen hinterlegt – gängige Praxis-Protokolle bestehen v.a. für Hund, Katze, Kaninchen, Frettchen und Meerschwein.</p>'; }
+  else { box.innerHTML=['Einleitung','Nachdosierung','Sedierung'].map(function(k){
+    var list=combos.filter(function(c){return c.kind===k;}); if(!list.length) return '';
+    return '<div class="cat-h">'+k+(k==='Nachdosierung'?' (mit NaCl verdünnt, titriert)':'')+'</div>'+list.map(function(c){
+      var rev=(c.reversal||[]).map(function(rid){ var r=(A.reversal||[]).find(function(x){return x.id===rid;}); return r?'<button class="chip" data-rev="'+rid+'" style="cursor:pointer" data-vp-tip="'+r.name+' gegen '+r.target+'">↩ '+r.name.split(' ')[0]+'</button>':''; }).join('');
+      return '<div class="dose-card" style="margin-bottom:11px"><div class="dose-top"><span class="dose-name">'+c.name+'</span><span class="dose-cls">'+c.route+' · '+c.onset+' · '+c.duration+'</span></div>'+
+        '<div class="dose-meta" style="margin:3px 0 8px">'+c.indication+'</div>'+
+        c.comp.map(compLine).join('')+
+        '<div class="assess-m" style="margin-top:6px">📟 <b>Erwartet:</b> '+c.expect+'</div>'+
+        (c.cautions?'<div class="dose-caution">⚠️ '+c.cautions+'</div>':'')+
+        (rev?'<div class="chips" style="margin-top:8px"><span class="dose-cls" style="align-self:center">Antagonist:</span>'+rev+'</div>':'')+'</div>';
+    }).join('');
+  }).join(''); }
+  var rb=$('#injReversal'); if(rb) rb.innerHTML=(A.reversal||[]).map(function(r){
+    var d=r.sp[state.sp];
+    var dose=d?(fmtRange(d[0],d[1])+' mg/kg'+(r.conc?' · '+r.conc+' mg/mL':'')):'für '+s.name+' nicht standardisiert';
+    var mg=d?'<span class="dpill mg"><b>'+fmtRange(d[0]*state.wt,d[1]*state.wt)+' mg</b></span>':'';
+    var ml=(d&&r.conc)?'<span class="dpill ml">≈ <b>'+fmtRange(d[0]*state.wt/r.conc,d[1]*state.wt/r.conc)+' mL</b></span>':'';
+    return '<div class="dose-card" id="rev-'+r.id+'" style="margin-bottom:8px"><div class="dose-top"><span class="dose-name">↩ '+r.name+'</span><span class="dose-cls">'+r.route+'</span></div>'+
+      '<div class="dose-meta">Gegen: '+r.target+'</div>'+
+      '<div class="dose-calc" style="margin-top:6px">'+mg+ml+'<span class="dpill">'+dose+'</span></div>'+
+      '<div class="dose-meta" style="margin-top:5px"><b>Regel:</b> '+r.rule+'</div>'+
+      '<div class="dose-caution">⚠️ '+r.caution+'</div></div>';
+  }).join('');
+  $$('#injektion [data-inc]').forEach(function(b){ b.onclick=function(){ gotoIncident(b.dataset.inc); }; });
+  $$('#injektion [data-rev]').forEach(function(b){ b.onclick=function(){ var el=$('#rev-'+b.dataset.rev); if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); el.style.boxShadow='0 0 0 2px var(--cyan)'; setTimeout(function(){el.style.boxShadow='';},1400); } }; });
+}
 function switchTab(v){
   $$('#tabs .tab').forEach(function(t){ t.classList.toggle('active',t.dataset.view===v); });
   $$('.view').forEach(function(x){ x.classList.toggle('active',x.id===v); });
@@ -921,9 +974,9 @@ function switchTab(v){
   if(v==='settings') renderSettings();
   if(v==='bedienung') renderOperating();
 }
-function rerender(){ renderProto(); renderDrugs(); renderSettings(); renderMachine(); renderDevCtrl(); if(mon.running) renderMonValues(); }
+function rerender(){ renderProto(); renderDrugs(); renderSettings(); renderMachine(); renderDevCtrl(); renderInjection(); if(mon.running) renderMonValues(); }
 function boot(){
-  syncPatient(); renderIncidents(); renderFilters(); renderDrugs(); renderInfo(); renderCapno(); renderEkgGallery();
+  syncPatient(); renderIncidents(); renderFilters(); renderDrugs(); renderInfo(); renderCapno(); renderEkgGallery(); renderInjection();
   $$('#tabs .tab').forEach(function(t){ t.onclick=function(){ switchTab(t.dataset.view); }; });
   $('#wt').addEventListener('input',function(e){ var v=parseFloat(e.target.value); state.wt=(v>0?v:0); syncPatient(); rerender(); });
   $('#age').addEventListener('change',function(e){ state.age=e.target.value; renderSettings(); });
