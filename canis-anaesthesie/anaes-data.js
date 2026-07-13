@@ -15,6 +15,7 @@ window.ANAES = {
     { id:'kaninchen',   name:'Kaninchen',       icon:'🐇' },
     { id:'meerschwein', name:'Meerschwein',     icon:'🐹' },
     { id:'chinchilla',  name:'Chinchilla',      icon:'🐭' },
+    { id:'degu',        name:'Degu',            icon:'🐀' },
     { id:'frettchen',   name:'Frettchen',       icon:'🦦' },
     { id:'reptil',      name:'Reptil',          icon:'🦎' }
   ],
@@ -28,6 +29,7 @@ window.ANAES = {
     kaninchen:   { hr:[130,250], rr:[10,55],  spo2:[95,100], etco2:[28,55], map:[60,90],  nibp:[80,130],  dia:[50,90],  temp:[38.0,40.0] },
     meerschwein: { hr:[180,310], rr:[12,80],  spo2:[95,100], etco2:[28,55], map:[60,90],  nibp:[80,130],  dia:[50,90],  temp:[37.2,39.5] },
     chinchilla:  { hr:[100,150], rr:[15,80],  spo2:[95,100], etco2:[28,55], map:[60,90],  nibp:[80,130],  dia:[50,90],  temp:[36.1,37.8] },
+    degu:        { hr:[100,150], rr:[15,90],  spo2:[95,100], etco2:[28,55], map:[60,90],  nibp:[80,130],  dia:[50,90],  temp:[37.5,38.5] },
     frettchen:   { hr:[150,280], rr:[10,40],  spo2:[95,100], etco2:[28,55], map:[60,100], nibp:[80,140],  dia:[50,90],  temp:[37.8,40.0] },
     reptil:      { hr:[10,80],   rr:[2,10],   spo2:[90,100], etco2:[15,45], map:[30,60],  nibp:[30,90],   dia:[20,50],  temp:[24,32] }
   },
@@ -121,6 +123,36 @@ window.ANAES = {
       species:{
         hund:{low:2,high:4,unit:'mg/kg',route:'IV/IM',conc:'50 mg/mL',indication:'Lungenödem / Volumenüberladung',notes:'Notfall bis 4 mg/kg, ggf. wiederholen/CRI. Dimazon 50 mg/mL.',caution:'Dehydratation/Hypokaliämie – mit NSAID Nierenperfusion beachten.'},
         katze:{low:1,high:2,unit:'mg/kg',route:'IV/IM',conc:'50 mg/mL',indication:'Lungenödem',notes:'Katze empfindlicher – niedriger.',caution:'Hypokaliämie/Dehydratation.'}
+      }},
+    { id:'apomorphin', name:'Apomorphin', icon:'🤮', cls:'Emetikum',
+      sources:['Plumb’s','Praxis'],
+      species:{
+        hund:{low:0.03,high:0.1,unit:'mg/kg',route:'IV/SC/konjunktival',indication:'Emesis-Induktion (Giftaufnahme, präop. Magenentleerung)',conc:'',notes:'Praxis: 0,2 mL/10 kg s.c. IV wirkt schnellster; konjunktival gut steuerbar (nach Erbrechen ausspülen).',caution:'NICHT bei bewusstseinsgetrübtem/krampfendem Tier, Aspirationsgefahr, ätzenden/scharfen Giften. Nicht bei Katze (dort α2/Xylazin bevorzugt).'},
+        katze:{low:null,high:null,unit:'mg/kg',route:'',conc:'',indication:'',notes:'',caution:'Bei der Katze nicht empfohlen – zur Emesis Dexmedetomidin/Xylazin verwenden.'}
+      }},
+    { id:'vitk', name:'Vitamin K1 (Konakion/Phytomenadion)', icon:'🩸', cls:'Antidot/Vitamin', aliases:['konakion','konaktion','phytomenadion'],
+      sources:['Plumb’s'],
+      species:{
+        hund:{low:2.5,high:5,unit:'mg/kg',route:'SC/PO (nicht IV)',conc:'10 mg/mL',indication:'Antikoagulanzien-Rodentizid-Vergiftung',notes:'Praxis-Notiz 1 mL/10 kg (≈1 mg/kg); Standard-Therapie 2,5–5 mg/kg/Tag über 3–4 Wo (langwirksame Rodentizide). Mit fettreichem Futter besser resorbiert.',caution:'IV → Anaphylaxie-Risiko → SC/PO bevorzugt. Wirkt erst nach 6–12 h – bei akuter Blutung Plasma/Vollblut.'},
+        katze:{low:2.5,high:5,unit:'mg/kg',route:'SC/PO',conc:'10 mg/mL',indication:'Rodentizid-Vergiftung',notes:'',caution:'Wie Hund.'}
+      }},
+    { id:'dexamethason', name:'Dexamethason (Hexadreson)', icon:'💊', cls:'Kortikosteroid',
+      sources:['Plumb’s','Praxis'],
+      species:{
+        hund:{low:0.1,high:0.2,unit:'mg/kg',route:'IV/IM',conc:'2 mg/mL',indication:'Antiinflammatorisch / Anaphylaxie (adjuvant)',notes:'Praxis 0,05 mL/kg (Hexadreson 2 mg/mL ≈ 0,1 mg/kg). Bei Anaphylaxie: Adrenalin ist Erstlinie, Steroid nur ergänzend.',caution:'Nicht mit NSAID (GI-Ulkus). Verzögert – kein Notfall-Erstmittel.'},
+        katze:{low:0.1,high:0.2,unit:'mg/kg',route:'IV/IM',conc:'2 mg/mL',indication:'Antiinflammatorisch/Anaphylaxie',notes:'',caution:'Wie Hund.'}
+      }},
+    { id:'methylpred', name:'Methylprednisolon-Na-Succinat (Medrate Solubite)', icon:'💊', cls:'Kortikosteroid',
+      sources:['Plumb’s'],
+      species:{
+        hund:{low:15,high:30,unit:'mg/kg',route:'langsam IV',conc:'',indication:'(historische Schock-/Rückenmark-Hochdosis)',notes:'Praxis-Wert 15–30 mg/kg.',caution:'⚠ Hochdosis-Steroide bei Schock/Trauma/CPR werden NICHT mehr empfohlen (kein Nutzen, GI-/Immun-Schaden; RECOVER: keine Routine-Steroide). Nur nach individueller Indikation.'},
+        katze:{low:15,high:30,unit:'mg/kg',route:'langsam IV',conc:'',indication:'(historische Hochdosis)',notes:'',caution:'Wie Hund – kritisch abwägen.'}
+      }},
+    { id:'heparin', name:'Heparin', icon:'🩸', cls:'Antikoagulans',
+      sources:['Plumb’s','Praxis'],
+      species:{
+        hund:{low:100,high:200,unit:'IU/kg',route:'IV, dann SC',conc:'5000 IU/mL',indication:'Thromboembolie-Prophylaxe/-Therapie',notes:'Praxis: 100–200 IE/kg IV, dann 75–100 IE/kg 3–4× tägl. s.c.',caution:'Blutungsrisiko; aPTT/anti-Xa steuern. Antidot Protamin.'},
+        katze:{low:200,high:200,unit:'IU/kg',route:'IV, dann SC',conc:'5000 IU/mL',indication:'ATE-Prophylaxe',notes:'200 IE/kg IV, dann alle 8 h s.c. (an anti-Xa titrieren).',caution:'Blutungsrisiko.'}
       }},
     { id:'lidocain_lok', name:'Lidocain (Lokalanästhesie)', icon:'💉', cls:'Lokalanästhetikum',
       sources:['BSAVA'],
@@ -467,6 +499,7 @@ window.ANAES = {
       kaninchen:   { rebreatheMin:999, o2:{mlkg:[200,300],min:0.5,note:'Nicht-Rückatmung (Bain/T-Stück)'}, o2Induction:'Immer präoxygenieren 3–5 min (Maske)', iso:{mac:2.0,maint:'1.5–3',induction:'per Maske langsam steigern'}, tvMlKg:[8,12], rr:[20,40], pip:8, apl:'niedriger Druck – Barotrauma vermeiden', fluidMlKgH:4, fluid:'VEL/Ringer-Laktat (warm)' },
       meerschwein: { rebreatheMin:999, o2:{mlkg:[200,300],min:0.4,note:'Nicht-Rückatmung; Kammereinleitung möglich'}, o2Induction:'Präoxygenieren; Intubation schwierig → Maske/Larynxmaske', iso:{mac:1.15,maint:'1.5–3',induction:'per Maske/Kammer'}, tvMlKg:[8,12], rr:[20,60], pip:8, apl:'niedriger Druck', fluidMlKgH:4, fluid:'VEL/Ringer-Laktat (warm)' },
       chinchilla:  { rebreatheMin:999, o2:{mlkg:[200,300],min:0.3,note:'Nicht-Rückatmung; sehr narkoseanfällig'}, o2Induction:'Präoxygenieren; Masken-/Kammereinleitung (Intubation schwierig)', iso:{mac:1.4,maint:'1–3',induction:'per Maske/Kammer (bevorzugt)'}, tvMlKg:[8,12], rr:[40,80], pip:8, apl:'sehr niedriger Druck', fluidMlKgH:4, fluid:'VEL/Ringer-Laktat (warm)' },
+      degu:        { rebreatheMin:999, o2:{mlkg:[200,300],min:0.2,note:'Sehr klein – Nicht-Rückatmung; Inhalation bevorzugt'}, o2Induction:'INHALATIONSNARKOSE bevorzugt (Kammer/Maske, Isofluran); Injektion nur wenn nötig', iso:{mac:1.4,maint:'1–3',induction:'per Kammer/Maske'}, tvMlKg:[8,12], rr:[40,90], pip:6, apl:'sehr niedriger Druck', fluidMlKgH:4, fluid:'VEL/Ringer-Laktat (warm)' },
       frettchen:   { rebreatheMin:999, o2:{mlkg:[200,300],min:0.3,note:'Nicht-Rückatmung (klein)'}, o2Induction:'Präoxygenieren; Masken-/Injektionseinleitung (Intubation mit kleinem Tubus möglich)', iso:{mac:1.5,maint:'1.5–3',induction:'per Maske / injektabel'}, tvMlKg:[8,12], rr:[15,30], pip:10, apl:'niedriger Druck', fluidMlKgH:4, fluid:'VEL/Ringer-Laktat (warm)' },
       reptil:      { rebreatheMin:999, o2:{mlkg:[100,300],min:0.2,note:'Sehr niedrige Ventilationsraten; oft Raumluft-Anteil'}, o2Induction:'POTZ-Temperatur sichern; Einleitung oft injektabel', iso:{mac:2.0,maint:'1–3',induction:'variabel'}, tvMlKg:[10,20], rr:[2,4], pip:6, apl:'sehr niedriger Druck', fluidMlKgH:2, fluid:'Reptilien-Ringer / warm' }
     }
@@ -882,3 +915,65 @@ window.ANAES.reversal = [
     rule:'Off-label Kleintier; enge Sicherheitsspanne, immer langsam titrieren.',
     caution:'Schnelle IV → Hypotension, Tachykardie/Arrhythmien, GI-Hypermotilität. Kontraindiziert bei GI-/Nierenerkrankung. Rebound-Sedierung.' }
 ];
+
+/* =================== SPEZIES-BESONDERHEITEN (Praxis-Wandprotokolle) =================== */
+window.ANAES.speciesCare = {
+  kaninchen: {
+    title:'Kaninchen – Narkose-Besonderheiten',
+    vitals:'RF 32–100/min · HF 120–300/min · HKT 36–55 % · Glukose 70–160 mg/dl · T 38,5–40 °C (Ziel).',
+    depth:'Zeichen ZU TIEFER Narkose: zunehmender Nickhautvorfall · hervortretendes Auge („Fischauge") · unregelmäßige, langsame Atmung · niedrige HF.',
+    points:[
+      'Warm halten – T <38,5 °C = Untertemperatur.',
+      'Nicht nüchtern lassen (Mageninhalt aber reduzieren; kein Gärfutter wie Apfel/Karotte).',
+      'Augensalbe wichtig (Ketamin verursacht Exophthalmus).',
+      'Glukose-Infusion nur bei gemessener Hypoglykämie – IV (SC wird nicht verstoffwechselt + brennt).',
+      'Bei Hypovolämie IV 10 mL/kg/h angewärmt; Kristalloid, am besten 50/50 mit Kolloid.',
+      'Max. akzeptabler Blutverlust ~1–3 mL je Größe.',
+      '⚠ ~2/3 der Todesfälle NACH der OP – nie alleine aufwachen lassen.',
+      'Ketamin SC statt IM (Muskelnekrose); Tiere <100 g komplett auf Ketamin verzichten.'
+    ],
+    analgesie:'Carprofen 4–5 · Meloxicam 0,2–0,5 (chirurgisch ~1) · Metamizol 20–50 · Buprenorphin 0,01–0,05 · Butorphanol 0,2–0,5 · Methadon bis 0,2 mg/kg.',
+    concept:'Jede Narkose = Bewusstlosigkeit (Iso/Propofol/α2) + Analgesie (Opioide/Ketamin/Lokal/NSAID) + Muskelrelaxation (Benzodiazepine).'
+  },
+  meerschwein: {
+    title:'Meerschweinchen – Narkose-Besonderheiten',
+    vitals:'HF 240–310/min · RF 40–100/min · T 37,2–39,5 °C · Glukose 60–125 mg/dl.',
+    points:[
+      '⚠ Sehr narkoseanfällig – Meerschwein hat die HÖCHSTE Narkose-Mortalität der Nager.',
+      'Präoxygenieren, O₂ + Wärme obligat; Augensalbe.',
+      'Maul vor Einleitung von Futter befreien (Backentaschen); nicht lange nüchtern.',
+      'Ketamin SC statt IM; <100 g kein Ketamin.'
+    ],
+    analgesie:'Meloxicam 0,1–0,3 · Carprofen 1–4 · Buprenorphin 0,02–0,1 · Morphin 2–5 mg/kg.'
+  },
+  chinchilla: {
+    title:'Chinchilla – Narkose-Besonderheiten',
+    vitals:'HF 100–150/min · RF 40–80/min · T 36,1–37,8 °C · Glukose 109–193 mg/dl.',
+    points:[
+      '⚠ Sehr narkoseanfällig – engmaschig überwachen.',
+      'O₂ + Wärme; Augensalbe. Intubation schwierig.',
+      'Ketamin SC statt IM; <100 g kein Ketamin.'
+    ],
+    analgesie:'Meloxicam 0,1–0,3 (bis 0,6/Tag) · Carprofen 1–4 · Buprenorphin 0,02–0,1 · Morphin 2–5 mg/kg.'
+  },
+  degu: {
+    title:'Degu – Narkose-Besonderheiten',
+    vitals:'HF 100–150/min · RF ~75/min · T ~38 °C.',
+    points:[
+      '⚠ Sehr narkoseanfällig.',
+      'INHALATIONSNARKOSE bevorzugt (Isofluran per Kammer/Maske) – Injektion nur wenn nötig.',
+      'O₂ + Wärme; Augensalbe. Diabetes-Neigung (Zucker meiden, BZ beachten).'
+    ],
+    analgesie:'wie Chinchilla: Meloxicam 0,1–0,3 · Buprenorphin 0,02–0,1 mg/kg.'
+  },
+  frettchen: {
+    title:'Frettchen – Narkose-Besonderheiten',
+    vitals:'HF 150–280/min · RF 15–36/min · T 37,8–40 °C.',
+    points:[
+      'NICHT nüchtern lassen (kurzer Verdauungstrakt → leicht Hypoglykämie).',
+      'Insulinom-Verdacht (Glukose <70 mg/dl): BZ engmaschig messen; α2 STEIGERN die Glukose → intraop Hyperglykämie, nach Antagonisierung Rebound-Hypoglykämie – α2 zurückhaltend/meiden.',
+      'Ketamin + Dexmedetomidin SC (nicht IM – IM zu starke Kreislaufdepression); Antisedan ≥ 40 min.',
+      'Recht atem-/kreislaufdepressiv → Temperatur überwachen + O₂ geben.'
+    ]
+  }
+};

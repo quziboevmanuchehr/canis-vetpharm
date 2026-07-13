@@ -317,6 +317,7 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
       <div class="mset" style="margin:8px 0" data-vp-tip="Praxis-Wandprotokoll-Regeln – gelten für alle Injektionskombinationen">💉 <b>Praxis-Regeln:</b> Bei <b>Nagern/Exoten Ketamin SC statt IM</b> (IM → Muskelnekrose; SC = langsamerer Eintritt) · Tiere <b>&lt; 100 g: kein Ketamin</b> · Exoten warm halten &amp; nie alleine aufwachen lassen · Augensalbe (Ketamin → Exophthalmus) · Nachdosierung meist „gleiche Menge/⅓ der Initialdosis, mit NaCl verdünnt".</div>
       <div id="injRecord" style="margin-top:10px"></div>
       <div id="injCase" style="margin-top:10px"></div>
+      <div id="injCare" style="margin-top:10px"></div>
       <div id="injCombos" style="margin-top:12px"></div>
       <div class="sec-h">Antagonisten / Reversal (für <span id="injSp2">…</span> berechnet)</div>
       <div id="injReversal"></div>
@@ -425,7 +426,7 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
   </section>
 </main>
 
-<script src="anaes-data.js?v=8"></script>
+<script src="anaes-data.js?v=9"></script>
 <script>
 /* ============ Canis Anæsthesia – Engine ============ */
 (function(){
@@ -488,7 +489,7 @@ function renderIncidents(){
 }
 function drugById(id){ return A.drugs.find(function(d){return d.id===id;}); }
 /* §7 Lokalanästhetika- & Lidocain-Höchst-Gesamtdosen (mg/kg) */
-var LA_CAPS = { lidocain_iv:{hund:8,katze:2}, lidocain_lok:{hund:6,katze:2,kaninchen:4,meerschwein:4,chinchilla:4,frettchen:4,reptil:4}, bupivacain:{hund:2,katze:1.5,kaninchen:2,meerschwein:2,chinchilla:2,frettchen:2,reptil:2} };
+var LA_CAPS = { lidocain_iv:{hund:8,katze:2}, lidocain_lok:{hund:6,katze:2,kaninchen:4,meerschwein:4,chinchilla:4,degu:4,frettchen:4,reptil:4}, bupivacain:{hund:2,katze:1.5,kaninchen:2,meerschwein:2,chinchilla:2,degu:2,frettchen:2,reptil:2} };
 function doseLine(ref){
   var d=drugById(ref.id); var name = d? d.name : (ref.name||ref.id);
   var spd = d && d.species ? d.species[state.sp] : null;
@@ -1083,8 +1084,16 @@ function renderInjection(){
     ? '<div class="mset" style="margin:0"><b>💉 Am Tier verabreicht:</b> '+(ctx.indName||'(keine Einleitung gewählt)')+(ctx.topNames.length?' &nbsp;·&nbsp; <b>Nachdosierung:</b> '+ctx.topNames.join(' + '):'')+' &nbsp; <button class="chip" id="injReset" style="cursor:pointer">✕ zurücksetzen</button><div style="margin-top:5px;font-size:11.5px;color:var(--muted)">Gerät, Analyse &amp; Coach berücksichtigen jetzt diese Wirkstoffe.</div></div>'
     : '<div class="dose-caution" style="border-color:rgba(0,216,255,.35);background:rgba(0,216,255,.07);color:#bff0ff">👉 Markiere unten bei <b>Einleitung</b> und <b>Nachdosierung</b> „○ als gegeben" – dann weiß die ganze App (Gerät/Analyse/Coach), welche Narkose das Tier bekommen hat.</div>'; }
   var ic=$('#injCase'); if(ic) ic.innerHTML='<div class="thr" style="border-color:rgba(255,140,60,.5);background:rgba(255,140,60,.1);color:#ffd7a8">⚠️ <b>EtCO₂ hoch (z.B. ~70) unter Injektionsnarkose?</b> α2-Agonist + Opioid + Barbiturat dämpfen additiv das Atemzentrum → Hypoventilation, und ohne Gerät kann das CO₂ nicht abgeatmet werden. Vorgehen: <b>intubieren + manuell beatmen (Beutel/Ambu) + O₂</b>; α2 mit Atipamezol, Opioid mit Naloxon antagonisieren (Barbiturat hat KEIN Antidot → Beatmung ist tragend). <b>NICHT tiefer nachdosieren!</b> <button class="chip" data-inc="hypoventilation" style="cursor:pointer;margin-top:6px">→ Protokoll Hypoventilation</button></div>';
+  var care=$('#injCare'); if(care){ var sc=(A.speciesCare||{})[state.sp];
+    care.innerHTML = sc ? ('<div class="mset" style="margin:0;border-color:rgba(255,140,60,.4);background:rgba(255,140,60,.08)"><b>🐾 '+sc.title+'</b>'+
+      (sc.vitals?'<div style="margin-top:5px;font-size:12px"><b>Normwerte:</b> '+sc.vitals+'</div>':'')+
+      (sc.depth?'<div style="margin-top:5px;font-size:12px;color:#ffd7a8"><b>⚠ Zu tiefe Narkose:</b> '+sc.depth+'</div>':'')+
+      (sc.points&&sc.points.length?'<ul style="margin:6px 0 0;padding-left:18px;font-size:12px;line-height:1.5">'+sc.points.map(function(p){return '<li>'+p+'</li>';}).join('')+'</ul>':'')+
+      (sc.analgesie?'<div style="margin-top:6px;font-size:12px"><b>💊 Analgesie (mg/kg):</b> '+sc.analgesie+'</div>':'')+
+      (sc.concept?'<div style="margin-top:6px;font-size:11.5px;color:var(--muted)">'+sc.concept+'</div>':'')+
+      '</div>') : ''; }
   var combos=(A.injection||[]).filter(function(c){return c.sp===state.sp;});
-  if(!combos.length){ box.innerHTML='<p class="muted">Für '+s.name+' sind (noch) keine Injektions-Kombinationen hinterlegt – gängige Praxis-Protokolle bestehen v.a. für Hund, Katze, Kaninchen, Frettchen und Meerschwein.</p>'; }
+  if(!combos.length){ box.innerHTML='<p class="muted">Für '+s.name+' sind (noch) keine Injektions-Kombinationen hinterlegt'+((A.speciesCare||{})[state.sp]?' – siehe Besonderheiten oben (z.B. Inhalationsnarkose bevorzugt)':' – gängige Praxis-Protokolle bestehen v.a. für Hund, Katze, Kaninchen, Frettchen, Meerschwein und Chinchilla')+'.</p>'; }
   else { box.innerHTML=['Einleitung','Nachdosierung','Sedierung'].map(function(k){
     var list=combos.filter(function(c){return c.kind===k;}); if(!list.length) return '';
     return '<div class="cat-h">'+k+(k==='Nachdosierung'?' (mit NaCl verdünnt, titriert)':'')+'</div>'+list.map(function(c){
