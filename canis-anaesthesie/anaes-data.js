@@ -14,17 +14,22 @@ window.ANAES = {
     { id:'katze',       name:'Katze',           icon:'🐈' },
     { id:'kaninchen',   name:'Kaninchen',       icon:'🐇' },
     { id:'meerschwein', name:'Meerschwein',     icon:'🐹' },
+    { id:'chinchilla',  name:'Chinchilla',      icon:'🐭' },
+    { id:'frettchen',   name:'Frettchen',       icon:'🦦' },
     { id:'reptil',      name:'Reptil',          icon:'🦎' }
   ],
 
   /* Normwerte unter Allgemeinanästhesie (Richtwerte) */
   /* map = MAP-Band; nibp = SYS-Band; dia = DIA-Band. Regel: MAP ≈ DIA + (SYS−DIA)/3 */
   vitals: {
-    hund:        { hr:[60,140],  rr:[8,20],   spo2:[95,100], etco2:[35,45], map:[70,120], nibp:[90,160],  dia:[55,100], temp:[37.5,39.2] },
-    katze:       { hr:[100,180], rr:[8,25],   spo2:[95,100], etco2:[35,45], map:[70,120], nibp:[90,160],  dia:[55,100], temp:[37.5,39.2] },
-    kaninchen:   { hr:[130,250], rr:[30,60],  spo2:[95,100], etco2:[30,45], map:[60,90],  nibp:[80,130],  dia:[50,90],  temp:[38.0,40.0] },
-    meerschwein: { hr:[200,300], rr:[40,100], spo2:[95,100], etco2:[30,45], map:[60,90],  nibp:[80,130],  dia:[50,90],  temp:[37.2,39.5] },
-    reptil:      { hr:[10,80],   rr:[2,10],   spo2:[90,100], etco2:[15,35], map:[30,60],  nibp:[30,90],   dia:[20,50],  temp:[24,32] }
+    /* etco2 = Alarmband unter GA (Ziel 35–45, tolerierte permissive Hyperkapnie bis ~55, IPPV >60; Low-Alarm <30). */
+    hund:        { hr:[60,140],  rr:[8,20],   spo2:[95,100], etco2:[30,55], map:[70,120], nibp:[90,160],  dia:[55,100], temp:[37.5,39.2] },
+    katze:       { hr:[100,180], rr:[8,25],   spo2:[95,100], etco2:[30,55], map:[70,120], nibp:[90,160],  dia:[55,100], temp:[37.5,39.2] },
+    kaninchen:   { hr:[130,250], rr:[10,55],  spo2:[95,100], etco2:[28,55], map:[60,90],  nibp:[80,130],  dia:[50,90],  temp:[38.0,40.0] },
+    meerschwein: { hr:[180,310], rr:[12,80],  spo2:[95,100], etco2:[28,55], map:[60,90],  nibp:[80,130],  dia:[50,90],  temp:[37.2,39.5] },
+    chinchilla:  { hr:[100,150], rr:[15,80],  spo2:[95,100], etco2:[28,55], map:[60,90],  nibp:[80,130],  dia:[50,90],  temp:[36.1,37.8] },
+    frettchen:   { hr:[150,280], rr:[10,40],  spo2:[95,100], etco2:[28,55], map:[60,100], nibp:[80,140],  dia:[50,90],  temp:[37.8,40.0] },
+    reptil:      { hr:[10,80],   rr:[2,10],   spo2:[90,100], etco2:[15,45], map:[30,60],  nibp:[30,90],   dia:[20,50],  temp:[24,32] }
   },
 
   /* =================== MEDIKAMENTE =================== */
@@ -32,7 +37,7 @@ window.ANAES = {
     { id:'atropin', name:'Atropin', icon:'💗', cls:'Anticholinergikum', aliases:['atropinsulfat'],
       sources:['Plumb’s','BSAVA'],
       species:{
-        hund:{low:0.02,high:0.04,unit:'mg/kg',route:'IV/IM/SC',conc:'0.5 mg/mL',indication:'Vagale Bradykardie / Asystolie',notes:'IV wirkt in <1 min. Transiente Tachykardie möglich.',caution:'Nicht bei Sinustachykardie; kann AV-Block paradox verschlechtern.'},
+        hund:{low:0.02,high:0.04,unit:'mg/kg',route:'IV/IM/SC',conc:'0.5 mg/mL',indication:'Vagale Bradykardie / Asystolie',notes:'IV wirkt in <1 min. Transiente Tachykardie möglich. Organophosphat-/Carbamat-Vergiftung: 0,2 mg/kg (¼ IV, ¾ IM/SC), alle 10 min wiederholen bis Speichelfluss sistiert.',caution:'Nicht bei Sinustachykardie; kann AV-Block paradox verschlechtern.'},
         katze:{low:0.02,high:0.04,unit:'mg/kg',route:'IV/IM/SC',conc:'0.5 mg/mL',indication:'Vagale Bradykardie',notes:'',caution:''},
         kaninchen:{low:0.1,high:0.5,unit:'mg/kg',route:'SC/IM/IV',conc:'0.5 mg/mL',indication:'Bradykardie',notes:'Höhere Dosis nötig – bis 60 % haben Atropinesterase.',caution:'Glycopyrrolat oft zuverlässiger.'},
         meerschwein:{low:0.05,high:0.2,unit:'mg/kg',route:'SC/IM',conc:'0.5 mg/mL',indication:'Bradykardie/Speichel',notes:'',caution:''},
@@ -48,13 +53,20 @@ window.ANAES = {
         reptil:{low:0.01,high:0.02,unit:'mg/kg',route:'IM/IV',conc:'0.2 mg/mL',indication:'Bradykardie',notes:'',caution:''}
       }},
     { id:'adrenalin', name:'Adrenalin (Epinephrin)', icon:'⚡', cls:'Notfall/Katecholamin', aliases:['epinephrin','suprarenin'],
-      sources:['RECOVER 2012','Plumb’s'],
+      sources:['RECOVER 2024','Plumb’s'],
       species:{
-        hund:{low:0.01,high:0.01,unit:'mg/kg',route:'IV/IO',conc:'1 mg/mL (1:1000)',indication:'CPR (Niedrigdosis)',notes:'Alle 3–5 min während CPR. Hochdosis 0.1 mg/kg erst nach mehreren Zyklen.',caution:'Nicht bei tachykardem Rhythmus ohne Stillstand.'},
-        katze:{low:0.01,high:0.01,unit:'mg/kg',route:'IV/IO',conc:'1 mg/mL',indication:'CPR',notes:'',caution:''},
+        hund:{low:0.01,high:0.01,unit:'mg/kg',route:'IV/IO',conc:'1 mg/mL (1:1000)',indication:'CPR (Niedrigdosis)',notes:'0,01 mg/kg IV/IO jeden 2. Zyklus (alle 3–5 min), die GANZE Reanimation über. Hochdosis 0,1 mg/kg wird NICHT mehr empfohlen (RECOVER 2024 – schlechteres Überleben/Neurologie). Alternative: Vasopressin 0,8 U/kg.',caution:'Nicht bei tachykardem Rhythmus ohne Stillstand.'},
+        katze:{low:0.01,high:0.01,unit:'mg/kg',route:'IV/IO',conc:'1 mg/mL',indication:'CPR',notes:'0,01 mg/kg jeden 2. Zyklus; keine Hochdosis mehr (RECOVER 2024).',caution:''},
         kaninchen:{low:0.01,high:0.02,unit:'mg/kg',route:'IV/IO',conc:'1 mg/mL',indication:'CPR',notes:'',caution:''},
         meerschwein:{low:0.01,high:0.02,unit:'mg/kg',route:'IV/IO',conc:'1 mg/mL',indication:'CPR',notes:'',caution:''},
-        reptil:{low:0.01,high:0.1,unit:'mg/kg',route:'IV/IO/IC',conc:'1 mg/mL',indication:'CPR',notes:'Intrakardial möglich.',caution:''}
+        frettchen:{low:0.01,high:0.02,unit:'mg/kg',route:'IV/IO',conc:'1 mg/mL',indication:'CPR',notes:'',caution:''},
+        reptil:{low:0.01,high:0.1,unit:'mg/kg',route:'IV/IO',conc:'1 mg/mL',indication:'CPR',notes:'Bevorzugt IV/IO; nach Intubation intratracheal (etwas höher). Intrakardial NUR als letzte Option ohne Gefäß-/IO-Zugang.',caution:'Intrakardial: Arrhythmie-, Myokardblutungs- und Hämoperikard-Risiko – vermeiden wenn möglich.'}
+      }},
+    { id:'vasopressin', name:'Vasopressin (ADH)', icon:'⚡', cls:'Notfall/Katecholamin', aliases:['adh','argipressin'],
+      sources:['RECOVER 2024','Plumb’s'],
+      species:{
+        hund:{low:0.8,high:0.8,unit:'U/kg',route:'IV/IO',conc:'20 U/mL',indication:'CPR (Alternative zu Adrenalin)',notes:'Alle 3–5 min (jeder 2. Zyklus); bei refraktärem Kammerflimmern bevorzugt (RECOVER 2024). Konzentration je Präparat prüfen.',caution:'Nur im Kreislaufstillstand/schweren Schock.'},
+        katze:{low:0.8,high:0.8,unit:'U/kg',route:'IV/IO',conc:'20 U/mL',indication:'CPR',notes:'Wie Hund.',caution:''}
       }},
     { id:'noradrenalin', name:'Noradrenalin', icon:'⚡', cls:'Vasopressor', aliases:['norepinephrin'],
       sources:['ACVAA'],
@@ -65,14 +77,14 @@ window.ANAES = {
     { id:'ephedrin', name:'Ephedrin', icon:'⚡', cls:'Vasopressor',
       sources:['Plumb’s'],
       species:{
-        hund:{low:0.05,high:0.2,unit:'mg/kg',route:'IV Bolus',conc:'50 mg/mL',indication:'Anästhesie-Hypotension',notes:'Bolus, wiederholbar; hebt HZV + Gefäßtonus.',caution:''},
-        katze:{low:0.05,high:0.2,unit:'mg/kg',route:'IV Bolus',conc:'50 mg/mL',indication:'Hypotension',notes:'',caution:''}
+        hund:{low:0.05,high:0.25,unit:'mg/kg',route:'IV Bolus',conc:'50 mg/mL',indication:'Anästhesie-Hypotension',notes:'Bolus (0,1–0,25 typisch), wiederholbar; hebt HZV + Gefäßtonus. Wirkt ~10–15 min.',caution:''},
+        katze:{low:0.05,high:0.25,unit:'mg/kg',route:'IV Bolus',conc:'50 mg/mL',indication:'Hypotension',notes:'',caution:''}
       }},
     { id:'dopamin', name:'Dopamin', icon:'⚡', cls:'Vasopressor/Inotropikum',
       sources:['ACVAA'],
       species:{
-        hund:{low:5,high:10,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'Hypotension / niedriges HZV',notes:'CRI; 5–10 inotrop, >10 vasopressorisch.',caution:'Tachyarrhythmien.'},
-        katze:{low:5,high:10,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'Hypotension',notes:'',caution:''}
+        hund:{low:2,high:20,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'Hypotension / niedriges HZV',notes:'~2–3 dopaminerg, 3–10 β1-inotrop, 10–20 α1-vasopressorisch. Start 5, alle 15–30 min um ~2,5 titrieren (Praxis 5–15). Nur CRI, kein Bolus.',caution:'Tachyarrhythmien.'},
+        katze:{low:2,high:5,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'Hypotension',notes:'Niedriger Bereich (2–5), Start ~5, vorsichtig titrieren.',caution:'Arrhythmie-/Krampfrisiko höher.'}
       }},
     { id:'dobutamin', name:'Dobutamin', icon:'⚡', cls:'Inotropikum',
       sources:['ACVAA'],
@@ -86,23 +98,47 @@ window.ANAES = {
         hund:{low:2,high:2,unit:'mg/kg',route:'langsam IV',conc:'20 mg/mL (2%)',indication:'Ventrikuläre Tachykardie/VES',notes:'Bolus über 1–2 min, ggf. wiederholen (max ~8 mg/kg), dann CRI 25–75 mcg/kg/min.',caution:'ZNS-Zeichen / Hypotension bei Überdosis.'},
         katze:{low:0.25,high:0.5,unit:'mg/kg',route:'sehr langsam IV',conc:'20 mg/mL',indication:'VT (nur wenn nötig)',notes:'Katzen sehr empfindlich – niedrig, langsam, EKG.',caution:'Hohe Toxizität (Bradykardie, Krampf, Tod) – Zurückhaltung.'}
       }},
+    { id:'amiodaron', name:'Amiodaron', icon:'💓', cls:'Antiarrhythmikum',
+      sources:['RECOVER 2024','Hoehne et al. 2020 (SAT)'],
+      species:{
+        hund:{low:2.5,high:5,unit:'mg/kg',route:'IV/IO',conc:'50 mg/mL',indication:'Defibrillations-resistentes Kammerflimmern / pulslose VT (CPR)',notes:'Mittel der 1. Wahl bei >3–5 erfolglosen Defibrillationen (vor Lidocain).',caution:'Anaphylaxie durch Polysorbat-Trägerlösung möglich (Hund) – nach ROSC beobachten. Hypotension bei schneller Gabe.'},
+        katze:{low:2.5,high:5,unit:'mg/kg',route:'IV/IO',conc:'50 mg/mL',indication:'Defibrillations-resistente VF/VT',notes:'Wenig Katzendaten – zurückhaltend.',caution:''}
+      }},
+    { id:'calcium', name:'Calciumgluconat 10 %', icon:'🧂', cls:'Notfall/Elektrolyt', aliases:['calciumgluconat','ca'],
+      sources:['Plumb’s','Praxis'],
+      species:{
+        hund:{low:50,high:150,unit:'mg/kg',route:'langsam IV',conc:'100 mg/mL',indication:'Hyperkaliämie (Myokard-Stabilisierung) / Hypokalzämie',notes:'10 % = 100 mg/mL → 0,5–1,5 mL/kg. Langsam über 5–10 min unter EKG.',caution:'Zu schnell → Bradykardie/Arrhythmie/Asystolie – EKG-Kontrolle! Nicht mit Bikarbonat mischen (Ausfällung).'},
+        katze:{low:50,high:150,unit:'mg/kg',route:'langsam IV',conc:'100 mg/mL',indication:'Hyperkaliämie/Hypokalzämie',notes:'0,5–1,5 mL/kg langsam.',caution:'EKG-Kontrolle.'}
+      }},
+    { id:'propranolol', name:'Propranolol (Dociton)', icon:'💓', cls:'Antiarrhythmikum (β-Blocker)',
+      sources:['Plumb’s','Praxis'],
+      species:{
+        hund:{low:0.02,high:0.1,unit:'mg/kg',route:'langsam IV',conc:'1 mg/mL',indication:'Supraventrikuläre Tachyarrhythmie',notes:'Langsam titrieren (0,02–0,1 IV); p.o. höher, 3× tägl.',caution:'Negativ inotrop/chronotrop – nicht bei Herzinsuffizienz/Bradykardie/AV-Block; nicht mit α2. Katze/Asthma Vorsicht.'},
+        katze:{low:0.02,high:0.06,unit:'mg/kg',route:'langsam IV',conc:'1 mg/mL',indication:'SVT / Hyperthyreose-Tachykardie',notes:'p.o. 0,5–1 mg/kg 2–3× tägl.',caution:'Vorsicht bei Asthma/Herzinsuffizienz.'}
+      }},
+    { id:'furosemid', name:'Furosemid (Dimazon)', icon:'💧', cls:'Diuretikum', aliases:['dimazon','lasix'],
+      sources:['Plumb’s','Praxis'],
+      species:{
+        hund:{low:2,high:4,unit:'mg/kg',route:'IV/IM',conc:'50 mg/mL',indication:'Lungenödem / Volumenüberladung',notes:'Notfall bis 4 mg/kg, ggf. wiederholen/CRI. Dimazon 50 mg/mL.',caution:'Dehydratation/Hypokaliämie – mit NSAID Nierenperfusion beachten.'},
+        katze:{low:1,high:2,unit:'mg/kg',route:'IV/IM',conc:'50 mg/mL',indication:'Lungenödem',notes:'Katze empfindlicher – niedriger.',caution:'Hypokaliämie/Dehydratation.'}
+      }},
     { id:'lidocain_lok', name:'Lidocain (Lokalanästhesie)', icon:'💉', cls:'Lokalanästhetikum',
       sources:['BSAVA'],
       species:{
-        hund:{low:1,high:4,unit:'mg/kg',route:'lokal/Infiltration',conc:'20 mg/mL (2%)',indication:'Lokal-/Leitungsanästhesie',notes:'Maximale Gesamtdosis ~4 mg/kg (mit Adrenalin ~6).',caution:'Nicht intravasal.'},
+        hund:{low:1,high:4,unit:'mg/kg',route:'lokal/Infiltration',conc:'20 mg/mL (2%)',indication:'Lokal-/Leitungsanästhesie',notes:'Maximale Gesamtdosis ~4 mg/kg (mit Adrenalin ~6).',caution:'Nicht intravasal. LA-Toxizität ist ADDITIV: Lidocain + Bupivacain zusammen zählen (Summe der Dosis-Anteile ≤ 1) – LA-Gesamtdosis-Rechner nutzen.'},
         katze:{low:1,high:2,unit:'mg/kg',route:'lokal',conc:'20 mg/mL',indication:'Lokalanästhesie',notes:'Max ~2 mg/kg.',caution:'Toxizität beachten – Gesamtdosis limitieren.'},
         kaninchen:{low:1,high:2,unit:'mg/kg',route:'lokal',conc:'2–10 mg/mL',indication:'Lokal',notes:'Verdünnen für kleine Patienten.',caution:'Kleine Gesamtdosis.'}
       }},
     { id:'bupivacain', name:'Bupivacain', icon:'💉', cls:'Lokalanästhetikum',
       sources:['BSAVA'],
       species:{
-        hund:{low:1,high:2,unit:'mg/kg',route:'lokal/Nervenblock',conc:'5 mg/mL (0.5%)',indication:'Länger wirkende Lokalanästhesie',notes:'Wirkdauer 4–8 h.',caution:'NIE i.v. (kardiotoxisch).'},
+        hund:{low:1,high:2,unit:'mg/kg',route:'lokal/Nervenblock',conc:'5 mg/mL (0.5%)',indication:'Länger wirkende Lokalanästhesie',notes:'Wirkdauer 4–8 h.',caution:'NIE i.v. (kardiotoxisch). Mit Lidocain kombiniert ist die Toxizität ADDITIV – Dosis-Anteile summieren (≤ 1), LA-Gesamtdosis-Rechner nutzen.'},
         katze:{low:1,high:1,unit:'mg/kg',route:'lokal',conc:'5 mg/mL',indication:'Lokal',notes:'Max ~1–2 mg/kg.',caution:'Kardiotoxizität.'}
       }},
     { id:'propofol', name:'Propofol', icon:'💤', cls:'Injektionsnarkotikum',
       sources:['Plumb’s','BSAVA'],
       species:{
-        hund:{low:4,high:6,unit:'mg/kg',route:'IV nach Wirkung',conc:'10 mg/mL',indication:'Einleitung',notes:'Prämediziert 1–4 mg/kg; langsam titrieren. CRI 0.1–0.4 mg/kg/min.',caution:'Atemdepression/Apnoe, Hypotension – langsam geben, O₂ bereit.'},
+        hund:{low:4,high:6,unit:'mg/kg',route:'IV nach Wirkung',conc:'10 mg/mL',indication:'Einleitung',notes:'IMMER direkt i.v. Prämediziert 1–4 mg/kg; langsam titrieren. Bolus-Erhaltung 1,25–2,5 mg/kg (0,12–0,25 mL/kg) alle 4–5 min nach Wirkung ODER CRI 0,1–0,4 mg/kg/min.',caution:'Atemdepression/Apnoe, Hypotension – langsam geben, O₂ bereit.'},
         katze:{low:4,high:8,unit:'mg/kg',route:'IV nach Wirkung',conc:'10 mg/mL',indication:'Einleitung',notes:'Prämediziert weniger.',caution:'Heinz-Körper bei wiederholter Gabe (Katze); Apnoe.'},
         kaninchen:{low:5,high:15,unit:'mg/kg',route:'langsam IV',conc:'10 mg/mL',indication:'Einleitung',notes:'Zu Wirkung titrieren.',caution:'Apnoe – langsam.'},
         reptil:{low:5,high:15,unit:'mg/kg',route:'IV/IO',conc:'10 mg/mL',indication:'Einleitung',notes:'',caution:'Apnoe – beatmen können.'}
@@ -110,8 +146,8 @@ window.ANAES = {
     { id:'alfaxalon', name:'Alfaxalon', icon:'💤', cls:'Injektionsnarkotikum', aliases:['alfaxan'],
       sources:['Plumb’s','BSAVA'],
       species:{
-        hund:{low:2,high:3,unit:'mg/kg',route:'IV nach Wirkung',conc:'10 mg/mL',indication:'Einleitung',notes:'Prämediziert 1–2 mg/kg. Langsam titrieren.',caution:'Apnoe möglich.'},
-        katze:{low:2,high:5,unit:'mg/kg',route:'IV/IM',conc:'10 mg/mL',indication:'Einleitung',notes:'IM möglich (höheres Volumen).',caution:'Apnoe.'},
+        hund:{low:2,high:3,unit:'mg/kg',route:'IV nach Wirkung',conc:'10 mg/mL',indication:'Einleitung',notes:'Prämediziert 1–2 mg/kg. Langsam titrieren. TIVA-Erhaltung ~0,1 mg/kg/min (prämed.) bis 0,15–0,2 (leicht/unprämed.) ≈ 6–12 mg/kg/h; O₂ ± IPPV bereithalten (dosisabhängige Apnoe).',caution:'Apnoe möglich.'},
+        katze:{low:2,high:5,unit:'mg/kg',route:'IV/IM',conc:'10 mg/mL',indication:'Einleitung',notes:'IM möglich (höheres Volumen). TIVA-Erhaltung ~0,12–0,2 mg/kg/min (≈ 7–12 mg/kg/h), nach Prämed. niedriger; O₂ ± IPPV.',caution:'Apnoe.'},
         kaninchen:{low:2,high:4,unit:'mg/kg',route:'IV',conc:'10 mg/mL',indication:'Einleitung',notes:'Auch IM in Kombination.',caution:''},
         meerschwein:{low:5,high:10,unit:'mg/kg',route:'IM/IV',conc:'10 mg/mL',indication:'Sedation/Einleitung',notes:'',caution:''},
         reptil:{low:5,high:15,unit:'mg/kg',route:'IV/IM',conc:'10 mg/mL',indication:'Einleitung',notes:'',caution:'Lange Erholung möglich.'}
@@ -119,8 +155,8 @@ window.ANAES = {
     { id:'ketamin', name:'Ketamin', icon:'💤', cls:'Dissoziativ-Anästhetikum',
       sources:['Plumb’s','Carpenter'],
       species:{
-        hund:{low:2,high:5,unit:'mg/kg',route:'IV (Kombi)',conc:'100 mg/mL',indication:'Einleitung/Kombi',notes:'Immer mit Benzodiazepin/α2. IM in Kombi 5–10.',caution:'Nicht als Monoanästhetikum.'},
-        katze:{low:2,high:10,unit:'mg/kg',route:'IV/IM (Kombi)',conc:'100 mg/mL',indication:'Einleitung/Kombi',notes:'Häufig mit Midazolam/Dexmedetomidin.',caution:'Renal-/HKM-Vorsicht.'},
+        hund:{low:2,high:5,unit:'mg/kg',route:'IV (Kombi)',conc:'100 mg/mL',indication:'Einleitung/Kombi',notes:'Immer mit Benzodiazepin/α2. IM in Kombi 5–10. Analgesie-CRI (sub-anästhetisch, MAC-sparend): Bolus 0,25–0,5 mg/kg IV, dann intraop ~10 µg/kg/min (2–10), postop 1–2 µg/kg/min – NICHT mit der Anästhesie-Dosis verwechseln (µg vs mg).',caution:'Nicht als Monoanästhetikum.'},
+        katze:{low:2,high:10,unit:'mg/kg',route:'IV/IM (Kombi)',conc:'100 mg/mL',indication:'Einleitung/Kombi',notes:'Häufig mit Midazolam/Dexmedetomidin. Analgesie-CRI wie Hund: 0,25–0,5 mg/kg Bolus, dann ~2–10 µg/kg/min.',caution:'Renal-/HKM-Vorsicht.'},
         kaninchen:{low:15,high:35,unit:'mg/kg',route:'IM (Kombi)',conc:'100 mg/mL',indication:'Kombi mit Medetomidin/Midazolam',notes:'',caution:''},
         meerschwein:{low:20,high:40,unit:'mg/kg',route:'IM (Kombi)',conc:'100 mg/mL',indication:'Kombi',notes:'',caution:''},
         reptil:{low:10,high:40,unit:'mg/kg',route:'IM/IV',conc:'100 mg/mL',indication:'Kombi',notes:'',caution:'Sehr lange Erholung; POTZ halten.'}
@@ -135,8 +171,8 @@ window.ANAES = {
       sources:['Plumb’s','BSAVA'],
       species:{
         hund:{low:1,high:5,unit:'mcg/kg',route:'IV (3–10 IM)',conc:'0.5 mg/mL',indication:'Sedation/Prämedikation',notes:'Antagonist: Atipamezol. Niedrige Dosis + Opioid.',caution:'Bradykardie, Vasokonstriktion, MAP-Anstieg dann -abfall; nicht bei Herz-/Schockpatient.'},
-        katze:{low:1,high:5,unit:'mcg/kg',route:'IV (5–20 IM)',conc:'0.5 mg/mL',indication:'Sedation',notes:'',caution:'Wie Hund; Erbrechen.'},
-        kaninchen:{low:5,high:20,unit:'mcg/kg',route:'IM/SC',conc:'0.5 mg/mL',indication:'Sedation (Kombi)',notes:'Mit Ketamin/Opioid.',caution:'Bradykardie.'},
+        katze:{low:1,high:5,unit:'mcg/kg',route:'IV (5–20 IM, bis 40 tief)',conc:'0.5 mg/mL',indication:'Sedation',notes:'IM 5–20 Routine (mit Opioid), bis 40 µg/kg für tiefe Sedation/Analgesie; 5–10 bei Herzpatient.',caution:'Wie Hund; Erbrechen.'},
+        kaninchen:{low:25,high:100,unit:'mcg/kg',route:'IM/SC (Kombi)',conc:'0.5 mg/mL',indication:'Sedation (Kombi)',notes:'Als Kombi mit Ketamin/Opioid/Midazolam; tief bis 125–250 µg/kg IM. Entspricht ≈ halber Medetomidin-µg-Dosis.',caution:'Ausgeprägte Bradykardie.'},
         meerschwein:{low:10,high:50,unit:'mcg/kg',route:'IM/SC',conc:'0.5 mg/mL',indication:'Sedation (Kombi)',notes:'',caution:''}
       }},
     { id:'medetomidin', name:'Medetomidin', icon:'😴', cls:'Alpha-2-Agonist',
@@ -144,7 +180,7 @@ window.ANAES = {
       species:{
         hund:{low:5,high:20,unit:'mcg/kg',route:'IV/IM',conc:'1 mg/mL',indication:'Sedation',notes:'Antagonist Atipamezol.',caution:'Bradykardie.'},
         katze:{low:5,high:20,unit:'mcg/kg',route:'IM',conc:'1 mg/mL',indication:'Sedation',notes:'',caution:''},
-        kaninchen:{low:0.1,high:0.5,unit:'mg/kg',route:'IM/SC',conc:'1 mg/mL',indication:'Kombi',notes:'',caution:''}
+        kaninchen:{low:0.1,high:0.5,unit:'mg/kg',route:'IM/SC',conc:'1 mg/mL',indication:'Kombi',notes:'⚠ Einheit mg/kg (= 100–500 µg/kg) – Hund/Katze stehen in µg/kg! Kaninchen sind α2-resistenter, brauchen höhere mg/kg. Mit Ketamin.',caution:'Bradykardie; Einheit beachten.'}
       }},
     { id:'xylazin', name:'Xylazin', icon:'😴', cls:'Alpha-2-Agonist', aliases:['rompun'],
       sources:['Plumb’s'],
@@ -172,20 +208,20 @@ window.ANAES = {
     { id:'acepromazin', name:'Acepromazin', icon:'🌀', cls:'Phenothiazin-Sedativum', aliases:['acp'],
       sources:['Plumb’s'],
       species:{
-        hund:{low:0.01,high:0.05,unit:'mg/kg',route:'IV/IM',conc:'10 mg/mL',indication:'Sedation/Prämed',notes:'Max-Gesamtdosis ~3 mg. Kein Antidot, keine Analgesie.',caution:'Hypotension (α-Block); nicht bei Schock/Hypovolämie/Kollaps.'},
+        hund:{low:0.01,high:0.05,unit:'mg/kg',route:'IV/IM',conc:'10 mg/mL',indication:'Sedation/Prämed',notes:'Max-Gesamtdosis ~3 mg. Kein Antidot, keine Analgesie. Nach Magergewicht dosieren.',caution:'Hypotension (α-Block); nicht bei Schock/Hypovolämie/Kollaps/Anämie. Rassesensibilität: MDR1/ABCB1-Hütehunde (Collie ~70 %, Aussie, Sheltie, Border/Old English) ~25 % reduzieren & eng überwachen; Boxer & brachyzephal → vagale Bradykardie/Synkope, 0,01–0,025 mg/kg; Sighthounds/Riesenrassen niedriger (0,02–0,03 bzw. 0,01–0,025 mg/kg).'},
         katze:{low:0.02,high:0.05,unit:'mg/kg',route:'IV/IM',conc:'10 mg/mL',indication:'Sedation',notes:'',caution:'Hypotension.'}
       }},
     { id:'methadon', name:'Methadon', icon:'💊', cls:'Opioid (µ-Agonist)',
       sources:['Plumb’s','WSAVA Pain'],
       species:{
         hund:{low:0.1,high:0.5,unit:'mg/kg',route:'IV/IM',conc:'10 mg/mL',indication:'Analgesie/Prämed',notes:'Gute intraop. Analgesie; NMDA-Effekt. Antagonist Naloxon.',caution:'Atemdepression, Bradykardie.'},
-        katze:{low:0.1,high:0.3,unit:'mg/kg',route:'IV/IM/OTM',conc:'10 mg/mL',indication:'Analgesie',notes:'Gut verträglich bei Katze.',caution:''},
+        katze:{low:0.1,high:0.5,unit:'mg/kg',route:'IV/IM/OTM',conc:'10 mg/mL',indication:'Analgesie',notes:'IM/Prämed 0,3–0,6 mg/kg (EU-Zulassung), IV niedriger (0,1–0,3). Gut verträglich bei Katze.',caution:''},
         kaninchen:{low:0.3,high:0.5,unit:'mg/kg',route:'SC/IM',conc:'10 mg/mL',indication:'Analgesie',notes:'',caution:''}
       }},
     { id:'polamivet', name:'Polamivet (L-Methadon + Fenpipramid)', icon:'💊', cls:'Opioid-Kombination',
       sources:['Fachinfo Polamivet'],
       species:{
-        hund:{low:0.5,high:1,unit:'mg/kg',route:'IV/IM/SC',conc:'L-Methadon 2.5 mg/mL',indication:'Analgesie/Prämed (Hund)',notes:'Dosis als L-Methadon-Anteil. Fenpipramid = Parasympatholytikum-Zusatz.',caution:'Beim Hund zugelassen; Atemdepression/Bradykardie.'},
+        hund:{low:0.25,high:1,unit:'mg/kg',route:'IV/IM/SC',conc:'L-Methadon 2.5 mg/mL',indication:'Analgesie/Prämed (Hund)',notes:'Dosis als L-Methadon-Anteil (SPC 0,25–1 mg/kg, immer mit Sedativum – allein Exzitation). Fenpipramid = Parasympatholytikum-Zusatz. L-Methadon ≈ 2× Potenz von razem. Methadon – NICHT mit der Methadon-Zeile gleichsetzen.',caution:'Beim Hund zugelassen; Atemdepression/Bradykardie.'},
         katze:{low:null,high:null,unit:'mg/kg',route:'',conc:'',indication:'',notes:'',caution:'In DE/CH i.d.R. nicht für die Katze empfohlen – Fachinfo prüfen; alternativ reines Methadon.'}
       }},
     { id:'buprenorphin', name:'Buprenorphin', icon:'💊', cls:'Opioid (Partialagonist)',
@@ -207,7 +243,7 @@ window.ANAES = {
     { id:'fentanyl', name:'Fentanyl', icon:'💊', cls:'Opioid (µ, kurz)',
       sources:['Plumb’s','ACVAA'],
       species:{
-        hund:{low:2,high:5,unit:'mcg/kg',route:'IV Bolus',conc:'0.05 mg/mL (50 µg/mL)',indication:'Intraop. Analgesie',notes:'Danach CRI 3–10 µg/kg/h (bis 40 intraop). Sehr kurz als Bolus.',caution:'Atemdepression/Bradykardie – Beatmung bereithalten.'},
+        hund:{low:2,high:5,unit:'mcg/kg',route:'IV Bolus',conc:'0.05 mg/mL (50 µg/mL)',indication:'Intraop. Analgesie',notes:'Danach CRI: intraop ~10–40 µg/kg/h (MAC-sparend; 0,17–0,7 µg/kg/min), postop/leicht 3–10 µg/kg/h. ~20–45 min vor Extubation reduzieren (Dysphorie/Bradykardie). Sehr kurz als Bolus.',caution:'Atemdepression/Bradykardie – Beatmung bereithalten.'},
         katze:{low:1,high:3,unit:'mcg/kg',route:'IV Bolus',conc:'0.05 mg/mL',indication:'Analgesie',notes:'CRI 2–5 µg/kg/h.',caution:''}
       }},
     { id:'morphin', name:'Morphin', icon:'💊', cls:'Opioid (µ-Agonist)',
@@ -226,7 +262,7 @@ window.ANAES = {
     { id:'atipamezol', name:'Atipamezol', icon:'🔄', cls:'Alpha-2-Antagonist', aliases:['antisedan'],
       sources:['Plumb’s'],
       species:{
-        hund:{low:0.05,high:0.2,unit:'mg/kg',route:'IM',conc:'5 mg/mL',indication:'Umkehr Medetomidin/Dexmed.',notes:'Faustregel: gleiches Volumen wie Medetomidin, bzw. 5× µg-Dexmed-Dosis. IM, nicht IV (außer Notfall langsam).',caution:'Rasche Erweckung; Vasodilatation/Hypotension bei IV.'},
+        hund:{low:0.05,high:0.2,unit:'mg/kg',route:'IM',conc:'5 mg/mL',indication:'Umkehr Medetomidin/Dexmed.',notes:'Faustregel: gleiches Volumen wie das gegebene Domitor/Dexdomitor (Antisedan 5 mg/mL) = 5× Medetomidin-µg = 10× Dexmedetomidin-µg. Katze: HALBES Volumen. IM, nicht IV (außer Notfall langsam).',caution:'Nicht < 30–40 min nach Ketamin (Exzitation/Krämpfe). Rasche Erweckung; Vasodilatation/Hypotension bei IV.'},
         katze:{low:0.05,high:0.2,unit:'mg/kg',route:'IM',conc:'5 mg/mL',indication:'Umkehr α2',notes:'',caution:''},
         kaninchen:{low:0.1,high:1,unit:'mg/kg',route:'IM/SC',conc:'5 mg/mL',indication:'Umkehr α2',notes:'',caution:''}
       }},
@@ -241,7 +277,7 @@ window.ANAES = {
       species:{
         hund:{low:0.1,high:0.2,unit:'mg/kg',route:'SC/IV/PO',conc:'5 mg/mL (Inj.)',indication:'Perioperative Analgesie',notes:'Erstgabe 0.2, dann 0.1 mg/kg/Tag. Nur bei normovolämem, normotensivem Patienten.',caution:'NIE bei Hypotension/Hypovolämie/Nieren-/GI-Erkrankung; nicht mit anderen NSAID/Kortison.'},
         katze:{low:0.1,high:0.2,unit:'mg/kg',route:'SC',conc:'5 mg/mL',indication:'Analgesie (Einmalgabe)',notes:'Perioperativ 0.2 mg/kg einmalig; Folgegaben nur streng nach Fachinfo.',caution:'Katze NSAID-empfindlich – nur normovoläm/normoton, nicht wiederholt ohne Kontrolle.'},
-        kaninchen:{low:0.3,high:1,unit:'mg/kg',route:'SC/PO',conc:'5 mg/mL',indication:'Analgesie',notes:'Kaninchen brauchen höhere mg/kg.',caution:''}
+        kaninchen:{low:0.5,high:1,unit:'mg/kg',route:'SC/PO',conc:'5 mg/mL',indication:'Analgesie',notes:'Chirurgisch/periop. Ziel ~1 mg/kg q24h (kurzfristig bis 1,5); 0,3 mg/kg nur für langfristig/renal reduziert – subtherapeutisch für akuten OP-Schmerz. Kaninchen brauchen höhere mg/kg.',caution:''}
       }},
     { id:'carprofen', name:'Carprofen', icon:'🌡️', cls:'NSAID',
       sources:['Plumb’s'],
@@ -305,7 +341,7 @@ window.ANAES = {
       red:['SpO₂ < 90 % ist ein Notfall – zuerst Gerät/Tubus, dann Patient','Erst nach Beatmung an Medikamente denken'] },
 
     { id:'hypoventilation', name:'Hypoventilation / hohes EtCO₂', icon:'☁️', cls:'Atmung', color:'#a78bfa', tag:'EtCO₂ ↑', short:'CO₂-Anstieg',
-      thresholds:{ all:'EtCO₂ > 45–55 mmHg (Hyperkapnie); > 60 → kontrolliert beatmen' },
+      thresholds:{ all:'EtCO₂ 45–55 mmHg unter GA meist tolerierbar (permissive Hyperkapnie); WARNUNG > 55; HANDELN/IPPV > 60 mmHg' },
       causes:['Zu tiefe Narkose (Atemdepression)','Opioide/Propofol-Bolus','Zwerchfelldruck (Lagerung/OP)','Erschöpfter Atemkalk (Rückatmung)','Zu geringer Frischgasfluss'],
       steps:['Narkosetiefe prüfen – Iso reduzieren.','Kontrollierte Beatmung (IPPV) beginnen: AF ↑, AZV 10–15 mL/kg.','Atemkalk prüfen/wechseln, Frischgasfluss erhöhen.','Lagerung/abdominalen Druck reduzieren lassen.'],
       machine:'Auf VCV/PCV oder Manual umschalten; AF art-typisch, AZV 10–15 mL/kg (Exoten weniger), PIP-Grenze beachten; Kapnografie bis EtCO₂ 35–45.',
@@ -314,7 +350,7 @@ window.ANAES = {
       red:['Hyperkapnie unbehandelt → Azidose, Arrhythmien'] },
 
     { id:'hypotension', name:'Hypotension', icon:'📉', cls:'Kreislauf', color:'#ff4d4d', tag:'MAP ↓', short:'Blutdruck zu niedrig',
-      thresholds:{ all:'MAP < 60–70 mmHg (SAP < 90) → Organperfusion gefährdet' },
+      thresholds:{ all:'WARNUNG MAP < 70 mmHg (SAP < 90) → Ursache suchen · HANDELN MAP < 60 → Organperfusion gefährdet, jetzt behandeln. Ziel MAP 60–70+.' },
       causes:['Zu tiefe Narkose (Iso-Vasodilatation/Kardiodepression)','Hypovolämie / Blutverlust','Bradykardie','α2-/Ace-bedingte Vasodilatation','Sepsis/Anaphylaxie'],
       steps:['Isofluran reduzieren (häufigste Ursache!).','Volumenstatus: Kristalloid-Bolus geben.','Bradykardie? → Anticholinergikum (siehe Bradykardie).','Wenn trotz Volumen + weniger Iso: Vasopressor/Inotropikum.','Blutverlust kontrollieren; Wärme halten; MAP-Ziel > 60–70.'],
       machine:'Isofluran senken; O₂ 100 %; ggf. IPPV mit niedrigem Mitteldruck (hoher PIP senkt Vorlast).',
@@ -339,12 +375,14 @@ window.ANAES = {
     { id:'asystolie', name:'Herzstillstand / CPR (RECOVER)', icon:'🚨', cls:'Reanimation', color:'#ff2d2d', tag:'CPR', short:'Asystolie / PEA / Kammerflimmern',
       thresholds:{ all:'kein Puls / keine Herzaktion / EtCO₂-Abfall + flache Kurve' },
       causes:['Schwere Hypoxie/Hypoventilation','Überdosis Anästhetikum','Hypovolämie/Blutverlust','Elektrolyt (K⁺)','Vagal/Reflex'],
-      steps:['Hilfe rufen, Zeit notieren. Vapor AUS, 100 % O₂.','Thoraxkompressionen 100–120/min, 2 min ununterbrochen, dann Wechsel; Seitenlage, Herzhöhe.','Beatmung 10/min (nicht hyperventilieren).','Zugang legen; Adrenalin 0.01 mg/kg IV/IO alle 3–5 min (jeder 2. Zyklus).','Bei Vagus/Asystolie: Atropin 0.04 mg/kg IV/IO.','EKG alle 2 min prüfen; Kammerflimmern → Defibrillation falls verfügbar; Ursachen (Hypovolämie/Hypoxie/K⁺) behandeln.'],
-      machine:'Verdampfer AUS. O₂ 100 %, Manual-Beatmung 10/min. Kapnografie als CPR-Qualität (EtCO₂ > 15 gut, plötzlicher Anstieg = ROSC).',
-      drugs:[ {id:'adrenalin',low:0.01,high:0.01,unit:'mg/kg',route:'IV/IO',note:'Niedrigdosis alle 3–5 min; Hochdosis 0.1 mg/kg erst nach mehreren Zyklen.'},
-              {id:'atropin',low:0.04,high:0.04,unit:'mg/kg',route:'IV/IO',note:'Bei Asystolie/vagal, einmalig/Wiederholung.'},
+      steps:['Hilfe rufen, Zeit notieren. Vapor AUS, 100 % O₂.','Thoraxkompressionen 100–120/min, 2 min ununterbrochen, dann Kompressor wechseln; Seitenlage, Herzhöhe.','Beatmung 10/min (nicht hyperventilieren).','Zugang legen; Adrenalin 0,01 mg/kg IV/IO jeden 2. Zyklus (alle 3–5 min) – die ganze CPR über. Alternative: Vasopressin 0,8 U/kg. KEINE Hochdosis (RECOVER 2024).','Bei nicht-defibrillierbarem Rhythmus (Asystolie/PEA), v.a. hoher Vagotonus: Atropin 0,04 mg/kg IV/IO EINMALIG (nicht wiederholen).','EKG alle 2 min prüfen; Kammerflimmern/pulslose VT → Defibrillation biphasisch 2–4 J/kg (monophasisch 4–6 J/kg), danach sofort 2 min CPR; nach >3–5 erfolglosen Schocks Amiodaron 2,5–5 mg/kg IV/IO (dann Lidocain 2 mg/kg); reversible Ursachen (Hypovolämie/Hypoxie/K⁺/Azidose) behandeln.'],
+      machine:'Verdampfer AUS. O₂ 100 %, Manual-Beatmung 10/min. Kapnografie als CPR-Qualität (EtCO₂ ≥ 18 mmHg anstreben [RECOVER 2024]; <12 → Tubuslage prüfen; plötzlicher Anstieg = ROSC).',
+      drugs:[ {id:'adrenalin',low:0.01,high:0.01,unit:'mg/kg',route:'IV/IO',note:'Standarddosis 0,01 mg/kg jeden 2. Zyklus (alle 3–5 min) die ganze CPR über. Hochdosis 0,1 mg/kg NICHT mehr empfohlen (RECOVER 2024).'},
+              {id:'vasopressin',low:0.8,high:0.8,unit:'U/kg',route:'IV/IO',note:'Alternative/Ergänzung zu Adrenalin, alle 3–5 min. Bei refraktärem Kammerflimmern (RECOVER 2024) bevorzugt.'},
+              {id:'amiodaron',low:2.5,high:5,unit:'mg/kg',route:'IV/IO',note:'Bei defibrillations-resistentem VF/pulsloser VT (>3–5 erfolglose Schocks) – vor Lidocain. Polysorbat-Anaphylaxie beim Hund möglich.'},
+              {id:'atropin',low:0.04,high:0.04,unit:'mg/kg',route:'IV/IO',note:'EINMALIG bei nicht-defibrillierbarem Rhythmus (Asystolie/PEA), v.a. hoher Vagotonus; so früh wie möglich. NICHT wiederholen (lange HWZ; wiederholte/höhere Dosen mit schlechterem Outcome assoziiert).'},
               {id:'naloxon',low:0.04,high:0.04,unit:'mg/kg',route:'IV/IO',note:'Wenn opioidassoziiert.'} ],
-      speciesNotes:{ katze:'Kleine Hände – Thorax mit einer Hand umgreifend komprimieren.', kaninchen:'Sehr fragiler Thorax – vorsichtig, hohe Frequenz.', reptil:'CPR wenig etabliert; beatmen, Adrenalin IC möglich, langer Versuch (kältetolerant).' },
+      speciesNotes:{ katze:'Kleine Hände – Thorax mit einer Hand umgreifend komprimieren.', kaninchen:'Sehr fragiler Thorax – vorsichtig, hohe Frequenz.', reptil:'CPR wenig etabliert; beatmen, Adrenalin IV/IO (intratracheal möglich; intrakardial nur ohne anderen Zugang), langer Versuch (kältetolerant).' },
       red:['Kompressionen früh & ununterbrochen','Verdampfer AUS nicht vergessen','Nach ROSC: Nachsorge, Ursache, Wärme, Monitoring'] },
 
     { id:'hyperthermie', name:'Hyperthermie', icon:'🔥', cls:'Temperatur', color:'#ff8c6b', tag:'T ↑', short:'Körpertemperatur zu hoch',
@@ -424,10 +462,12 @@ window.ANAES = {
       { id:'vs', name:'VS / VS+ – Volumen-Support', tag:'Spontan', desc:'Unterstützt jeden Spontanatemzug bis zu einem Zielvolumen. Für spontan atmende Patienten mit assistierter Unterstützung.' }
     ],
     settingsBySpecies: {
-      hund:        { rebreatheMin:7, o2:{mlkg:[100,200],min:0.5,note:'Kreissystem: niedriger Erhaltungsfluss möglich'}, o2Induction:'2–3 L/min bzw. 3–5 min präoxygenieren', iso:{mac:1.3,maint:'1.5–2.5',induction:'3–5 %'}, tvMlKg:[10,15], rr:[8,12], pip:15, apl:'offen bei Spontanatmung; für Handbeatmung kurz schließen', fluidMlKgH:5, fluid:'VEL/Ringer-Laktat' },
-      katze:       { rebreatheMin:7, o2:{mlkg:[100,200],min:0.3,note:'Kleine Patienten oft Nicht-Rückatmung'}, o2Induction:'1–2 L/min bzw. 3–5 min präoxygenieren', iso:{mac:1.6,maint:'1.5–2.5',induction:'3–5 %'}, tvMlKg:[10,15], rr:[8,14], pip:12, apl:'offen; Handbeatmung vorsichtig (kleiner Thorax)', fluidMlKgH:3, fluid:'VEL/Ringer-Laktat' },
+      hund:        { rebreatheMin:7, o2:{mlkg:[30,100],min:0.5,note:'Kreissystem-Erhaltung: Low-Flow ~20–50, semi-geschlossen bis ~100 mL/kg/min; Einleitung/Wash-in & Nicht-Rückatmung höher'}, o2Induction:'2–3 L/min bzw. 3–5 min präoxygenieren', iso:{mac:1.3,maint:'1.5–2.5',induction:'3–5 %'}, tvMlKg:[10,15], rr:[8,12], pip:15, apl:'offen bei Spontanatmung; für Handbeatmung kurz schließen', fluidMlKgH:5, fluid:'VEL/Ringer-Laktat' },
+      katze:       { rebreatheMin:7, o2:{mlkg:[30,100],min:0.3,note:'Kreissystem-Erhaltung Low-Flow ~20–50; kleine Patienten oft Nicht-Rückatmung (dann höher)'}, o2Induction:'1–2 L/min bzw. 3–5 min präoxygenieren', iso:{mac:1.6,maint:'1.5–2.5',induction:'3–5 %'}, tvMlKg:[10,15], rr:[8,14], pip:12, apl:'offen; Handbeatmung vorsichtig (kleiner Thorax)', fluidMlKgH:3, fluid:'VEL/Ringer-Laktat' },
       kaninchen:   { rebreatheMin:999, o2:{mlkg:[200,300],min:0.5,note:'Nicht-Rückatmung (Bain/T-Stück)'}, o2Induction:'Immer präoxygenieren 3–5 min (Maske)', iso:{mac:2.0,maint:'1.5–3',induction:'per Maske langsam steigern'}, tvMlKg:[8,12], rr:[20,40], pip:8, apl:'niedriger Druck – Barotrauma vermeiden', fluidMlKgH:4, fluid:'VEL/Ringer-Laktat (warm)' },
-      meerschwein: { rebreatheMin:999, o2:{mlkg:[200,300],min:0.4,note:'Nicht-Rückatmung; Kammereinleitung möglich'}, o2Induction:'Präoxygenieren; Intubation schwierig → Maske/Larynxmaske', iso:{mac:1.5,maint:'1.5–3',induction:'per Maske/Kammer'}, tvMlKg:[8,12], rr:[30,60], pip:8, apl:'niedriger Druck', fluidMlKgH:4, fluid:'VEL/Ringer-Laktat (warm)' },
+      meerschwein: { rebreatheMin:999, o2:{mlkg:[200,300],min:0.4,note:'Nicht-Rückatmung; Kammereinleitung möglich'}, o2Induction:'Präoxygenieren; Intubation schwierig → Maske/Larynxmaske', iso:{mac:1.15,maint:'1.5–3',induction:'per Maske/Kammer'}, tvMlKg:[8,12], rr:[20,60], pip:8, apl:'niedriger Druck', fluidMlKgH:4, fluid:'VEL/Ringer-Laktat (warm)' },
+      chinchilla:  { rebreatheMin:999, o2:{mlkg:[200,300],min:0.3,note:'Nicht-Rückatmung; sehr narkoseanfällig'}, o2Induction:'Präoxygenieren; Masken-/Kammereinleitung (Intubation schwierig)', iso:{mac:1.4,maint:'1–3',induction:'per Maske/Kammer (bevorzugt)'}, tvMlKg:[8,12], rr:[40,80], pip:8, apl:'sehr niedriger Druck', fluidMlKgH:4, fluid:'VEL/Ringer-Laktat (warm)' },
+      frettchen:   { rebreatheMin:999, o2:{mlkg:[200,300],min:0.3,note:'Nicht-Rückatmung (klein)'}, o2Induction:'Präoxygenieren; Masken-/Injektionseinleitung (Intubation mit kleinem Tubus möglich)', iso:{mac:1.5,maint:'1.5–3',induction:'per Maske / injektabel'}, tvMlKg:[8,12], rr:[15,30], pip:10, apl:'niedriger Druck', fluidMlKgH:4, fluid:'VEL/Ringer-Laktat (warm)' },
       reptil:      { rebreatheMin:999, o2:{mlkg:[100,300],min:0.2,note:'Sehr niedrige Ventilationsraten; oft Raumluft-Anteil'}, o2Induction:'POTZ-Temperatur sichern; Einleitung oft injektabel', iso:{mac:2.0,maint:'1–3',induction:'variabel'}, tvMlKg:[10,20], rr:[2,4], pip:6, apl:'sehr niedriger Druck', fluidMlKgH:2, fluid:'Reptilien-Ringer / warm' }
     }
   },
@@ -446,7 +486,8 @@ window.ANAES = {
     { title:'BSAVA Small Animal Formulary / BSAVA Exotic Pets' },
     { title:'WSAVA Global Pain Council – Analgesie-Leitlinien' },
     { title:'ACVAA / AVA Anästhesie-Monitoring-Leitlinien' },
-    { title:'RECOVER Initiative – CPR-Leitlinien Kleintier (2012)' },
+    { title:'RECOVER Initiative – CPR-Leitlinien Kleintier (2012, aktualisiert 2024)', url:'https://recoverinitiative.org/2024-guidelines/' },
+    { title:'AAHA 2020 Anesthesia & Monitoring Guidelines (Dogs & Cats)', url:'https://www.aaha.org/resources/2020-aaha-anesthesia-and-monitoring-guidelines-for-dogs-and-cats/' },
     { title:'Carpenter – Exotic Animal Formulary' },
     { title:'Mindray Veta 5 Plus / uMEC12 Vet – Bedienungshandbücher' }
   ]
@@ -462,10 +503,10 @@ window.ANAES.monitor = {
       explain:'Pulsoxymetrie (Zunge/Ohr/Pfote). ≥ 95 % (auf 100 % O₂ ~99 %). Das Plethysmogramm zeigt die Perfusion; SpO₂ reagiert verzögert (~30 s) → Kapnograf ist schneller.',
       lowInc:'hypoxaemie' },
     { id:'etco2',name:'End-CO₂ (Kapnograf)',         abbr:'EtCO₂', unit:'mmHg', color:'#ffd166', vital:'etco2',
-      explain:'Sidestream-Kapnografie – bestätigt Intubation + Ventilation. Die KURVENFORM ist der wichtigste Frühwarner (Diskonnektion, Rückatmung, Obstruktion). Ziel 35–45 mmHg. Veta 5 Alarm: hoch 50 / niedrig 25 / FiCO₂ 4.',
+      explain:'Sidestream-Kapnografie – bestätigt Intubation + Ventilation. Die KURVENFORM ist der wichtigste Frühwarner (Diskonnektion, Rückatmung, Obstruktion). Ziel 35–45 mmHg; unter GA ist permissive Hyperkapnie bis ~55 tolerierbar, ab >60 kontrolliert beatmen (IPPV). Low-Alarm <30 (Hyperventilation/niedriges HZV/Diskonnektion/Apnoe). EtCO₂ liegt ~5–10 mmHg unter PaCO₂. Reptil: nur Trend (unzuverlässig).',
       lowInc:'apnoe', highInc:'hypoventilation' },
     { id:'nibp', name:'Blutdruck (NIBP)',            abbr:'MAP',   unit:'mmHg', color:'#f35588', vital:'map',
-      explain:'Oszillometrische Manschette (Pfote/Schwanz). SYS/DIA eingeben – MAP wird berechnet (MAP = DIA + (SYS−DIA)/3). MAP > 60–70 mmHg hält Nieren-/Hirnperfusion; MAP > 120–130 = Hypertonie. Häufigste Narkose-Hypotension: Isofluran zu hoch → zuerst Verdampfer runter.',
+      explain:'Oszillometrische Manschette (Pfote/Schwanz). SYS/DIA eingeben – MAP = DIA + (SYS−DIA)/3. Zweistufig: WARNUNG MAP < 70 / SAP < 90 (Ursache suchen, Iso senken, Volumen/Bradykardie prüfen) · HANDELN MAP < 60 (Kristalloid-Bolus, Verdampfer runter, ggf. Anticholinergikum, dann Inotropikum/Vasopressor). Ziel MAP 60–70+. MAP > 120–130 = Hypertonie. Oszillometrie unzuverlässig bei sehr niedrigem/hohem Druck, Arrhythmie & Bewegung; Manschettenbreite ≈ 30–40 % des Umfangs, auf Herzhöhe halten; bei zweifelhaftem Wert Trend + Doppler/arteriell. Häufigste Narkose-Hypotension: Isofluran zu hoch → zuerst Verdampfer runter.',
       lowInc:'hypotension', highInc:'hypertension' },
     { id:'rr',   name:'Atemfrequenz (Resp)',         abbr:'AF',    unit:'/min', color:'#a78bfa', vital:'rr',
       explain:'Spontan oder beatmet. Hohe AF + hohes EtCO₂ = Hypoventilation trotz schneller Atmung → assistiert beatmen.',
@@ -543,7 +584,7 @@ window.ANAES.ekg = [
     recognize:'PQ wird von Schlag zu Schlag LÄNGER, bis ein QRS ausfällt (Lücke).',
     cause:'Hoher Vagotonus, α2-Agonisten, tiefe Narkose.', w:{p:true,pq:'inc',qrs:1,drop:'wenckebach',ratio:4,rate:0.7} },
   { id:'avb2b', name:'AV-Block II° Mobitz II', kind:'block', incident:'bradykardie', severity:4, emergency:false,
-    recognize:'PQ KONSTANT, dann fällt unvermittelt ein QRS aus. Höheres Risiko → III°.',
+    recognize:'PQ KONSTANT, dann fällt unvermittelt ein QRS aus. Kaum Atropin-responsiv (infranodal, His-Purkinje); kann plötzlich in III° kippen → EKG-Wachsamkeit + Pacing-Bereitschaft (transkutan/temporär), elektiv-symptomatisch Kardio-Konsil.',
     cause:'His-Purkinje-/Myokarderkrankung, Medikamenten-/Elektrolyteffekt.', w:{p:true,pq:1.3,qrs:1,drop:'mobitz2',ratio:3,rate:0.75} },
   { id:'avb3', name:'AV-Block III° (total)', kind:'block', incident:'bradykardie', severity:5, emergency:true,
     recognize:'P-Wellen und QRS ohne festen Bezug (Dissoziation), QRS langsam & oft breit. NOTFALL.',
@@ -603,13 +644,13 @@ window.ANAES.operating = {
    L-Polamivet, Narketan, Domitor/Antisedan), Hedenqvist u.a. (siehe Recherche).
    Reine Spontanatmung → O₂ + Monitoring + Antagonisten bereithalten. */
 window.ANAES.injection = [
-  { id:'h-xylpola', sp:'hund', kind:'Einleitung', name:'Xylazin + L-Polamivet', route:'IM', onset:'5–10 min', duration:'30–60 min (langer Nachschlaf)',
-    indication:'Neuroleptanalgesie / operationsfähiger Zustand ohne Gerät (Praxis-Standard).',
-    comp:[ {n:'Xylazin (Rompun 2%)', mgkg:[2,2], conc:20},
-           {n:'L-Polamivet (Levometh. 2,5 mg/mL + Fenpipramid)', mlkg:[0.15,0.2]} ],
+  { id:'h-xylpola', sp:'hund', kind:'Einleitung', name:'Xylazin + L-Polamivet', route:'IM (Mischspritze)', onset:'5–10 min', duration:'30–60 min (langer Nachschlaf)',
+    indication:'Neuroleptanalgesie / operationsfähiger Zustand ohne Gerät (Praxis-Wandprotokoll). Beide Med. in EINER Mischspritze i.m.; IV möglich, dann erst ½–⅔ nach Wirkung.',
+    comp:[ {n:'Xylazin (Rompun 2%) · 0,1 mL/kg', mgkg:[2,2], conc:20},
+           {n:'L-Polamivet (Levometh. 2,5 mg/mL + Fenpipramid) · 0,2 mL/kg (immer ausdosiert)', mlkg:[0.2,0.2]} ],
     expect:'HF: Xylazin-Bradykardie, durch Fenpipramid abgepuffert (oft normal/leicht ↑). Atmung: langsam & flach (Opioid+α2). BD: initial ↑ (α2), später ↓. SpO₂: bei Raumluft ↓ → O₂ geben!',
     topup:'h-topup', reversal:['atipamezol','naloxon'],
-    cautions:'Opioid-Atemdepression additiv. Naloxon demaskiert Fenpipramid → massive Tachykardie möglich. Langer Nachschlaf, Hypothermie.' },
+    cautions:'⚠ Xylazin-Gesamtdosis kappen: max 2,0 mL (>40 kg 2,5 mL; >60 kg 3,0 mL). Ausnahmen – nur ½–⅔ der Spritze i.m. (oder nach Wirkung i.v.): Boxer, Bulldoggen, Hunde <7 Monate, Herzpatienten. Bei MANIFESTER Herzerkrankung/Arrhythmie α2 ganz meiden (Xylazin laut SPC kontraindiziert) – Anticholinergikum bereit. α2+µ-Opioid = ausgeprägte Bradykardie/AV-Block; Naloxon demaskiert Fenpipramid → massive Tachykardie. Langer Nachschlaf, Hypothermie. (SPC-konforme Neuroleptanalgesie.)' },
   { id:'h-ketxyl', sp:'hund', kind:'Einleitung', name:'Ketamin + Xylazin (IM)', route:'IM', onset:'3–7 min', duration:'~20–30 min',
     indication:'Feld-Standard; Ketamin gleicht α2-Bradykardie teils aus, erhält Reflexe.',
     comp:[ {n:'Ketamin 10%', mgkg:[6,10], conc:100}, {n:'Xylazin (Rompun 2%)', mgkg:[2,2], conc:20} ],
@@ -646,25 +687,38 @@ window.ANAES.injection = [
     expect:'HF: ausgeprägte Bradykardie/AV-Block (α2). BD: initial ↑ dann ↓. Atmung: mild deprimiert. Voll reversibel (Atipamezol).',
     reversal:['atipamezol'],
     cautions:'Nicht bei kardiovaskulär instabilen Tieren. Dexmedetomidin = halbe µg-Dosis. Atipamezol = gleiches Volumen wie Domitor.' },
+  { id:'h-dexbutor', sp:'hund', kind:'Sedierung', name:'Dexdomitor + Butorphanol (tiefe Sedation)', route:'IM', onset:'5–10 min', duration:'~30–60 min (reversibel)',
+    indication:'Tiefe Sedation & Analgesie ohne Gerät (Praxis-Wandtabelle Dexdomitor 300 µg/m²). Kombination wirkt tiefer & analgetischer als Dexdomitor allein.',
+    comp:[ {n:'Dexmedetomidin (Dexdomitor 0,5 mg/mL) 300 µg/m² IM', titr:'Nach Körperoberfläche (Wandtabelle, NICHT linear zum kg): 2–3 kg 0,12 · 4–5 kg 0,2 · 5–10 kg 0,25 · 10–13 kg 0,3 · 15–20 kg 0,4 · 20–25 kg 0,5 · 30–33 kg 0,6 · 37–45 kg 0,7 · 45–50 kg 0,8 · 60–65 kg 0,95 · 70–80 kg 1,1 · >80 kg 1,2 mL'},
+           {n:'Butorphanol · 0,1 mg/kg (0,01 mL/kg)', mgkg:[0.1,0.1], conc:10} ],
+    expect:'Ausgeprägte Bradykardie/AV-Block + initiale Hypertonie, dann ↓MAP (α2), blasse Schleimhäute; mild atemdeprimiert; voll reversibel.',
+    reversal:['atipamezol'],
+    cautions:'Nicht bei Herz-/Schock-/Hypovolämiepatient. Atipamezol (Antisedan 5 mg/mL) = GLEICHES Volumen wie Dexdomitor i.m. – hebt Sedation, Analgesie UND kardiovaskuläre Effekte auf. O₂ bereithalten.' },
 
   { id:'k-medket', sp:'katze', kind:'Einleitung', name:'Medetomidin + Ketamin', route:'IM', onset:'3–4 min', duration:'30–60 min',
-    indication:'Standard-Injektionsnarkose der Katze; oft + Opioid (Kastration).',
-    comp:[ {n:'Medetomidin (Domitor)', mgkg:[0.08,0.08], conc:1}, {n:'Ketamin 10%', mgkg:[2.5,7.5], conc:100} ],
+    indication:'Standard-Injektionsnarkose der Katze; oft + Opioid (Kastration). Praxis-Wandtabelle: Domitor 0,08 + Ketamin 0,05 + Antisedan 0,04 mL/kg.',
+    comp:[ {n:'Medetomidin (Domitor 1 mg/mL) · 0,08 mL/kg', mgkg:[0.08,0.08], conc:1}, {n:'Ketamin 10% · 0,05 mL/kg', mgkg:[5,5], conc:100} ],
     expect:'HF: Bradykardie, blasse Schleimhäute (Vasokonstriktion). Atmung: deprimiert, Apnoe/Hypoxämie möglich → O₂! Erbrechen bei Injektion häufig.',
     topup:'k-topup', reversal:['atipamezol'],
-    cautions:'Atipamezol Katze = HALBES Volumen (2,5× Med-µg). O₂ (Maske/Sonde) bereithalten.' },
+    cautions:'Atipamezol Katze = HALBES Volumen (2,5× Med-µg) = 0,04 mL/kg. O₂ (Maske/Sonde) bereithalten.' },
+  { id:'k-dexket', sp:'katze', kind:'Einleitung', name:'Dexdomitor + Ketamin (Zoetis-Label)', route:'IM', onset:'Einleitung ~10 min nach Prämed', duration:'30–45 min',
+    indication:'Praxis-Wandtabelle (Zoetis): Dexdomitor 40 µg/kg (0,08 mL/kg) als Prämed, 10 min später Ketamin 5 mg/kg (0,05 mL/kg) einleiten. Optional Butorphanol 0,4 mg/kg für mehr Analgesie. Dexdomitor ALLEIN (0,08 mL/kg) = Sedation/Analgesie.',
+    comp:[ {n:'Dexmedetomidin (Dexdomitor 0,5 mg/mL) · 0,08 mL/kg', mgkg:[0.04,0.04], conc:0.5}, {n:'Ketamin 10% · 0,05 mL/kg (10 min später)', mgkg:[5,5], conc:100}, {n:'Butorphanol (optional) · 0,04 mL/kg', mgkg:[0.4,0.4], conc:10} ],
+    expect:'Bradykardie/AV-Block + initiale Hypertonie → dann ↓MAP (α2), blasse Schleimhäute; Apnoe/Hypoxämie möglich → O₂.',
+    topup:'k-topup', reversal:['atipamezol'],
+    cautions:'Antisedan (5 mg/mL) = HALBES Volumen des Dexdomitor i.m. Nach Ketamin-Kombi erst ~30 min warten (bis Ketamin größtenteils eliminiert). Tier vor der Injektion beruhigen, ruhige Umgebung. ⚠ Butorphanol-Zusatz ist bei der Katze OFF-LABEL – FDA-Warnung: Todesfälle bei Dexmed+Ketamin+Butorphanol gemeldet → nur gesundes Tier, volle Überwachung/Antagonist bereit. Butorphanol nur milde/kurze Analgesie – für schmerzhafte Eingriffe µ-Opioid (Methadon/Buprenorphin) ergänzen.' },
   { id:'k-xylket', sp:'katze', kind:'Einleitung', name:'Xylazin + Ketamin', route:'IM/IV', onset:'3–5 min', duration:'20–40 min',
-    indication:'Feld-Alternative; Einleitung + verdünnte Nachdosierung.',
-    comp:[ {n:'Xylazin (Rompun 2%)', mgkg:[1.1,1.1], conc:20}, {n:'Ketamin 10%', mgkg:[5,10], conc:100} ],
+    indication:'Praxis: Xylazin 0,2 mL + Ketamin 0,3 mL i.m. PRO KATZE (dicke Kater 0,3/0,4 mL) – Fixvolumen. Nachdosierung: gleiche Menge verdünnt mit NaCl → 1/3.',
+    comp:[ {n:'Xylazin (Rompun 2%) · 0,2 mL (dick 0,3)', mgkg:[1,1], conc:20}, {n:'Ketamin 10% · 0,3 mL (dick 0,4)', mgkg:[7.5,7.5], conc:100} ],
     expect:'Wie Med/Ket, stärkere Hypotonie. Nachdosierung Ketamin (verdünnt).',
     topup:'k-topup', reversal:['atipamezol','yohimbin'],
-    cautions:'Xylazin nicht nachdosieren (Hypotonie). Katze empfindlich – niedrig/langsam.' },
-  { id:'k-kittymagic', sp:'katze', kind:'Einleitung', name:'„Kitty Magic" (Med + Ket + Butorphanol)', route:'IM', onset:'3–5 min', duration:'30–45 min',
-    indication:'Kastration/kurze Chirurgie, eine Injektion.',
-    comp:[ {n:'Medetomidin', mgkg:[0.011,0.011], conc:1}, {n:'Ketamin 10%', mgkg:[2.2,2.2], conc:100}, {n:'Butorphanol', mgkg:[0.22,0.22], conc:10} ],
-    expect:'Gute Immobilisation + Analgesie; Bradykardie, Hypoxämie möglich → O₂.',
+    cautions:'Fixvolumen pro Katze (≈ Xyl 1 / Ket 7,5 mg/kg bei 4 kg); an Gewicht/Zustand anpassen. Xylazin nicht nachdosieren (Hypotonie). Katze empfindlich – niedrig/langsam.' },
+  { id:'k-kittymagic', sp:'katze', kind:'Einleitung', name:'„Kitty Magic" (Dexmedetomidin + Ket + Butorphanol)', route:'IM', onset:'3–5 min', duration:'30–45 min',
+    indication:'Immobilisation/kurze Eingriffe, eine Injektion (1:1:1-Gemisch, ~0,022 mL/kg).',
+    comp:[ {n:'Dexmedetomidin (0,5 mg/mL)', mgkg:[0.011,0.011], conc:0.5}, {n:'Ketamin 10%', mgkg:[2.2,2.2], conc:100}, {n:'Butorphanol', mgkg:[0.22,0.22], conc:10} ],
+    expect:'Gleiche Volumina Dex(0,5)/Ket(100)/Butorphanol(10) = MODERATE Sedation. Bradykardie, Hypoxämie möglich → O₂ obligat.',
     topup:'k-topup', reversal:['atipamezol'],
-    cautions:'Atipamezol halbes Domitor-Volumen; nicht < 20 min nach Ketamin.' },
+    cautions:'Dies ist eine Sedations-, KEINE volle Chirurgie-Dosis. Für chirurgische Anästhesie höher: Dexmedetomidin 0,02–0,04 + Ketamin 4–5 + Butorphanol 0,3–0,4 mg/kg IM (bzw. Medetomidin ~2× die Dex-µg). Atipamezol = HALBES Dexdomitor-Volumen; nicht < 30–40 min nach Ketamin.' },
   { id:'k-topup', sp:'katze', kind:'Nachdosierung', name:'Xylazin + Ketamin mit NaCl verdünnt', route:'IV/IM, titriert', onset:'—', duration:'verlängert',
     indication:'Praxis: Xylazin + Ketamin (reduziert) in NaCl verdünnt nachdosieren.',
     comp:[ {n:'Xylazin (reduziert)', mgkg:[0.5,1], conc:20}, {n:'Ketamin (verdünnt)', mgkg:[2,5], conc:100} ],
@@ -672,28 +726,52 @@ window.ANAES.injection = [
     scenario:{hr:150,spo2:95,etco2:52,rr:10,sys:120,dia:80,rhythm:'sinus'}, reversal:['atipamezol','yohimbin'], incident:'hypoventilation',
     cautions:'Xylazin nicht kumulieren (Hypotonie/Bradykardie). NICHT nachdosieren bei Hypoventilation/Hypoxämie/Hypotonie.' },
 
-  { id:'f-xylket', sp:'frettchen', kind:'Einleitung', name:'Xylazin + Ketamin (schmerzhafte OP)', route:'IM/IP', onset:'3–5 min', duration:'20–40 min',
-    indication:'Schmerzhaftere Eingriffe; gute Immobilisation + Analgesie.',
-    comp:[ {n:'Ketamin 10%', mgkg:[10,25], conc:100}, {n:'Xylazin (Rompun 2%)', mgkg:[1,2], conc:20} ],
+  { id:'f-xylket', sp:'frettchen', kind:'Einleitung', name:'Xylazin + Ketamin (schmerzhafte OP)', route:'IM (Praxis) / SC bevorzugt', onset:'3–5 min', duration:'20–40 min',
+    indication:'Praxis Nager/Frettchen: Xylazin 0,15 + Ketamin 0,25 mL/kg. Nachdosierung: gleiche Menge verdünnt mit NaCl → 1/3 bzw. 1/2.',
+    comp:[ {n:'Ketamin 10% · 0,25 mL/kg', mgkg:[20,25], conc:100}, {n:'Xylazin (Rompun 2%) · 0,15 mL/kg', mgkg:[3,3], conc:20} ],
     expect:'Deutliche Hypotonie/Bradykardie (Xylazin). Erbrechen/Hypersalivation bei Einleitung. O₂ + Wärme.',
     topup:'f-topup', reversal:['yohimbin','atipamezol'],
-    cautions:'Xylazin nicht nachdosieren. Hypoglykämie (Insulinom!) + Hypothermie beachten; nur 3–4 h nüchtern.' },
+    cautions:'ÄLTERES Protokoll – Ketamin+(Dex)Medetomidin bevorzugen (besser steuer-/antagonisierbar). Anticholinergikum-Prämed (Atropin 0,04 / Glycopyrrolat), O₂; Xylazin nicht nachdosieren (Arrhythmie/Hypotonie), mit Atipamezol/Yohimbin antagonisieren. Hypoglykämie (Insulinom!) + Hypothermie beachten; nur 3–4 h nüchtern.' },
   { id:'f-medket', sp:'frettchen', kind:'Einleitung', name:'Medetomidin + Ketamin (± Butorphanol)', route:'IM', onset:'3–5 min', duration:'20–40 min (reversibel)',
     indication:'Gut steuerbare, antagonisierbare Kurznarkose; oft + Iso-Erhaltung.',
     comp:[ {n:'Ketamin 10%', mgkg:[5,8], conc:100}, {n:'Medetomidin', mgkg:[0.08,0.1], conc:1}, {n:'Butorphanol (opt.)', mgkg:[0.1,0.2], conc:10} ],
     expect:'Bradykardie (α2), Hypoxämie/Arrhythmien möglich → O₂.',
     topup:'f-topup', reversal:['atipamezol'],
     cautions:'Atipamezol = 5× Med-Dosis. Blutzucker messen (Insulinom).' },
+  { id:'f-dexket', sp:'frettchen', kind:'Einleitung', name:'Ketamin + Dexmedetomidin SC (Praxis)', route:'SC (Mischspritze) – NICHT IM', onset:'3–5 min', duration:'20–40 min (reversibel)',
+    indication:'Praxis-Wandprotokoll Frettchen: Ketamin 10–20 mg/kg + Dexmedetomidin 0,03–0,06 mg/kg in EINER Mischspritze SC (= Ketamin 0,1–0,2 + Dexdomitor 0,06–0,12 mL/kg). Nachdosierung 1/3 der Initialdosis.',
+    comp:[ {n:'Ketamin 10% · 0,1–0,2 mL/kg', mgkg:[10,20], conc:100}, {n:'Dexmedetomidin (Dexdomitor 0,5 mg/mL) · 0,06–0,12 mL/kg', mgkg:[0.03,0.06], conc:0.5} ],
+    expect:'Recht atem- & kreislaufdepressiv (bei jungen gesunden Tieren unkritisch) → Temperatur überwachen + O₂ geben. Bradykardie (α2).',
+    topup:'f-topup', reversal:['atipamezol'],
+    cautions:'SUBKUTAN, nicht i.m. (IM → zu schnelle/starke Kreislaufdepression). Antisedan frühestens 40 min. NICHT nüchtern lassen (kurzer Verdauungstrakt → Hypoglykämie). Bei Insulinom-Verdacht (Glukose <70 mg/dl) BZ engmaschig messen: α2 STEIGERN die Glukose (Insulin-Suppression) → intraop Hyperglykämie, nach Antagonisierung Rebound-HYPOglykämie möglich – α2 zurückhaltend/meiden.' },
   { id:'f-topup', sp:'frettchen', kind:'Nachdosierung', name:'Ketamin (NaCl-verdünnt)', route:'IM/IV', onset:'—', duration:'verlängert',
     indication:'Nur Ketamin ~⅓ der Initialdosis; α2 nicht wiederholen.', comp:[ {n:'Ketamin (verdünnt)', mgkg:[3,8], conc:100} ],
     expect:'Kreislauf schonen.', reversal:['atipamezol','yohimbin'], cautions:'Nicht bei Hypoventilation/Hypotonie.' },
 
-  { id:'r-triple', sp:'kaninchen', kind:'Einleitung', name:'Triple: Medetomidin + Ketamin + Butorphanol', route:'SC (bevorzugt) / IM', onset:'3–5 min', duration:'20–40 min',
-    indication:'Standard-Injektionsnarkose Kaninchen (Kastration/OVH), in einer Spritze gemischt.',
-    comp:[ {n:'Medetomidin', mgkg:[0.2,0.25], conc:1}, {n:'Ketamin 10%', mgkg:[15,15], conc:100}, {n:'Butorphanol', mgkg:[0.4,0.4], conc:10} ],
-    expect:'Alle Protokolle → mäßige Hypoxämie: Präoxygenierung + O₂ obligat! Bradykardie (α2). Hypothermie-Schutz.',
+  { id:'r-triple', sp:'kaninchen', kind:'Einleitung', name:'Bsp1: Medetomidin + Butorphanol (± Ketamin)', route:'SC (bevorzugt) / IM', onset:'3–5 min', duration:'20–40 min',
+    indication:'Praxis Bsp1 (Mischspritze): Medetomidin 0,06–0,15 mg/kg (oder Dexmed. 0,03–0,075) + Butorphanol 0,2–0,5 ± Ketamin 10–40 mg/kg.',
+    comp:[ {n:'Medetomidin (od. Dexmed. 0,03–0,075)', mgkg:[0.06,0.15], conc:1}, {n:'Butorphanol', mgkg:[0.2,0.5], conc:10}, {n:'Ketamin (opt.)', mgkg:[10,40], conc:100} ],
+    expect:'Mäßige Hypoxämie → Präoxygenierung + O₂ obligat! Bradykardie (α2). Hypothermie-Schutz, Augensalbe.',
     topup:'r-topup', reversal:['atipamezol'],
-    cautions:'Atropin unzuverlässig (40–60 % Atropinesterase) → Glycopyrrolat. Stressminimierung (kreislaufrelevant). Nüchtern nur 30–60 min.' },
+    cautions:'Ketamin SC statt IM (Muskelnekrose); <100 g kein Ketamin. Atropin unzuverlässig (40–60 % Atropinesterase) → Glycopyrrolat. α2 nach 40 min mit gleichem Volumen Atipamezol antagonisieren. Warm halten; nie alleine aufwachen lassen. Nüchtern nur 30–60 min.' },
+  { id:'r-domket', sp:'kaninchen', kind:'Einleitung', name:'Praxis-Tabelle: Domitor + Ketamin (+ Antisedan)', route:'SC/IM', onset:'3–5 min', duration:'20–40 min',
+    indication:'Praxis-Wandtabelle (in g dosiert): Domitor 0,25 + Ketamin 0,35 mL/kg; Antisedan 0,2 mL/kg zur Umkehr.',
+    comp:[ {n:'Medetomidin (Domitor 1 mg/mL) · 0,25 mL/kg', mgkg:[0.25,0.25], conc:1}, {n:'Ketamin 10% · 0,35 mL/kg', mgkg:[35,35], conc:100} ],
+    expect:'Ausgeprägte Bradykardie + Hypoxämie → Präoxygenieren + O₂ obligat. Augensalbe (Ketamin-Exophthalmus).',
+    topup:'r-topup', reversal:['atipamezol'],
+    cautions:'Ketamin 35 mg/kg ist am OBEREN Ende – mit Medetomidin 0,25 mg/kg reichen meist 15–25 mg/kg (O₂ + engmaschiges Monitoring). Ketamin SC statt IM (Muskelnekrose). Warm halten (<38,5 °C = Untertemperatur). Antisedan = gleiches Volumen wie Domitor, frühestens 40 min nach Domitor.' },
+  { id:'r-bsp2', sp:'kaninchen', kind:'Einleitung', name:'Bsp2: Midazolam + Butorphanol (± Ketamin)', route:'SC/IM (Mischspritze)', onset:'5–10 min', duration:'kurz–mittel (reversibel)',
+    indication:'Praxis Bsp2: kreislaufschonender (kein α2) – für kränkere/kardiale Kaninchen.',
+    comp:[ {n:'Midazolam', mgkg:[0.2,0.5], conc:5}, {n:'Butorphanol', mgkg:[0.2,0.5], conc:10}, {n:'Ketamin (opt.)', mgkg:[10,40], conc:100} ],
+    expect:'Geringere Kreislaufdepression als α2-Protokolle; oft flachere Sedation → ggf. Iso ergänzen. O₂.',
+    reversal:['flumazenil','naloxon'],
+    cautions:'Ketamin SC statt IM. Butorphanol nur partiell antagonisierbar. Warm halten; Augensalbe; nie alleine aufwachen lassen.' },
+  { id:'r-bsp3', sp:'kaninchen', kind:'Einleitung', name:'Bsp3: Medetomidin + Midazolam + Fentanyl (komplett antagonisierbar)', route:'IM (Mischspritze)', onset:'3–5 min', duration:'reversibel',
+    indication:'Praxis Bsp3: alle drei Komponenten voll antagonisierbar – schonend & gut steuerbar.',
+    comp:[ {n:'Medetomidin (od. Dexmed. 0,1 mg/kg)', mgkg:[0.2,0.2], conc:1}, {n:'Midazolam', mgkg:[1,1], conc:5}, {n:'Fentanyl', mgkg:[0.02,0.02], conc:0.05} ],
+    expect:'Bradykardie (α2) + Atemdepression (Opioid) → O₂/IPPV bereit. Voll umkehrbar.',
+    reversal:['atipamezol','flumazenil','naloxon'],
+    cautions:'Antagonisierung (Mischspritze SC/IM): Atipamezol 1 mg/kg + Flumazenil 0,1 mg/kg + Naloxon 0,03 mg/kg. Nach SCHMERZHAFTEN Eingriffen auf Naloxon verzichten (hebt Analgesie auf). Warm halten; nie alleine aufwachen lassen.' },
   { id:'r-topup', sp:'kaninchen', kind:'Nachdosierung', name:'Nur Ketamin (NaCl-verdünnt)', route:'IM/IV/SC', onset:'—', duration:'verlängert',
     indication:'Vertiefung: nur Ketamin ⅓–½ (α2 nicht wiederholen); alternativ Iso-Erhaltung.',
     comp:[ {n:'Ketamin (verdünnt)', mgkg:[5,7], conc:100} ],
@@ -710,6 +788,55 @@ window.ANAES.injection = [
     indication:'Antagonisierbare Alternative.', comp:[ {n:'Ketamin 10%', mgkg:[40,40], conc:100}, {n:'Medetomidin', mgkg:[0.5,0.5], conc:1} ],
     expect:'Bradykardie (α2), Hypoxämie möglich → O₂.', topup:'m-topup', reversal:['atipamezol'],
     cautions:'Sedations-Variante niedriger (Ket 3–5 + Med 0,1). Bordetella-Risiko.' },
+  { id:'m-domket', sp:'meerschwein', kind:'Einleitung', name:'Praxis-Tabelle: Domitor + Ketamin (+ Antisedan)', route:'SC/IM', onset:'5–10 min', duration:'40–60 min (reversibel)',
+    indication:'Praxis-Wandtabelle Nager (in g dosiert): Domitor 0,3 + Ketamin 0,2 mL/kg; Antisedan 0,3 mL/kg zur Umkehr.',
+    comp:[ {n:'Medetomidin (Domitor 1 mg/mL) · 0,3 mL/kg', mgkg:[0.3,0.3], conc:1}, {n:'Ketamin 10% · 0,2 mL/kg', mgkg:[20,20], conc:100} ],
+    expect:'Bradykardie + Hypoxämie → O₂ + Wärme. Intubation schwierig. Augensalbe (Ketamin-Exophthalmus).',
+    topup:'m-topup', reversal:['atipamezol'],
+    cautions:'Med-Ket ergibt beim Meerschwein oft nur Immobilisation/leichte Narkose → Inhalations-/Lokal-Ergänzung einplanen. Ketamin SC statt IM (Muskelnekrose); Tiere <100 g komplett auf Ketamin verzichten. Antisedan = gleiches Volumen wie Domitor. Warm halten.' },
+  { id:'m-sedmedbut', sp:'meerschwein', kind:'Sedierung', name:'Medetomidin + Butorphanol (Sedation)', route:'SC/IM', onset:'5–10 min', duration:'reversibel',
+    indication:'Praxis MS-Sedierung: Medetomidin 0,08–0,15 + Butorphanol 0,2–0,5 mg/kg.',
+    comp:[ {n:'Medetomidin (od. Dexmed. halbe Dosis)', mgkg:[0.08,0.15], conc:1}, {n:'Butorphanol', mgkg:[0.2,0.5], conc:10} ],
+    expect:'Bradykardie (α2), mild atemdeprimiert; reversibel. O₂ + Wärme.',
+    reversal:['atipamezol'], cautions:'⚠ Meerschwein sehr narkoseanfällig (hohe Mortalität!) – engmaschig überwachen. Antisedan = gleiches Volumen wie Medetomidin.' },
+  { id:'m-sedmidbut', sp:'meerschwein', kind:'Sedierung', name:'Midazolam + Butorphanol (Sedation)', route:'SC/IM', onset:'5–10 min', duration:'kurz–mittel (reversibel)',
+    indication:'Praxis MS-Sedierung, kreislaufschonend: Midazolam 0,5 + Butorphanol 0,5 mg/kg.',
+    comp:[ {n:'Midazolam', mgkg:[0.5,0.5], conc:5}, {n:'Butorphanol', mgkg:[0.5,0.5], conc:10} ],
+    expect:'Geringe Kreislaufdepression; flachere Sedation. O₂ + Wärme.',
+    reversal:['flumazenil','naloxon'], cautions:'⚠ Meerschwein sehr narkoseanfällig – überwachen. Butorphanol nur partiell antagonisierbar.' },
+  { id:'m-kmb', sp:'meerschwein', kind:'Einleitung', name:'Bsp1: Ketamin + Medetomidin + Butorphanol', route:'SC/IM', onset:'5–10 min', duration:'20–40 min',
+    indication:'Praxis MS-Einleitung Bsp1: Ketamin 15–40 + Medetomidin 0,08–0,15 (Dexmed 0,05–0,075) + Butorphanol 0,2–0,5 mg/kg.',
+    comp:[ {n:'Ketamin 10%', mgkg:[15,40], conc:100}, {n:'Medetomidin (od. Dexmed. 0,05–0,075)', mgkg:[0.08,0.15], conc:1}, {n:'Butorphanol', mgkg:[0.2,0.5], conc:10} ],
+    expect:'Bradykardie + Hypoxämie → O₂ + Wärme obligat. Augensalbe. Intubation schwierig.',
+    topup:'m-topup', reversal:['atipamezol'], cautions:'⚠ Meerschwein sehr narkoseanfällig (hohe Mortalität!). Ketamin SC statt IM; <100 g kein Ketamin. Antisedan = gleiches Volumen wie Medetomidin.' },
+  { id:'m-mmf', sp:'meerschwein', kind:'Einleitung', name:'Bsp2: Medetomidin + Midazolam + Fentanyl (antagonisierbar)', route:'SC/IM (Mischspritze)', onset:'5–10 min', duration:'reversibel',
+    indication:'Praxis MS-Einleitung Bsp2: Medetomidin 0,2 (Dexmed 0,1) + Midazolam 1 + Fentanyl 0,025 mg/kg – voll antagonisierbar.',
+    comp:[ {n:'Medetomidin (od. Dexmed. 0,1 mg/kg)', mgkg:[0.2,0.2], conc:1}, {n:'Midazolam', mgkg:[1,1], conc:5}, {n:'Fentanyl', mgkg:[0.025,0.025], conc:0.05} ],
+    expect:'Bradykardie (α2) + Atemdepression (Opioid) → O₂ + Wärme. Voll umkehrbar.',
+    reversal:['atipamezol','flumazenil','naloxon'], cautions:'⚠ Meerschwein sehr narkoseanfällig! Antagonisieren: Atipamezol + Flumazenil + Naloxon. Nach schmerzhaften Eingriffen Naloxon weglassen.' },
+  { id:'c-ketmedbut', sp:'chinchilla', kind:'Einleitung', name:'Ketamin + Medetomidin + Butorphanol', route:'SC/IM', onset:'5–10 min', duration:'20–40 min',
+    indication:'Praxis Chinchilla 1: Ketamin 10 + Medetomidin 0,1 + Butorphanol 1,5 mg/kg.',
+    comp:[ {n:'Ketamin 10%', mgkg:[10,10], conc:100}, {n:'Medetomidin', mgkg:[0.1,0.1], conc:1}, {n:'Butorphanol', mgkg:[1.5,1.5], conc:10} ],
+    expect:'Bradykardie + Hypoxämie → O₂ + Wärme. Augensalbe.',
+    topup:'c-topup', reversal:['atipamezol'], cautions:'Sehr narkoseanfällig. Butorphanol 1,5 mg/kg ist hoch (üblicher Zusatz 0,1–0,5 mg/kg; Ceiling-Effekt) – bewusst wählen. Ketamin SC statt IM; <100 g kein Ketamin. Antisedan = gleiches Volumen wie Medetomidin (Henke et al. 2004).' },
+  { id:'c-ketmed', sp:'chinchilla', kind:'Sedierung', name:'Ketamin + Medetomidin (leicht)', route:'SC/IM', onset:'5–10 min', duration:'kurz',
+    indication:'Praxis Chinchilla 2: Ketamin 5 + Medetomidin 0,06 mg/kg (leichte Sedation).',
+    comp:[ {n:'Ketamin 10%', mgkg:[5,5], conc:100}, {n:'Medetomidin', mgkg:[0.06,0.06], conc:1} ],
+    expect:'Leichte Sedation/Immobilisation; O₂ + Wärme.',
+    reversal:['atipamezol'], cautions:'Ketamin SC statt IM. Für tiefere Narkose Inhalation ergänzen.' },
+  { id:'c-ketmid', sp:'chinchilla', kind:'Sedierung', name:'Ketamin + Midazolam', route:'SC/IM', onset:'5–10 min', duration:'kurz',
+    indication:'Praxis Chinchilla 3: Ketamin 5–10 + Midazolam 0,5–1 mg/kg (kreislaufschonend, kein α2).',
+    comp:[ {n:'Ketamin 10%', mgkg:[5,10], conc:100}, {n:'Midazolam', mgkg:[0.5,1], conc:5} ],
+    expect:'Geringere Kreislaufdepression; flachere Narkose. O₂ + Wärme.',
+    reversal:['flumazenil'], cautions:'Ketamin SC statt IM. Midazolam mit Flumazenil antagonisierbar.' },
+  { id:'c-mmf', sp:'chinchilla', kind:'Einleitung', name:'Midazolam + Medetomidin + Fentanyl (antagonisierbar)', route:'SC/IM (Mischspritze)', onset:'5–10 min', duration:'reversibel',
+    indication:'Praxis Chinchilla 4: Midazolam 1 + Medetomidin 0,05 (Dexmed halbe Dosis) + Fentanyl 0,02 mg/kg – voll antagonisierbar.',
+    comp:[ {n:'Midazolam', mgkg:[1,1], conc:5}, {n:'Medetomidin (od. Dexmed. 0,025)', mgkg:[0.05,0.05], conc:1}, {n:'Fentanyl', mgkg:[0.02,0.02], conc:0.05} ],
+    expect:'Bradykardie (α2) + Atemdepression (Opioid) → O₂ + Wärme. Voll umkehrbar.',
+    reversal:['atipamezol','flumazenil','naloxon'], cautions:'Antagonisieren: Atipamezol + Flumazenil + Naloxon. Nach schmerzhaften Eingriffen Naloxon weglassen.' },
+  { id:'c-topup', sp:'chinchilla', kind:'Nachdosierung', name:'Ketamin (reduziert)', route:'SC/IM', onset:'—', duration:'verlängert',
+    indication:'Vertiefung: reduzierte Ketamin-Dosis; α2 nicht wiederholen.', comp:[ {n:'Ketamin (verdünnt)', mgkg:[3,5], conc:100} ],
+    expect:'α2 nicht kumulieren.', reversal:['atipamezol'], cautions:'O₂/Wärme fortführen. Ketamin SC.' },
   { id:'m-topup', sp:'meerschwein', kind:'Nachdosierung', name:'Ketamin (reduziert)', route:'IP/IM', onset:'—', duration:'verlängert',
     indication:'Reduzierte Ketamin-Dosis nachtitrieren.', comp:[ {n:'Ketamin (verdünnt)', mgkg:[10,20], conc:100} ],
     expect:'Nicht α2 wiederholen.', reversal:['atipamezol'], cautions:'O₂/Wärme fortführen.' },
@@ -736,8 +863,8 @@ window.ANAES.injection = [
 window.ANAES.reversal = [
   { id:'atipamezol', name:'Atipamezol (Antisedan)', conc:5, unit:'mg', target:'α2-Agonisten (Medetomidin/Dexmed/Xylazin)', route:'IM (IV nur Notfall/CPR)',
     sp:{ hund:[0.1,0.2], katze:[0.05,0.1], kaninchen:[0.25,1], frettchen:[0.5,1], meerschwein:[0.5,1] },
-    rule:'Hund: gleiches Volumen wie Domitor (5× Med-µg). Katze: HALBES Volumen (2,5× Med-µg). Frettchen: 5× Med (= gleiches Volumen).',
-    caution:'NICHT < 20 min nach Ketamin (Exzitation/Rigidität/Krämpfe). Nicht mit Anticholinergika (Tachy/Hypertonie). Hebt Analgesie mit auf; Resedierung 30–60 min möglich. IV nur Notfall (Kollaps).' },
+    rule:'Hund: gleiches Volumen wie das gegebene Domitor/Dexdomitor = 5× Medetomidin-µg = 10× Dexmedetomidin-µg. Katze: HALBES Volumen (= 2,5× Med-µg / 5× Dexmed-µg). Frettchen: 5× Med (= gleiches Volumen). NIE „5× Dexmed-µg" rechnen – das unterdosiert um das 2-Fache.',
+    caution:'NICHT < 30–40 min nach Ketamin (unmaskiert Restketamin → Exzitation/Rigidität/Krämpfe). Nicht mit Anticholinergika (Tachy/Hypertonie). Hebt Analgesie mit auf; Resedierung 30–60 min möglich. IV nur Notfall (Kollaps).' },
   { id:'naloxon', name:'Naloxon (Narcan)', conc:0.4, unit:'mg', target:'Opioide (Methadon/Butorphanol/Buprenorphin)', route:'IV/IM/SC – titriert',
     sp:{ hund:[0.01,0.04], katze:[0.01,0.04], kaninchen:[0.01,0.04], frettchen:[0.01,0.04] },
     rule:'1 Amp (0,4 mg) in 10 mL NaCl verdünnen, mL-weise IV bis Atmung/Wachheit reichen. CPR/opioid: 0,04 mg/kg.',

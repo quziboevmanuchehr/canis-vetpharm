@@ -9,7 +9,9 @@
 <link rel="icon" href="../canis-haematica/icon.svg" type="image/svg+xml">
 <style>
 :root{--bg:#0a0c10;--panel:#121923;--panel2:#182231;--line:rgba(255,255,255,.09);--text:#e7edf5;--muted:#9aa8bb;
-  --cyan:#00d8ff;--green:#00ff87;--amber:#ffd166;--red:#ff4d4d;--pink:#f35588;--violet:#a78bfa;--blue:#66a6ff;
+  /* Chrome an das VET-PHARM-Haus angeglichen (Marken-Teal/Grün/Amber/Pink); Alarmfarben bleiben Signal.
+     --brand = Marken-Teal wie shared/glass.css. --cyan/--green nur entschärft (weniger „Neon"). */
+  --brand:#0aa2c4;--cyan:#1cbfe0;--green:#22d98d;--amber:#ffd166;--red:#ff4d4d;--pink:#f2568a;--violet:#a78bfa;--blue:#66a6ff;
   --font:Inter,Segoe UI,Roboto,Arial,system-ui,sans-serif;--mono:Cascadia Mono,Consolas,ui-monospace,monospace}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);min-height:100dvh;
@@ -17,7 +19,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);min
 a{color:var(--cyan)}button,input,select{font:inherit}
 header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 16px}
 .brand{display:flex;gap:11px;align-items:center;min-width:0}
-.logo{width:38px;height:38px;border-radius:8px;background:linear-gradient(135deg,var(--red),var(--violet),var(--cyan));display:grid;place-items:center;color:#061019;font-weight:900;box-shadow:0 0 22px rgba(167,139,250,.3);flex:0 0 auto}
+.logo{width:38px;height:38px;border-radius:10px;background:conic-gradient(from 210deg,#0aa2c4,#16a06a,#e0a020,#e23b6d,#0aa2c4);display:grid;place-items:center;color:#fff;font-weight:900;box-shadow:0 0 18px rgba(10,162,196,.45);flex:0 0 auto}
 .title{min-width:0}.title h1{margin:0;font-size:18px;letter-spacing:.6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .title p{margin:2px 0 0;color:var(--muted);font:11px var(--mono);text-transform:uppercase;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .actions{display:flex;gap:8px;align-items:center}
@@ -46,7 +48,7 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 /* tabs */
 .tabs{position:sticky;top:132px;z-index:30;display:flex;gap:8px;overflow:auto;background:rgba(10,12,16,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:8px 14px}
 .tab{flex:0 0 auto;border:1px solid var(--line);background:rgba(255,255,255,.035);color:var(--muted);height:38px;border-radius:9px;padding:0 14px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:7px}
-.tab.active{background:rgba(255,77,77,.16);color:#fff;border-color:var(--red)}
+.tab.active{background:rgba(10,162,196,.16);color:#fff;border-color:var(--brand);box-shadow:inset 0 0 0 1px rgba(10,162,196,.45),0 6px 18px rgba(10,162,196,.16)}
 
 .shell{max-width:1560px;margin:0 auto;padding:16px}
 .view{display:none;gap:16px}.view.active{display:grid}
@@ -61,6 +63,9 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 .inc-btn:hover,.inc-btn.active{border-color:var(--c,var(--red));background:linear-gradient(90deg,rgba(255,255,255,.06),rgba(255,255,255,.02))}
 .inc-btn .ic{font-size:20px;flex:0 0 auto}
 .inc-btn b{display:block;font-size:14px}.inc-btn span{display:block;font:11px var(--mono);color:var(--muted)}
+.inc-btn .inc-tx{display:block;flex:1;min-width:0}
+.inc-btn .inc-go{display:inline-block;margin-left:auto;color:var(--muted);font-size:21px;line-height:1;transition:transform .16s,color .16s;flex:0 0 auto}
+.inc-btn:hover .inc-go,.inc-btn.active .inc-go{color:var(--c,var(--brand));transform:translateX(3px)}
 .cat-h{font:11px var(--mono);text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:10px 2px 2px}
 
 /* protocol */
@@ -82,8 +87,10 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 .dose-cls{font:10.5px var(--mono);color:var(--muted)}
 .dose-calc{margin-top:7px;display:flex;gap:8px;flex-wrap:wrap}
 .dpill{border:1px solid var(--line);border-radius:8px;padding:6px 9px;font:12px var(--mono);background:rgba(0,0,0,.22)}
-.dpill.ml{border-color:var(--green);color:#baffe0;background:rgba(0,255,135,.08)}
-.dpill.mg{border-color:var(--cyan);color:#bff0ff;background:rgba(0,216,255,.08)}
+/* mL-zuerst: die Spritzenmenge ist im Notfall die wichtigste Zahl → größer & fetter als mg */
+.dpill.ml{border-color:var(--green);color:#baffe0;background:rgba(0,255,135,.1);font-size:14px;padding:6px 11px}
+.dpill.ml b{font-size:16.5px;color:#eafff5;letter-spacing:.3px}
+.dpill.mg{border-color:var(--cyan);color:#bff0ff;background:rgba(0,216,255,.07);font-size:11.5px}
 .dpill b{color:#fff}
 .dose-meta{margin-top:6px;font-size:12px;color:var(--muted);line-height:1.5}
 .dose-caution{margin-top:6px;font-size:12px;color:#ffd7a8;background:rgba(255,140,60,.1);border:1px solid rgba(255,140,60,.3);border-radius:7px;padding:6px 8px;line-height:1.45}
@@ -94,6 +101,27 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 .dfilters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
 .dfilter{height:30px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.035);color:var(--muted);padding:0 10px;cursor:pointer;font-size:12px}
 .dfilter.active{border-color:var(--violet);color:#fff;background:rgba(167,139,250,.14)}
+
+/* LA-Gesamtdosis-Rechner + NSAID-Sicherheitscheck */
+.la-calc{border:1px solid rgba(255,140,60,.4);background:rgba(255,140,60,.06);border-radius:11px;padding:12px 13px;margin-bottom:14px}
+.la-calc h4{margin:0 0 4px;font-size:12.5px;color:#ffcf8a;text-transform:uppercase;letter-spacing:.5px}
+.la-calc .sub{font-size:11.5px;color:var(--muted);margin-bottom:9px;line-height:1.45}
+.la-row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.la-f{display:flex;flex-direction:column;gap:3px}
+.la-f label{font:10px var(--mono);color:var(--muted);text-transform:uppercase}
+.la-f input{height:40px;width:112px;border-radius:8px;border:1px solid var(--line);background:#0d1219;color:#fff;font-size:16px;font-weight:700;text-align:center;padding:0 8px}
+.la-out{flex:1;min-width:190px;border-radius:9px;padding:9px 11px;font-size:12.5px;line-height:1.5}
+.la-out.ok{border:1px solid rgba(0,255,135,.4);background:rgba(0,255,135,.08);color:#bfffdf}
+.la-out.warn{border:1px solid rgba(255,209,102,.5);background:rgba(255,209,102,.1);color:#ffe7a8}
+.la-out.tox{border:1px solid var(--red);background:rgba(255,77,77,.16);color:#ffb0b0}
+.la-out b{color:#fff}
+.la-bar{height:9px;border-radius:5px;background:rgba(255,255,255,.1);overflow:hidden;margin:7px 0 4px}
+.la-bar i{display:block;height:100%;transition:width .25s}
+.nsaid-box{margin-top:9px;border:1px solid rgba(255,77,77,.4);background:rgba(255,77,77,.08);border-radius:9px;padding:9px 11px;font-size:12px;line-height:1.5;color:#ffd7d7}
+.nsaid-box b{color:#fff}
+.nsaid-box.block{border-color:var(--red);background:rgba(255,77,77,.2)}
+.nsaid-box ul{margin:5px 0 0;padding-left:17px}
+.nsaid-box li{margin:1px 0}
 
 /* machine */
 .ctrl-card{border:1px solid var(--line);background:rgba(255,255,255,.035);border-radius:10px;margin-bottom:8px;overflow:hidden}
@@ -286,6 +314,7 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
     <div class="card">
       <h3>Injektionsnarkose ohne Narkosegerät · <span id="injSp">…</span></h3>
       <p class="muted" style="font-size:12.5px;margin-top:-4px">Kombinationen für Einleitung, Nachdosierung (oft mit 0,9 % NaCl verdünnt) und Sedierung – Dosen berechnet für <b id="injPat">…</b>. Reine Spontanatmung → <b>O₂-Zufuhr + Monitoring</b> (SpO₂/EtCO₂) und Antagonisten bereithalten.</p>
+      <div class="mset" style="margin:8px 0" data-vp-tip="Praxis-Wandprotokoll-Regeln – gelten für alle Injektionskombinationen">💉 <b>Praxis-Regeln:</b> Bei <b>Nagern/Exoten Ketamin SC statt IM</b> (IM → Muskelnekrose; SC = langsamerer Eintritt) · Tiere <b>&lt; 100 g: kein Ketamin</b> · Exoten warm halten &amp; nie alleine aufwachen lassen · Augensalbe (Ketamin → Exophthalmus) · Nachdosierung meist „gleiche Menge/⅓ der Initialdosis, mit NaCl verdünnt".</div>
       <div id="injRecord" style="margin-top:10px"></div>
       <div id="injCase" style="margin-top:10px"></div>
       <div id="injCombos" style="margin-top:12px"></div>
@@ -298,6 +327,7 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
   <section class="view" id="medis">
     <div class="card">
       <h3>Dosis-Rechner · Anästhesie & Notfall</h3>
+      <div id="laCalc"></div>
       <input class="dsearch" id="dSearch" placeholder="Suchen: Propofol, Atropin, Adrenalin, Metamizol …">
       <div class="dfilters" id="dFilters"></div>
       <div id="drugList"></div>
@@ -395,7 +425,7 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
   </section>
 </main>
 
-<script src="anaes-data.js?v=4"></script>
+<script src="anaes-data.js?v=8"></script>
 <script>
 /* ============ Canis Anæsthesia – Engine ============ */
 (function(){
@@ -406,14 +436,14 @@ var $$ = function(s,r){return Array.from((r||document).querySelectorAll(s));};
 var state = { sp: (A.species[0]&&A.species[0].id)||'hund', wt: 10, age:'adult', incident:null, dfilter:'Alle', q:'', monMode:'ist', istVals:null, rhythm:'sinus', adrHigh:false, anMode:'gas', injInduction:null, injTopups:[], dev:{o2:1, iso:2, mode:'vcv'} };
 
 /* ---------- helpers: dose math ---------- */
-function parseConc(s){ if(!s) return null; var m = String(s).replace(',','.').match(/([0-9]*\.?[0-9]+)\s*(mg|mcg|µg|g)\s*\/\s*ml/i); if(!m) return null; var v=parseFloat(m[1]); var u=m[2].toLowerCase(); if(u==='g') v=v*1000; if(u==='mcg'||u==='µg') v=v/1000; return v; /* mg per mL */ }
+function parseConc(s){ if(!s) return null; var m = String(s).replace(',','.').match(/([0-9]*\.?[0-9]+)\s*(mg|mcg|µg|g|iu|u|units?)\s*\/\s*ml/i); if(!m) return null; var v=parseFloat(m[1]); var u=m[2].toLowerCase(); if(u==='g') v=v*1000; if(u==='mcg'||u==='µg') v=v/1000; return v; /* mg per mL, bzw. U/mL für Einheiten-Präparate (vasopressin/insulin) */ }
 function fmt(n){ if(n==null||isNaN(n)) return '–'; if(n>=100) return Math.round(n).toString(); if(n>=10) return (Math.round(n*10)/10).toString(); if(n>=1) return (Math.round(n*100)/100).toString(); return (Math.round(n*1000)/1000).toString(); }
 function fmtRange(a,b){ a=fmt(a); b=fmt(b); return a===b? a : a+'–'+b; }
 /* returns {mgLo,mgHi,mlLo,mlHi,mgUnit} for a species dose object + weight */
 function calc(d, w){
   if(!d||d.low==null) return null;
   var lo=d.low, hi=(d.high==null?d.low:d.high), unit=(d.unit||'mg/kg').toLowerCase();
-  var perKg = unit.indexOf('mcg')>=0||unit.indexOf('µg')>=0 ? 'mcg' : (unit.indexOf('iu')>=0||unit.indexOf('units')>=0? 'IU':'mg');
+  var perKg = unit.indexOf('mcg')>=0||unit.indexOf('µg')>=0 ? 'mcg' : (/\b(iu|u|units?)\b|\bu\//.test(unit)? 'U':'mg');
   var amtLo=lo*w, amtHi=hi*w; // in perKg units
   var conc = parseConc(d.conc); var mlLo=null,mlHi=null;
   if(conc){ var amtMg = perKg==='mcg'? [amtLo/1000, amtHi/1000] : [amtLo,amtHi]; mlLo=amtMg[0]/conc; mlHi=amtMg[1]/conc; }
@@ -444,18 +474,21 @@ function propagateLinks(){
 
 /* ---------- incidents ---------- */
 function renderIncidents(){
-  var cats={}; A.incidents.forEach(function(i){ (cats[i.cat]=cats[i.cat]||[]).push(i); });
+  var cats={}; A.incidents.forEach(function(i){ var c=i.cls||i.cat||'Weitere'; (cats[c]=cats[c]||[]).push(i); });
+  /* feste, klinisch sinnvolle Reihenfolge – Reanimation zuerst (Geschwindigkeit) */
+  var order=['Reanimation','Kreislauf','Atmung','Temperatur'];
+  var keys=order.filter(function(c){return cats[c];}).concat(Object.keys(cats).filter(function(c){return order.indexOf(c)<0;}));
   var html='';
-  Object.keys(cats).forEach(function(c){
+  keys.forEach(function(c){
     html+='<div class="cat-h">'+c+'</div>';
-    html+=cats[c].map(function(i){ return '<button class="inc-btn'+(state.incident===i.id?' active':'')+'" data-inc="'+i.id+'" style="--c:'+(i.color||'var(--red)')+'"><span class="ic">'+i.icon+'</span><span><b>'+i.name+'</b><span>'+(i.short||i.cat)+'</span></span></button>'; }).join('');
+    html+=cats[c].map(function(i){ return '<button class="inc-btn'+(state.incident===i.id?' active':'')+'" data-inc="'+i.id+'" style="--c:'+(i.color||'var(--red)')+'" data-vp-tip="'+i.name+' – Schwelle, Sofortmaßnahmen, Geräte-Korrektur &amp; berechnete Dosen"><span class="ic">'+i.icon+'</span><span class="inc-tx"><b>'+i.name+'</b><span>'+(i.short||i.cls||'')+'</span></span><span class="inc-go">›</span></button>'; }).join('');
   });
   $('#incList').innerHTML=html;
   $$('#incList .inc-btn').forEach(function(b){ b.onclick=function(){ state.incident=b.dataset.inc; renderIncidents(); renderProto(); }; });
 }
 function drugById(id){ return A.drugs.find(function(d){return d.id===id;}); }
 /* §7 Lokalanästhetika- & Lidocain-Höchst-Gesamtdosen (mg/kg) */
-var LA_CAPS = { lidocain_iv:{hund:8,katze:2}, lidocain_lok:{hund:6,katze:2,kaninchen:4,meerschwein:4,reptil:4}, bupivacain:{hund:2,katze:1.5,kaninchen:2,meerschwein:2,reptil:2} };
+var LA_CAPS = { lidocain_iv:{hund:8,katze:2}, lidocain_lok:{hund:6,katze:2,kaninchen:4,meerschwein:4,chinchilla:4,frettchen:4,reptil:4}, bupivacain:{hund:2,katze:1.5,kaninchen:2,meerschwein:2,chinchilla:2,frettchen:2,reptil:2} };
 function doseLine(ref){
   var d=drugById(ref.id); var name = d? d.name : (ref.name||ref.id);
   var spd = d && d.species ? d.species[state.sp] : null;
@@ -481,7 +514,7 @@ function renderProto(){
   if(!i){ box.innerHTML='<p class="muted">Wähle links einen Zwischenfall.</p>'; return; }
   var s=sp();
   var thr=(i.thresholds&&(i.thresholds[state.sp]||i.thresholds.all))||'';
-  var html='<div class="proto-head"><span class="ic">'+i.icon+'</span><div><h2 style="margin:0">'+i.name+'</h2><span class="dose-cls">'+(i.cat||i.tag||'Zwischenfall')+' · Patient: '+s.name+' '+fmt(state.wt)+' kg</span></div><span class="badge" style="--c:'+(i.color||'var(--red)')+';margin-left:auto">'+(i.tag||i.cat)+'</span></div>';
+  var html='<div class="proto-head"><span class="ic">'+i.icon+'</span><div><h2 style="margin:0">'+i.name+'</h2><span class="dose-cls">'+(i.cls||i.cat||i.tag||'Zwischenfall')+' · Patient: '+s.name+' '+fmt(state.wt)+' kg</span></div><span class="badge" style="--c:'+(i.color||'var(--red)')+';margin-left:auto">'+(i.tag||i.cls||i.cat)+'</span></div>';
   if(thr) html+='<div class="thr">🎯 <b>Schwelle '+s.name+':</b> '+thr+'</div>';
   if(i.causes&&i.causes.length){ html+='<div class="sec-h">Häufige Ursachen</div><div class="chips">'+i.causes.map(function(c){return '<span class="chip" style="cursor:default">'+c+'</span>';}).join('')+'</div>'; }
   html+='<div class="sec-h">Sofort-Maßnahmen (Reihenfolge)</div><div class="steps">'+(i.steps||[]).map(function(s){return '<div class="step">'+s+'</div>';}).join('')+'</div>';
@@ -515,9 +548,55 @@ function renderDrugs(){
     if(!spd||spd.low==null){ body='<div class="na">Für '+sp().name+' keine Standard-Dosis hinterlegt / nicht empfohlen'+(spd&&spd.caution?' – '+spd.caution:'')+'.</div>'; }
     else { body=doseLine({id:d.id, low:spd.low, high:spd.high, unit:spd.unit, route:spd.route, conc:spd.conc, note:(spd.indication?('<b>'+spd.indication+'</b>. '):'')+(spd.notes||'')}); }
     return '<div class="dose-card" style="border-color:var(--line)"><div class="dose-top"><span class="dose-name">'+(d.icon||'💊')+' '+d.name+'</span><span class="dose-cls">'+d.cls+'</span></div>'+
-      '<div style="margin-top:8px">'+body+'</div>'+
+      '<div style="margin-top:8px">'+body+'</div>'+nsaidBox(d)+
       (d.sources&&d.sources.length?'<div class="src">Quelle: '+d.sources.join('; ')+'</div>':'')+'</div>';
   }).join('') : '<p class="muted">Keine Treffer.</p>';
+}
+
+/* §7b aktueller MAP aus dem Ist-Monitor (falls eingegeben) für NSAID-Sperre */
+function currentMAP(){ var iv=state.istVals; if(!iv) return null; var s=iv.sys||0, dd=iv.dia||0; return (s>0&&dd>0)?Math.round(dd+(s-dd)/3):(iv.nibp||null); }
+function nsaidBox(d){
+  if(!/NSAID/i.test(d.cls||'')) return '';
+  var map=currentMAP(), lowMap=(map!=null&&map>0&&map<65);
+  return '<div class="nsaid-box'+(lowMap?' block':'')+'">🛑 <b>NSAID-Sicherheitscheck</b> – vor Gabe ausschließen:'+
+    (lowMap?'<div style="margin:5px 0;color:#fff;font-weight:700">⛔ Aktuell MAP '+map+' mmHg &lt; 65 → JETZT kontraindiziert (Hypotension/Nierenrisiko).</div>':'')+
+    '<ul><li>Zweites NSAID / Aspirin (Auswaschzeit 5–7 Tage) – <b>nie kombinieren</b></li>'+
+    '<li>Kortikosteroid gleichzeitig/kürzlich – <b>verboten</b> (GI-Perforationsrisiko)</li>'+
+    '<li>Hypotension / Hypovolämie / Dehydratation (aktuelle MAP prüfen)</li>'+
+    '<li>Nieren-/Leber-/GI-Erkrankung, Gerinnungsstörung</li>'+
+    '<li>Weitere Nephrotoxine (ACE-Hemmer, Diuretika, Aminoglykoside)</li>'+
+    '<li>Neonat/sehr jung oder geriatrisch</li></ul>'+
+    'Nur bei normovolämem, normotensivem, gut hydriertem Patient geben.</div>';
+}
+
+/* §A2 Lokalanästhetika-Gesamtdosis-Rechner (additive Toxizität Lidocain + Bupivacain) */
+var laVals={lido:null,bupi:null};
+function laUpdate(){
+  var out=$('#laOut'); if(!out) return;
+  var capL=(LA_CAPS.lidocain_lok||{})[state.sp], capB=(LA_CAPS.bupivacain||{})[state.sp], w=state.wt;
+  var dL=laVals.lido||0, dB=laVals.bupi||0;
+  var fL=capL?dL/capL:0, fB=capB?dB/capB:0, sum=fL+fB;
+  var pct=Math.min(100,Math.round(sum*100)), col=sum>1?'#ff4d4d':(sum>0.8?'#ffd166':'#00ff87');
+  out.className='la-out '+(sum>1?'tox':(sum>0.8?'warn':'ok'));
+  var msg=sum>1?('⛔ ÜBERSCHRITTEN ('+Math.round(sum*100)+' % der kombinierten Höchstdosis) – Gesamtmenge reduzieren!'):(sum>0.8?('⚠️ Nahe an der Grenze ('+Math.round(sum*100)+' %) – Vorsicht.'):(sum>0?('✓ Innerhalb der kombinierten Höchstdosis ('+Math.round(sum*100)+' %).'):'Lidocain- und/oder Bupivacain-Dosis (mg/kg) eingeben.'));
+  out.innerHTML='<div class="la-bar"><i style="width:'+pct+'%;background:'+col+'"></i></div><div>'+msg+'</div>'+
+    ((dL||dB)?'<div style="margin-top:4px;font-size:11.5px">Lidocain '+fmt(dL*w)+' mg'+(capL?' / Max '+fmt(capL*w)+' mg':'')+' · Bupivacain '+fmt(dB*w)+' mg'+(capB?' / Max '+fmt(capB*w)+' mg':'')+' · Summe '+Math.round(sum*100)+' %</div>':'');
+}
+function renderLaCalc(){
+  var box=$('#laCalc'); if(!box) return;
+  var capL=(LA_CAPS.lidocain_lok||{})[state.sp], capB=(LA_CAPS.bupivacain||{})[state.sp];
+  if(capL==null&&capB==null){ box.innerHTML=''; return; }
+  var s=sp();
+  box.innerHTML='<div class="la-calc"><h4>🧪 Lokalanästhetika-Gesamtdosis · '+s.name+' '+fmt(state.wt)+' kg</h4>'+
+    '<div class="sub">Lidocain + Bupivacain wirken ADDITIV toxisch (Na-Kanal-Blocker). Dosis-Anteile summieren – die Summe muss ≤ 100 % bleiben, auch wenn jedes Mittel allein unter seiner Grenze liegt. Max: Lidocain '+(capL!=null?capL:'–')+' · Bupivacain '+(capB!=null?capB:'–')+' mg/kg.</div>'+
+    '<div class="la-row">'+
+    '<div class="la-f"><label>Lidocain mg/kg</label><input id="laLido" type="number" inputmode="decimal" step="0.5" min="0" value="'+(laVals.lido!=null?laVals.lido:'')+'" placeholder="0"></div>'+
+    '<div class="la-f"><label>Bupivacain mg/kg</label><input id="laBupi" type="number" inputmode="decimal" step="0.5" min="0" value="'+(laVals.bupi!=null?laVals.bupi:'')+'" placeholder="0"></div>'+
+    '<div class="la-out ok" id="laOut"></div></div></div>';
+  var li=$('#laLido'), bi=$('#laBupi');
+  if(li) li.oninput=function(){ var v=parseFloat(li.value); laVals.lido=isNaN(v)?null:v; laUpdate(); };
+  if(bi) bi.oninput=function(){ var v=parseFloat(bi.value); laVals.bupi=isNaN(v)?null:v; laUpdate(); };
+  laUpdate();
 }
 
 /* ---------- machine ---------- */
@@ -919,11 +998,11 @@ function renderMachine(){
   if(state.dev.auto==null) state.dev.auto=false;
   var modes=A.machine.ventModes||[];
   box.innerHTML =
-    '<div class="mc-item"><div class="mc-label">O₂-Fluss</div>'+flowmeterSVG(state.dev.o2)+'<div class="mc-val">'+state.dev.o2.toFixed(1)+' L/min</div></div>'+
-    '<div class="mc-item"><div class="mc-label">Isofluran V60</div>'+vaporizerSVG(state.dev.iso)+'<div class="mc-val">'+state.dev.iso.toFixed(1)+' Vol%</div></div>'+
-    '<div class="mc-item"><div class="mc-label">Beatmung</div><div class="mc-toggle" id="mcAuto"><button class="'+(!state.dev.auto?'active':'')+'" data-a="0">Manuell</button><button class="'+(state.dev.auto?'active':'')+'" data-a="1">Auto</button></div>'+
-      '<div class="mc-modes" id="mcModes">'+modes.map(function(mo){return '<button data-m="'+mo.id+'"'+(state.dev.mode===mo.id?' class="active"':'')+'>'+mo.name.split(' ')[0]+'</button>';}).join('')+'</div></div>'+
-    '<div class="mc-item"><div class="mc-label">O₂-Flush / APL</div><button class="mc-flush" id="mcFlush">O₂+ Flush</button><div class="mc-hint">APL offen (2–3)<br>Absorber prüfen</div></div>';
+    '<div class="mc-item" data-vp-tip="Frischgas-/Sauerstofffluss (L/min). Schieben zum Einstellen. Bei Hypoxie/Notfall hoch + 100 % O₂.">'+'<div class="mc-label">O₂-Fluss</div>'+flowmeterSVG(state.dev.o2)+'<div class="mc-val">'+state.dev.o2.toFixed(1)+' L/min</div></div>'+
+    '<div class="mc-item" data-vp-tip="Isofluran-Verdampfer (Vol%). Rad drehen = Narkosetiefe. Zu hoher Wert ist die häufigste Hypotonie-/Bradykardie-Ursache → zuerst hier senken; bei CPR AUS.">'+'<div class="mc-label">Isofluran V60</div>'+vaporizerSVG(state.dev.iso)+'<div class="mc-val">'+state.dev.iso.toFixed(1)+' Vol%</div></div>'+
+    '<div class="mc-item" data-vp-tip="Beatmungsmodus: Manuell (Beutel) oder Auto/IPPV. VCV=Volumen, PCV=Druck (schonend, klein/Exoten), SIMV=Weaning.">'+'<div class="mc-label">Beatmung</div><div class="mc-toggle" id="mcAuto"><button class="'+(!state.dev.auto?'active':'')+'" data-a="0">Manuell</button><button class="'+(state.dev.auto?'active':'')+'" data-a="1">Auto</button></div>'+
+      '<div class="mc-modes" id="mcModes">'+modes.map(function(mo){return '<button data-m="'+mo.id+'" data-vp-tip="'+mo.name+'">'+mo.name.split(' ')[0]+'</button>';}).join('')+'</div></div>'+
+    '<div class="mc-item" data-vp-tip="O₂-Flush füllt schnell mit reinem O₂ (umgeht Verdampfer). APL-Ventil offen halten (2–3) – NIE geschlossen lassen (Barotrauma). Atemkalk-Farbe prüfen.">'+'<div class="mc-label">O₂-Flush / APL</div><button class="mc-flush" id="mcFlush">O₂+ Flush</button><div class="mc-hint">APL offen (2–3)<br>Absorber prüfen</div></div>';
   var fm=box.querySelector('.flowmeter'); if(fm) dragCtrl(fm,function(e){ var r=fm.getBoundingClientRect(); var sy=r.height/210; var frac=1-(e.clientY-r.top-16*sy)/(178*sy); frac=Math.max(0,Math.min(1,frac)); state.dev.o2=Math.round(frac*40)/10; renderMachine(); renderDevCtrl(); });
   var vp=box.querySelector('.vaporizer'); if(vp) dragCtrl(vp,function(e){ var r=vp.getBoundingClientRect(); var a=Math.atan2(e.clientY-(r.top+r.height/2), e.clientX-(r.left+r.width/2))*180/Math.PI; if(a<0)a+=360; if(a<140)a+=360; a=Math.max(140,Math.min(400,a)); state.dev.iso=Math.round((a-140)/260*60)/10; renderMachine(); renderDevCtrl(); });
   $$('#mcAuto button').forEach(function(b){ b.onclick=function(){ state.dev.auto=(b.dataset.a==='1'); renderMachine(); renderDevCtrl(); }; });
@@ -1048,9 +1127,9 @@ function switchTab(v){
   if(v==='settings') renderSettings();
   if(v==='bedienung') renderOperating();
 }
-function rerender(){ renderProto(); renderDrugs(); renderSettings(); renderMachine(); renderDevCtrl(); renderInjection(); if(mon.running) renderMonValues(); }
+function rerender(){ renderProto(); renderLaCalc(); renderDrugs(); renderSettings(); renderMachine(); renderDevCtrl(); renderInjection(); if(mon.running) renderMonValues(); }
 function boot(){
-  syncPatient(); renderIncidents(); renderFilters(); renderDrugs(); renderInfo(); renderCapno(); renderEkgGallery(); renderInjection();
+  syncPatient(); renderIncidents(); renderFilters(); renderLaCalc(); renderDrugs(); renderInfo(); renderCapno(); renderEkgGallery(); renderInjection();
   $$('#tabs .tab').forEach(function(t){ t.onclick=function(){ switchTab(t.dataset.view); }; });
   $('#wt').addEventListener('input',function(e){ var v=parseFloat(e.target.value); state.wt=(v>0?v:0); syncPatient(); rerender(); });
   $('#age').addEventListener('change',function(e){ state.age=e.target.value; renderSettings(); });
@@ -1433,6 +1512,8 @@ function initHeart(){
   var ro=new ResizeObserver(function(){var W=stage.clientWidth,H=stage.clientHeight||230;if(W){renderer.setSize(W,H);camera.aspect=W/H;camera.updateProjectionMatrix();}}); ro.observe(stage);
   var beat=0,last=0,reduce=(window.VP&&window.VP.get&&window.VP.get("motion")==="reduce"),tmp=new THREE.Vector3();
   (function loop(now){requestAnimationFrame(loop);
+    /* Performance: nicht rendern, wenn Tab verborgen oder Notfall-Ansicht inaktiv (display:none → offsetParent null) */
+    if(document.hidden || stage.offsetParent===null){ last=now||0; return; }
     if(!last)last=now||0;var dt=((now||0)-last)/1000;if(dt>0.1)dt=0.1;last=now||0;
     if(ptrs.size===0&&!reduce&&!heartFocus) thetaG+=0.0032;
     theta+=(thetaG-theta)*0.12;phi+=(phiG-phi)*0.12;apply();
@@ -1447,6 +1528,198 @@ function initHeart(){
   })(0);
 }
 loadThree().then(function(){ initHeart(); setHeart(curIncId()); }).catch(function(){ var l=$("#heartLoad"); if(l) l.textContent="3D-Herz benötigt Internet (Three.js)/WebGL."; });
+})();
+</script>
+
+<style>
+/* ===== VET-PHARM Design-Angleichung: Zahlen-Hierarchie, Notfall-Dock, Light-Styles neuer Komponenten ===== */
+/* §3/§6 Vital- & mL-Zahlen größer + skalieren mit der Schrift-Einstellung (data-vp-fontsize) */
+.mon-tile .mt-v{font-size:calc(28px * var(--vp-scale,1))}
+.dev-mon .mon-tiles .mt-v{font-size:calc(22px * var(--vp-scale,1))}
+.mon-in input{font-size:calc(19px * var(--vp-scale,1))}
+.dpill.ml b{font-size:calc(16.5px * var(--vp-scale,1))}
+.pfield .wt{font-size:calc(18px * var(--vp-scale,1))}
+.assess-h b{font-size:calc(15px * var(--vp-scale,1))}
+/* §4 Karten-Radius an das Haus (18px) angleichen */
+.card{border-radius:16px}
+
+/* §3 Notfall-Dock: immer sichtbarer Glass-Schnellzugriff (Haus-Stil) */
+.nf-dock{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:130;display:flex;align-items:center;gap:6px;
+  padding:7px 9px;border-radius:16px;max-width:calc(100vw - 20px);
+  background:rgba(16,20,28,.72);border:1px solid rgba(255,255,255,.12);
+  -webkit-backdrop-filter:blur(20px) saturate(170%);backdrop-filter:blur(20px) saturate(170%);
+  box-shadow:0 12px 34px rgba(0,0,0,.4);overflow-x:auto;scrollbar-width:none}
+.nf-dock::-webkit-scrollbar{display:none}
+.nf-dock .nf-lbl{font:10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:0 3px;flex:0 0 auto}
+.nf-dock button{flex:0 0 auto;min-height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.05);color:var(--text);cursor:pointer;font-size:13px;
+  display:inline-flex;align-items:center;gap:6px;padding:0 11px;transition:transform .16s,background .16s,border-color .16s}
+.nf-dock button:hover{transform:translateY(-1px);border-color:var(--brand);background:rgba(10,162,196,.14)}
+.nf-dock button .di{font-size:17px}
+.nf-dock button .dt{white-space:nowrap}
+.nf-dock button.cpr{background:linear-gradient(90deg,var(--red),var(--pink));border:0;color:#fff;font-weight:800}
+.nf-dock button.cpr:hover{filter:brightness(1.08);border:0}
+.nf-dock .nf-collapse{padding:0 10px;color:var(--muted)}
+.nf-fab{position:fixed;right:16px;bottom:16px;z-index:130;width:54px;height:54px;border-radius:50%;
+  border:0;cursor:pointer;font-size:24px;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,var(--red),var(--pink));color:#fff;box-shadow:0 10px 26px rgba(226,59,61,.45);display:none}
+.nf-dock.collapsed{display:none}
+.nf-fab.show{display:inline-flex}
+.shell{padding-bottom:78px}
+@media(max-width:560px){ .nf-dock .nf-lbl{display:none} .nf-dock button:not(.cpr) .dt{display:none} .nf-dock button{padding:0 9px} }
+html[data-theme="light"] .nf-dock{background:rgba(255,255,255,.74);border-color:rgba(255,255,255,.85);box-shadow:0 12px 32px rgba(28,48,82,.2)}
+html[data-theme="light"] .nf-dock button{background:rgba(255,255,255,.62);border-color:rgba(20,40,70,.14);color:#15202e}
+html[data-theme="light"] .nf-dock button:hover{background:rgba(10,162,196,.12)}
+html[data-theme="light"] .nf-dock .nf-lbl{color:#5a6b7e}
+
+/* §7 Light-Theme (frosted glass) für die NEUEN Komponenten – Muster aus glass.css Abschnitt 11 */
+html[data-theme="light"] .la-calc{
+  background:linear-gradient(180deg,rgba(255,247,237,.82),rgba(255,247,237,.62)) !important;
+  border-color:rgba(191,132,16,.4) !important;
+  -webkit-backdrop-filter:blur(20px) saturate(175%);backdrop-filter:blur(20px) saturate(175%)}
+html[data-theme="light"] .la-calc h4{color:#8a5a00 !important}
+html[data-theme="light"] .la-calc .sub{color:#5a6b7e !important}
+html[data-theme="light"] .la-f label{color:#5a6b7e !important}
+html[data-theme="light"] .la-f input{background:rgba(255,255,255,.9) !important;border-color:rgba(20,40,70,.16) !important;color:#15202e !important}
+html[data-theme="light"] .la-out.ok{background:rgba(15,162,105,.12) !important;border-color:rgba(15,162,105,.5) !important;color:#0a6b45 !important}
+html[data-theme="light"] .la-out.warn{background:rgba(191,132,16,.14) !important;border-color:rgba(191,132,16,.5) !important;color:#7a5a00 !important}
+html[data-theme="light"] .la-out.tox{background:rgba(226,59,59,.14) !important;border-color:rgba(226,59,59,.55) !important;color:#a01414 !important}
+html[data-theme="light"] .la-bar{background:rgba(20,40,70,.1)}
+html[data-theme="light"] .nsaid-box{background:rgba(226,59,59,.08) !important;border-color:rgba(226,59,59,.35) !important;color:#7a1414 !important}
+html[data-theme="light"] .nsaid-box b{color:#5a0f0f !important}
+html[data-theme="light"] .nsaid-box.block{background:rgba(226,59,59,.16) !important;border-color:rgba(226,59,59,.6) !important}
+</style>
+
+<style>
+/* ===== CPR-Timer (RECOVER 2024) ===== */
+.cpr-ov{position:fixed;inset:0;z-index:200;background:rgba(4,6,10,.74);backdrop-filter:blur(5px);display:none;align-items:center;justify-content:center;padding:14px}
+.cpr-card{width:min(440px,96vw);max-height:94dvh;overflow:auto;background:linear-gradient(180deg,#171f2b,#0b1019);border:1px solid rgba(255,77,77,.45);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.65);padding:16px}
+.cpr-hd{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+.cpr-hd b{font-size:16px;letter-spacing:.4px}
+.cpr-hd .tag{font:10px var(--mono);color:#ffb0b0;border:1px solid rgba(255,77,77,.4);border-radius:20px;padding:2px 8px}
+.cpr-hd .x{margin-left:auto;width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:#fff;cursor:pointer;font-size:16px}
+.cpr-timer{display:flex;gap:14px;align-items:center;justify-content:center;margin:8px 0 12px}
+.cpr-elapsed{font:46px/1 var(--mono);font-weight:800;color:#fff;letter-spacing:1px}
+.cpr-ring{width:96px;height:96px;border-radius:50%;background:conic-gradient(var(--red) var(--p,0%),rgba(255,255,255,.12) 0);display:grid;place-items:center;flex:0 0 auto}
+.cpr-ring .inner{width:78px;height:78px;border-radius:50%;background:#0b1019;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.cpr-ring .n{font-size:23px;font-weight:800}.cpr-ring .s{font:9px var(--mono);color:var(--muted);text-transform:uppercase}
+.cpr-metro{display:flex;gap:12px;align-items:center;margin-bottom:9px}
+.cpr-dot{width:46px;height:46px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#ff7a7a,#c62828);flex:0 0 auto;transition:transform .07s;box-shadow:0 0 16px rgba(255,77,77,.5)}
+.cpr-metro .mtx{font-size:12.5px;line-height:1.45;color:var(--muted)}.cpr-metro .mtx b{color:#fff}
+.cpr-metro .lnk{border:1px solid var(--line);background:rgba(255,255,255,.05);color:#8fd6ff;border-radius:7px;padding:3px 8px;font-size:11.5px;cursor:pointer}
+.cpr-vent{height:8px;border-radius:5px;background:rgba(0,216,255,.14);overflow:hidden;margin-bottom:12px}
+.cpr-vent i{display:block;height:100%;width:0;background:var(--cyan)}
+.cpr-adr{border-radius:11px;padding:11px 12px;margin-bottom:11px;border:1px solid var(--line);background:rgba(255,255,255,.04)}
+.cpr-adr.due{border-color:var(--red);background:rgba(255,77,77,.16);animation:monblink 1s steps(1) infinite}
+.cpr-adr .ml{font:27px var(--mono);font-weight:800;color:#baffe0;margin:1px 0}
+.cpr-adr .lbl{font-size:11.5px;color:var(--muted)}
+.cpr-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.cpr-btns button{min-height:46px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:#fff;font-size:13.5px;font-weight:700;cursor:pointer}
+.cpr-btns .go{background:linear-gradient(90deg,#12b866,#0a8f50);border:0}
+.cpr-btns .go.pause{background:linear-gradient(90deg,#e0a020,#b87c10)}
+.cpr-btns .adr{background:linear-gradient(90deg,var(--red),var(--pink));border:0}
+.cpr-chk{font-size:12px;color:#ffd7d7;line-height:1.6;border-top:1px solid var(--line);padding-top:9px}
+.cpr-chk b{color:#fff}
+html[data-theme="light"] .cpr-card{background:#fff;color:#15202e}
+html[data-theme="light"] .cpr-elapsed,html[data-theme="light"] .cpr-ring .n{color:#15202e}
+html[data-theme="light"] .cpr-chk{color:#7a1414}
+</style>
+<script>
+/* ============ CPR-Timer (RECOVER 2024): 2-min-Zyklen · Metronom 110/min · Adrenalin alle 3–5 min ============ */
+(function(){
+"use strict";
+function $(s){return document.querySelector(s);}
+var ov=document.createElement('div'); ov.className='cpr-ov'; ov.id='cprOv';
+ov.innerHTML=
+ '<div class="cpr-card" role="dialog" aria-label="CPR-Timer">'+
+ '<div class="cpr-hd">🚨 <b>CPR-Timer</b> <span class="tag">RECOVER 2024</span><button class="x" id="cprX" title="Schließen">✕</button></div>'+
+ '<div class="cpr-timer"><div class="cpr-elapsed" id="cprEl">0:00</div>'+
+   '<div class="cpr-ring" id="cprRing"><div class="inner"><div class="n" id="cprCyN">1</div><div class="s">Zyklus</div></div></div>'+
+   '<div style="font:14px var(--mono);color:var(--muted);text-align:center">Rhythmus<br>in<br><b id="cprCyT" style="color:#fff;font-size:17px">2:00</b></div></div>'+
+ '<div class="cpr-metro"><div class="cpr-dot" id="cprDot"></div><div class="mtx"><b>Kompressionen 100–120/min</b> · ⅓ Thoraxtiefe, Seitenlage<br>Metronom <button class="lnk" id="cprBeep">🔊 Ton an</button></div></div>'+
+ '<div class="cpr-vent" title="Beatmung alle 6 s (10/min)"><i id="cprVent"></i></div>'+
+ '<div class="cpr-adr" id="cprAdr"><div class="lbl">Adrenalin 0,01 mg/kg IV/IO · jeder 2. Zyklus (alle 3–5 min)</div><div class="ml" id="cprAdrMl">– mL</div><div class="lbl" id="cprAdrSince">noch nicht gegeben</div></div>'+
+ '<div class="cpr-btns"><button class="go" id="cprGo">▶ Start</button><button id="cprAdrBtn" class="adr">✓ Adrenalin gegeben</button><button id="cprRhythm">🔁 Rhythmuskontrolle</button><button id="cprReset">↺ Reset</button></div>'+
+ '<div class="cpr-chk"><b>Sofort:</b> Verdampfer AUS · 100 % O₂ · Beatmung 10/min · EtCO₂ ≥ 18 anstreben · alle 2 min Rhythmus prüfen + Kompressor wechseln · reversible Ursachen (Hypoxie, Hypovolämie, K⁺, Azidose). Keine Hochdosis-Adrenalin.</div>'+
+ '</div>';
+document.body.appendChild(ov);
+var T={run:false,el:0,last:0,cyStart:0,adrAt:null,beep:false,raf:null,ac:null,lastBeat:-1};
+function weight(){ var w=parseFloat(($('#wt')||{}).value); return (w>0&&w<200)?w:10; }
+function fmtT(s){ s=Math.max(0,Math.floor(s)); return Math.floor(s/60)+':'+('0'+(s%60)).slice(-2); }
+function beepNow(freq,dur){ if(!T.beep) return; try{ if(!T.ac) T.ac=new (window.AudioContext||window.webkitAudioContext)(); if(T.ac.state==='suspended')T.ac.resume(); var o=T.ac.createOscillator(),g=T.ac.createGain(); o.frequency.value=freq; o.connect(g); g.connect(T.ac.destination); var t=T.ac.currentTime; g.gain.setValueAtTime(0.13,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur); o.start(t); o.stop(t+dur); }catch(e){} }
+function cycleNum(){ return Math.floor(T.el/120)+1; }
+function pulseDot(){ var d=$('#cprDot'); if(d){ d.style.transform='scale(1.34)'; setTimeout(function(){ var x=$('#cprDot'); if(x)x.style.transform='scale(1)'; },75); } }
+function start(){ if(T.run)return; T.run=true; T.last=performance.now(); if(T.ac&&T.ac.state==='suspended')T.ac.resume(); if(T.iv)clearInterval(T.iv); T.iv=setInterval(tick,100); render(); }
+function pause(){ T.run=false; if(T.iv){clearInterval(T.iv);T.iv=null;} render(); }
+function reset(){ pause(); T.el=0;T.cyStart=0;T.adrAt=null;T.lastBeat=-1; render(); }
+function open(){ ov.style.display='flex'; if(!T.run&&T.el===0) start(); else render(); }
+function close(){ ov.style.display='none'; }
+function tick(){ if(!T.run)return;
+  var now=performance.now(), dt=(now-T.last)/1000; if(dt>2)dt=2; T.last=now; T.el+=dt;
+  if(T.el-T.cyStart>=120){ T.cyStart=T.el; beepNow(880,0.28); }
+  var bp=60/110, bi=Math.floor(T.el/bp);
+  if(bi!==T.lastBeat){ T.lastBeat=bi; pulseDot(); beepNow(1000,0.04); }
+  render();
+}
+function render(){
+  var cyEl=T.el-T.cyStart;
+  $('#cprEl').textContent=fmtT(T.el);
+  $('#cprCyN').textContent=cycleNum();
+  $('#cprCyT').textContent=fmtT(120-cyEl);
+  var ring=$('#cprRing'); if(ring) ring.style.setProperty('--p',Math.min(100,cyEl/120*100)+'%');
+  var vb=$('#cprVent'); if(vb) vb.style.width=(100-(T.el%6)/6*100)+'%';
+  $('#cprAdrMl').textContent=(0.01*weight()).toFixed(2)+' mL  ('+(0.01*weight()).toFixed(2)+' mg @ 1 mg/mL)';
+  var adr=$('#cprAdr'), since=$('#cprAdrSince'), due;
+  if(T.adrAt===null){ due=T.el>60; since.textContent=due?'FÄLLIG (noch nicht gegeben)':'erste Gabe ~ab 1. Zyklus'; }
+  else { var d=T.el-T.adrAt; due=d>=180; since.textContent=(due?'FÄLLIG · ':'')+'zuletzt vor '+fmtT(d); }
+  if(adr) adr.classList.toggle('due',!!(due&&T.run));
+  var go=$('#cprGo'); if(go){ go.textContent=T.run?'⏸ Pause':'▶ Start'; go.classList.toggle('pause',T.run); }
+}
+$('#cprX').onclick=close;
+$('#cprGo').onclick=function(){ T.run?pause():start(); };
+$('#cprReset').onclick=reset;
+$('#cprRhythm').onclick=function(){ T.cyStart=T.el; beepNow(660,0.2); render(); };
+$('#cprAdrBtn').onclick=function(){ T.adrAt=T.el; render(); };
+$('#cprBeep').onclick=function(){ T.beep=!T.beep; $('#cprBeep').textContent=T.beep?'🔇 Ton aus':'🔊 Ton an'; if(T.beep){ try{ if(!T.ac)T.ac=new (window.AudioContext||window.webkitAudioContext)(); T.ac.resume(); }catch(e){} } };
+ov.addEventListener('click',function(e){ if(e.target===ov) close(); });
+addEventListener('keydown',function(e){ if(e.key==='Escape'&&ov.style.display==='flex') close(); });
+var pb=$('#btnPanic'); if(pb) pb.addEventListener('click',open);
+var pbx=$('#protoBox');
+function injectCprBtn(){ var h=pbx&&pbx.querySelector('.proto-head h2'); if(h&&/CPR|Herzstillstand/i.test(h.textContent) && !$('#cprLaunch')){ var b=document.createElement('button'); b.id='cprLaunch'; b.className='btn primary'; b.style.cssText='margin:2px 0 12px;height:44px'; b.textContent='⏱ CPR-Timer starten (RECOVER)'; b.onclick=open; var ph=pbx.querySelector('.proto-head'); if(ph&&ph.parentNode) ph.parentNode.insertBefore(b, ph.nextSibling); } }
+if(pbx){ new MutationObserver(injectCprBtn).observe(pbx,{childList:true}); injectCprBtn(); }
+})();
+</script>
+
+<script>
+/* ============ Notfall-Dock: immer sichtbarer Schnellzugriff auf häufige Zwischenfälle + CPR ============ */
+(function(){
+"use strict";
+var A=window.ANAES||{incidents:[]};
+var IDS=['hypotension','bradykardie','hypoxaemie','hypoventilation','apnoe','tachykardie'];
+function inc(id){ return (A.incidents||[]).find(function(x){return x.id===id;}); }
+function shortName(n){ return (n||'').split(/[ /(]/)[0]; }
+var dock=document.createElement('div'); dock.className='nf-dock'; dock.setAttribute('aria-label','Notfall-Schnellzugriff');
+var html='<span class="nf-lbl">Notfall</span>';
+IDS.forEach(function(id){ var i=inc(id); if(!i)return;
+  html+='<button type="button" data-goinc="'+id+'" data-vp-tip="'+i.name+' – Protokoll, Geräte-Korrektur &amp; Dosen"><span class="di">'+i.icon+'</span><span class="dt">'+shortName(i.name)+'</span></button>'; });
+html+='<button type="button" class="cpr" data-cpr="1" data-vp-tip="Reanimation – Protokoll + CPR-Timer (RECOVER)"><span class="di">🚨</span><span class="dt">CPR</span></button>';
+html+='<button type="button" class="nf-collapse" data-collapse="1" aria-label="Notfall-Dock ausblenden" data-vp-tip="Ausblenden">˅</button>';
+dock.innerHTML=html; document.body.appendChild(dock);
+var fab=document.createElement('button'); fab.type='button'; fab.className='nf-fab'; fab.innerHTML='🚨';
+fab.setAttribute('aria-label','Notfall-Schnellzugriff einblenden'); fab.setAttribute('data-vp-tip','Notfall-Schnellzugriff');
+document.body.appendChild(fab);
+function goInc(id){
+  var tab=document.querySelector('.tab[data-view="notfall"]'); if(tab) tab.click();
+  var b=document.querySelector('#incList .inc-btn[data-inc="'+id+'"]'); if(b) b.click();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+dock.addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b) return;
+  if(b.dataset.goinc) goInc(b.dataset.goinc);
+  else if(b.dataset.cpr){ var pb=document.querySelector('#btnPanic'); if(pb) pb.click(); }
+  else if(b.dataset.collapse){ dock.classList.add('collapsed'); fab.classList.add('show'); }
+});
+fab.addEventListener('click',function(){ dock.classList.remove('collapsed'); fab.classList.remove('show'); });
 })();
 </script>
 </body>
