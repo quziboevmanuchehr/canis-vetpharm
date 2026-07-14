@@ -506,6 +506,7 @@ header h1{font-family:var(--font-tech);font-size:19px;font-weight:700;letter-spa
 
 <script src="data.js"></script>
 <script src="data-plus.js"></script>
+<script src="../shared/breed-genetics.js?v=1"></script>
 <script src="app.js"></script>
 <script>
   document.getElementById("welcome-dismiss").addEventListener("click", () => {
@@ -521,6 +522,40 @@ header h1{font-family:var(--font-tech);font-size:19px;font-weight:700;letter-spa
     if(ov)ov.addEventListener("click",e=>{if(e.target===ov)close();});
     document.addEventListener("keydown",e=>{if(e.key==="Escape")close();});
   })();
+</script>
+<script>
+/* Rassespezifische Genetik (window.VETBREED) – Deep-Link ?breed= aus dem Narkose-Modul.
+   Additiv: wählt die passende haematica-Referenzgruppe und zeigt einen Genetik-Banner. */
+(function(){
+  var VB=window.VETBREED; if(!VB) return;
+  function mapHaem(b){
+    if(!b) return null;
+    if((b.groups||[]).indexOf('sighthound')>=0) return 'windhund';
+    if(b.id==='dalmatiner') return 'dalmatiner';
+    if(b.id==='cavalier') return 'cavalier';
+    if(b.id==='dobermann'||b.id==='boxer'||(b.conditions||[]).indexOf('vwd')>=0) return 'dobermann';
+    if(b.id==='akita'||b.id==='shiba') return 'akita';
+    if((b.groups||[]).indexOf('toy')>=0) return 'klein';
+    return null;
+  }
+  function run(){
+    var q=new URLSearchParams(location.search), bid=q.get('breed'); if(!bid) return;
+    var b=VB.byId(bid); if(!b) return;
+    var key=mapHaem(b), sel=document.getElementById('status-select');
+    if(key && sel){ sel.value=key; sel.dispatchEvent(new Event('change',{bubbles:true})); }
+    var host=document.getElementById('status-note'); if(!host||document.getElementById('vb-haem-banner')) return;
+    var conds=VB.conditionsOf(b);
+    var sp=q.get('sp')||b.sp||'hund', kg=q.get('kg')||'';
+    var qs='?kg='+encodeURIComponent(kg)+'&sp='+encodeURIComponent(sp)+'&breed='+encodeURIComponent(b.id);
+    var div=document.createElement('div'); div.id='vb-haem-banner';
+    div.style.cssText='margin-top:10px;padding:9px 11px;border:1px solid rgba(139,124,246,.45);background:rgba(139,124,246,.10);border-radius:9px;font-size:12px;line-height:1.55';
+    div.innerHTML='<b>🧬 '+b.name+'</b>'+(b.freq?' · '+b.freq:'')+'<br>'+
+      (conds.length?conds.map(function(c){return c.icon+' '+c.name.split(' (')[0];}).join(' · '):'keine hinterlegte Genetik')+
+      '<br><a href="../canis-anaesthesie/'+qs+'" style="color:var(--accent,#0aa2c4);font-weight:600;text-decoration:none">→ Narkose-/Medikamenten-Warnungen für diese Rasse</a>';
+    host.parentNode.insertBefore(div, host.nextSibling);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){setTimeout(run,80);}); else setTimeout(run,80);
+})();
 </script>
 </body>
 </html>

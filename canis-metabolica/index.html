@@ -291,6 +291,7 @@ header h1{font-family:var(--font-tech);font-size:20px;font-weight:700;letter-spa
 </style>
 <link rel="stylesheet" href="../shared/glass.css?v=9">
 <script src="../shared/vetpharm-ui.js?v=9"></script>
+<script src="../shared/breed-genetics.js?v=1"></script>
 </head>
 <body>
 <header>
@@ -1357,5 +1358,22 @@ const COVERAGE = [
 })();
 </script>
 <script id="vp-metabolica-q">(function(){function go(){try{var q=new URLSearchParams(location.search).get("q");if(q){var si=document.getElementById("search-input");if(si){si.value=q;si.dispatchEvent(new Event("input",{bubbles:true}));}}}catch(e){}}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(go,60);});else setTimeout(go,60);})();</script>
+<script id="vp-metabolica-breed">/* additiv: Rassen-Genetik-Banner bei ?breed= (window.VETBREED) – Inhalt unverändert */
+(function(){var VB=window.VETBREED; if(!VB) return;
+ function go(){ try{
+   var q=new URLSearchParams(location.search), bid=q.get('breed'); if(!bid) return;
+   var b=VB.byId(bid); if(!b) return;
+   var host=document.querySelector('.dashboard-container'); if(!host||document.getElementById('vb-meta-banner')) return;
+   var conds=VB.conditionsOf(b), sp=q.get('sp')||b.sp||'hund', kg=q.get('kg')||'';
+   var qs='?kg='+encodeURIComponent(kg)+'&sp='+encodeURIComponent(sp)+'&breed='+encodeURIComponent(b.id);
+   var div=document.createElement('div'); div.id='vb-meta-banner';
+   div.style.cssText='margin:0 0 16px;padding:10px 13px;border:1px solid rgba(139,124,246,.45);background:rgba(139,124,246,.10);border-radius:10px;font-size:13px;line-height:1.55';
+   div.innerHTML='<b>🧬 '+b.name+'</b>'+(b.freq?' · '+b.freq:'')+' – rassespezifische Besonderheiten: '+
+     (conds.length?conds.map(function(c){return c.icon+' '+c.name.split(' (')[0];}).join(' · '):'keine hinterlegt')+
+     ' &nbsp;<a href="../canis-anaesthesie/'+qs+'" style="color:var(--color-glycolysis,#0aa2c4);font-weight:700;text-decoration:none">→ Narkose/Medikamente</a> · <a href="../canis-haematica/'+qs+'" style="color:var(--color-glycolysis,#0aa2c4);font-weight:700;text-decoration:none">→ Blutwerte</a>';
+   host.insertBefore(div, host.firstChild);
+ }catch(e){} }
+ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){setTimeout(go,80);}); else setTimeout(go,80);
+})();</script>
 </body>
 </html>

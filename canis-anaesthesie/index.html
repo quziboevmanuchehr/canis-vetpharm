@@ -44,6 +44,28 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 .pfield input,.pfield select{height:40px;border-radius:9px;border:1px solid var(--line);background:#0d1219;color:#fff;padding:0 10px;min-width:90px}
 .pfield .wt{width:120px;font-size:18px;font-weight:800;text-align:center}
 .pchip-note{font:11px var(--mono);color:var(--muted);margin-left:auto}
+/* Rasse / Genetik */
+.breed-box{display:flex;align-items:center;gap:4px}
+.breed-in{height:40px;border-radius:9px;border:1px solid var(--line);background:#0d1219;color:#fff;padding:0 10px;min-width:180px;font-size:14px}
+.breed-in:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 1px var(--brand) inset}
+.breed-clear{height:40px;width:34px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--muted);cursor:pointer;font-size:13px}
+.breed-banner{display:flex;flex-wrap:wrap;align-items:center;gap:8px;max-width:1560px;margin:8px auto 0;padding:8px 12px;border:1px solid rgba(139,124,246,.42);background:rgba(139,124,246,.10);border-radius:10px;font-size:12.5px}
+.breed-banner .bb-h{font-weight:800;color:var(--text)}
+.breed-banner .bchip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--bc,#8b7cf6);color:var(--text);border-radius:999px;padding:2px 9px;font-size:11.5px;background:rgba(255,255,255,.04)}
+.breed-banner .bb-aff{margin-left:auto;border:1px solid var(--red);background:rgba(255,77,77,.14);color:#ffd0d0;border-radius:999px;padding:4px 11px;cursor:pointer;font-size:12px;font-weight:700}
+.breed-banner .bb-ok{margin-left:auto;color:var(--muted);font-size:11.5px}
+.breed-warn{border:1px solid var(--line);border-left:4px solid var(--bwc,#ffc23c);border-radius:8px;padding:7px 9px;font-size:12.5px;line-height:1.5;background:rgba(255,255,255,.03);margin-top:6px}
+.breed-warn.lvl-avoid{--bwc:#ff4d4d;background:rgba(255,77,77,.10)}
+.breed-warn.lvl-reduce{--bwc:#ff8c3c;background:rgba(255,140,60,.09)}
+.breed-warn.lvl-caution{--bwc:#ffc23c;background:rgba(255,194,60,.08)}
+.breed-warn.lvl-monitor{--bwc:#7fd6ff;background:rgba(0,216,255,.06)}
+.breed-warn .bw-tag{display:inline-block;color:#08121a;font-weight:800;font-size:10.5px;letter-spacing:.4px;border-radius:5px;padding:2px 6px;margin-right:5px;vertical-align:middle}
+.breed-warn .bw-tx{color:var(--text)}
+.breed-warn .bw-src{display:block;margin-top:3px;font:10.5px var(--mono);color:var(--muted)}
+html[data-theme="light"] .breed-banner{background:rgba(139,124,246,.12);border-color:rgba(139,124,246,.45)}
+html[data-theme="light"] .breed-warn{background:rgba(255,255,255,.62)}
+html[data-theme="light"] .breed-in,html[data-theme="light"] .breed-clear{background:#fff;color:#15202e}
+@media(max-width:900px){.breed-in{min-width:130px}}
 
 /* tabs */
 .tabs{position:sticky;top:132px;z-index:30;display:flex;gap:8px;overflow:auto;background:rgba(10,12,16,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:8px 14px}
@@ -289,14 +311,19 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
     <option value="adult">adult</option><option value="pediatric">Jungtier / neonatal</option><option value="senior">geriatrisch</option></select></div>
   <div class="pfield"><label>Narkose-Typ</label><select id="anMode" data-vp-tip="Bestimmt die Logik: Gasnarkose (Iso), Injektion als Einleitung mit anschließendem Gas, oder NUR Injektion ohne Gas (Iso aus → reine Spontanatmung).">
     <option value="gas">Gasnarkose (Iso)</option><option value="inj-ind">Injektion → dann Gas</option><option value="inj-only">Nur Injektion (ohne Gas)</option></select></div>
+  <div class="pfield" id="breedWrap"><label>Rasse (optional)</label>
+    <div class="breed-box"><input class="breed-in" id="breedIn" list="breedList" placeholder="Rasse tippen/wählen…" autocomplete="off" spellcheck="false" data-vp-tip="Rasse eingeben → rassespezifische genetische Warnungen (MDR1, Windhund-Typ, brachyzephal, HCM …) bei Medikamenten & Narkose"><button class="breed-clear" id="breedClear" title="Rasse löschen" aria-label="Rasse löschen" hidden>✕</button></div>
+    <datalist id="breedList"></datalist></div>
   <div class="pchip-note" id="patNote"></div>
 </div></div>
+<div class="breed-banner" id="breedBanner" hidden></div>
 
 <nav class="tabs" id="tabs">
   <button class="tab active" data-view="notfall" data-vp-tip="Narkosezwischenfälle mit Schwellen, Sofortmaßnahmen, Geräte-Einstellung & berechneten Dosen – jetzt mit Ursache über Blutwerte/Stoffwechsel/Reise">🚨 Notfall</button>
   <button class="tab" data-view="geraet" data-vp-tip="Virtueller Monitor (EKG/Kapno) + Narkosegerät: Verdampfer drehen, Flowmeter schieben, Werte eingeben">🖥️ Gerät (Monitor + Narkose)</button>
   <button class="tab" data-view="injektion" data-vp-tip="Injektionsnarkose OHNE Gerät: Kombinationen (Einleitung/Nachdosierung/Sedierung) + Antagonisten, mL-genau pro Patient">💤 Injektionsnarkose</button>
   <button class="tab" data-view="medis" data-vp-tip="Gewichtsgenauer Dosis-Rechner für 33 Wirkstoffe (mg & mL)">💉 Medikamente</button>
+  <button class="tab" data-view="rasse" data-vp-tip="Rassespezifische Genetik (MDR1, Windhund-Typ, brachyzephal, HCM …) → betroffene Medikamente & Narkose-Folgen">🧬 Rasse/Genetik</button>
   <button class="tab" data-view="bedienung" data-vp-tip="Startablauf, Sicherheit und Geräte-Dichtigkeitstest (Leak-Test) vor der Narkose">📖 Bedienung &amp; Dichtigkeit</button>
   <button class="tab" data-view="settings" data-vp-tip="Geräte-Startwerte (O₂, Isofluran, AZV, PIP …) pro Patient">⚙️ Einstellungen</button>
   <button class="tab" data-view="info" data-vp-tip="Über das Modul, Quellen und Verknüpfungen">📋 Info</button>
@@ -333,6 +360,10 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
       <div class="dfilters" id="dFilters"></div>
       <div id="drugList"></div>
     </div>
+  </section>
+
+  <section class="view" id="rasse">
+    <div class="card" id="breedCard"><p class="muted">Wähle oben in der Patientenleiste eine <b>Rasse</b> (Hund/Katze) – dann erscheinen hier die rassespezifischen genetischen Besonderheiten (MDR1/ABCB1, Windhund-Typ, brachyzephales Atemwegssyndrom, HCM …) mit betroffenen Medikamenten und Narkose-Folgen.</p></div>
   </section>
 
   <section class="view" id="geraet">
@@ -427,6 +458,7 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 </main>
 
 <script src="anaes-data.js?v=9"></script>
+<script src="../shared/breed-genetics.js?v=1"></script>
 <script>
 /* ============ Canis Anæsthesia – Engine ============ */
 (function(){
@@ -434,7 +466,7 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 var A = window.ANAES || {drugs:[],incidents:[],machine:{controls:[],ventModes:[]},fluids:[],species:[],vitals:{},info:"",sources:[]};
 var $ = function(s,r){return (r||document).querySelector(s);};
 var $$ = function(s,r){return Array.from((r||document).querySelectorAll(s));};
-var state = { sp: (A.species[0]&&A.species[0].id)||'hund', wt: 10, age:'adult', incident:null, dfilter:'Alle', q:'', monMode:'ist', istVals:null, rhythm:'sinus', adrHigh:false, anMode:'gas', injInduction:null, injTopups:[], dev:{o2:1, iso:2, mode:'vcv'} };
+var state = { sp: (A.species[0]&&A.species[0].id)||'hund', wt: 10, age:'adult', breed:null, incident:null, dfilter:'Alle', q:'', monMode:'ist', istVals:null, rhythm:'sinus', adrHigh:false, anMode:'gas', injInduction:null, injTopups:[], dev:{o2:1, iso:2, mode:'vcv'} };
 
 /* ---------- helpers: dose math ---------- */
 function parseConc(s){ if(!s) return null; var m = String(s).replace(',','.').match(/([0-9]*\.?[0-9]+)\s*(mg|mcg|µg|g|iu|u|units?)\s*\/\s*ml/i); if(!m) return null; var v=parseFloat(m[1]); var u=m[2].toLowerCase(); if(u==='g') v=v*1000; if(u==='mcg'||u==='µg') v=v/1000; return v; /* mg per mL, bzw. U/mL für Einheiten-Präparate (vasopressin/insulin) */ }
@@ -465,12 +497,95 @@ function syncPatient(){
   $('#pWt')&&($('#pWt').textContent=fmt(state.wt)+' kg');
   var v=(A.vitals||{})[state.sp];
   $('#patNote').innerHTML = v? ('Normwerte Narkose · HF '+v.hr[0]+'–'+v.hr[1]+' · AF '+v.rr[0]+'–'+v.rr[1]+' · SpO₂ '+v.spo2[0]+'–'+v.spo2[1]+'% · EtCO₂ '+v.etco2[0]+'–'+v.etco2[1]+' · MAP '+v.map[0]+'–'+v.map[1]) : '';
+  if(!breedSupported()) state.breed=null;
+  renderBreedField(); updateBreedBanner();
   propagateLinks();
 }
 /* §7 Gewicht/Spezies an verlinkte Module weitergeben */
 function propagateLinks(){
-  var qs='?kg='+encodeURIComponent(state.wt)+'&sp='+encodeURIComponent(state.sp);
-  $$('a[href^="../canis-"]').forEach(function(a){ a.href=a.getAttribute('href').split('?')[0]+qs; });
+  var add={ kg:String(state.wt), sp:state.sp }; if(state.breed) add.breed=state.breed; else add.breed=null;
+  $$('a[href^="../canis-"]').forEach(function(a){
+    var href=a.getAttribute('href')||''; var parts=href.split('?'); var base=parts[0];
+    var params=new URLSearchParams(parts[1]||'');
+    Object.keys(add).forEach(function(k){ if(add[k]==null) params.delete(k); else params.set(k, add[k]); });
+    var q=params.toString(); a.href=base+(q?'?'+q:'');
+  });
+}
+
+/* ---------- Rasse / Genetik (window.VETBREED) ---------- */
+var VB = window.VETBREED || null;
+function curBreed(){ return (VB && state.breed) ? VB.byId(state.breed) : null; }
+function breedSupported(){ return state.sp==='hund' || state.sp==='katze'; }
+function appDrugIds(){ return (A.drugs||[]).map(function(d){ return d.id; }); }
+function warnDot(l){ return l==='avoid'?'#ff4d4d':l==='reduce'?'#ff8c3c':l==='caution'?'#ffc23c':'#7fd6ff'; }
+function warnLabel(l){ return l==='avoid'?'MEIDEN':l==='reduce'?'REDUZIEREN':l==='caution'?'VORSICHT':'ÜBERWACHEN'; }
+function renderBreedField(){
+  var wrap=$('#breedWrap'); if(!wrap||!VB) return;
+  if(!breedSupported()){ wrap.style.display='none'; var i0=$('#breedIn'); if(i0)i0.value=''; return; }
+  wrap.style.display='';
+  var dl=$('#breedList'); if(dl){ dl.innerHTML=VB.bySpecies(state.sp).map(function(b){ return '<option value="'+b.name+'">'+(b.freq?('· '+b.freq):(b.note||''))+'</option>'; }).join(''); }
+  var inp=$('#breedIn'), b=curBreed();
+  if(inp && document.activeElement!==inp) inp.value=b?b.name:'';
+  var clr=$('#breedClear'); if(clr) clr.hidden=!state.breed;
+}
+function commitBreed(txt){
+  if(!VB) return;
+  state.breed = txt ? (function(){ var b=VB.resolve(txt, state.sp); return b?b.id:null; })() : null;
+  renderBreedField(); updateBreedBanner(); renderBreedProfile(); propagateLinks();
+  renderProto(); renderDrugs(); renderInjection();
+}
+function updateBreedBanner(){
+  var el=$('#breedBanner'); if(!el||!VB) return;
+  var b=curBreed();
+  if(!b){ el.hidden=true; el.innerHTML=''; return; }
+  var conds=VB.conditionsOf(b), aff=VB.affectedDrugs(b, appDrugIds());
+  var chips=conds.map(function(c){ return '<span class="bchip" style="--bc:'+((VB.GROUPS[(b.groups||[])[0]]||{}).color||'#8b7cf6')+'">'+c.icon+' '+c.name.split(' (')[0]+'</span>'; }).join('');
+  el.hidden=false;
+  el.innerHTML='<span class="bb-h">🧬 '+b.name+(b.freq?' · '+b.freq:'')+'</span>'+chips+
+    (aff.length?'<button class="bb-aff">⚠️ '+aff.length+' betroffene Medikament(e) – Details</button>':'<span class="bb-ok">keine hinterlegte Wirkstoff-Warnung</span>');
+  var btn=el.querySelector('.bb-aff'); if(btn) btn.onclick=function(){ switchTab('rasse'); window.scrollTo({top:0,behavior:'smooth'}); };
+}
+/* Warn-HTML für einen Wirkstoff – wird in Dosiskarten eingebettet */
+function breedWarnHtml(drugRef){
+  var b=curBreed(); if(!b||!VB||!drugRef) return '';
+  var ws=VB.drugWarnings(b, drugRef); if(!ws.length) return '';
+  return ws.map(function(w){
+    return '<div class="breed-warn lvl-'+w.level+'"><span class="bw-tag" style="background:'+warnDot(w.level)+'">🧬 '+warnLabel(w.level)+(w.factor?' · '+w.factor:'')+'</span> <span class="bw-tx">'+w.text+'</span>'+
+      (w.sources&&w.sources.length?'<span class="bw-src">'+w.sources.join(' · ')+'</span>':'')+'</div>';
+  }).join('');
+}
+/* Rasse-Warnungen für eine Injektions-Kombination (nach Wirkstoff-Namen) */
+function injComboBreedWarn(c){
+  var b=curBreed(); if(!b||!VB) return ''; var seen={}, h='';
+  (c.comp||[]).forEach(function(cp){ VB.drugWarnings(b, cp.n).forEach(function(w){ if(seen[w.id]) return; seen[w.id]=1;
+    h+='<div class="breed-warn lvl-'+w.level+'" style="margin-top:6px"><span class="bw-tag" style="background:'+warnDot(w.level)+'">🧬 '+warnLabel(w.level)+(w.factor?' · '+w.factor:'')+'</span> <span class="bw-tx">'+w.text+'</span></div>'; }); });
+  return h;
+}
+function renderBreedProfile(){
+  var box=$('#breedCard'); if(!box||!VB) return;
+  var b=curBreed();
+  if(!b){ box.innerHTML='<p class="muted">Wähle oben in der Patientenleiste eine <b>Rasse</b> (Hund/Katze) – dann erscheinen hier die rassespezifischen genetischen Besonderheiten (MDR1/ABCB1, Windhund-Typ, brachyzephales Atemwegssyndrom, HCM …) mit betroffenen Medikamenten und Narkose-Folgen.</p>'; return; }
+  var conds=VB.conditionsOf(b), grps=VB.groupsOf(b), aff=VB.affectedDrugs(b, appDrugIds());
+  var html='<div class="proto-head"><span class="ic">🧬</span><div><h2 style="margin:0">'+b.name+'</h2><span class="dose-cls">'+(b.sp==='katze'?'Katze':'Hund')+(b.freq?' · '+b.freq:'')+(grps.length?' · '+grps.map(function(g){return g.name;}).join(', '):'')+'</span></div></div>';
+  if(b.note) html+='<div class="thr">🐾 '+b.note+'</div>';
+  html+='<div class="sec-h">Genetische Besonderheiten</div>';
+  html+=conds.map(function(c){
+    return '<div class="dose-card" style="border-color:var(--line)"><div class="dose-top"><span class="dose-name">'+c.icon+' '+c.name+'</span><span class="dose-cls">'+c.cat+(c.gene?' · '+c.gene:'')+'</span></div>'+
+      '<div class="dose-meta" style="margin-top:6px">'+c.short+'</div>'+
+      (c.anesth?'<div class="breed-warn lvl-caution" style="margin-top:8px"><span class="bw-tx"><b>Narkose/Medikamente:</b> '+c.anesth+'</span></div>':'')+
+      (c.sources&&c.sources.length?'<div class="src">Quelle: '+c.sources.join('; ')+'</div>':'')+'</div>';
+  }).join('');
+  html+='<div class="sec-h">Betroffene Medikamente in diesem Modul ('+aff.length+')</div>';
+  if(aff.length){
+    html+=aff.map(function(id){ var d=drugById(id)||{name:id}; var ws=VB.drugWarnings(b, id);
+      return '<div class="dose-card" style="border-color:var(--line)"><div class="dose-top"><span class="dose-name">'+(d.icon||'💊')+' '+(d.name||id)+'</span></div>'+
+        ws.map(function(w){ return '<div class="breed-warn lvl-'+w.level+'" style="margin-top:6px"><span class="bw-tag" style="background:'+warnDot(w.level)+'">'+warnLabel(w.level)+(w.factor?' · '+w.factor:'')+'</span> <span class="bw-tx">'+w.text+'</span></div>'; }).join('')+'</div>';
+    }).join('');
+  } else { html+='<p class="muted">Für diese Rasse ist zu den Wirkstoffen dieses Moduls keine spezifische Warnung hinterlegt – die genetischen Besonderheiten oben trotzdem beachten.</p>'; }
+  var links=[]; conds.forEach(function(c){ var lk=(VB.CONDITIONS[c.key]||{}).links||{}; (lk.blut||[]).forEach(function(w){ links.push('<a class="vp-xl blut" href="../canis-haematica/?w='+w+'" target="_blank" rel="noopener">🩸 '+w+'</a>'); }); });
+  html+='<div class="sec-h">Verbunden</div><div class="chips"><a class="vp-xl blut" href="../canis-haematica/?breed='+b.id+'" target="_blank" rel="noopener">🩸 Blutwerte-Atlas (Rasse)</a><a class="vp-xl stoff" href="../canis-metabolica/?breed='+b.id+'" target="_blank" rel="noopener">🧬 Stoffwechsel</a>'+links.join('')+'</div>';
+  html+='<div class="src" style="margin-top:10px">Rassedaten: CliniPharm/CliniTox (vetpharm.uzh.ch) · WSU-VCPL · Plumb’s · WSAVA/ACVAA · UC Davis VGL · PennGen. Referenz/Lernhilfe – vor Gabe gegen Fachinfo &amp; Patient prüfen.</div>';
+  box.innerHTML=html;
 }
 
 /* ---------- incidents ---------- */
@@ -507,7 +622,7 @@ function doseLine(ref){
   return '<div class="dose-card"><div class="dose-top"><span class="dose-name">'+name+'</span>'+perkg+'</div>'+
     '<div class="dose-calc">'+amtTxt+mlTxt+(conc?'<span class="dpill">'+conc+'</span>':'')+'</div>'+
     (ref.note?'<div class="dose-meta">'+ref.note+'</div>':'')+
-    (spd&&spd.caution?'<div class="dose-caution">⚠️ '+spd.caution+'</div>':'')+capLine+'</div>';
+    (spd&&spd.caution?'<div class="dose-caution">⚠️ '+spd.caution+'</div>':'')+capLine+breedWarnHtml(ref.id||(d&&d.id)||name)+'</div>';
 }
 function renderProto(){
   var i=A.incidents.find(function(x){return x.id===state.incident;});
@@ -1102,7 +1217,7 @@ function renderInjection(){
       var give='<button class="chip" data-give="'+c.id+'" data-kind="'+c.kind+'" style="cursor:pointer;'+(sel?'border-color:var(--green);color:#9bffcf;background:rgba(0,255,135,.12)':'')+'" data-vp-tip="Als am Tier verabreicht markieren – die ganze App (Gerät/Analyse/Coach) rechnet diese Narkose dann mit">'+(sel?'✓ gegeben':'○ als gegeben')+'</button>';
       return '<div class="dose-card" style="margin-bottom:11px'+(sel?';border-color:var(--green);box-shadow:0 0 0 1px var(--green) inset':'')+'"><div class="dose-top"><span class="dose-name">'+c.name+'</span><span class="dose-cls">'+c.route+' · '+c.onset+' · '+c.duration+'</span></div>'+
         '<div class="dose-meta" style="margin:3px 0 8px">'+c.indication+'</div>'+
-        c.comp.map(compLine).join('')+
+        c.comp.map(compLine).join('')+injComboBreedWarn(c)+
         '<div class="assess-m" style="margin-top:6px">📟 <b>Erwartet:</b> '+c.expect+'</div>'+
         (c.cautions?'<div class="dose-caution">⚠️ '+c.cautions+'</div>':'')+
         (function(){ var a=give; if(rev) a+='<span class="dose-cls" style="align-self:center">Antagonist:</span>'+rev; if(c.scenario) a+='<button class="chip" data-scn="'+c.id+'" style="cursor:pointer;border-color:var(--cyan);color:#bff0ff" data-vp-tip="Erwartete Werte in den Monitor laden – Coach &amp; Analyse erklären Folge und Reaktion">▶ Folge im Monitor</button>'; if(c.incident) a+='<button class="chip" data-inc="'+c.incident+'" style="cursor:pointer" data-vp-tip="Protokoll: Ursache &amp; Reaktion">→ Zwischenfall</button>'; return '<div class="chips" style="margin-top:8px">'+a+'</div>'; })()+'</div>';
@@ -1136,17 +1251,19 @@ function switchTab(v){
   if(v==='settings') renderSettings();
   if(v==='bedienung') renderOperating();
 }
-function rerender(){ renderProto(); renderLaCalc(); renderDrugs(); renderSettings(); renderMachine(); renderDevCtrl(); renderInjection(); if(mon.running) renderMonValues(); }
+function rerender(){ renderProto(); renderLaCalc(); renderDrugs(); renderSettings(); renderMachine(); renderDevCtrl(); renderInjection(); renderBreedProfile(); updateBreedBanner(); if(mon.running) renderMonValues(); }
 function boot(){
-  syncPatient(); renderIncidents(); renderFilters(); renderLaCalc(); renderDrugs(); renderInfo(); renderCapno(); renderEkgGallery(); renderInjection();
+  syncPatient(); renderIncidents(); renderFilters(); renderLaCalc(); renderDrugs(); renderInfo(); renderCapno(); renderEkgGallery(); renderInjection(); renderBreedProfile();
   $$('#tabs .tab').forEach(function(t){ t.onclick=function(){ switchTab(t.dataset.view); }; });
   $('#wt').addEventListener('input',function(e){ var v=parseFloat(e.target.value); state.wt=(v>0?v:0); syncPatient(); rerender(); });
   $('#age').addEventListener('change',function(e){ state.age=e.target.value; renderSettings(); });
+  if($('#breedIn')) $('#breedIn').addEventListener('change',function(e){ commitBreed(e.target.value); });
+  if($('#breedClear')) $('#breedClear').addEventListener('click',function(){ var i=$('#breedIn'); if(i){ i.value=''; } commitBreed(''); });
   if($('#anMode')) $('#anMode').addEventListener('change',function(e){ state.anMode=e.target.value; if(state.anMode==='inj-only') state.dev.iso=0; renderMachine(); renderDevCtrl(); if(mon.running) renderMonValues(); else ventCoach(); });
   $('#dSearch').addEventListener('input',function(e){ state.q=e.target.value; renderDrugs(); });
   $('#btnPanic').addEventListener('click',function(){ var cpr=A.incidents.find(function(i){return i.id==='asystolie'||i.id==='cpr';}); if(cpr){ state.incident=cpr.id; switchTab('notfall'); renderIncidents(); renderProto(); window.scrollTo({top:0,behavior:'smooth'}); } });
   // deep link ?w=weight&s=species
-  try{ var q=new URLSearchParams(location.search); if(q.get('kg')){state.wt=parseFloat(q.get('kg'))||state.wt; $('#wt').value=state.wt;} if(q.get('sp')&&A.species.find(function(s){return s.id===q.get('sp');})){state.sp=q.get('sp');} syncPatient(); rerender(); }catch(e){}
+  try{ var q=new URLSearchParams(location.search); if(q.get('kg')){state.wt=parseFloat(q.get('kg'))||state.wt; $('#wt').value=state.wt;} if(q.get('sp')&&A.species.find(function(s){return s.id===q.get('sp');})){state.sp=q.get('sp');} if(q.get('breed')&&VB&&VB.byId(q.get('breed'))){ state.breed=q.get('breed'); } syncPatient(); rerender(); }catch(e){}
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
 })();
