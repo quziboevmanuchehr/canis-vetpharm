@@ -66,6 +66,58 @@ html[data-theme="light"] .breed-banner{background:rgba(139,124,246,.12);border-c
 html[data-theme="light"] .breed-warn{background:rgba(255,255,255,.62)}
 html[data-theme="light"] .breed-in,html[data-theme="light"] .breed-clear{background:#fff;color:#15202e}
 @media(max-width:900px){.breed-in{min-width:130px}}
+/* Beatmungsmodi-Konfigurator */
+.vent-modebar{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.vm-btn{flex:1 1 88px;min-width:82px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);border-radius:10px;padding:8px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;transition:.15s}
+.vm-btn b{font-size:15px;letter-spacing:.4px}
+.vm-btn span{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;text-align:center}
+.vm-btn.spont{border-style:dashed}
+.vm-btn.active{border-color:var(--cyan);background:rgba(0,216,255,.14);box-shadow:0 0 0 1px var(--cyan) inset;color:#fff}
+.vm-btn.active span{color:#bff0ff}
+.vent-screen{background:#0a1622;border:1px solid #1e3a52;border-radius:12px;padding:12px 14px;margin-bottom:12px;box-shadow:inset 0 0 30px rgba(0,120,180,.12)}
+.vent-screen.vs-flash{animation:vsflash .7s ease}
+@keyframes vsflash{0%,100%{box-shadow:inset 0 0 30px rgba(0,120,180,.12)}40%{box-shadow:inset 0 0 30px rgba(0,216,255,.5),0 0 0 2px var(--cyan)}}
+.vs-top{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid #1e3a52;padding-bottom:7px;margin-bottom:8px}
+.vs-mode{font:800 20px var(--mono,monospace);color:#5fd0ff;letter-spacing:1px}
+.vs-full{font-size:11.5px;color:#7fa8c8;flex:1}
+.vs-wt{font-size:12px;color:#cfe6f5;font-weight:700}
+.vs-row{display:flex;gap:6px;flex-wrap:wrap}
+.vs-cell{flex:1 1 64px;min-width:60px;background:rgba(20,45,68,.6);border:1px solid #1e3a52;border-radius:8px;padding:6px 6px;text-align:center}
+.vs-k{font:10px var(--mono,monospace);color:#7fa8c8;text-transform:uppercase;letter-spacing:.5px}
+.vs-v{font:800 19px var(--mono,monospace);color:#eaf6ff;line-height:1.2;margin-top:2px}
+.vs-v small{font-size:10px;color:#8fb4cf;font-weight:400;margin-left:2px}
+.vent-params{display:flex;gap:8px;flex-wrap:wrap}
+.vp-tile{flex:1 1 100px;min-width:94px;border:1px solid var(--line);background:rgba(255,255,255,.03);border-radius:10px;padding:8px}
+.vp-tile.vp-over{border-color:var(--cyan);background:rgba(0,216,255,.07)}
+.vp-k{font:10.5px var(--mono);text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:center}
+.vp-ctl{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:4px}
+.vp-step{width:30px;height:30px;flex:0 0 auto;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--text);border-radius:8px;cursor:pointer;font-size:17px;font-weight:800;line-height:1}
+.vp-step:hover{border-color:var(--cyan);color:#fff}
+.vp-val{font:800 17px var(--mono);color:var(--text);text-align:center;flex:1}
+.vp-val small{font-size:10px;color:var(--muted);font-weight:400;margin-left:1px}
+.vp-rec{font-size:10.5px;color:var(--muted);text-align:center;margin-top:4px;min-height:16px}
+.vp-reset{border:1px solid var(--cyan);background:rgba(0,216,255,.1);color:#bff0ff;border-radius:12px;padding:2px 7px;font-size:10.5px;cursor:pointer}
+.vent-manual{border:1px dashed var(--line);border-radius:10px;padding:12px;font-size:13px;line-height:1.55;color:var(--text);background:rgba(255,255,255,.03)}
+.vent-desc{font-size:12px;color:var(--muted);line-height:1.55;margin-top:10px}
+.vent-desc b{color:var(--text)}
+.vp-when{display:block;margin-top:3px;color:var(--cyan)}
+.vent-reco{border:1px solid rgba(0,216,255,.4);background:rgba(0,216,255,.08);border-radius:11px;padding:11px 13px;margin-bottom:12px}
+.vr-head{font-weight:800;font-size:13.5px;color:var(--text);margin-bottom:8px}
+.vr-inc{font-size:10.5px;font-weight:700;color:#08121a;background:var(--cyan);border-radius:10px;padding:2px 7px;margin-left:6px}
+.vr-pick{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.vr-pick label{font:10.5px var(--mono);text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+.vr-pick select{flex:1;height:36px;border-radius:8px;border:1px solid var(--line);background:#0d1219;color:#fff;padding:0 10px;font-size:13px}
+.vr-mode{font-size:13.5px;margin-bottom:6px}
+.vr-mode b{color:var(--cyan);font-size:16px}
+.vr-mtag{font-size:11px;color:var(--muted)}
+.vr-sets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.vr-set{font:11.5px var(--mono);border:1px solid var(--line);background:rgba(255,255,255,.05);border-radius:14px;padding:3px 9px;color:var(--text)}
+.vr-why{font-size:12.5px;line-height:1.55;color:var(--text);margin-bottom:10px}
+.vr-apply{width:100%;border:0;background:linear-gradient(90deg,var(--cyan),var(--violet));color:#04121a;font-weight:800;border-radius:9px;padding:10px;cursor:pointer;font-size:13.5px}
+.vr-apply:hover{filter:brightness(1.08)}
+html[data-theme="light"] .vp-tile,html[data-theme="light"] .vent-manual{background:rgba(255,255,255,.6)}
+html[data-theme="light"] .vr-pick select{background:#fff;color:#15202e}
+html[data-theme="light"] .vm-btn{background:rgba(255,255,255,.6)}
 
 /* tabs */
 .tabs{position:sticky;top:132px;z-index:30;display:flex;gap:8px;overflow:auto;background:rgba(10,12,16,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:8px 14px}
@@ -400,6 +452,15 @@ html[data-theme="light"] .breed-in,html[data-theme="light"] .breed-clear{backgro
         <div id="monDetail"></div>
       </aside>
     </div>
+    <div class="card" id="ventCard">
+      <h3>🫁 Beatmungsmodi &amp; Einstellungen · <span id="ventPatLbl">…</span></h3>
+      <p class="muted" style="font-size:12px;margin:-4px 0 10px">Modus wählen wie am Gerät – die Parameter sind für den Patienten <b>vorbelegt</b> und mit −/+ einstellbar. Der Kasten „Für diesen Fall empfohlen" richtet sich nach gewähltem Zwischenfall/Situation und lässt sich mit einem Klick übernehmen.</p>
+      <div id="ventReco"></div>
+      <div class="vent-modebar" id="ventModeBar"></div>
+      <div class="vent-screen" id="ventScreen"></div>
+      <div class="vent-params" id="ventParamRow"></div>
+      <div id="ventModeDesc" class="vent-desc"></div>
+    </div>
     <div class="card">
       <h3>EKG-Rhythmen &amp; Herzfehler – erkennen &amp; reagieren</h3>
       <p class="muted" style="font-size:12px;margin:-4px 0 10px">Ampel zum Anlegen: <b style="color:#ff4d4d">rot</b> re. vorn · <b style="color:#ffd166">gelb</b> li. vorn · <b style="color:#28e07a">grün</b> li. hinten · <b>schwarz</b> Erdung re. hinten · <b style="color:#66a6ff">C1</b> Brustwand. Klick = Protokoll · Chips oben = Rhythmus im Monitor beobachten.</p>
@@ -457,7 +518,7 @@ html[data-theme="light"] .breed-in,html[data-theme="light"] .breed-clear{backgro
   </section>
 </main>
 
-<script src="anaes-data.js?v=9"></script>
+<script src="anaes-data.js?v=10"></script>
 <script src="../shared/breed-genetics.js?v=1"></script>
 <script>
 /* ============ Canis Anæsthesia – Engine ============ */
@@ -466,7 +527,7 @@ html[data-theme="light"] .breed-in,html[data-theme="light"] .breed-clear{backgro
 var A = window.ANAES || {drugs:[],incidents:[],machine:{controls:[],ventModes:[]},fluids:[],species:[],vitals:{},info:"",sources:[]};
 var $ = function(s,r){return (r||document).querySelector(s);};
 var $$ = function(s,r){return Array.from((r||document).querySelectorAll(s));};
-var state = { sp: (A.species[0]&&A.species[0].id)||'hund', wt: 10, age:'adult', breed:null, incident:null, dfilter:'Alle', q:'', monMode:'ist', istVals:null, rhythm:'sinus', adrHigh:false, anMode:'gas', injInduction:null, injTopups:[], dev:{o2:1, iso:2, mode:'vcv'} };
+var state = { sp: (A.species[0]&&A.species[0].id)||'hund', wt: 10, age:'adult', breed:null, incident:null, dfilter:'Alle', q:'', monMode:'ist', istVals:null, rhythm:'sinus', adrHigh:false, anMode:'gas', injInduction:null, injTopups:[], dev:{o2:1, iso:2, mode:'vcv', auto:false, vp:{}}, ventSit:null };
 
 /* ---------- helpers: dose math ---------- */
 function parseConc(s){ if(!s) return null; var m = String(s).replace(',','.').match(/([0-9]*\.?[0-9]+)\s*(mg|mcg|µg|g|iu|u|units?)\s*\/\s*ml/i); if(!m) return null; var v=parseFloat(m[1]); var u=m[2].toLowerCase(); if(u==='g') v=v*1000; if(u==='mcg'||u==='µg') v=v/1000; return v; /* mg per mL, bzw. U/mL für Einheiten-Präparate (vasopressin/insulin) */ }
@@ -600,7 +661,7 @@ function renderIncidents(){
     html+=cats[c].map(function(i){ return '<button class="inc-btn'+(state.incident===i.id?' active':'')+'" data-inc="'+i.id+'" style="--c:'+(i.color||'var(--red)')+'" data-vp-tip="'+i.name+' – Schwelle, Sofortmaßnahmen, Geräte-Korrektur &amp; berechnete Dosen"><span class="ic">'+i.icon+'</span><span class="inc-tx"><b>'+i.name+'</b><span>'+(i.short||i.cls||'')+'</span></span><span class="inc-go">›</span></button>'; }).join('');
   });
   $('#incList').innerHTML=html;
-  $$('#incList .inc-btn').forEach(function(b){ b.onclick=function(){ state.incident=b.dataset.inc; renderIncidents(); renderProto(); }; });
+  $$('#incList .inc-btn').forEach(function(b){ b.onclick=function(){ state.incident=b.dataset.inc; state.ventSit=null; renderIncidents(); renderProto(); renderVentReco(); }; });
 }
 function drugById(id){ return A.drugs.find(function(d){return d.id===id;}); }
 /* §7 Lokalanästhetika- & Lidocain-Höchst-Gesamtdosen (mg/kg) */
@@ -1044,17 +1105,27 @@ function monFrame(ts){
   }
 }
 function capnoSVG(shape,etco2){
-  var pts=[]; var N=64; for(var i=0;i<=N;i++){ var ph=(i/N); var y=wCapno(ph,shape,parseFloat(etco2)||40); pts.push([i/N*100, 55-(y-0.12)/0.86*46]); }
-  return '<svg viewBox="0 0 100 60" preserveAspectRatio="none"><polyline fill="none" stroke="#ffd166" stroke-width="1.6" points="'+pts.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' ')+'"/></svg>';
+  var W=200,H=64,base=54,top=8,N=210,breaths=2.6,e=parseFloat(etco2)||40, pts=[];
+  for(var i=0;i<=N;i++){ var t=i/N*breaths, ph=t-Math.floor(t), y=wCapno(ph,shape,e); var yy=base-(Math.max(0.12,Math.min(1,y))-0.12)/0.86*(base-top); pts.push((i/N*W).toFixed(1)+' '+yy.toFixed(1)); }
+  var path='M'+pts.join(' L');
+  var area='M0 '+base+' L'+pts.join(' L')+' L'+W+' '+base+' Z';
+  var grid=[0.33,0.66].map(function(f){var y=(base-(base-top)*f).toFixed(1);return '<line x1="0" y1="'+y+'" x2="'+W+'" y2="'+y+'" stroke="rgba(255,255,255,.07)" stroke-width="0.5" stroke-dasharray="3 3"/>';}).join('');
+  return '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+grid+
+    '<line x1="0" y1="'+base+'" x2="'+W+'" y2="'+base+'" stroke="rgba(255,209,102,.32)" stroke-width="0.7"/>'+
+    '<path d="'+area+'" fill="rgba(255,209,102,.12)"/>'+
+    '<path d="'+path+'" fill="none" stroke="#ffd166" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/></svg>';
 }
 function renderCapno(){
   var shapeMap={normal:'normal',high:'high',low:'low',baseline:'baseline',shark:'shark',flat:'flat',cleft:'high',rise:'high'};
+  var ventMap={high:'hypoventilation',shark:'bronchospasmus',flat:'apnoe',cleft:'tachypnoe',baseline:'routine'};
   $('#capnoGrid').innerHTML=(A.capno||[]).map(function(cp){
-    var shp=shapeMap[cp.id]||'normal'; var etco=(cp.id==='high')?60:(cp.id==='low')?28:42;
+    var shp=shapeMap[cp.id]||'normal'; var etco=(cp.id==='high')?60:(cp.id==='low')?28:42; var vs=ventMap[cp.id];
     return '<div class="capno-card" data-inc="'+(cp.incident||'')+'">'+capnoSVG(shp,etco)+
-      '<span class="cc-e">'+cp.etco2+'</span><b>'+cp.name+'</b><div class="cc-m">'+cp.meaning+'</div><div class="cc-r">→ '+cp.react+'</div></div>';
+      '<span class="cc-e">'+cp.etco2+' mmHg</span><b>'+cp.name+'</b><div class="cc-m">'+cp.meaning+'</div><div class="cc-r">→ '+cp.react+'</div>'+
+      (vs?'<button class="cc-vent" data-vent="'+vs+'" data-vp-tip="Empfohlenen Beatmungsmodus & Startwerte im Gerät-Tab übernehmen">🫁 Beatmung anpassen</button>':'')+'</div>';
   }).join('');
-  $$('#capnoGrid .capno-card').forEach(function(c){ c.onclick=function(){ if(c.dataset.inc) gotoIncident(c.dataset.inc); }; });
+  $$('#capnoGrid .capno-card').forEach(function(c){ c.onclick=function(e){ if(e.target.closest('.cc-vent')) return; if(c.dataset.inc) gotoIncident(c.dataset.inc); }; });
+  $$('#capnoGrid .cc-vent').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); state.ventSit=b.dataset.vent; switchTab('geraet'); applyVentSit(b.dataset.vent); var vc=$('#ventCard'); if(vc) vc.scrollIntoView({behavior:'smooth',block:'center'}); }; });
 }
 /* ---------- EKG-Rhythmen: Mini-Vorschau (nutzt wEkg) + Galerie + Chips ---------- */
 function ekgSVG(def){
@@ -1122,8 +1193,102 @@ function renderMachine(){
   var fm=box.querySelector('.flowmeter'); if(fm) dragCtrl(fm,function(e){ var r=fm.getBoundingClientRect(); var sy=r.height/210; var frac=1-(e.clientY-r.top-16*sy)/(178*sy); frac=Math.max(0,Math.min(1,frac)); state.dev.o2=Math.round(frac*40)/10; renderMachine(); renderDevCtrl(); });
   var vp=box.querySelector('.vaporizer'); if(vp) dragCtrl(vp,function(e){ var r=vp.getBoundingClientRect(); var a=Math.atan2(e.clientY-(r.top+r.height/2), e.clientX-(r.left+r.width/2))*180/Math.PI; if(a<0)a+=360; if(a<140)a+=360; a=Math.max(140,Math.min(400,a)); state.dev.iso=Math.round((a-140)/260*60)/10; renderMachine(); renderDevCtrl(); });
   $$('#mcAuto button').forEach(function(b){ b.onclick=function(){ state.dev.auto=(b.dataset.a==='1'); renderMachine(); renderDevCtrl(); }; });
-  $$('#mcModes button').forEach(function(b){ b.onclick=function(){ state.dev.mode=b.dataset.m; renderMachine(); renderDevCtrl(); }; });
+  $$('#mcModes button').forEach(function(b){ b.onclick=function(){ state.dev.mode=b.dataset.m; state.dev.auto=(state.dev.mode!=='manual'); renderMachine(); renderDevCtrl(); renderVentPanel(); }; });
   var fl=$('#mcFlush'); if(fl) fl.onclick=function(){ fl.classList.add('on'); setTimeout(function(){fl.classList.remove('on');},600); };
+}
+
+/* ================= Beatmungsmodi-Konfigurator (Gerät) ================= */
+function spSet(){ return (A.machine.settingsBySpecies&&A.machine.settingsBySpecies[state.sp])||{}; }
+function ventModeById(id){ return (A.machine.ventModes||[]).find(function(m){return m.id===id;}); }
+function curVentMode(){ return ventModeById(state.dev.mode)||ventModeById('vcv')||{params:[]}; }
+function vnum(v){ var m=String(v).replace(',','.').match(/-?\d+(\.\d+)?/); return m?parseFloat(m[0]):null; }
+/* empfohlener Startwert je Parameter für aktuellen Patienten */
+function recVent(key){
+  var s=spSet(), w=state.wt||0, rr=s.rr||[8,14], tv=s.tvMlKg||[10,15], pip=s.pip||15;
+  switch(key){
+    case 'vt': case 'vtref': { var v=Math.round(tv[0]*w); return v<1?1:v; }
+    case 'af': return Math.round((rr[0]+rr[1])/2);
+    case 'minaf': return rr[0];
+    case 'maxaf': return rr[1]+8;
+    case 'ie': return '1:2';
+    case 'tinsp': return (state.sp==='hund'||state.sp==='katze')?1.0:(state.sp==='reptil'?1.5:0.6);
+    case 'peep': return 'OFF';
+    case 'pinsp': return Math.max(6, Math.round(pip*0.66));
+    case 'psupp': return 5;
+    case 'trigger': return 'Auto';
+  }
+  return null;
+}
+function ventVal(key){ return (state.dev.vp && (key in state.dev.vp)) ? state.dev.vp[key] : recVent(key); }
+var VENT_STEP={ af:1, minaf:1, maxaf:1, tinsp:0.1, pinsp:1, psupp:1 };
+function vtStep(v){ v=vnum(v)||0; return v>=100?10:(v>=40?5:1); }
+function stepVent(key,dir){
+  var pd=(A.machine.ventParams||{})[key]||{}; state.dev.vp=state.dev.vp||{};
+  if(pd.options){ var opts=pd.options, cur=String(ventVal(key)), i=opts.indexOf(cur); if(i<0)i=opts.indexOf(String(recVent(key))); if(i<0)i=0; i=Math.max(0,Math.min(opts.length-1,i+dir)); state.dev.vp[key]=opts[i]; }
+  else { var st=(key==='vt'||key==='vtref')?vtStep(ventVal(key)):(VENT_STEP[key]||1); var v=(vnum(ventVal(key))||0)+dir*st; if(v<0)v=0; v=Math.round(v*10)/10; state.dev.vp[key]=v; }
+  renderVentPanel(); renderMachine(); renderDevCtrl(); if(mon.running) renderMonValues(); else ventCoach();
+}
+function resetVent(key){ if(state.dev.vp) delete state.dev.vp[key]; renderVentPanel(); }
+function ventScenarioList(){ return A.machine.ventScenarios||{}; }
+function activeVentSit(){ var sc=ventScenarioList(); if(state.ventSit && sc[state.ventSit]) return state.ventSit;
+  var byInc=Object.keys(sc).find(function(k){return sc[k].incident===state.incident;}); return byInc||'routine'; }
+function applyVentSit(id){
+  var sc=(ventScenarioList())[id]; if(!sc) return; state.dev.vp=state.dev.vp||{};
+  state.dev.mode=sc.mode; var m=ventModeById(sc.mode)||{params:[]}; function has(k){return (m.params||[]).indexOf(k)>=0;}
+  if(sc.ie && has('ie')){ var iem=String(sc.ie).match(/1:[0-9.]+/); state.dev.vp.ie=iem?iem[0]:'1:2'; }
+  if(sc.peep && has('peep')){ state.dev.vp.peep=/off|aus|minimal/i.test(sc.peep)?'OFF':String(Math.max(2, Math.round(vnum(sc.peep)||3))); }
+  if(sc.psupp && has('psupp')){ var ps=vnum(sc.psupp); if(ps!=null) state.dev.vp.psupp=ps; }
+  if(sc.tinsp && has('tinsp')){ var ti=vnum(sc.tinsp); if(ti!=null) state.dev.vp.tinsp=ti; }
+  if(sc.af && has('af')){ var afn=vnum(sc.af); if(afn!=null && afn>recVent('af')) state.dev.vp.af=Math.round(afn); }
+  /* Vt/Pinsp bleiben auf der patientengerechten Empfehlung (Szenario nennt Vt in ml/kg, kein Absolutwert). */
+  state.dev.auto=(sc.mode!=='manual');
+  renderVentPanel(); renderMachine(); renderDevCtrl(); if(mon.running) renderMonValues(); else ventCoach();
+  var el=$('#ventScreen'); if(el){ el.classList.add('vs-flash'); setTimeout(function(){el.classList.remove('vs-flash');},700); }
+}
+function ventScreenHTML(m){
+  var cells=(m.params||[]).map(function(k){ var pd=(A.machine.ventParams||{})[k]||{}; return '<div class="vs-cell"><div class="vs-k">'+(pd.label||k)+'</div><div class="vs-v">'+ventVal(k)+'<small>'+(pd.unit||'')+'</small></div></div>'; }).join('');
+  if(!cells) cells='<div class="vs-cell" style="flex:1"><div class="vs-v" style="font-size:15px">Handbeatmung – kein Automatik-Modus</div></div>';
+  return '<div class="vs-top"><span class="vs-mode">'+m.name+'</span><span class="vs-full">'+(m.full||'')+'</span><span class="vs-wt">'+sp().name+' '+fmt(state.wt)+' kg</span></div><div class="vs-row">'+cells+'</div>';
+}
+function renderVentReco(){
+  var box=$('#ventReco'); if(!box) return;
+  var scList=ventScenarioList(), sit=activeVentSit(), sc=scList[sit]||{};
+  var opts=Object.keys(scList).map(function(k){ return '<option value="'+k+'"'+(k===sit?' selected':'')+'>'+(scList[k].title||k)+'</option>'; }).join('');
+  var recMode=ventModeById(sc.mode)||{name:sc.mode||'—',tag:''};
+  var setBits=[];
+  ['vt','af','ie','peep','pinsp','tinsp','psupp','trigger'].forEach(function(k){ if(sc[k]){ var pd=(A.machine.ventParams||{})[k]||{}; setBits.push('<span class="vr-set">'+(pd.label||k)+' '+sc[k]+'</span>'); } });
+  if(sc.o2) setBits.push('<span class="vr-set">O₂ '+sc.o2+'</span>');
+  if(sc.iso) setBits.push('<span class="vr-set">Iso '+sc.iso+'</span>');
+  box.innerHTML='<div class="vent-reco"><div class="vr-head">🎯 Für diesen Fall empfohlen'+(sc.incident?' <span class="vr-inc">↔ aus Zwischenfall</span>':'')+'</div>'+
+    '<div class="vr-pick"><label>Situation</label><select id="ventSitSel">'+opts+'</select></div>'+
+    '<div class="vr-mode">Modus: <b>'+recMode.name+'</b> <span class="vr-mtag">'+(recMode.tag||'')+'</span></div>'+
+    (setBits.length?'<div class="vr-sets">'+setBits.join('')+'</div>':'')+
+    '<div class="vr-why">'+(sc.why||'')+'</div>'+
+    '<button class="vr-apply" id="ventApply">▶ Modus &amp; Startwerte übernehmen</button></div>';
+  var sel=$('#ventSitSel'); if(sel) sel.onchange=function(){ state.ventSit=sel.value; renderVentReco(); };
+  var ap=$('#ventApply'); if(ap) ap.onclick=function(){ applyVentSit(activeVentSit()); };
+}
+function renderVentPanel(){
+  var card=$('#ventCard'); if(!card) return; state.dev.vp=state.dev.vp||{};
+  var lbl=$('#ventPatLbl'); if(lbl) lbl.textContent=sp().name+' '+fmt(state.wt)+' kg';
+  var m=curVentMode();
+  var bar=$('#ventModeBar');
+  if(bar){ bar.innerHTML=(A.machine.ventModes||[]).map(function(mo){ return '<button class="vm-btn'+(mo.id===state.dev.mode?' active':'')+(mo.spontaneous?' spont':'')+'" data-vm="'+mo.id+'" data-vp-tip="'+(mo.full||mo.name)+' – '+(mo.whenToUse||'')+'"><b>'+mo.name+'</b><span>'+(mo.tag||'')+'</span></button>'; }).join('');
+    $$('#ventModeBar .vm-btn').forEach(function(b){ b.onclick=function(){ state.dev.mode=b.dataset.vm; state.dev.auto=(state.dev.mode!=='manual'); renderVentPanel(); renderMachine(); renderDevCtrl(); if(mon.running) renderMonValues(); else ventCoach(); }; }); }
+  var scr=$('#ventScreen'); if(scr) scr.innerHTML=ventScreenHTML(m);
+  var pr=$('#ventParamRow');
+  if(pr){
+    if(!(m.params||[]).length){ pr.innerHTML='<div class="vent-manual">🖐️ <b>Manuelle Beatmung</b> über den Handbeutel. APL offen halten (nur zum Hub kurz schließen), Druck am Manometer beobachten (Hund/Katze ≤ 15–20, Exoten niedriger), Frequenz art-typisch. Für Recruitment/Notfall/CPR.</div>'; }
+    else pr.innerHTML=m.params.map(function(k){ var pd=(A.machine.ventParams||{})[k]||{}, val=ventVal(k), rec=recVent(k), over=(k in state.dev.vp)&&String(val)!==String(rec);
+      return '<div class="vp-tile'+(over?' vp-over':'')+'" data-vp-tip="'+(pd.hint||'')+'"><div class="vp-k">'+(pd.label||k)+'</div>'+
+        '<div class="vp-ctl"><button class="vp-step" data-vk="'+k+'" data-d="-1">−</button><div class="vp-val">'+val+'<small>'+(pd.unit||'')+'</small></div><button class="vp-step" data-vk="'+k+'" data-d="1">+</button></div>'+
+        '<div class="vp-rec">'+(over?'<button class="vp-reset" data-rk="'+k+'">↺ Empf. '+rec+'</button>':'Empf. '+rec+' '+(pd.unit||'')+'</div>')+'</div>';
+    }).join('');
+    $$('#ventParamRow .vp-step').forEach(function(b){ b.onclick=function(){ stepVent(b.dataset.vk, parseInt(b.dataset.d,10)); }; });
+    $$('#ventParamRow .vp-reset').forEach(function(b){ b.onclick=function(){ resetVent(b.dataset.rk); }; });
+  }
+  var d=$('#ventModeDesc'); if(d) d.innerHTML='<b>'+m.name+' – '+(m.full||'')+'</b> · '+(m.desc||'')+' <span class="vp-when">Einsatz: '+(m.whenToUse||'')+'</span>';
+  renderVentReco();
 }
 
 /* ---------- tabs + wiring ---------- */
@@ -1247,13 +1412,13 @@ function renderInjection(){
 function switchTab(v){
   $$('#tabs .tab').forEach(function(t){ t.classList.toggle('active',t.dataset.view===v); });
   $$('.view').forEach(function(x){ x.classList.toggle('active',x.id===v); });
-  if(v==='geraet'){ monStart(); renderMachine(); renderDevCtrl(); } else { monStop(); }
+  if(v==='geraet'){ monStart(); renderMachine(); renderDevCtrl(); renderVentPanel(); } else { monStop(); }
   if(v==='settings') renderSettings();
   if(v==='bedienung') renderOperating();
 }
-function rerender(){ renderProto(); renderLaCalc(); renderDrugs(); renderSettings(); renderMachine(); renderDevCtrl(); renderInjection(); renderBreedProfile(); updateBreedBanner(); if(mon.running) renderMonValues(); }
+function rerender(){ renderProto(); renderLaCalc(); renderDrugs(); renderSettings(); renderMachine(); renderDevCtrl(); renderVentPanel(); renderInjection(); renderBreedProfile(); updateBreedBanner(); if(mon.running) renderMonValues(); }
 function boot(){
-  syncPatient(); renderIncidents(); renderFilters(); renderLaCalc(); renderDrugs(); renderInfo(); renderCapno(); renderEkgGallery(); renderInjection(); renderBreedProfile();
+  syncPatient(); renderIncidents(); renderFilters(); renderLaCalc(); renderDrugs(); renderInfo(); renderCapno(); renderEkgGallery(); renderInjection(); renderBreedProfile(); renderVentPanel();
   $$('#tabs .tab').forEach(function(t){ t.onclick=function(){ switchTab(t.dataset.view); }; });
   $('#wt').addEventListener('input',function(e){ var v=parseFloat(e.target.value); state.wt=(v>0?v:0); syncPatient(); rerender(); });
   $('#age').addEventListener('change',function(e){ state.age=e.target.value; renderSettings(); });
