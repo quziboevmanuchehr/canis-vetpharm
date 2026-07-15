@@ -118,6 +118,17 @@ html[data-theme="light"] .breed-in,html[data-theme="light"] .breed-clear{backgro
 html[data-theme="light"] .vp-tile,html[data-theme="light"] .vent-manual{background:rgba(255,255,255,.6)}
 html[data-theme="light"] .vr-pick select{background:#fff;color:#15202e}
 html[data-theme="light"] .vm-btn{background:rgba(255,255,255,.6)}
+/* Hellmodus-Lesbarkeit: aktiver Modus-Button war weiß auf hell → dunkel; fade Flächen kräftigen */
+html[data-theme="light"] .vm-btn.active{background:rgba(8,146,180,.16);color:#0b3b5c;box-shadow:0 0 0 1px #0892b4 inset}
+html[data-theme="light"] .vm-btn.active span{color:#0a6b8a}
+html[data-theme="light"] .vp-step{background:rgba(20,40,70,.07);color:#15202e}
+html[data-theme="light"] .vp-step:hover{background:rgba(8,146,180,.16);color:#0b3b5c}
+html[data-theme="light"] .vp-val,html[data-theme="light"] .vr-why,html[data-theme="light"] .vr-mode,html[data-theme="light"] .vent-manual{color:#26333f}
+html[data-theme="light"] .vr-set{background:rgba(255,255,255,.78);color:#26333f;border-color:rgba(20,40,70,.14)}
+html[data-theme="light"] .vp-reset{color:#0b6b83;background:rgba(8,146,180,.1)}
+html[data-theme="light"] .vent-reco{background:rgba(8,146,180,.09);border-color:rgba(8,146,180,.4)}
+html[data-theme="light"] .vr-head{color:#15202e}
+html[data-theme="light"] .vr-inc{color:#04121a}
 
 /* tabs */
 .tabs{position:sticky;top:132px;z-index:30;display:flex;gap:8px;overflow:auto;background:rgba(10,12,16,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:8px 14px}
@@ -304,13 +315,17 @@ html[data-theme="light"] .vm-btn{background:rgba(255,255,255,.6)}
 .dev-brand span{font:11px var(--mono);color:#7d93ad}
 .dev-brand .dm-btn{margin-left:auto;width:30px;height:30px;border-radius:7px;border:1px solid #3a4a5e;background:#e0a020;color:#1a1400;cursor:pointer;font-size:14px}
 .dev-brand .dm-btn.on{background:#39506a;color:#fff}
-.machine{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:14px;align-items:end;justify-items:center}
-.mc-item{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.machine{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;align-items:end;justify-items:center}
+.mc-item{display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center}
 .mc-label{font:11px var(--mono);text-transform:uppercase;letter-spacing:.6px;color:#9fb0c4}
-.flowmeter{height:172px;touch-action:none;cursor:ns-resize}
-.vaporizer{width:128px;height:128px;touch-action:none;cursor:grab}
+.flowmeter{height:210px;touch-action:none;cursor:ns-resize}
+.vaporizer{width:150px;height:150px;touch-action:none;cursor:grab}
 .vaporizer:active{cursor:grabbing}
-.mc-val{font:13px var(--mono);font-weight:800;color:var(--cyan);background:#0b1017;border:1px solid #2c3a4d;border-radius:7px;padding:3px 9px}
+.mc-val{font:14px var(--mono);font-weight:800;color:var(--cyan);background:#0b1017;border:1px solid #2c3a4d;border-radius:7px;padding:4px 10px;min-width:78px}
+.mc-fine{display:flex;align-items:center;gap:6px}
+.mc-step{width:34px;height:34px;border-radius:9px;border:1px solid #3a4a5e;background:#0d1420;color:var(--cyan);font-size:20px;font-weight:800;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;-webkit-tap-highlight-color:transparent}
+.mc-step:hover{background:rgba(0,216,255,.16);border-color:var(--cyan)}
+.mc-step:active{transform:scale(.92)}
 .mc-toggle{display:flex;border:1px solid #3a4a5e;border-radius:8px;overflow:hidden}
 .mc-toggle button{border:0;background:#0d1420;color:#aebccc;padding:7px 12px;cursor:pointer;font-size:12px}
 .mc-toggle button.active{background:var(--cyan);color:#04121a;font-weight:700}
@@ -518,7 +533,7 @@ html[data-theme="light"] .vm-btn{background:rgba(255,255,255,.6)}
   </section>
 </main>
 
-<script src="anaes-data.js?v=10"></script>
+<script src="anaes-data.js?v=11"></script>
 <script src="../shared/breed-genetics.js?v=1"></script>
 <script>
 /* ============ Canis Anæsthesia – Engine ============ */
@@ -1164,10 +1179,11 @@ function renderOperating(){
 }
 
 /* ---------- interaktives Gerät (Verdampfer drehen, Flowmeter schieben) ---------- */
+var O2MAX=5;
 function flowmeterSVG(o2){
-  var H=210, top=16, bot=H-16, frac=Math.max(0,Math.min(1,o2/4)), fy=bot-(bot-top)*frac;
-  var ticks=[0,0.5,1,2,3,4].map(function(v){var y=bot-(bot-top)*(v/4);return '<line x1="34" y1="'+y+'" x2="45" y2="'+y+'" stroke="#7d93ad" stroke-width="1.2"/><text x="31" y="'+(y+3.5)+'" font-size="10" fill="#aebccc" text-anchor="end">'+v+'</text>';}).join('');
-  return '<svg class="flowmeter" viewBox="0 0 66 '+H+'" data-ctrl="o2"><rect x="20" y="'+top+'" width="24" height="'+(bot-top)+'" rx="12" fill="#0b1420" stroke="#39506a"/>'+ticks+'<circle cx="32" cy="'+fy.toFixed(1)+'" r="9" fill="#ff4d4d" stroke="#fff" stroke-width="1.6" class="knob-float"/></svg>';
+  var H=210, top=16, bot=H-16, frac=Math.max(0,Math.min(1,o2/O2MAX)), fy=bot-(bot-top)*frac;
+  var ticks=[0,1,2,3,4,5].map(function(v){var y=bot-(bot-top)*(v/O2MAX);return '<line x1="32" y1="'+y+'" x2="46" y2="'+y+'" stroke="#7d93ad" stroke-width="1.3"/><text x="29" y="'+(y+3.8)+'" font-size="11" fill="#aebccc" text-anchor="end">'+v+'</text>';}).join('');
+  return '<svg class="flowmeter" viewBox="0 0 66 '+H+'" data-ctrl="o2"><rect x="18" y="'+top+'" width="28" height="'+(bot-top)+'" rx="14" fill="#0b1420" stroke="#39506a"/>'+ticks+'<circle cx="32" cy="'+fy.toFixed(1)+'" r="11" fill="#ff4d4d" stroke="#fff" stroke-width="1.8" class="knob-float"/></svg>';
 }
 function vaporizerSVG(iso){
   var cx=68,cy=68,R=54,a0=140,sweep=260, ang=a0+(Math.max(0,Math.min(6,iso))/6)*sweep, rad=ang*Math.PI/180;
@@ -1180,21 +1196,27 @@ function dragCtrl(el, onMove){
     function mv(ev){ onMove(ev); } function up(){ document.removeEventListener('pointermove',mv); document.removeEventListener('pointerup',up); }
     document.addEventListener('pointermove',mv); document.addEventListener('pointerup',up); });
 }
+function stepDev(field,delta){ var max=(field==='o2'?O2MAX:6); state.dev[field]=Math.max(0,Math.min(max,Math.round((state.dev[field]+delta)*10)/10)); renderMachine(); renderDevCtrl(); }
 function renderMachine(){
   var box=$('#machineControls'); if(!box) return;
   if(state.dev.auto==null) state.dev.auto=false;
   var modes=A.machine.ventModes||[];
   box.innerHTML =
-    '<div class="mc-item" data-vp-tip="Frischgas-/Sauerstofffluss (L/min). Schieben zum Einstellen. Bei Hypoxie/Notfall hoch + 100 % O₂.">'+'<div class="mc-label">O₂-Fluss</div>'+flowmeterSVG(state.dev.o2)+'<div class="mc-val">'+state.dev.o2.toFixed(1)+' L/min</div></div>'+
-    '<div class="mc-item" data-vp-tip="Isofluran-Verdampfer (Vol%). Rad drehen = Narkosetiefe. Zu hoher Wert ist die häufigste Hypotonie-/Bradykardie-Ursache → zuerst hier senken; bei CPR AUS.">'+'<div class="mc-label">Isofluran V60</div>'+vaporizerSVG(state.dev.iso)+'<div class="mc-val">'+state.dev.iso.toFixed(1)+' Vol%</div></div>'+
-    '<div class="mc-item" data-vp-tip="Beatmungsmodus: Manuell (Beutel) oder Auto/IPPV. VCV=Volumen, PCV=Druck (schonend, klein/Exoten), SIMV=Weaning.">'+'<div class="mc-label">Beatmung</div><div class="mc-toggle" id="mcAuto"><button class="'+(!state.dev.auto?'active':'')+'" data-a="0">Manuell</button><button class="'+(state.dev.auto?'active':'')+'" data-a="1">Auto</button></div>'+
-      '<div class="mc-modes" id="mcModes">'+modes.map(function(mo){return '<button data-m="'+mo.id+'" data-vp-tip="'+mo.name+'">'+mo.name.split(' ')[0]+'</button>';}).join('')+'</div></div>'+
-    '<div class="mc-item" data-vp-tip="O₂-Flush füllt schnell mit reinem O₂ (umgeht Verdampfer). APL-Ventil offen halten (2–3) – NIE geschlossen lassen (Barotrauma). Atemkalk-Farbe prüfen.">'+'<div class="mc-label">O₂-Flush / APL</div><button class="mc-flush" id="mcFlush">O₂+ Flush</button><div class="mc-hint">APL offen (2–3)<br>Absorber prüfen</div></div>';
-  var fm=box.querySelector('.flowmeter'); if(fm) dragCtrl(fm,function(e){ var r=fm.getBoundingClientRect(); var sy=r.height/210; var frac=1-(e.clientY-r.top-16*sy)/(178*sy); frac=Math.max(0,Math.min(1,frac)); state.dev.o2=Math.round(frac*40)/10; renderMachine(); renderDevCtrl(); });
-  var vp=box.querySelector('.vaporizer'); if(vp) dragCtrl(vp,function(e){ var r=vp.getBoundingClientRect(); var a=Math.atan2(e.clientY-(r.top+r.height/2), e.clientX-(r.left+r.width/2))*180/Math.PI; if(a<0)a+=360; if(a<140)a+=360; a=Math.max(140,Math.min(400,a)); state.dev.iso=Math.round((a-140)/260*60)/10; renderMachine(); renderDevCtrl(); });
+    '<div class="mc-item" data-vp-tip="Frischgas-/Sauerstofffluss (L/min). Schieben, Mausrad oder −/+ (0,1). Bei Hypoxie/Notfall hoch + 100 % O₂."><div class="mc-label">O₂-Fluss (0–5)</div>'+flowmeterSVG(state.dev.o2)+
+      '<div class="mc-fine"><button class="mc-step" data-step="o2:-" aria-label="O₂ minus 0,1">−</button><div class="mc-val">'+state.dev.o2.toFixed(1)+' L/min</div><button class="mc-step" data-step="o2:+" aria-label="O₂ plus 0,1">+</button></div></div>'+
+    '<div class="mc-item" data-vp-tip="Isofluran-Verdampfer (Vol%). Drehen, Mausrad oder −/+ (0,1). Zu hoch = häufigste Hypotonie-/Bradykardie-Ursache → zuerst senken; bei CPR AUS."><div class="mc-label">Isofluran V60</div>'+vaporizerSVG(state.dev.iso)+
+      '<div class="mc-fine"><button class="mc-step" data-step="iso:-" aria-label="Iso minus 0,1">−</button><div class="mc-val">'+state.dev.iso.toFixed(1)+' Vol%</div><button class="mc-step" data-step="iso:+" aria-label="Iso plus 0,1">+</button></div></div>'+
+    '<div class="mc-item" data-vp-tip="Beatmungsmodus. VCV/PCV = IPPV/CMV (kontrolliert); VS/VS+/PSV = spontan druckunterstützt; CPAP/PEEP = nur PEEP; SIMV = Weaning; Manuell = Beutel."><div class="mc-label">Beatmung</div><div class="mc-toggle" id="mcAuto"><button class="'+(!state.dev.auto?'active':'')+'" data-a="0">Manuell</button><button class="'+(state.dev.auto?'active':'')+'" data-a="1">Auto</button></div>'+
+      '<div class="mc-modes" id="mcModes">'+modes.map(function(mo){return '<button data-m="'+mo.id+'"'+(state.dev.mode===mo.id?' class="active"':'')+' data-vp-tip="'+mo.name+(mo.full?' – '+mo.full:'')+'">'+mo.name+'</button>';}).join('')+'</div></div>'+
+    '<div class="mc-item" data-vp-tip="O₂-Flush füllt schnell mit reinem O₂ (umgeht Verdampfer). APL offen halten (2–3) – NIE geschlossen lassen (Barotrauma). Atemkalk prüfen."><div class="mc-label">O₂-Flush / APL</div><button class="mc-flush" id="mcFlush">O₂+ Flush</button><div class="mc-hint">APL offen (2–3)<br>Absorber prüfen</div></div>';
+  var fm=box.querySelector('.flowmeter'); if(fm){ dragCtrl(fm,function(e){ var r=fm.getBoundingClientRect(); var sy=r.height/210; var frac=1-(e.clientY-r.top-16*sy)/(178*sy); frac=Math.max(0,Math.min(1,frac)); state.dev.o2=Math.round(frac*O2MAX*10)/10; renderMachine(); renderDevCtrl(); });
+    fm.addEventListener('wheel',function(e){ e.preventDefault(); stepDev('o2', e.deltaY<0?0.1:-0.1); },{passive:false}); }
+  var vp=box.querySelector('.vaporizer'); if(vp){ dragCtrl(vp,function(e){ var r=vp.getBoundingClientRect(); var a=Math.atan2(e.clientY-(r.top+r.height/2), e.clientX-(r.left+r.width/2))*180/Math.PI; if(a<0)a+=360; if(a<140)a+=360; a=Math.max(140,Math.min(400,a)); state.dev.iso=Math.round((a-140)/260*60)/10; renderMachine(); renderDevCtrl(); });
+    vp.addEventListener('wheel',function(e){ e.preventDefault(); stepDev('iso', e.deltaY<0?0.1:-0.1); },{passive:false}); }
+  $$('#machineControls .mc-step').forEach(function(b){ b.onclick=function(){ var p=b.dataset.step.split(':'); stepDev(p[0], p[1]==='+'?0.1:-0.1); }; });
   $$('#mcAuto button').forEach(function(b){ b.onclick=function(){ state.dev.auto=(b.dataset.a==='1'); renderMachine(); renderDevCtrl(); }; });
-  $$('#mcModes button').forEach(function(b){ b.onclick=function(){ state.dev.mode=b.dataset.m; state.dev.auto=(state.dev.mode!=='manual'); renderMachine(); renderDevCtrl(); renderVentPanel(); }; });
-  var fl=$('#mcFlush'); if(fl) fl.onclick=function(){ fl.classList.add('on'); setTimeout(function(){fl.classList.remove('on');},600); };
+  $$('#mcModes button').forEach(function(b){ b.onclick=function(){ state.dev.mode=b.dataset.m; state.dev.auto=(state.dev.mode!=='manual'&&state.dev.mode!=='cpap'); renderMachine(); renderDevCtrl(); if(typeof renderVentPanel==='function') renderVentPanel(); }; });
+  var fl=$('#mcFlush'); if(fl) fl.onclick=function(){ fl.classList.add('on'); setTimeout(function(){var f=$('#mcFlush'); if(f)f.classList.remove('on');},600); };
 }
 
 /* ================= Beatmungsmodi-Konfigurator (Gerät) ================= */
@@ -1759,27 +1781,44 @@ function initHeart(){
     x.fillStyle="rgba(8,10,14,.85)"; x.beginPath(); if(x.roundRect){x.roundRect(bx,26,bw,76,16);}else{x.rect(bx,26,bw,76);} x.fill();
     x.strokeStyle=color; x.lineWidth=3; x.stroke(); x.fillStyle="#fff"; x.textAlign="center"; x.textBaseline="middle"; x.fillText(text,256,64,452);
     lblSprite.material.map=new THREE.CanvasTexture(lblCanvas); lblSprite.material.needsUpdate=true; }
-  var loadEl=$("#heartLoad");
-  fetch("heart.bin").then(function(r){return r.arrayBuffer();}).then(function(buf){
-    if(loadEl) loadEl.remove();
-    var hdr=new Uint32Array(buf,0,2),V=hdr[0],I=hdr[1];
-    var pos=new Float32Array(buf,8,V*3), idx=new Uint32Array(buf,8+V*3*4,I);
-    var geo=new THREE.BufferGeometry(); geo.setAttribute("position",new THREE.BufferAttribute(pos,3));
-    geo.setIndex(new THREE.BufferAttribute(idx,1)); geo.computeVertexNormals();
-    var mesh=new THREE.Mesh(geo,mat); heart.add(mesh);
-    var mkGeo=new THREE.SphereGeometry(0.055,14,12), rc=new THREE.Raycaster();
+  var loadEl=$("#heartLoad"); if(loadEl) loadEl.remove();
+  /* Anatomisch geformtes Herz – prozedural aus Three.js Lathe-Geometrie (kein externes heart.bin nötig) */
+  try{
+    // Ventrikelmasse: Rotationsprofil (x=Radius, y=Höhe) → Herz-Ovoid mit spitzem Apex unten
+    var prof=[[0.02,-1.05],[0.16,-0.98],[0.34,-0.82],[0.50,-0.55],[0.60,-0.22],[0.655,0.08],[0.63,0.34],[0.55,0.56],[0.42,0.72],[0.26,0.84],[0.11,0.90],[0.0,0.92]];
+    var pts=prof.map(function(p){return new THREE.Vector2(p[0],p[1]);});
+    var vgeo=new THREE.LatheGeometry(pts,64); vgeo.computeVertexNormals();
+    var mesh=new THREE.Mesh(vgeo,mat); mesh.scale.set(1.06,1,0.84); heart.add(mesh);
+    // Sulcus coronarius (Herzkranzfurche) – dunklerer Ring in der Ventilebene
+    var groove=new THREE.Mesh(new THREE.TorusGeometry(0.60,0.045,12,52), new THREE.MeshStandardMaterial({color:0x7a2230,roughness:0.7,emissive:0x1a0208,emissiveIntensity:0.3}));
+    groove.rotation.x=Math.PI/2; groove.position.y=0.28; groove.scale.set(1.06,0.84,1); heart.add(groove);
+    // Vorhöfe: rechter (venös, bläulich) + linker Vorhof
+    var raMat=new THREE.MeshStandardMaterial({color:0x8f97c4,roughness:0.6,emissive:0x0b1226,emissiveIntensity:0.28});
+    var laMat=new THREE.MeshStandardMaterial({color:0xa4525f,roughness:0.6,emissive:0x260810,emissiveIntensity:0.3});
+    var ra=new THREE.Mesh(new THREE.SphereGeometry(0.35,28,22),raMat); ra.position.set(0.36,0.70,0.12); ra.scale.set(1,0.82,1); heart.add(ra);
+    var la=new THREE.Mesh(new THREE.SphereGeometry(0.31,28,22),laMat); la.position.set(-0.30,0.74,-0.08); la.scale.set(1,0.82,1); heart.add(la);
+    // Große Gefäße
+    var aoMat=new THREE.MeshStandardMaterial({color:0xd06a6a,roughness:0.5,emissive:0x2a0808,emissiveIntensity:0.22});
+    var pulMat=new THREE.MeshStandardMaterial({color:0x8aa0d0,roughness:0.5,emissive:0x0a1428,emissiveIntensity:0.22});
+    function tube(r1,r2,h,m){ return new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,22,1,false),m); }
+    var aorta=tube(0.15,0.17,0.78,aoMat); aorta.position.set(0.03,1.06,-0.12); aorta.rotation.z=-0.10; heart.add(aorta);
+    var arch=new THREE.Mesh(new THREE.TorusGeometry(0.22,0.145,14,30,Math.PI*0.95), aoMat); arch.position.set(-0.15,1.40,-0.12); arch.rotation.set(0,0,Math.PI*0.52); heart.add(arch);
+    var pulm=tube(0.15,0.17,0.66,pulMat); pulm.position.set(-0.17,1.00,0.18); pulm.rotation.set(-0.14,0,0.20); heart.add(pulm);
+    var cava=tube(0.10,0.11,0.42,pulMat); cava.position.set(0.52,0.96,0.14); cava.rotation.z=0.28; heart.add(cava);
+    // Anatomie-Marker auf die Ventrikeloberfläche projizieren (Fallback: feste Koordinaten)
+    scene.updateMatrixWorld(true);
+    var mkGeo=new THREE.SphereGeometry(0.058,16,14), rc=new THREE.Raycaster();
     ANAT.forEach(function(a){
       var col=new THREE.Color(a.c);
-      /* Marker auf die Oberfläche projizieren (radial von außen nach innen) */
       var dir=new THREE.Vector3(a.p[0],a.p[1],a.p[2]); if(dir.length()<0.001)dir.set(0,-1,0); dir.normalize();
       rc.set(dir.clone().multiplyScalar(3.6), dir.clone().negate());
       var hit=rc.intersectObject(mesh,false)[0];
-      var P=hit?hit.point.clone().addScaledVector(dir,0.03):new THREE.Vector3(a.p[0],a.p[1],a.p[2]);
+      var P=hit?hit.point.clone().addScaledVector(dir,0.04):new THREE.Vector3(a.p[0],a.p[1],a.p[2]);
       var halo=new THREE.Mesh(new THREE.SphereGeometry(0.1,12,10),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.22})); halo.position.copy(P); heart.add(halo);
       var mk=new THREE.Mesh(mkGeo,new THREE.MeshBasicMaterial({color:col})); mk.position.copy(P); mk.userData.id=a.id; mk.userData.halo=halo; heart.add(mk); heartMarkers.push(mk);
     });
     heart.scale.setScalar(0.72);
-  }).catch(function(){ if(loadEl) loadEl.textContent="Herzmodell (heart.bin) konnte nicht geladen werden."; });
+  }catch(err){ var le=$("#heartLoad"); if(le) le.textContent="3D-Herz konnte nicht erstellt werden."; }
   window.__heartFocus=function(id){ heartFocus=id;
     heartMarkers.forEach(function(mk){var on=mk.userData.id===id; mk.scale.setScalar(on?1.9:1); if(mk.userData.halo)mk.userData.halo.material.opacity=on?0.6:0.22;});
     var a=id?ANAT.find(function(x){return x.id===id;}):null;
