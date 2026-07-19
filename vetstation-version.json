@@ -1,0 +1,8 @@
+{
+  "app": "0.1.0",
+  "channel": "stable",
+  "notes": "Erste veröffentlichte App-Shell-Version. Klinische Daten aktualisieren sich ohnehin zur Laufzeit.",
+  "zipUrl": null,
+  "sha256": null,
+  "_hinweis": "VetStation In-App-Update-Manifest. Fuer ein neues App-Release: 'app' erhoehen (z.B. 0.2.0), 'notes' setzen, 'zipUrl' = URL der Build-Zip (VetStation-<version>.zip) und 'sha256' = Hex-Pruefsumme der Zip eintragen. Bei Git-Checkouts genuegt das Hochzaehlen von 'app' (git pull)."
+}

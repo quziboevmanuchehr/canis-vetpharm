@@ -1452,6 +1452,32 @@ function boot(){
   // deep link ?w=weight&s=species
   try{ var q=new URLSearchParams(location.search); if(q.get('kg')){state.wt=parseFloat(q.get('kg'))||state.wt; $('#wt').value=state.wt;} if(q.get('sp')&&A.species.find(function(s){return s.id===q.get('sp');})){state.sp=q.get('sp');} if(q.get('breed')&&VB&&VB.byId(q.get('breed'))){ state.breed=q.get('breed'); } syncPatient(); rerender(); }catch(e){}
 }
+
+/* ===== FERN-LIVE Seam: Werte vom Praxis-PC (VetStation) in die echte App einspeisen =====
+ * Wird vom additiven Fern-Ansicht-Modul (unten) aufgerufen. Setzt Spezies/Gewicht/Rasse,
+ * schaltet in den Ist-Modus, uebernimmt die Vitalwerte + Rhythmus + Verdampfer-Soll und
+ * rendert die App exakt so, als haette man die Werte selbst eingegeben. Read-only. */
+function applyLive(p){
+  if(!p) return;
+  if(p.species && p.species!==state.sp && A.species.find(function(s){return s.id===p.species;})){ state.sp=p.species; }
+  if(p.weightKg>0){ state.wt=p.weightKg; var wtEl=$('#wt'); if(wtEl) wtEl.value=state.wt; }
+  if(p.breed && VB && VB.byId && VB.byId(p.breed)){ state.breed=p.breed; }
+  state.monMode='ist';
+  if(!state.istVals) istInit();
+  var v=p.vitals||{}, iv=state.istVals;
+  function sv(k,val){ if(val!=null && !isNaN(val)) iv[k]=val; }
+  sv('hr',v.hr); sv('spo2',v.spo2); sv('etco2',v.etco2); sv('rr',(v.af!=null?v.af:v.rr)); sv('temp',v.temp); sv('sys',v.sys); sv('dia',v.dia);
+  var s=iv.sys||0, d=iv.dia||0;
+  iv.nibp=(s>0&&d>0)?Math.round(d+(s-d)/3):(v.map!=null?v.map:(iv.nibp||0));
+  if(v.ekgRhythm && (A.ekg||[]).some(function(r){return r.id===v.ekgRhythm;})){ state.rhythm=v.ekgRhythm; }
+  if(p.isoPct!=null && !isNaN(p.isoPct)){ state.dev.iso=p.isoPct; }
+  syncPatient();
+  if(typeof renderMonInputs==='function') renderMonInputs();
+  rerender();
+  if(mon.running) renderMonValues();
+}
+window.__anaesLive = { apply: applyLive, tab: switchTab, gotoIncident: (typeof gotoIncident==='function'?gotoIncident:null), ready:true };
+
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
 })();
 </script>
@@ -2050,6 +2076,168 @@ dock.addEventListener('click',function(e){
   else if(b.dataset.collapse){ dock.classList.add('collapsed'); fab.classList.add('show'); }
 });
 fab.addEventListener('click',function(){ dock.classList.remove('collapsed'); fab.classList.remove('show'); });
+})();
+</script>
+
+<!-- ================= FERN-LIVE Ansicht (Werte vom Praxis-PC über Firebase) ================= -->
+<style>
+#vetlive-bar{position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(180deg,rgba(8,12,20,.97),rgba(8,12,20,.9));
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(0,216,255,.35);
+  box-shadow:0 6px 24px rgba(0,0,0,.45);padding:7px 12px 8px;font:13px/1.35 var(--tech,Segoe UI,Inter,system-ui,sans-serif);color:#e8f2ff}
+html[data-theme="light"] #vetlive-bar{background:linear-gradient(180deg,rgba(240,248,255,.98),rgba(228,242,252,.94));color:#0b3b5c;border-bottom-color:rgba(0,140,190,.4);box-shadow:0 6px 22px rgba(20,60,90,.15)}
+.vetlive-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.vetlive-tag{font-weight:800;letter-spacing:.5px;color:#00d8ff;text-shadow:0 0 12px rgba(0,216,255,.5)}
+html[data-theme="light"] .vetlive-tag{color:#0587b8;text-shadow:none}
+.vetlive-station{font-weight:700}
+.vetlive-conn{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:2px 9px;border-radius:20px;border:1px solid var(--line,rgba(255,255,255,.15))}
+.vetlive-conn i{width:9px;height:9px;border-radius:50%;background:#ffc23c;box-shadow:0 0 8px currentColor;color:#ffc23c}
+.vetlive-conn.live i{background:#35d69a;color:#35d69a;animation:vetlivePulse 1.6s infinite}
+.vetlive-conn.stale i{background:#ff8c3c;color:#ff8c3c}
+.vetlive-conn.err i,.vetlive-conn.cfg i{background:#ff4d4d;color:#ff4d4d}
+@keyframes vetlivePulse{0%,100%{opacity:1}50%{opacity:.35}}
+.vetlive-ro{margin-left:auto;font-size:11.5px;color:var(--muted,#9aa8bb);display:inline-flex;align-items:center;gap:5px}
+.vetlive-pats{display:flex;gap:8px;flex-wrap:wrap;margin-top:7px}
+.vetlive-chip{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:120px;text-align:left;cursor:pointer;
+  border:1px solid var(--line,rgba(255,255,255,.15));border-left:4px solid var(--pc,#35d69a);border-radius:10px;padding:5px 10px;
+  background:rgba(255,255,255,.04);color:inherit;transition:.15s}
+html[data-theme="light"] .vetlive-chip{background:rgba(255,255,255,.65)}
+.vetlive-chip:hover{transform:translateY(-1px);border-color:var(--pc,#35d69a)}
+.vetlive-chip.sel{background:color-mix(in srgb,var(--pc,#35d69a) 18%,transparent);box-shadow:0 0 0 1px var(--pc,#35d69a) inset}
+.vetlive-chip .ic{font-size:15px;margin-right:5px}
+.vetlive-chip b{font-size:13px}
+.vetlive-chip .sub{font-size:10.5px;color:var(--muted,#9aa8bb)}
+.vetlive-chip .top{font-size:11px;font-weight:700;color:var(--pc,#35d69a);max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vetlive-wait{font-size:12px;color:var(--muted,#9aa8bb);padding:4px 0}
+.vetlive-cfg-hint{margin-top:6px;font-size:11.5px;color:#ffb84d;line-height:1.5}
+html.vetlive-on body{padding-top:96px}
+/* Read-only: Patienten-/Monitor-Eingaben kommen vom Praxis-PC (nicht fern editierbar) */
+html.vetlive-on #spChips,html.vetlive-on #wt,html.vetlive-on #age,html.vetlive-on #breedIn,html.vetlive-on #breedClear,html.vetlive-on #monInputs,html.vetlive-on #anMode{pointer-events:none;opacity:.92}
+html.vetlive-on #spChips::after{content:"🔒 vom Praxis-PC"}
+</style>
+<script>
+(function(){
+"use strict";
+/* Firebase Web-Konfiguration — ÖFFENTLICH (kein Geheimnis). Projekt vetpharma-f9d98.
+ * Aus Firebase-Konsole → Projekteinstellungen → Deine Apps → Web-App → SDK-Konfiguration.
+ * databaseURL MUSS die Realtime-Database-URL sein. Anleitung: VetStation/docs/FERN-LIVE.md */
+window.VETLIVE_CFG = window.VETLIVE_CFG || {
+  apiKey: "DEIN_FIREBASE_WEB_API_KEY",
+  authDomain: "vetpharma-f9d98.firebaseapp.com",
+  databaseURL: "https://vetpharma-f9d98-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "vetpharma-f9d98"
+};
+
+var params = new URLSearchParams(location.search);
+var code = params.get('live');
+var demo = params.get('livedemo');
+if(!code && !demo) return;               // Normalbetrieb: Modul bleibt inaktiv
+
+var A = window.ANAES || {species:[]};
+var SDK = "https://www.gstatic.com/firebasejs/10.12.0/";
+var patients = {}, meta = {}, sel = null, lastRecv = 0;
+var connState = demo ? 'live' : 'init', lastError = '', switched = false;
+
+var bar = document.createElement('div'); bar.id='vetlive-bar';
+document.body.appendChild(bar);
+document.documentElement.classList.add('vetlive-on');
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function sp(id){ return (A.species||[]).find(function(x){return x.id===id;}) || {icon:'🐾',name:id||'?'}; }
+function priColor(pri){ pri=pri||0; return pri>=8?'#ff4d4d':pri>=6?'#ff8c3c':pri>=4?'#ffc23c':'#35d69a'; }
+
+function whenReady(cb){
+  if(window.__anaesLive && window.__anaesLive.ready) return cb();
+  var t=setInterval(function(){ if(window.__anaesLive && window.__anaesLive.ready){ clearInterval(t); cb(); } },120);
+}
+function applySelected(){
+  if(!sel || !patients[sel]) return;
+  whenReady(function(){
+    try{ window.__anaesLive.apply(patients[sel]); }catch(e){}
+    if(!switched){ try{ window.__anaesLive.tab('geraet'); }catch(e){} switched=true; }
+  });
+}
+function handleSnapshot(val){
+  lastRecv = Date.now();
+  meta = (val && val.meta) || {};
+  patients = (val && val.patients) || {};
+  var keys = Object.keys(patients);
+  if(!keys.length){ sel=null; render(); return; }
+  if(!sel || !patients[sel]){
+    sel = keys.reduce(function(best,k){ return (patients[k].pri||0) > (patients[best].pri||0) ? k : best; }, keys[0]);
+  }
+  applySelected();
+  render();
+}
+function connBadge(){
+  var age = lastRecv ? Math.round((Date.now()-lastRecv)/1000) : null;
+  if(connState==='cfg') return {cls:'cfg', txt:'Firebase nicht konfiguriert'};
+  if(connState==='err') return {cls:'err', txt:'Verbindungsfehler'};
+  if(connState==='init'||connState==='conn') return {cls:'', txt:'verbinde…'};
+  if(age!=null && age>=8) return {cls:'stale', txt:'keine neuen Daten ('+age+'s)'};
+  return {cls:'live', txt:'live'+(age!=null?' · vor '+age+'s':'')};
+}
+function render(){
+  var keys = Object.keys(patients);
+  var cb = connBadge();
+  var chips = keys.map(function(k){
+    var p=patients[k], pri=p.pri||0, col=priColor(pri);
+    var top=(p.top&&p.top.title)?p.top.title:'stabil';
+    return '<button class="vetlive-chip'+(k===sel?' sel':'')+'" data-k="'+esc(k)+'" style="--pc:'+col+'">'+
+      '<span><span class="ic">'+sp(p.species).icon+'</span><b>'+esc(p.patientId||sp(p.species).name)+'</b></span>'+
+      '<span class="sub">'+esc(sp(p.species).name)+' · '+(p.weightKg||'?')+' kg'+(p.isoPct!=null?' · Iso '+p.isoPct+'%':'')+'</span>'+
+      '<span class="top">'+esc(top)+'</span></button>';
+  }).join('');
+  var cfgHint = connState==='cfg' ? '<div class="vetlive-cfg-hint">⚠ Die Firebase-Web-Konfiguration ist noch nicht eingetragen (window.VETLIVE_CFG). Siehe VetStation/docs/FERN-LIVE.md.</div>' : '';
+  var errHint = (connState==='err' && lastError) ? '<div class="vetlive-cfg-hint">'+esc(lastError)+'</div>' : '';
+  bar.innerHTML =
+    '<div class="vetlive-head">'+
+      '<span class="vetlive-tag">📡 FERN-ANSICHT</span>'+
+      '<span class="vetlive-station">'+esc(meta.station||(demo?'DEMO (lokal)':'VetStation'))+'</span>'+
+      '<span class="vetlive-conn '+cb.cls+'"><i></i>'+cb.txt+'</span>'+
+      '<span class="vetlive-ro">🔒 nur Ansicht · Werte &amp; Empfehlungen vom Praxis-PC</span>'+
+    '</div>'+
+    '<div class="vetlive-pats">'+(keys.length?chips:'<span class="vetlive-wait">warte auf Patienten vom Praxis-PC…</span>')+'</div>'+
+    cfgHint + errHint;
+  Array.prototype.forEach.call(bar.querySelectorAll('.vetlive-chip'), function(b){ b.onclick=function(){ sel=b.dataset.k; applySelected(); render(); }; });
+  try{ document.body.style.paddingTop = bar.offsetHeight+'px'; }catch(e){}
+}
+
+/* ---- Quelle: echtes Firebase (Standard) ODER lokale Demo (?livedemo=1) ---- */
+function connectFirebase(){
+  var cfg = window.VETLIVE_CFG || {};
+  if(!cfg.databaseURL || /DEIN_FIREBASE|EINTRAGEN/i.test(cfg.apiKey||'') || /DEIN_FIREBASE|EINTRAGEN/i.test(cfg.databaseURL||'')){
+    connState='cfg'; render(); return;
+  }
+  Promise.all([ import(SDK+"firebase-app.js"), import(SDK+"firebase-database.js") ]).then(function(m){
+    var app = m[0].initializeApp(cfg);
+    var D = m[1];
+    var db = D.getDatabase(app);
+    connState='conn'; render();
+    D.onValue(D.ref(db, 'live/'+code), function(snap){ connState='live'; handleSnapshot(snap.val()); },
+      function(err){ connState='err'; lastError=(err&&err.message)||String(err); render(); });
+  }).catch(function(e){ connState='err'; lastError='Firebase-SDK-Ladefehler: '+((e&&e.message)||e); render(); });
+}
+function startDemo(){
+  meta={station:'DEMO (lokal)'}; var t0=Date.now();
+  setInterval(function(){
+    var s=(Date.now()-t0)/1000, hr=Math.round(42+26*Math.sin(s/3.5)), brady=hr<48;
+    patients={
+      'sw_hund_22':{ patientId:'Bello (Demo)', species:'hund', weightKg:22, isoPct:2.6, ts:Date.now(),
+        vitals:{ hr:hr, spo2:Math.round(90+7*Math.sin(s/4)), etco2:Math.round(46+14*Math.sin(s/5)), af:9, sys:96, dia:54, map:68, temp:37.5, ekgRhythm:brady?'sinusbrady':'sinus', capnoShape:'normal' },
+        pri:brady?8:3, top:{sev:brady?4:2, title:brady?'Bradykardie bei zu tiefer Narkose':'Werte grenzwertig'} },
+      'sw_katze_4':{ patientId:'Minka (Demo)', species:'katze', weightKg:4.2, isoPct:1.5, ts:Date.now(),
+        vitals:{ hr:152, spo2:98, etco2:40, af:18, sys:120, dia:80, map:93, temp:38.4, ekgRhythm:'sinus', capnoShape:'normal' },
+        pri:1, top:{sev:1, title:'stabil'} }
+    };
+    connState='live'; lastRecv=Date.now();
+    if(!sel||!patients[sel]) sel='sw_hund_22';
+    applySelected(); render();
+  },1000);
+}
+
+render();
+setInterval(render, 1000);   // Alters-/Status-Anzeige aktuell halten
+if(demo) startDemo(); else connectFirebase();
 })();
 </script>
 </body>
