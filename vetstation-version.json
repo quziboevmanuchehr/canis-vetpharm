@@ -1,8 +1,8 @@
 {
-  "app": "0.1.0",
+  "app": "0.2.0",
   "channel": "stable",
-  "notes": "Erste veröffentlichte App-Shell-Version. Klinische Daten aktualisieren sich ohnehin zur Laufzeit.",
-  "zipUrl": null,
-  "sha256": null,
-  "_hinweis": "VetStation In-App-Update-Manifest. Fuer ein neues App-Release: 'app' erhoehen (z.B. 0.2.0), 'notes' setzen, 'zipUrl' = URL der Build-Zip (VetStation-<version>.zip) und 'sha256' = Hex-Pruefsumme der Zip eintragen. Bei Git-Checkouts genuegt das Hochzaehlen von 'app' (git pull)."
+  "notes": "Multi-Tierart-Sicherheitsfix (artspezifische Notfalldosen statt Hund-Dosis), Exoten-Notfalldosen (provisorisch), Koppel-UI + Geräte-Übersicht, klinische Rückmeldung & Datenqualität, Performance (fps-Limit, 3D im Kiosk aus), Fern-Live über Internet, In-App-Update, TESTMODUS-Warnbalken.",
+  "zipUrl": "https://quziboevmanuchehr.github.io/canis-vetpharm/vetstation/VetStation-0.2.0.zip",
+  "sha256": "6e9c85b588195bbd83036e621e89a8867405b1299dec2341684da2ea90773681",
+  "_hinweis": "VetStation In-App-Update-Manifest. Fuer ein neues App-Release: 'app' erhoehen, 'notes' setzen, neue Zip unter vetstation/ ablegen, 'zipUrl' + 'sha256' (Get-FileHash -Algorithm SHA256) eintragen. Die Station laedt die Zip, prueft die Pruefsumme, stagt sie und wendet sie beim naechsten Start an (launch-kiosk.ps1)."
 }
