@@ -1,8 +1,8 @@
 {
-  "app": "0.3.0",
+  "app": "0.4.0",
   "channel": "stable",
-  "notes": "Fern-Live über Internet scharf (Firebase vet-station, nah-Echtzeit), sichtbarer Fern-Live-Button, vollständigere Live-Werte (FiCO2/Paw/Alarme). Plus alles aus 0.2.0.",
-  "zipUrl": "https://quziboevmanuchehr.github.io/canis-vetpharm/vetstation/VetStation-0.3.0.zip",
-  "sha256": "22920c72b24a3dd58c50028c926b3d5c856cf4db1d8579e47c3b31d3b8dde320",
-  "_hinweis": "VetStation In-App-Update-Manifest. Fuer ein neues App-Release: 'app' erhoehen, 'notes' setzen, neue Zip unter vetstation/ ablegen, 'zipUrl' + 'sha256' (Get-FileHash -Algorithm SHA256) eintragen. Die Station laedt die Zip, prueft die Pruefsumme, stagt sie und wendet sie beim naechsten Start an (launch-kiosk.ps1)."
+  "notes": "Fern-Live OHNE Anmeldung (behebt CONFIGURATION_NOT_FOUND) – Firebase Realtime Database + Regeln genügen. PDF-Protokoll mit Patientenauswahl (Name/ID) und professionellem tiermedizinischem Layout. Plus alles aus 0.3.0.",
+  "zipUrl": "https://quziboevmanuchehr.github.io/canis-vetpharm/vetstation/VetStation-0.4.0.zip",
+  "sha256": "fcc07d770d78f909983a841270230f03f74dff20eff5088789d62ff831e47262",
+  "_hinweis": "VetStation In-App-Update-Manifest. Fuer ein neues App-Release: 'app' erhoehen, 'notes' setzen, neue Zip unter vetstation/ ablegen, 'zipUrl' + 'sha256' (Get-FileHash -Algorithm SHA256) eintragen. Die Station laedt die Zip, prueft die Pruefsumme, stagt sie und wendet sie beim naechsten Start an."
 }
