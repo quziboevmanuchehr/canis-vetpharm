@@ -1,8 +1,8 @@
 {
-  "app": "0.2.0",
+  "app": "0.3.0",
   "channel": "stable",
-  "notes": "Multi-Tierart-Sicherheitsfix (artspezifische Notfalldosen statt Hund-Dosis), Exoten-Notfalldosen (provisorisch), Koppel-UI + Geräte-Übersicht, klinische Rückmeldung & Datenqualität, Performance (fps-Limit, 3D im Kiosk aus), Fern-Live über Internet, In-App-Update, TESTMODUS-Warnbalken.",
-  "zipUrl": "https://quziboevmanuchehr.github.io/canis-vetpharm/vetstation/VetStation-0.2.0.zip",
-  "sha256": "6e9c85b588195bbd83036e621e89a8867405b1299dec2341684da2ea90773681",
+  "notes": "Fern-Live über Internet scharf (Firebase vet-station, nah-Echtzeit), sichtbarer Fern-Live-Button, vollständigere Live-Werte (FiCO2/Paw/Alarme). Plus alles aus 0.2.0.",
+  "zipUrl": "https://quziboevmanuchehr.github.io/canis-vetpharm/vetstation/VetStation-0.3.0.zip",
+  "sha256": "22920c72b24a3dd58c50028c926b3d5c856cf4db1d8579e47c3b31d3b8dde320",
   "_hinweis": "VetStation In-App-Update-Manifest. Fuer ein neues App-Release: 'app' erhoehen, 'notes' setzen, neue Zip unter vetstation/ ablegen, 'zipUrl' + 'sha256' (Get-FileHash -Algorithm SHA256) eintragen. Die Station laedt die Zip, prueft die Pruefsumme, stagt sie und wendet sie beim naechsten Start an (launch-kiosk.ps1)."
 }
