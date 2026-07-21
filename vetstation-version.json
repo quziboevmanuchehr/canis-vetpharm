@@ -1,8 +1,8 @@
 {
-  "app": "0.4.0",
+  "app": "0.5.0",
   "channel": "stable",
-  "notes": "Fern-Live OHNE Anmeldung (behebt CONFIGURATION_NOT_FOUND) – Firebase Realtime Database + Regeln genügen. PDF-Protokoll mit Patientenauswahl (Name/ID) und professionellem tiermedizinischem Layout. Plus alles aus 0.3.0.",
-  "zipUrl": "https://quziboevmanuchehr.github.io/canis-vetpharm/vetstation/VetStation-0.4.0.zip",
-  "sha256": "fcc07d770d78f909983a841270230f03f74dff20eff5088789d62ff831e47262",
+  "notes": "GERÄTEVERBINDUNG REPARIERT: (1) Port 3502 (Mindray 'Gateway-Kommunikationseinst.') wird jetzt mitgelauscht – vorher nur 4601/5000/24105/2575, dadurch kamen die Monitordaten an einem Port an, an dem niemand zuhörte. (2) Der Installer legt jetzt automatisch Windows-Firewall-Regeln für alle Geräte-Ports an (vorher blockierte Windows die Daten lautlos). (3) LAN-Einrichtung auf 192.168.0.x umgestellt, passend zum Ziel im Monitor (PC = 192.168.0.99). (4) 'npm run check' erkennt jetzt den häufigsten Fehler: Monitor steht auf DHCP und hat IP 0.0.0.0 – und nennt die exakten Menü-Schritte für die feste IP. Neuer Dauertest port3502-test (10 Prüfungen).",
+  "zipUrl": "https://quziboevmanuchehr.github.io/canis-vetpharm/vetstation/VetStation-0.5.0.zip",
+  "sha256": "6a5c018bf1f432ea41dda3841c275bce139df272a59b219ed32d099f084fb28e",
   "_hinweis": "VetStation In-App-Update-Manifest. Fuer ein neues App-Release: 'app' erhoehen, 'notes' setzen, neue Zip unter vetstation/ ablegen, 'zipUrl' + 'sha256' (Get-FileHash -Algorithm SHA256) eintragen. Die Station laedt die Zip, prueft die Pruefsumme, stagt sie und wendet sie beim naechsten Start an."
 }
