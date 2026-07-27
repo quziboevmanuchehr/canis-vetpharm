@@ -2530,6 +2530,12 @@ html[data-theme="light"] .vl-box input{background:#fff;border-color:rgba(0,0,0,.
   border:1px solid rgba(0,216,255,.5);background:linear-gradient(180deg,#0b2b3d,#08202e);color:#bdf0ff}
 .vl-btn.sek{background:transparent;border-color:rgba(255,255,255,.2);color:inherit;font-weight:600}
 .vl-btn:disabled{opacity:.5;cursor:default}
+/* Google gibt die Gestaltung seines Anmeldeknopfes vor: weißer Grund, dunkle Schrift, Originallogo. */
+.vl-btn.google{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:14px;
+  background:#fff;color:#3c4043;border:1px solid #dadce0;font-weight:600}
+.vl-btn.google:hover{background:#f7f8f8}
+.vl-trenn{display:flex;align-items:center;gap:10px;margin:0 0 14px;font-size:11.5px;color:#9aa8bb}
+.vl-trenn::before,.vl-trenn::after{content:"";flex:1;height:1px;background:currentColor;opacity:.25}
 .vl-msg{margin-top:12px;font-size:12.5px;min-height:18px;line-height:1.5}
 .vl-fuss{margin-top:14px;font-size:11.5px;color:#9aa8bb;line-height:1.6}
 
@@ -2997,6 +3003,10 @@ function zeigeAnmeldung(vorbelegt, hinweis){
       '<h2>📡 Fern-Zugang</h2>'+
       '<div class="vl-sub">Mit dem <b>Konto Ihrer Praxis</b> anmelden — demselben, das auf dem Praxis-PC in VetStation hinterlegt ist. '+
         'Sie sehen dann alle angeschlossenen Geräte und Patienten dieser Praxis live. Andere Praxen sehen Ihre Daten nicht.</div>'+
+      '<button class="vl-btn google" id="vlGoogle" type="button">'+
+        '<svg viewBox="0 0 18 18" width="17" height="17" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>'+
+        'Mit Google anmelden</button>'+
+      '<div class="vl-trenn"><span>oder mit E-Mail und Passwort</span></div>'+
       '<label>E-Mail der Praxis<input id="vlMail" type="email" autocomplete="username" value="'+esc(vorbelegt||'')+'" placeholder="praxis@beispiel.de"></label>'+
       '<label>Passwort<input id="vlPw" type="password" autocomplete="current-password" placeholder="••••••••"></label>'+
       '<div class="vl-btns">'+
@@ -3024,6 +3034,26 @@ function zeigeAnmeldung(vorbelegt, hinweis){
   bLogin.onclick=function(){ tun(false); };
   bNeu.onclick=function(){ tun(true); };
   pw.addEventListener('keydown', function(e){ if(e.key==='Enter') tun(false); });
+
+  /* Google: erst das Popup versuchen, bei Blockade auf Weiterleitung ausweichen.
+   * Das Popup ist angenehmer (die Seite bleibt stehen), wird aber auf manchen Geräten und in
+   * Kiosk-Browsern grundsätzlich unterdrückt — dann muss die Weiterleitung übernehmen, sonst
+   * steht der Nutzer vor einem Knopf, der scheinbar nichts tut. */
+  var bG=w.querySelector('#vlGoogle');
+  bG.onclick=function(){
+    sperre(true); bG.disabled=true; sag('öffne Google…');
+    var p=new FB.A.GoogleAuthProvider();
+    p.setCustomParameters({ prompt:'select_account' });
+    FB.A.signInWithPopup(FB.auth, p).catch(function(e){
+      var c=(e&&e.code)||'';
+      if(/popup-blocked|popup-closed-by-user|cancelled-popup-request|operation-not-supported/i.test(c)){
+        if(/popup-closed-by-user|cancelled-popup/i.test(c)){ sperre(false); bG.disabled=false; sag(''); return; }
+        try{ localStorage.setItem('vetlive_google_weiter','1'); }catch(x){}
+        return FB.A.signInWithRedirect(FB.auth, p);
+      }
+      sperre(false); bG.disabled=false; sag(anmeldeFehler(e), '#ff8ba0');
+    });
+  };
   (mail.value? pw : mail).focus();
 }
 function versteckeAnmeldung(){ var w=document.getElementById('vetlive-login'); if(w) w.remove(); }
@@ -3070,6 +3100,16 @@ function connectFirebase(){
     /* Die Uhr des Servers, gegen die gemessen wird. Kommt sofort und dann bei jeder Korrektur. */
     D.onValue(D.ref(FB.db, '.info/serverTimeOffset'), function(s){
       var v=s.val(); if(typeof v === 'number') uhrVersatz = v;
+    });
+
+    /* Ergebnis einer Google-Weiterleitung abholen. Die Anmeldung selbst schliesst das SDK auch
+     * ohne diesen Aufruf ab — aber nur hier werden FEHLER sichtbar. Ohne das stuende der Nutzer
+     * nach der Rueckkehr wieder vor dem Anmeldefenster, ohne zu erfahren warum. */
+    try{ localStorage.removeItem('vetlive_google_weiter'); }catch(e){}
+    Au.getRedirectResult(FB.auth).catch(function(e){
+      lastError = anmeldeFehler(e);
+      var m=document.getElementById('vlMsg');
+      if(m){ m.textContent = lastError; m.style.color='#ff8ba0'; }
     });
 
     /* Anmeldezustand fuehrt alles Weitere. Beim erneuten Oeffnen der Seite meldet Firebase das
@@ -3200,7 +3240,8 @@ function injectLauncher(){
  * ohne erst einen Knopf zu suchen. Firebase merkt sich die Anmeldung im Browser; das Merkmal
  * dafuer liegt in localStorage und wird hier nur als Hinweis benutzt.
  */
-if(demo || letzteMail()) activate(); else injectLauncher();
+function googleWeiterleitungOffen(){ try{ return localStorage.getItem('vetlive_google_weiter')==='1'; }catch(e){ return false; } }
+if(demo || letzteMail() || googleWeiterleitungOffen()) activate(); else injectLauncher();
 })();
 </script>
 </body>
