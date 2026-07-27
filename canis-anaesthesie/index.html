@@ -130,6 +130,70 @@ html[data-theme="light"] .vent-reco{background:rgba(8,146,180,.09);border-color:
 html[data-theme="light"] .vr-head{color:#15202e}
 html[data-theme="light"] .vr-inc{color:#04121a}
 
+/* ===== Beatmungsmodus-Live-Berater: leuchtende / rot leuchtende Buttons ===== */
+.vm-btn{position:relative;overflow:visible}
+.vm-btn.vm-rec::before,.vm-btn.vm-avoid::before,.vm-btn.vm-caution::before,.vm-btn.vm-good::before{
+  content:"";position:absolute;inset:-3px;border-radius:13px;pointer-events:none;z-index:-1}
+.vm-btn.vm-rec::before{border:2px solid var(--green);box-shadow:0 0 15px rgba(34,217,141,.65);animation:vmRecPulse 1.6s ease-in-out infinite}
+.vm-btn.vm-good::before{border:1.5px solid rgba(34,217,141,.55);box-shadow:0 0 8px rgba(34,217,141,.3)}
+.vm-btn.vm-caution::before{border:1.5px solid var(--amber);box-shadow:0 0 8px rgba(255,209,102,.35)}
+.vm-btn.vm-avoid::before{border:2px solid var(--red);box-shadow:0 0 15px rgba(255,77,77,.6);animation:vmAvoidPulse 1.5s ease-in-out infinite}
+@keyframes vmRecPulse{0%,100%{box-shadow:0 0 8px rgba(34,217,141,.4)}50%{box-shadow:0 0 22px rgba(34,217,141,.85)}}
+@keyframes vmAvoidPulse{0%,100%{box-shadow:0 0 7px rgba(255,77,77,.35)}50%{box-shadow:0 0 22px rgba(255,77,77,.9)}}
+@media(prefers-reduced-motion:reduce){.vm-btn.vm-rec::before,.vm-btn.vm-avoid::before{animation:none}}
+.vm-badge{position:absolute;top:-8px;right:-7px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:800 11px var(--font);box-shadow:0 1px 4px rgba(0,0,0,.4);z-index:1}
+.vm-badge.b-rec{background:var(--green);color:#04121a}
+.vm-badge.b-avoid{background:var(--red);color:#fff}
+.vm-badge.b-caution{background:var(--amber);color:#3a2a00}
+/* Live-Spiegelung vom echten Veta 5 + Live-Berater im Einstellungen-Tab */
+.vm-live{display:inline-flex;align-items:center;gap:4px;font:700 11px var(--font);color:#04121a;background:var(--cyan);border-radius:10px;padding:2px 8px;vertical-align:middle;box-shadow:0 0 10px rgba(0,216,255,.5);animation:vmLive 1.8s ease-in-out infinite}
+@keyframes vmLive{0%,100%{box-shadow:0 0 6px rgba(0,216,255,.35)}50%{box-shadow:0 0 16px rgba(0,216,255,.8)}}
+@media(prefers-reduced-motion:reduce){.vm-live{animation:none}}
+.vm-head{margin:6px 0 2px}
+.vm-head .vm-live{margin-bottom:6px}
+.vm-sit{font-size:13px;line-height:1.5}.vm-sit b{color:var(--text)}
+.vm-rec-line{font-size:13px;line-height:1.5;margin-top:2px}.vm-rec-line b{color:var(--green);font-size:14.5px}
+.vm-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin-top:10px}
+.dose-card.vd-rec{border-color:rgba(34,217,141,.5);box-shadow:0 0 0 1px rgba(34,217,141,.25) inset}
+.dose-card.vd-avoid{border-color:rgba(255,77,77,.5);box-shadow:0 0 0 1px rgba(255,77,77,.22) inset}
+.dose-card.vd-caution{border-color:rgba(255,209,102,.45)}
+html[data-theme="light"] .vm-live{color:#04121a;background:#0892b4}
+/* AF-Quelle am Monitor-Kachelfuß: Kapnograph (grün, sicherer) vs Monitor (neutral) */
+.af-src{display:inline-block;font:700 9.5px var(--font);border-radius:8px;padding:1px 5px;margin-left:5px;vertical-align:middle;letter-spacing:.2px;white-space:nowrap}
+.af-src.af-kapnograph{color:#04121a;background:var(--green)}
+.af-src.af-monitor{color:var(--muted);background:rgba(255,255,255,.1);border:1px solid var(--line)}
+html[data-theme="light"] .af-src.af-monitor{background:rgba(20,40,70,.06)}
+/* „als gegeben"-Chip + Wirk-Etikett im Medikamenten-Tab */
+.give-chip.on{border-color:var(--green);color:#9bffcf;background:rgba(0,255,135,.12)}
+.fx-tag{display:inline-flex;align-items:center;font:600 10.5px var(--font);color:var(--muted);border:1px dashed var(--line);border-radius:10px;padding:2px 7px}
+html[data-theme="light"] .give-chip.on{color:#0a7a45;background:rgba(0,180,90,.12)}
+/* Live-Empfehlungs-Panel über der Modusleiste */
+.vent-advice{border:1px solid rgba(34,217,141,.35);background:rgba(34,217,141,.06);border-radius:11px;padding:10px 12px;margin:2px 0 4px}
+.va-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-weight:800;font-size:13px}
+.va-legend{margin-left:auto;font:10.5px var(--mono);color:var(--muted);font-weight:400;display:flex;gap:9px;flex-wrap:wrap}
+.va-legend span{white-space:nowrap}
+.va-primary{margin-top:7px;font-size:13.5px;line-height:1.5}
+.va-primary b{color:var(--green);font-size:15px}
+.va-list{margin-top:7px;display:grid;gap:5px}
+.va-item{display:flex;gap:7px;align-items:flex-start;font-size:12.5px;line-height:1.45;border-left:3px solid var(--vac,var(--line));padding:3px 0 3px 9px}
+.va-item.va-avoid{--vac:var(--red)}
+.va-item.va-caution{--vac:var(--amber)}
+.va-item.va-rec{--vac:var(--green)}
+.va-item .vi-m{font-weight:800;flex:0 0 auto;min-width:52px}
+.va-sig{margin-top:8px;padding-top:7px;border-top:1px dashed var(--line);display:grid;gap:4px;font-size:12px;line-height:1.45;color:var(--text)}
+.va-sig .vs-h{font:10.5px var(--mono);text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+.va-srow{padding:1px 0}
+.va-link{cursor:pointer;border-radius:6px;padding:2px 6px;margin:-1px -6px;display:flex;gap:8px;align-items:baseline;justify-content:space-between}
+.va-link:hover{background:rgba(255,255,255,.07)}
+.va-go{font:10.5px var(--mono);color:var(--amber);white-space:nowrap;flex:0 0 auto}
+.va-apply{margin-left:8px;border:1px solid var(--green);background:rgba(34,217,141,.14);color:var(--green);border-radius:8px;padding:2px 10px;font-size:11.5px;font-weight:700;cursor:pointer;vertical-align:middle}
+.va-apply:hover{background:rgba(34,217,141,.24)}
+html[data-theme="light"] .vent-advice{background:rgba(18,148,96,.08);border-color:rgba(18,148,96,.35)}
+html[data-theme="light"] .va-primary b{color:#0b7a4d}
+html[data-theme="light"] .va-apply{color:#0b7a4d;border-color:#0b7a4d}
+html[data-theme="light"] .va-link:hover{background:rgba(20,40,70,.07)}
+html[data-theme="light"] .vm-btn.vm-good::before{border-color:rgba(18,148,96,.5)}
+
 /* tabs */
 .tabs{position:sticky;top:132px;z-index:30;display:flex;gap:8px;overflow:auto;background:rgba(10,12,16,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:8px 14px}
 .tab{flex:0 0 auto;border:1px solid var(--line);background:rgba(255,255,255,.035);color:var(--muted);height:38px;border-radius:9px;padding:0 14px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:7px}
@@ -244,6 +308,11 @@ html[data-theme="light"] .vr-inc{color:#04121a}
 .mon-alarm{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(255,45,45,.92);color:#fff;font-weight:800;font-size:13px;letter-spacing:.5px;padding:6px 14px;border-radius:8px;display:none;box-shadow:0 0 20px rgba(255,45,45,.6);animation:monblink 1s steps(1) infinite}
 .mon-alarm.on{display:block}
 @keyframes monblink{50%{opacity:.35}}
+.dev-alarms{display:flex;flex-direction:column;gap:4px;margin-top:10px}
+.dev-alarms:empty{display:none}
+.dev-al{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;line-height:1.25;padding:6px 11px;border-radius:8px;letter-spacing:.2px}
+.dev-al.phys{background:rgba(255,45,45,.14);color:#ff9a9a;border-left:3px solid var(--red);animation:monblink 1.1s steps(1) infinite}
+.dev-al.tech{background:rgba(255,194,60,.12);color:#ffd27a;border-left:3px solid #ffc23c}
 .mon-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:10px}
 .mon-tile{border:1px solid rgba(120,150,180,.22);background:#0b1017;border-radius:10px;padding:9px 11px;cursor:pointer;transition:.15s}
 .mon-tile:hover{border-color:var(--cyan)}
@@ -449,6 +518,7 @@ html[data-theme="light"] .vr-inc{color:#04121a}
             <div class="dev-brand"><b>mindray</b><span>uMEC12 Vet</span><button class="dm-btn" id="dmSilence" title="Alarm stummschalten">🔕</button></div>
             <div class="mon-screen"><canvas id="monCanvas"></canvas><div class="mon-alarm" id="monAlarm"></div></div>
             <div class="mon-tiles" id="monTiles"></div>
+            <div class="dev-alarms" id="devAlarms" title="Alle aktiven Alarme des Monitors"></div>
           </div>
           <div class="dev-unit dev-mach">
             <div class="dev-brand"><b>mindray</b><span>Veta 5 Plus</span></div>
@@ -471,6 +541,7 @@ html[data-theme="light"] .vr-inc{color:#04121a}
       <h3>🫁 Beatmungsmodi &amp; Einstellungen · <span id="ventPatLbl">…</span></h3>
       <p class="muted" style="font-size:12px;margin:-4px 0 10px">Modus wählen wie am Gerät – die Parameter sind für den Patienten <b>vorbelegt</b> und mit −/+ einstellbar. Der Kasten „Für diesen Fall empfohlen" richtet sich nach gewähltem Zwischenfall/Situation und lässt sich mit einem Klick übernehmen.</p>
       <div id="ventReco"></div>
+      <div class="vent-advice" id="ventAdvice"></div>
       <div class="vent-modebar" id="ventModeBar"></div>
       <div class="vent-screen" id="ventScreen"></div>
       <div class="vent-params" id="ventParamRow"></div>
@@ -542,7 +613,7 @@ html[data-theme="light"] .vr-inc{color:#04121a}
 var A = window.ANAES || {drugs:[],incidents:[],machine:{controls:[],ventModes:[]},fluids:[],species:[],vitals:{},info:"",sources:[]};
 var $ = function(s,r){return (r||document).querySelector(s);};
 var $$ = function(s,r){return Array.from((r||document).querySelectorAll(s));};
-var state = { sp: (A.species[0]&&A.species[0].id)||'hund', wt: 10, age:'adult', breed:null, incident:null, dfilter:'Alle', q:'', monMode:'ist', istVals:null, rhythm:'sinus', adrHigh:false, anMode:'gas', injInduction:null, injTopups:[], dev:{o2:1, iso:2, mode:'vcv', auto:false, vp:{}}, ventSit:null };
+var state = { sp: (A.species[0]&&A.species[0].id)||'hund', wt: 10, age:'adult', breed:null, incident:null, dfilter:'Alle', q:'', monMode:'ist', istVals:null, rhythm:'sinus', adrHigh:false, anMode:'gas', injInduction:null, injTopups:[], givenDrugs:[], dev:{o2:1, iso:2, mode:'vcv', auto:false, vp:{}}, ventSit:null };
 
 /* ---------- helpers: dose math ---------- */
 function parseConc(s){ if(!s) return null; var m = String(s).replace(',','.').match(/([0-9]*\.?[0-9]+)\s*(mg|mcg|µg|g|iu|u|units?)\s*\/\s*ml/i); if(!m) return null; var v=parseFloat(m[1]); var u=m[2].toLowerCase(); if(u==='g') v=v*1000; if(u==='mcg'||u==='µg') v=v/1000; return v; /* mg per mL, bzw. U/mL für Einheiten-Präparate (vasopressin/insulin) */ }
@@ -609,6 +680,7 @@ function commitBreed(txt){
   state.breed = txt ? (function(){ var b=VB.resolve(txt, state.sp); return b?b.id:null; })() : null;
   renderBreedField(); updateBreedBanner(); renderBreedProfile(); propagateLinks();
   renderProto(); renderDrugs(); renderInjection();
+  renderVentPanel(); /* Rasse (z. B. BOAS) in die Beatmungsmodus-Empfehlung einbeziehen */
 }
 function updateBreedBanner(){
   var el=$('#breedBanner'); if(!el||!VB) return;
@@ -739,10 +811,27 @@ function renderDrugs(){
     var body;
     if(!spd||spd.low==null){ body='<div class="na">Für '+sp().name+' keine Standard-Dosis hinterlegt / nicht empfohlen'+(spd&&spd.caution?' – '+spd.caution:'')+'.</div>'; }
     else { body=doseLine({id:d.id, low:spd.low, high:spd.high, unit:spd.unit, route:spd.route, conc:spd.conc, note:(spd.indication?('<b>'+spd.indication+'</b>. '):'')+(spd.notes||'')}); }
-    return '<div class="dose-card" style="border-color:var(--line)"><div class="dose-top"><span class="dose-name">'+(d.icon||'💊')+' '+d.name+'</span><span class="dose-cls">'+d.cls+'</span></div>'+
+    var giv=(state.givenDrugs||[]).indexOf(d.id)>=0;
+    var fx=(DRUGFX[d.id]||[]);
+    var fxTag=fx.length?'<span class="fx-tag" data-vp-tip="Erwartete Folgen fürs Monitoring/Beatmung">'+drugFxLabel(fx)+'</span>':'';
+    var giveBtn='<button class="chip give-chip'+(giv?' on':'')+'" data-give-drug="'+d.id+'" data-vp-tip="Als am Tier verabreicht markieren – Berater, Coach &amp; Analyse rechnen die Folgen mit">'+(giv?'✓ gegeben':'○ als gegeben')+'</button>';
+    return '<div class="dose-card'+(giv?' drug-given':'')+'" style="border-color:'+(giv?'var(--green)':'var(--line)')+(giv?';box-shadow:0 0 0 1px var(--green) inset':'')+'"><div class="dose-top"><span class="dose-name">'+(d.icon||'💊')+' '+d.name+'</span><span class="dose-cls">'+d.cls+'</span></div>'+
       '<div style="margin-top:8px">'+body+'</div>'+nsaidBox(d)+
+      '<div class="chips" style="margin-top:8px">'+giveBtn+fxTag+'</div>'+
       (d.sources&&d.sources.length?'<div class="src">Quelle: '+d.sources.join('; ')+'</div>':'')+'</div>';
   }).join('') : '<p class="muted">Keine Treffer.</p>';
+  $$('#drugList [data-give-drug]').forEach(function(b){ b.onclick=function(){ var id=b.dataset.giveDrug; var ix=state.givenDrugs.indexOf(id); if(ix>=0) state.givenDrugs.splice(ix,1); else state.givenDrugs.push(id);
+    renderDrugs(); renderInjection(); if(mon.running) renderMonValues(); else { ventCoach(); renderVentPanel(); } }; });
+}
+/* Kurzes Folgen-Etikett fürs Medikament (aus DRUGFX-Tags) */
+function drugFxLabel(fx){
+  var L=[]; if(fx.indexOf('respDep')>=0) L.push('Atemdepression'); else if(fx.indexOf('respDepMild')>=0) L.push('Atmung ↓ (mild)');
+  if(fx.indexOf('brady')>=0) L.push('HF ↓'); if(fx.indexOf('tachy')>=0) L.push('HF ↑');
+  if(fx.indexOf('hypotensive')>=0) L.push('BD ↓'); if(fx.indexOf('hypertensive')>=0||fx.indexOf('hypertensiveInit')>=0) L.push('BD ↑');
+  if(fx.indexOf('anticholinergic')>=0) L.push('Anticholinergikum'); if(fx.indexOf('vasopressor')>=0||fx.indexOf('inotrope')>=0) L.push('Kreislaufstütze');
+  if(fx.indexOf('antiarrhythmic')>=0) L.push('Antiarrhythmikum');
+  if(fx.indexOf('revOpioid')>=0||fx.indexOf('revAlpha2')>=0||fx.indexOf('revBenzo')>=0) L.push('Antagonist');
+  return '⚕ '+(L.join(' · ')||'Wirkung');
 }
 
 /* §7b aktueller MAP aus dem Ist-Monitor (falls eingegeben) für NSAID-Sperre */
@@ -802,9 +891,35 @@ function renderCtrls(){
   $$('#ctrlList .ctrl-head').forEach(function(h){ h.onclick=function(){ h.parentElement.classList.toggle('open'); }; });
 }
 function renderVentModes(){
-  $('#ventModes').innerHTML=(A.machine.ventModes||[]).map(function(m){
-    return '<div class="dose-card"><div class="dose-top"><span class="dose-name">'+m.name+'</span><span class="dose-cls">'+(m.tag||'')+'</span></div><div class="dose-meta">'+m.desc+'</div></div>';
+  var box=$('#ventModes'); if(!box) return;
+  /* Perf: nur zeichnen, wenn der Einstellungen-Tab sichtbar ist. renderSettings() ruft uns beim
+     Öffnen auf (dann aktiv); der Live-Takt (renderMonValues) läuft auf dem Gerät-Tab und würde
+     sonst diesen unsichtbaren Abschnitt 2×/s neu bauen. */
+  var sv=document.getElementById('settings'); if(sv && !sv.classList.contains('active')) return;
+  var modes=(A.machine.ventModes||[]);
+  var adv=ventAdvice(), r=monResolve();
+  var sit=activeVentSit(), sc=(ventScenarioList())[sit]||{};
+  var pm=ventModeById(adv.primary)||{name:'—'};
+  /* Live-Kopf: Kapnograf/EtCO₂ + SpO₂ + MAP + aktueller Fall + empfohlener Modus */
+  var live=state.dev.live?'<span class="vm-live" title="Zeigt die am echten Veta 5 eingestellten Werte">🔗 live vom Veta 5 gespiegelt</span>':'';
+  var vals='EtCO₂ '+(r.etco2>0?fmt(r.etco2)+' mmHg':'–')+' · SpO₂ '+(r.spo2>0?fmt(r.spo2)+' %':'–')+' · MAP '+(r.nibp>0?fmt(r.nibp):'–')+(r.capno&&r.capno!=='normal'?' · Kapno '+r.capno:'');
+  var head='<div class="vm-head">'+live+
+    '<div class="vm-sit">Fall: <b>'+(sc.title||sit)+'</b> <span class="muted">('+vals+')</span></div>'+
+    '<div class="vm-rec-line">🟢 Empfohlen jetzt: <b>'+pm.name+'</b>'+(adv.why[adv.primary]?' <span class="muted">– '+adv.why[adv.primary]+'</span>':'')+'</div></div>';
+  /* Leuchtende Modus-Buttons (grün = empfohlen, rot = vermeiden) – identisch zum Gerät-Tab */
+  var bar='<div class="vent-modebar">'+modes.map(function(mo){
+    var lvl=adv.level[mo.id], why=adv.why[mo.id]||'', glow=lvl?(' vm-'+lvl):'';
+    var badge= lvl==='rec'?'<span class="vm-badge b-rec">✓</span>': lvl==='avoid'?'<span class="vm-badge b-avoid">✕</span>': lvl==='caution'?'<span class="vm-badge b-caution">!</span>':'';
+    var tip=((mo.full||mo.name)+(why?('  |  '+(lvl==='rec'?'✅ Empfohlen: ':lvl==='avoid'?'⛔ Vermeiden: ':lvl==='caution'?'⚠️ Vorsicht: ':'')+why):'')).replace(/"/g,'&quot;');
+    return '<button class="vm-btn'+(mo.id===state.dev.mode?' active':'')+glow+'" data-vm="'+mo.id+'" data-vp-tip="'+tip+'"><b>'+mo.name+'</b><span>'+(mo.tag||'')+'</span>'+badge+'</button>';
+  }).join('')+'</div>';
+  /* Kurzbeschreibung je Modus, farblich an die Empfehlung angelehnt */
+  var cards=modes.map(function(m){
+    var lvl=adv.level[m.id], cls=lvl?(' vd-'+lvl):'';
+    return '<div class="dose-card'+cls+'"><div class="dose-top"><span class="dose-name">'+m.name+'</span><span class="dose-cls">'+(m.tag||'')+'</span></div><div class="dose-meta">'+m.desc+'</div></div>';
   }).join('');
+  box.innerHTML=head+bar+'<div class="vm-cards">'+cards+'</div>';
+  $$('#ventModes .vm-btn').forEach(function(b){ b.onclick=function(){ state.dev.live=false; state.dev.mode=b.dataset.vm; state.dev.auto=(state.dev.mode!=='manual'); renderVentModes(); if(typeof renderVentPanel==='function') renderVentPanel(); if(typeof renderMachine==='function') renderMachine(); if(typeof renderDevCtrl==='function') renderDevCtrl(); }; });
 }
 
 /* ---------- settings (computed) ---------- */
@@ -890,7 +1005,10 @@ function renderMonValues(){
     var disp=(val===0)?'– –':fmt(val);
     if(p.id==='nibp'){ ab='NIBP'; nm='Blutdruck SYS/DIA (MAP)';
       disp=(r.sys>0&&r.dia>0)?(fmt(r.sys)+'/'+fmt(r.dia)+' <small style="font-size:14px;color:var(--muted)">('+fmt(r.nibp)+')</small>'):'– –'; }
-    return '<div class="mon-tile'+(isAl?' alarm':'')+'" data-p="'+p.id+'" style="--mtc:'+(isAl?'#ff7a7a':p.color)+'"><div class="mt-ab"><span>'+ab+'</span><span>'+p.unit+'</span></div><div class="mt-v">'+disp+'</div><div class="mt-u">'+nm+'</div></div>';
+    // AF-Quelle anzeigen: Kapnograph (genauer, aus CO₂-Kurve) hat Vorrang vor dem Monitor.
+    var srcTag='';
+    if(p.id==='rr' && state._afSource){ srcTag=' <span class="af-src af-'+state._afSource+'" title="'+(state._afSource==='kapnograph'?'Atemfrequenz vom Kapnograph/Narkosegerät – aus der CO₂-Kurve gezählt (genauer, sicherer)':'Atemfrequenz vom Monitor (Impedanz) – Kapnograph hat Vorrang, sobald verfügbar')+'">'+(state._afSource==='kapnograph'?'⬤ Kapno':'⬤ Monitor')+'</span>'; }
+    return '<div class="mon-tile'+(isAl?' alarm':'')+'" data-p="'+p.id+'" style="--mtc:'+(isAl?'#ff7a7a':p.color)+'"><div class="mt-ab"><span>'+ab+'</span><span>'+p.unit+'</span></div><div class="mt-v">'+disp+'</div><div class="mt-u">'+nm+srcTag+'</div></div>';
   }).join('');
   $$('#monTiles .mon-tile').forEach(function(t){ t.onclick=function(){ showMonParam(t.dataset.p); }; });
   // sync ist-input alarm outline
@@ -899,6 +1017,8 @@ function renderMonValues(){
   if(state.monMode==='ist'){ var n=(MON().params||[]).filter(function(p){return al[p.id];}).length; txt=n>0?(n+' Wert(e) außerhalb – Analyse unten'):''; inc=null; }
   if(alv){ if(txt){ alv.textContent='⚠ '+txt+(inc?'  ▸ Protokoll':''); alv.classList.add('on'); alv.onclick=function(){ if(inc) gotoIncident(inc); }; } else { alv.classList.remove('on'); alv.onclick=null; } }
   renderAssess(); renderDevCtrl(); ventCoach();
+  renderVentPanel(); /* Beatmungsmodus-Empfehlung/Glow an neue Monitorwerte anpassen */
+  renderVentModes(); /* gleiche Live-Empfehlung im Einstellungen-Tab (Beatmungs-Modi Veta 5) */
 }
 function renderMonInputs(){
   if(!state.istVals) istInit();
@@ -1068,6 +1188,52 @@ function wCapno(ph,type,etco2){
   if(ph<0.92) return base + amp;                         // alveolar plateau
   return base + amp*(1-(ph-0.92)/0.08);                 // inspiratory downstroke
 }
+/* ---------- ECHTE Gerätekurve statt Nachbildung ----------
+ * Die VetStation-Shell schiebt die realen Abtastwerte eines Streifens (EKG 256 Hz, CO2 40 Hz …) über
+ * window.__setRealWave herein. Der Monitor spielt sie in Echtzeit ab und wiederholt den letzten
+ * Streifen, bis ein neuer kommt (das Gerät sendet ab Werk nur alle ~30 s einen 2-s-Streifen). Kommt
+ * für einen Kanal KEIN echter Wert, bleibt es bei der Synthese oben — nie eine leere Linie. */
+function __normReal(samples){
+  if(!samples||!samples.length) return null;
+  var s=[]; for(var i=0;i<samples.length;i++){ if(samples[i]!=null) s.push(samples[i]); }
+  if(s.length<4) return null;
+  var mn=Math.min.apply(null,s), mx=Math.max.apply(null,s), sp=(mx-mn)||1;
+  var norm=new Array(samples.length);
+  for(var j=0;j<samples.length;j++){ norm[j]= (samples[j]==null)? null : (samples[j]-mn)/sp; }
+  return norm;
+}
+window.__setRealWave=function(map){
+  if(!map){ mon.real=null; return; }
+  var out={};
+  ['ekg','pleth','capno'].forEach(function(key){
+    var ch=map[key]; if(!ch||!ch.samples) return;
+    var norm=__normReal(ch.samples); if(!norm) return;
+    out[key]={ norm:norm, hz:(ch.hz&&ch.hz>0?ch.hz:256), pos:0 };
+  });
+  mon.real=Object.keys(out).length?out:null;
+};
+/* ALLE aktiven Geraete-Alarme (physiologisch + technisch) live im virtuellen Monitor auflisten.
+ * Von der VetStation-Shell (vetstation-live.js drive()) mit der in der Registry aufgesammelten
+ * Alarmliste gespeist. Rot = physiologisch (**HF/**SpO2/**T1 …), Gelb = technisch (Kabel/Modul). */
+window.__setDeviceAlarms=function(list){
+  var host=document.getElementById('devAlarms'); if(!host) return;
+  var arr=Array.isArray(list)?list:[];
+  host.textContent='';
+  var seen={};
+  for(var i=0;i<arr.length;i++){
+    var a=arr[i]; var t=(a&&a.text)?a.text:(a==null?'':(''+a)); if(!t||seen[t]) continue; seen[t]=1;
+    var phys=/\*\*|zu hoch|zu tief|zu niedrig|außerh|ausserh|apnoe|asystol|v[- ]?fib|v[- ]?tach|extremwert/i.test(t);
+    var row=document.createElement('div'); row.className='dev-al '+(phys?'phys':'tech');
+    row.textContent='⚠ '+t;
+    host.appendChild(row);
+  }
+};
+function realVal(key,colT,synth){
+  var R=mon.real&&mon.real[key]; if(!R||!R.norm||!R.norm.length) return synth;
+  var len=R.norm.length; var idx=Math.floor(R.pos)%len; if(idx<0)idx+=len;
+  var v=R.norm[idx]; R.pos=(R.pos+(R.hz)*colT)%len;
+  return v==null?0.5:v;
+}
 function monStart(){
   var c=$('#monCanvas'); if(!c) return;
   renderMonScenarios(); renderMonInputs();
@@ -1077,12 +1243,21 @@ function monStart(){
   mon._resize=function(){ var rect=c.getBoundingClientRect(); mon.W=Math.max(2,Math.floor(rect.width*mon.dpr)); mon.H=Math.max(2,Math.floor(rect.height*mon.dpr)); c.width=mon.W; c.height=mon.H; mon.buf=null; };
   mon._resize(); addEventListener('resize',mon._resize);
   mon.running=true; mon.last=performance.now();
+  // Perf (§2): Bildrate begrenzen — 25 fps reichen für die Kurven, sparen aber ~½ CPU/GPU je Fenster.
+  if(mon.fpsCap==null) mon.fpsCap=40; // ms/Frame (0 = ungedrosselt)
   if(!mon.raf) mon.raf=requestAnimationFrame(monFrame);
 }
 function monStop(){ mon.running=false; if(mon.raf){cancelAnimationFrame(mon.raf); mon.raf=null;} if(mon._resize){removeEventListener('resize',mon._resize); mon._resize=null;} }
+// Perf (§2): die VetStation-Shell kann ein nicht sichtbares Fenster per postMessage pausieren (rAF stoppt).
+try{ addEventListener('message',function(e){ var d=e&&e.data; if(!d||typeof d!=='object')return;
+  if(d.vsMon==='pause'){ if(mon.running){ mon._wasRunning=true; monStop(); } }
+  else if(d.vsMon==='resume'){ if(mon._wasRunning){ mon._wasRunning=false; if(document.querySelector('.tab.active')&&document.querySelector('.tab.active').dataset.view==='geraet') monStart(); } }
+}); }catch(_){ }
 function monFrame(ts){
   if(!mon.running){ mon.raf=null; return; }
   mon.raf=requestAnimationFrame(monFrame);
+  // fps-Cap: Frame überspringen, wenn das Zeitbudget noch nicht erreicht ist (mon.last bleibt -> dt holt auf).
+  if(mon.fpsCap){ if(mon._lastDraw && (ts-mon._lastDraw)<mon.fpsCap) return; mon._lastDraw=ts; }
   var c=$('#monCanvas'); if(!c){return;} var ctx=c.getContext('2d');
   var W=mon.W,H=mon.H; if(!W||!H){return;}
   var cols=Math.max(60,Math.floor(W));
@@ -1098,13 +1273,14 @@ function monFrame(ts){
     mon.phE=(mon.phE+colT/(perE*(mon.rrJit||1)))%1;
     if(mon.phE<prevE){ mon.beatN=(mon.beatN||0)+1; mon.rrJit=Wr.irregular?(0.55+Math.random()*0.95):1; }
     mon.phR=(mon.phR+colT/perR)%1;
-    mon.buf.ekg.push(wEkg(mon.phE,r.ekg||'normal')); mon.buf.ekg.shift();
-    mon.buf.pleth.push(wPleth(mon.phE,r.pleth||'normal')); mon.buf.pleth.shift();
-    mon.buf.capno.push(wCapno(mon.phR,r.capno||'normal',r.etco2)); mon.buf.capno.shift();
+    mon.buf.ekg.push(realVal('ekg',colT,wEkg(mon.phE,r.ekg||'normal'))); mon.buf.ekg.shift();
+    mon.buf.pleth.push(realVal('pleth',colT,wPleth(mon.phE,r.pleth||'normal'))); mon.buf.pleth.shift();
+    mon.buf.capno.push(realVal('capno',colT,wCapno(mon.phR,r.capno||'normal',r.etco2))); mon.buf.capno.shift();
   }
   // draw
   ctx.clearRect(0,0,W,H); ctx.fillStyle='#05080d'; ctx.fillRect(0,0,W,H);
-  var laneH=H/3; var lanes=[['ekg','#28e07a','EKG II'],['pleth','#00d8ff','Pleth · SpO₂ '+(r.spo2)+'%'],['capno','#ffd166','Kapno · EtCO₂ '+(r.etco2===0?'0':r.etco2)]];
+  var rk=mon.real||{};
+  var laneH=H/3; var lanes=[['ekg','#28e07a','EKG II'+(rk.ekg?' · ECHT':'')],['pleth','#00d8ff','Pleth · SpO₂ '+(r.spo2)+'%'+(rk.pleth?' · ECHT':'')],['capno','#ffd166','Kapno · EtCO₂ '+(r.etco2===0?'0':r.etco2)+(rk.capno?' · ECHT':'')]];
   ctx.lineWidth=Math.max(1,1.4*mon.dpr);
   for(var li=0;li<3;li++){
     var top=li*laneH; var key=lanes[li][0];
@@ -1196,7 +1372,7 @@ function dragCtrl(el, onMove){
     function mv(ev){ onMove(ev); } function up(){ document.removeEventListener('pointermove',mv); document.removeEventListener('pointerup',up); }
     document.addEventListener('pointermove',mv); document.addEventListener('pointerup',up); });
 }
-function stepDev(field,delta){ var max=(field==='o2'?O2MAX:6); state.dev[field]=Math.max(0,Math.min(max,Math.round((state.dev[field]+delta)*10)/10)); renderMachine(); renderDevCtrl(); }
+function stepDev(field,delta){ state.dev.live=false; var max=(field==='o2'?O2MAX:6); state.dev[field]=Math.max(0,Math.min(max,Math.round((state.dev[field]+delta)*10)/10)); renderMachine(); renderDevCtrl(); }
 function renderMachine(){
   var box=$('#machineControls'); if(!box) return;
   if(state.dev.auto==null) state.dev.auto=false;
@@ -1214,8 +1390,8 @@ function renderMachine(){
   var vp=box.querySelector('.vaporizer'); if(vp){ dragCtrl(vp,function(e){ var r=vp.getBoundingClientRect(); var a=Math.atan2(e.clientY-(r.top+r.height/2), e.clientX-(r.left+r.width/2))*180/Math.PI; if(a<0)a+=360; if(a<140)a+=360; a=Math.max(140,Math.min(400,a)); state.dev.iso=Math.round((a-140)/260*60)/10; renderMachine(); renderDevCtrl(); });
     vp.addEventListener('wheel',function(e){ e.preventDefault(); stepDev('iso', e.deltaY<0?0.1:-0.1); },{passive:false}); }
   $$('#machineControls .mc-step').forEach(function(b){ b.onclick=function(){ var p=b.dataset.step.split(':'); stepDev(p[0], p[1]==='+'?0.1:-0.1); }; });
-  $$('#mcAuto button').forEach(function(b){ b.onclick=function(){ state.dev.auto=(b.dataset.a==='1'); renderMachine(); renderDevCtrl(); }; });
-  $$('#mcModes button').forEach(function(b){ b.onclick=function(){ state.dev.mode=b.dataset.m; state.dev.auto=(state.dev.mode!=='manual'&&state.dev.mode!=='cpap'); renderMachine(); renderDevCtrl(); if(typeof renderVentPanel==='function') renderVentPanel(); }; });
+  $$('#mcAuto button').forEach(function(b){ b.onclick=function(){ state.dev.live=false; state.dev.auto=(b.dataset.a==='1'); renderMachine(); renderDevCtrl(); }; });
+  $$('#mcModes button').forEach(function(b){ b.onclick=function(){ state.dev.live=false; state.dev.mode=b.dataset.m; state.dev.auto=(state.dev.mode!=='manual'&&state.dev.mode!=='cpap'); renderMachine(); renderDevCtrl(); if(typeof renderVentPanel==='function') renderVentPanel(); if(typeof renderVentModes==='function') renderVentModes(); }; });
   var fl=$('#mcFlush'); if(fl) fl.onclick=function(){ fl.classList.add('on'); setTimeout(function(){var f=$('#mcFlush'); if(f)f.classList.remove('on');},600); };
 }
 
@@ -1245,6 +1421,7 @@ function ventVal(key){ return (state.dev.vp && (key in state.dev.vp)) ? state.de
 var VENT_STEP={ af:1, minaf:1, maxaf:1, tinsp:0.1, pinsp:1, psupp:1 };
 function vtStep(v){ v=vnum(v)||0; return v>=100?10:(v>=40?5:1); }
 function stepVent(key,dir){
+  state.dev.live=false; if(state.dev.mirror&&state.dev.mirror.vp) delete state.dev.mirror.vp[key];
   var pd=(A.machine.ventParams||{})[key]||{}; state.dev.vp=state.dev.vp||{};
   if(pd.options){ var opts=pd.options, cur=String(ventVal(key)), i=opts.indexOf(cur); if(i<0)i=opts.indexOf(String(recVent(key))); if(i<0)i=0; i=Math.max(0,Math.min(opts.length-1,i+dir)); state.dev.vp[key]=opts[i]; }
   else { var st=(key==='vt'||key==='vtref')?vtStep(ventVal(key)):(VENT_STEP[key]||1); var v=(vnum(ventVal(key))||0)+dir*st; if(v<0)v=0; v=Math.round(v*10)/10; state.dev.vp[key]=v; }
@@ -1252,8 +1429,215 @@ function stepVent(key,dir){
 }
 function resetVent(key){ if(state.dev.vp) delete state.dev.vp[key]; renderVentPanel(); }
 function ventScenarioList(){ return A.machine.ventScenarios||{}; }
-function activeVentSit(){ var sc=ventScenarioList(); if(state.ventSit && sc[state.ventSit]) return state.ventSit;
-  var byInc=Object.keys(sc).find(function(k){return sc[k].incident===state.incident;}); return byInc||'routine'; }
+/* Situation aus den LIVE-Monitorwerten ableiten (wenn kein Zwischenfall/keine manuelle Wahl) */
+function liveSituation(){
+  var r=monResolve(), v=monVitals();
+  try{ var wv=ekgDef(state.rhythm).w||{}; if(wv.flat||wv.chaos) return 'asystolie'; }catch(e){}
+  if(r.capno==='flat'||r.rr<=0||r.etco2<=0) return 'apnoe';
+  if(r.capno==='shark') return 'bronchospasmus';
+  if(r.spo2>0&&r.spo2<v.spo2[0]) return 'hypoxaemie';
+  if(r.etco2>0&&r.etco2>v.etco2[1]) return 'hypoventilation';
+  if(r.nibp>0&&r.nibp<v.map[0]) return 'hypotension';
+  return null;
+}
+function activeVentSit(){ var sc=ventScenarioList();
+  if(state.ventSit && sc[state.ventSit]) return state.ventSit;
+  var byInc=Object.keys(sc).find(function(k){return sc[k].incident===state.incident;});
+  if(byInc) return byInc;
+  var live=liveSituation(); if(live && sc[live]) return live;
+  return 'routine'; }
+/* ---------- Beatmungsmodus-Berater: bewertet JEDEN Modus live ---------- */
+function ventAdvice(){
+  var modes=(A.machine.ventModes||[]);
+  var out={ level:{}, why:{}, primary:null, signals:[] };
+  if(!modes.length) return out;
+  var r=monResolve(), v=monVitals(), w=state.wt||0;
+  var b=curBreed(), condKeys=(b&&b.conditions)?b.conditions:[];
+  var airway=(VB&&b)?VB.hasAirwayRisk(b):false;
+  var hcm=condKeys.indexOf('hcm-cat')>=0;
+  var anMode=state.anMode, inc=state.incident;
+  var exotic=(state.sp!=='hund'&&state.sp!=='katze');
+  var tiny=(w>0&&w<3)||exotic;
+  var arrest=(function(){ try{ var wv=ekgDef(state.rhythm).w||{}; return !!(wv.flat||wv.chaos); }catch(e){ return false; } })() || inc==='asystolie';
+  var apnea=!arrest && (r.capno==='flat' || r.rr<=0 || r.etco2<=0 || inc==='apnoe');
+  var co2hi=r.etco2>0 && r.etco2>v.etco2[1];
+  var co2vhi=r.etco2>60 || (co2hi && r.etco2>v.etco2[1]+15);
+  var co2lo=r.etco2>0 && r.etco2<v.etco2[0];
+  var spo2lo=r.spo2>0 && r.spo2<v.spo2[0];
+  var maplo=r.nibp>0 && r.nibp<v.map[0];
+  var shark=r.capno==='shark', rebreath=r.capno==='baseline';
+  var fighting=inc==='tachypnoe' || inc==='weaning';
+  var spontExpected=(anMode==='inj-only');
+  var ctx=drugContext();
+  var S={}; modes.forEach(function(m){ S[m.id]={s:0,pro:[],con:[]}; });
+  function up(id,d,why){ if(!S[id])return; S[id].s+=d; if(d>0&&why)S[id].pro.push(why); else if(d<0&&why)S[id].con.push(why); }
+  function sig(t,inc){ out.signals.push({t:t, inc:(inc&&(A.incidents||[]).some(function(i){return i.id===inc;}))?inc:null}); }
+  /* 0) Basis nach Narkose-Typ */
+  if(spontExpected){ up('psv',1,'Unterstützt die Spontanatmung druckbasiert'); up('cpap',1,'PEEP bei reiner Spontanatmung'); }
+  else { up('vcv',2,'Volatil dämpft die Atmung → IPPV ist der Standard'); up('pcv',1,'Druckkontrolliert als lungenschonende Alternative'); }
+  /* 1) Herzstillstand / CPR – überschreibt alles */
+  if(arrest){
+    up('manual',8,'Herzstillstand → von Hand mit 100 % O₂, ~10/min (nicht überbeatmen); Isofluran SOFORT aus');
+    ['vcv','pcv','simv','vs','vsplus','psv','cpap'].forEach(function(id){ up(id,-8,'Während CPR keinen Automatik-Modus – manuell beatmen'); });
+    sig('🫀 Herzstillstand/Arrhythmie → CPR, manuell beatmen, Iso aus','asystolie');
+  }
+  /* 2) Apnoe */
+  if(apnea){
+    up('vcv',4,'Kein Eigenatem → voll kontrolliert; VCV liefert das ganze Minutenvolumen');
+    up('pcv',3,'Druckkontrolliert (kleine/steife Lunge, Exot)');
+    up('manual',2,'Sofort per Hand überbrücken, dann Ursache suchen');
+    ['vs','vsplus','psv','cpap'].forEach(function(id){ up(id,-5,'Kein Spontanzug zum Unterstützen – reine Spontan-Modi wirkungslos'); });
+    sig('⏸️ Keine/zu geringe Eigenatmung → kontrolliert (IPPV) beatmen','apnoe');
+  }
+  /* 3) Hyperkapnie */
+  if(co2hi){
+    up('vcv',3,'EtCO₂ hoch → garantiertes Minutenvolumen (zuerst AF↑, dann Vt)');
+    up('pcv',2,'Steigert die Ventilation (Volumen überwachen)');
+    up('cpap',-3,'Nur PEEP ohne Hübe behebt Hyperkapnie nicht');
+    if(co2vhi) up('manual',2,'EtCO₂ sehr hoch → sofort kontrolliert beatmen');
+    sig('🟡 EtCO₂ '+r.etco2+' hoch → Minutenvolumen erhöhen (AF vor Vt)','hypoventilation');
+  }
+  if(co2lo && !apnea) sig('🔵 EtCO₂ '+r.etco2+' niedrig → nicht stärker beatmen, zuerst Kreislauf prüfen');
+  /* 4) Hypoxämie / Atelektase */
+  if(spo2lo){
+    up('pcv',3,'Hypoxämie → lungenprotektiv + Recruitment, PEEP hält offen');
+    up('manual',2,'Recruitment-Manöver (Paw 15–20 cmH₂O, 5–10 s)');
+    if(spontExpected||!apnea) up('cpap',2,'Bei Spontanatmung: CPAP/PEEP verbessert Oxygenierung/FRC');
+    sig('🔴 SpO₂ '+r.spo2+' % niedrig → PEEP 5–10 + Recruitment, Tubuslage prüfen','hypoxaemie');
+  }
+  /* 5) Bronchospasmus / Air-Trapping */
+  if(shark){
+    up('pcv',4,'Obstruktion → Druck begrenzen, Exspiration verlängern (I:E 1:3+)');
+    up('vcv',-3,'Volumen erzwingen → Spitzendruck↑ / Air-Trapping');
+    sig('🦈 Kapno-Haifischflosse → PCV, lange Exspiration, Bronchodilatator');
+  }
+  if(rebreath) sig('📈 Rückatmung (Basislinie>0) → Atemkalk wechseln, Frischgas↑ (kein Modus-Problem)');
+  /* 6) Hypotension – Atemwegsdruck niedrig halten */
+  if(maplo){
+    up('pcv',2,'Druckbegrenzt → niedriger mittlerer Atemwegsdruck schont den venösen Rückstrom');
+    sig('🩸 MAP '+r.nibp+' niedrig → Atemwegsdruck niedrig halten; Kreislauf stützen, nicht über den Ventilator','hypotension');
+  }
+  /* 7) Gegenatmen / Weaning */
+  if(fighting){
+    up('simv',4,'Mit der Eigenatmung synchronisieren statt dagegen');
+    up('psv',2,'Druckunterstützte Spontanatmung senkt die Atemarbeit');
+    up('vs',1,'Assistiert jeden Spontanzug bis zum Ziel-Vt');
+    up('vsplus',1,'Adaptive Unterstützung bei schwankender Atmung');
+    up('vcv',-2,'Kontrolliert kann gegen das Tier arbeiten (Gegenatmen)');
+    sig((inc==='weaning'?'🌤️ Weaning/Aufwachen':'💨 Tachypnoe/Gegenatmen')+' → synchronisieren (SIMV/PSV)', inc==='tachypnoe'?'tachypnoe':null);
+  }
+  /* 8) Nur Injektion, keine Apnoe/Hyperkapnie → Spontanatmung fördern */
+  if(spontExpected && !apnea && !co2hi){
+    up('cpap',1,'Spontanatmung + PEEP/O₂'); up('psv',1,'Sanfte Druckunterstützung');
+    up('vcv',-1,'Reine Injektion → meist Spontanatmung; kontrolliert nur bei EtCO₂↑/Apnoe');
+    up('pcv',-1,'Kontrolliert nur bei EtCO₂↑/Apnoe nötig');
+    sig('💤 Nur Injektion – Iso aus, Spontanatmung + O₂/Monitoring; bei EtCO₂↑ intubieren + beatmen');
+  }
+  /* 9) Kleiner Patient / Exot */
+  if(tiny){
+    up('pcv',4,'Kleine Lunge → Druckbegrenzung schützt vor Volutrauma');
+    up('vcv',-2,'Winziges Vt schwer exakt/sicher zu liefern');
+    sig('🐾 '+(exotic?'Exot/kleines Tier':'Sehr kleines Tier <3 kg')+' → druckkontrolliert (PCV), niedrige Drücke');
+  }
+  /* 10) Brachyzephal / BOAS */
+  if(airway){
+    up('pcv',1,'Nach Intubation Routine, niedrige Drücke; Atemwegsmanagement entscheidend');
+    sig('👃 Brachyzephal (BOAS) → präoxygenieren, niedrige Drücke, verzögert extubieren (erst voll wach)');
+  }
+  /* 11) HCM-Katze */
+  if(hcm){
+    up('pcv',1,'Niedriger Atemwegsdruck; hohe PEEP/Tachykardie meiden');
+    sig('❤️ HCM-Katze → Atemwegsdruck niedrig halten, hohe PEEP meiden');
+  }
+  /* 12) VERABREICHTE MEDIKAMENTE einbeziehen: Injektionsnarkose + einzeln als „gegeben" markierte
+   *     Notfall-/Weitere Medikamente. Folgen für Atmung/Kreislauf gehen in die Modus-Empfehlung ein. */
+  if(ctx.any){
+    var gvn=ctx.allNames.length?ctx.allNames.join(' + '):(ctx.indName||'Medikamente');
+    if(ctx.respDep||ctx.barb){
+      up('vcv',2,'Atemdepression durch '+(ctx.barb?'Barbiturat':'Opioid/Hypnotikum')+' → kontrolliert (IPPV) bereithalten');
+      up('pcv',1,'Lungenschonend kontrollieren bei Atemdepression');
+      ['vs','vsplus','psv','cpap'].forEach(function(id){ up(id,-1,'Atemdepressive Medikamente an Bord → reine Spontan-Modi riskant (Apnoe)'); });
+      sig('💉 Gegeben: '+gvn+' → Atemdepression: EtCO₂/Apnoe überwachen, kontrolliert beatmen bereit'+(ctx.barb?' · Barbiturat: KEIN Antidot → Beatmung ist tragend':'')+(ctx.opioid?' · Opioid → Naloxon reversibel':''), (co2hi||apnea)?'hypoventilation':null);
+    } else if(ctx.respDepMild){
+      sig('💉 Gegeben: '+gvn+' → leichte Atemdepression möglich (EtCO₂ beobachten)');
+    } else {
+      sig('💉 Gegeben: '+gvn);
+    }
+    if(ctx.antagResp && (apnea||co2hi)){
+      up('psv',2,'Antagonist an Bord → Atemantrieb kehrt zurück, druckunterstützt begleiten');
+      up('simv',1,'Übergang zur Eigenatmung nach Antagonisierung');
+      sig('↩️ Antagonist gegeben ('+[ctx.revOpioid?'Naloxon':'',ctx.revAlpha2?'Atipamezol':'',ctx.revBenzo?'Flumazenil':''].filter(Boolean).join(' + ')+') → Atemantrieb kehrt zurück; Spontanatmung zulassen/unterstützen statt nur tiefer beatmen');
+    } else if(ctx.reversible && (apnea||co2hi)){
+      sig('↩️ Reversible Anästhetika an Bord → Antagonist erwägen (α2/Opioid/Benzo), nicht nur tiefer beatmen');
+    }
+    var bradyObs=r.hr>0 && r.hr<v.hr[0];
+    if(ctx.alpha2){
+      // α2-Bradykardie = REFLEX auf Vasokonstriktion → Anticholinergikum kontraindiziert (Evidenz).
+      if(bradyObs) sig('🚫 α2-Bradykardie (HF '+r.hr+') ist REFLEX auf Vasokonstriktion → KEIN Atropin/Glyco (schwere Hypertonie + ventrikuläre Extrasystolen); stattdessen α2 senken/Atipamezol. [ACVAA/WSAVA]','bradykardie');
+      else sig('💉 α2-Agonist an Bord → Bradykardie + initiale Hypertonie erwartet; KEIN Anticholinergikum in der Hypertonie-Phase, Atipamezol reversibel','bradykardie');
+    } else if(ctx.bradyVagal && bradyObs){
+      // Opioid-Bradykardie = vagal → Anticholinergikum wirksam/angemessen.
+      sig('💉 Opioid-Bradykardie (HF '+r.hr+', vagal) → Anticholinergikum (Atropin/Glyco) hier angemessen; Oxygenierung sichern. [AAHA 2020]','bradykardie');
+    }
+    if(ctx.anticholPlusAlpha2) sig('⚠️ Anticholinergikum + α2-Agonist zusammen gegeben → Risiko schwere Hypertonie & ventrikuläre Arrhythmien (EKG streng überwachen). [Clinician\'s Brief]','tachykardie');
+    if(ctx.dissociative){
+      sig('💉 Ketamin an Bord → HF/BD eher ↑, Atemantrieb meist erhalten (apneustisches Muster möglich)');
+      if(hcm) sig('❗ Ketamin bei HCM-Katze: steigert HF & myokardialen O₂-Bedarf → sehr vorsichtig; Atemwegsdruck niedrig halten');
+    }
+    if(ctx.anticholinergic && !ctx.anticholPlusAlpha2) sig('💉 Anticholinergikum (Atropin/Glyco) gegeben → Tachykardie ERWARTET, nicht als „zu flache Narkose" fehldeuten','tachykardie');
+    if(ctx.phenothiazine) sig('💉 Acepromazin an Bord → Vasodilatation/Hypotonie, KEIN Antidot, lang wirksam; Atemwegsdruck niedrig halten, bei Hypovolämie/BOAS vorsichtig','hypotension');
+    if(ctx.vasopressor||ctx.inotrope) sig('💉 Kreislaufstütze an Bord (Vasopressor/Inotropikum) → Atemwegsdruck niedrig halten, nicht gegen den Kreislauf beatmen');
+    if(ctx.antiarrhythmic) sig('💉 Antiarrhythmikum gegeben → Rhythmus im EKG weiter beobachten (Wirkung/Nebenwirkung)');
+  }
+  /* Zwischenfall/Situation-Szenario als starkes Signal (aus geprüften Daten) */
+  var sitKey=activeVentSit(), sitSc=(ventScenarioList())[sitKey];
+  if(sitSc && sitSc.mode) up(sitSc.mode,4,'Empfohlen für: '+(sitSc.title||sitKey));
+  /* Klassifizieren */
+  var best=null,bestS=-1e9;
+  Object.keys(S).forEach(function(id){ if(S[id].s>bestS){ bestS=S[id].s; best=id; } });
+  out.primary=best;
+  Object.keys(S).forEach(function(id){
+    var sco=S[id].s, lvl=null;
+    if(sco<=-3) lvl='avoid';
+    else if(id===best && sco>=2) lvl='rec';
+    else if(sco>=2) lvl='good';
+    else if(sco<0) lvl='caution';
+    out.level[id]=lvl;
+    out.why[id]= (lvl==='avoid'||lvl==='caution') ? (S[id].con[0]||'Für diese Situation ungeeignet') : (S[id].pro[0]||'');
+  });
+  if(best && out.level[best]!=='rec' && bestS>0){ out.level[best]='rec'; if(!out.why[best]) out.why[best]=(S[best].pro[0]||''); }
+  return out;
+}
+function renderVentAdvice(adv){
+  var box=$('#ventAdvice'); if(!box) return;
+  if(!adv) adv=ventAdvice();
+  var pm=ventModeById(adv.primary)||{name:'—'};
+  var items=[];
+  Object.keys(adv.level).forEach(function(id){ var lvl=adv.level[id]; if(lvl==='avoid'||lvl==='caution'){ var m=ventModeById(id)||{name:id};
+    items.push('<div class="va-item va-'+lvl+'"><span class="vi-m">'+(lvl==='avoid'?'⛔':'⚠️')+' '+m.name+'</span><span>'+(adv.why[id]||'')+'</span></div>'); } });
+  var sigHtml = adv.signals.length ? '<div class="va-sig"><div class="vs-h">Berücksichtigt (live)</div>'+adv.signals.map(function(o){
+      var t=(typeof o==='string')?o:o.t, inc=(o&&o.inc)||null;
+      return '<div class="va-srow'+(inc?' va-link" data-inc="'+inc+'"':'"')+'><span>'+t+'</span>'+(inc?'<span class="va-go">→ Protokoll</span>':'')+'</div>';
+    }).join('')+'</div>' : '';
+  box.innerHTML =
+    '<div class="va-head">🫁 Live-Empfehlung Beatmungsmodus'+
+      '<span class="va-legend"><span>🟢 empfohlen</span><span>🟡 Vorsicht</span><span>🔴 vermeiden</span></span></div>'+
+    '<div class="va-primary">🟢 Bester Modus jetzt: <b>'+pm.name+'</b> · '+(pm.full||'')+
+      (ventModeById(adv.primary)?' <button class="va-apply" id="vaApply">übernehmen</button>':'')+
+      (adv.why[adv.primary]?'<br><span class="muted" style="font-size:12.5px">'+adv.why[adv.primary]+'</span>':'')+'</div>'+
+    (items.length?'<div class="va-list">'+items.join('')+'</div>':'')+
+    sigHtml;
+  var ap=$('#vaApply'); if(ap) ap.onclick=function(){ applyRecommendedMode(adv.primary); };
+  $$('#ventAdvice .va-link').forEach(function(el){ el.onclick=function(){ gotoIncident(el.dataset.inc); }; });
+}
+function applyRecommendedMode(id){
+  if(!ventModeById(id)) return;
+  var sit=activeVentSit(), sc=(ventScenarioList())[sit];
+  if(sc && sc.mode===id){ applyVentSit(sit); return; } /* Modus + patientengerechte Startwerte */
+  state.dev.mode=id; state.dev.auto=(id!=='manual');
+  renderVentPanel(); renderMachine(); renderDevCtrl(); if(mon.running) renderMonValues(); else ventCoach();
+  var el=$('#ventScreen'); if(el){ el.classList.add('vs-flash'); setTimeout(function(){el.classList.remove('vs-flash');},700); }
+}
 function applyVentSit(id){
   var sc=(ventScenarioList())[id]; if(!sc) return; state.dev.vp=state.dev.vp||{};
   state.dev.mode=sc.mode; var m=ventModeById(sc.mode)||{params:[]}; function has(k){return (m.params||[]).indexOf(k)>=0;}
@@ -1275,28 +1659,40 @@ function ventScreenHTML(m){
 function renderVentReco(){
   var box=$('#ventReco'); if(!box) return;
   var scList=ventScenarioList(), sit=activeVentSit(), sc=scList[sit]||{};
+  var manual=!!(state.ventSit && scList[state.ventSit]);
+  var fromInc=!manual && !!sc.incident && sc.incident===state.incident;
+  var fromLive=!manual && !fromInc && sit!=='routine';
+  var srcTag= fromInc?'↔ aus Zwischenfall': fromLive?'↔ live aus Monitor': (manual?'↔ manuell gewählt':'');
   var opts=Object.keys(scList).map(function(k){ return '<option value="'+k+'"'+(k===sit?' selected':'')+'>'+(scList[k].title||k)+'</option>'; }).join('');
   var recMode=ventModeById(sc.mode)||{name:sc.mode||'—',tag:''};
   var setBits=[];
   ['vt','af','ie','peep','pinsp','tinsp','psupp','trigger'].forEach(function(k){ if(sc[k]){ var pd=(A.machine.ventParams||{})[k]||{}; setBits.push('<span class="vr-set">'+(pd.label||k)+' '+sc[k]+'</span>'); } });
   if(sc.o2) setBits.push('<span class="vr-set">O₂ '+sc.o2+'</span>');
   if(sc.iso) setBits.push('<span class="vr-set">Iso '+sc.iso+'</span>');
-  box.innerHTML='<div class="vent-reco"><div class="vr-head">🎯 Für diesen Fall empfohlen'+(sc.incident?' <span class="vr-inc">↔ aus Zwischenfall</span>':'')+'</div>'+
+  box.innerHTML='<div class="vent-reco"><div class="vr-head">🎯 Für diesen Fall empfohlen'+(srcTag?' <span class="vr-inc">'+srcTag+'</span>':'')+'</div>'+
     '<div class="vr-pick"><label>Situation</label><select id="ventSitSel">'+opts+'</select></div>'+
     '<div class="vr-mode">Modus: <b>'+recMode.name+'</b> <span class="vr-mtag">'+(recMode.tag||'')+'</span></div>'+
     (setBits.length?'<div class="vr-sets">'+setBits.join('')+'</div>':'')+
     '<div class="vr-why">'+(sc.why||'')+'</div>'+
     '<button class="vr-apply" id="ventApply">▶ Modus &amp; Startwerte übernehmen</button></div>';
-  var sel=$('#ventSitSel'); if(sel) sel.onchange=function(){ state.ventSit=sel.value; renderVentReco(); };
+  var sel=$('#ventSitSel'); if(sel) sel.onchange=function(){ state.ventSit=sel.value; renderVentPanel(); };
   var ap=$('#ventApply'); if(ap) ap.onclick=function(){ applyVentSit(activeVentSit()); };
 }
 function renderVentPanel(){
   var card=$('#ventCard'); if(!card) return; state.dev.vp=state.dev.vp||{};
-  var lbl=$('#ventPatLbl'); if(lbl) lbl.textContent=sp().name+' '+fmt(state.wt)+' kg';
+  var lbl=$('#ventPatLbl'); if(lbl) lbl.innerHTML=sp().name+' '+fmt(state.wt)+' kg'+(state.dev.live?' <span class="vm-live" title="Zeigt exakt die am echten Veta 5 eingestellten Werte – Handänderung übernimmt wieder die manuelle Steuerung">🔗 live vom Veta 5 gespiegelt</span>':'');
   var m=curVentMode();
+  var adv=ventAdvice();
   var bar=$('#ventModeBar');
-  if(bar){ bar.innerHTML=(A.machine.ventModes||[]).map(function(mo){ return '<button class="vm-btn'+(mo.id===state.dev.mode?' active':'')+(mo.spontaneous?' spont':'')+'" data-vm="'+mo.id+'" data-vp-tip="'+(mo.full||mo.name)+' – '+(mo.whenToUse||'')+'"><b>'+mo.name+'</b><span>'+(mo.tag||'')+'</span></button>'; }).join('');
-    $$('#ventModeBar .vm-btn').forEach(function(b){ b.onclick=function(){ state.dev.mode=b.dataset.vm; state.dev.auto=(state.dev.mode!=='manual'); renderVentPanel(); renderMachine(); renderDevCtrl(); if(mon.running) renderMonValues(); else ventCoach(); }; }); }
+  if(bar){ bar.innerHTML=(A.machine.ventModes||[]).map(function(mo){
+      var lvl=adv.level[mo.id], why=adv.why[mo.id]||'';
+      var glow=lvl?(' vm-'+lvl):'';
+      var badge= lvl==='rec'?'<span class="vm-badge b-rec">✓</span>': lvl==='avoid'?'<span class="vm-badge b-avoid">✕</span>': lvl==='caution'?'<span class="vm-badge b-caution">!</span>':'';
+      var pfx= lvl==='rec'?'✅ Empfohlen: ':lvl==='avoid'?'⛔ Vermeiden: ':lvl==='caution'?'⚠️ Vorsicht: ':'';
+      var tip=((mo.full||mo.name)+' – '+(mo.whenToUse||'')+(why?('  |  '+pfx+why):'')).replace(/"/g,'&quot;');
+      return '<button class="vm-btn'+(mo.id===state.dev.mode?' active':'')+(mo.spontaneous?' spont':'')+glow+'" data-vm="'+mo.id+'" data-vp-tip="'+tip+'"><b>'+mo.name+'</b><span>'+(mo.tag||'')+'</span>'+badge+'</button>'; }).join('');
+    $$('#ventModeBar .vm-btn').forEach(function(b){ b.onclick=function(){ state.dev.live=false; state.dev.mode=b.dataset.vm; state.dev.auto=(state.dev.mode!=='manual'); renderVentPanel(); renderMachine(); renderDevCtrl(); if(mon.running) renderMonValues(); else ventCoach(); }; }); }
+  renderVentAdvice(adv);
   var scr=$('#ventScreen'); if(scr) scr.innerHTML=ventScreenHTML(m);
   var pr=$('#ventParamRow');
   if(pr){
@@ -1327,19 +1723,90 @@ function injContext(){
   f.topNames=(state.injTopups||[]).map(function(id){ var c=(A.injection||[]).find(function(x){return x.id===id;}); return c?c.name:id; });
   return f;
 }
+/* ---------- Pharmakologie: Folgen der VERABREICHTEN Medikamente (Notfall + Injektion) ----------
+ * Welche Wirkung hat ein gespritztes Medikament auf Atmung/Kreislauf? Damit rechnet die ganze App
+ * (Beatmungsmodus-Berater, Coach, Analyse), welche Folgen zu erwarten sind. Tags:
+ *   respDep = Atemdepression (kontrolliert bereithalten) · respDepMild = mild
+ *   brady/tachy = Herzfrequenz · hypotensive/hypertensive(Init) = Blutdruck
+ *   anticholinergic (Tachykardie erwünscht) · vasopressor/inotrope (Kreislaufstütze)
+ *   antiarrhythmic · dissociative · revOpioid/revAlpha2/revBenzo = Antagonist (hebt Wirkung auf) */
+var DRUGFX={
+  methadon:['opioid','respDep','brady'], polamivet:['opioid','respDep','tachy'], fentanyl:['opioid','respDep','brady'],
+  morphin:['opioid','respDep','brady'], buprenorphin:['opioid','respDepMild'], butorphanol:['opioid','respDepMild'],
+  propofol:['hypnotic','respDep','hypotensive'], alfaxalon:['hypnotic','respDep','hypotensive'], etomidat:['hypnotic'],
+  ketamin:['dissociative','tachy','hypertensive'],
+  dexmedetomidin:['alpha2','brady','hypertensiveInit','respDepMild'], medetomidin:['alpha2','brady','hypertensiveInit','respDepMild'], xylazin:['alpha2','brady','hypertensiveInit','respDepMild'],
+  midazolam:['benzo','respDepMild'], diazepam:['benzo','respDepMild'], acepromazin:['phenothiazine','hypotensive'],
+  atropin:['anticholinergic','tachy'], glyco:['anticholinergic','tachy'],
+  adrenalin:['vasopressor','tachy','hypertensive'], noradrenalin:['vasopressor','hypertensive'], ephedrin:['vasopressor','tachy','hypertensive'],
+  dopamin:['vasopressor','inotrope','tachy'], dobutamin:['inotrope'], vasopressin:['vasopressor'],
+  lidocain_iv:['antiarrhythmic'], amiodaron:['antiarrhythmic'], propranolol:['antiarrhythmic','brady','betablock'],
+  naloxon:['revOpioid'], atipamezol:['revAlpha2'], flumazenil:['revBenzo']
+};
+/* drugContext — ALLES, was das Tier bekommen hat: Injektionsnarkose (injContext) + einzeln als
+ * „gegeben" markierte Notfall-/Weitere Medikamente. Vereint die Wirkflags + baut Folgen-Signale. */
+function drugContext(){
+  var inj=injContext();
+  var f={ any:inj.any, injAny:inj.any, ids:inj.ids.slice(),
+    alpha2:inj.alpha2, ketamine:inj.ketamine, opioid:inj.opioid, barb:inj.barb, benzo:inj.benzo,
+    indName:inj.indName, topNames:inj.topNames||[],
+    respDep:!!(inj.opioid||inj.barb), respDepMild:false,
+    brady:!!(inj.alpha2||inj.opioid), tachy:!!inj.ketamine,
+    hypotensive:false, hypertensive:!!(inj.alpha2||inj.ketamine),
+    anticholinergic:false, vasopressor:false, inotrope:false, antiarrhythmic:false, dissociative:!!inj.ketamine,
+    phenothiazine:false, revOpioid:false, revAlpha2:false, revBenzo:false, givenNames:[] };
+  (state.givenDrugs||[]).forEach(function(id){
+    var d=(A.drugs||[]).find(function(x){return x.id===id;}); if(!d) return;
+    f.givenNames.push(d.name);
+    (DRUGFX[id]||[]).forEach(function(t){
+      if(t==='opioid') f.opioid=true; else if(t==='alpha2') f.alpha2=true; else if(t==='benzo') f.benzo=true;
+      else if(t==='dissociative'){ f.dissociative=true; f.ketamine=true; }
+      else if(t==='respDep') f.respDep=true; else if(t==='respDepMild') f.respDepMild=true;
+      else if(t==='brady') f.brady=true; else if(t==='tachy') f.tachy=true;
+      else if(t==='hypotensive') f.hypotensive=true;
+      else if(t==='hypertensive'||t==='hypertensiveInit') f.hypertensive=true;
+      else if(t==='anticholinergic') f.anticholinergic=true;
+      else if(t==='phenothiazine') f.phenothiazine=true;
+      else if(t==='vasopressor') f.vasopressor=true; else if(t==='inotrope') f.inotrope=true;
+      else if(t==='antiarrhythmic') f.antiarrhythmic=true;
+      else if(t==='revOpioid') f.revOpioid=true; else if(t==='revAlpha2') f.revAlpha2=true; else if(t==='revBenzo') f.revBenzo=true;
+    });
+  });
+  f.any=f.any||f.givenNames.length>0;
+  f.reversible=f.alpha2||f.opioid||f.benzo;
+  // Antagonist an Bord, der einen Atemdepressor aufhebt? -> Spontanatmung/-antrieb kehrt zurück.
+  f.antagResp=(f.revOpioid&&f.opioid)||(f.revBenzo&&f.benzo)||(f.revAlpha2&&f.alpha2);
+  /* Bradykardie-MECHANISMUS (entscheidet über die Anticholinergikum-Frage):
+   *  α2-Agonist → REFLEX-Bradykardie auf periphere Vasokonstriktion → Atropin/Glyco RISKANT
+   *    (schwere Hypertonie + ventrikuläre Extrasystolen); stattdessen α2 reduzieren/Atipamezol.
+   *  Opioid (ohne α2) → VAGALE Bradykardie → Anticholinergikum wirksam/angemessen.
+   *  (ACVAA/WSAVA; Clinician's Brief „Safety of Anticholinergics with Alpha-2 Agonists".) */
+  f.bradyReflex=f.alpha2; f.bradyVagal=f.opioid && !f.alpha2;
+  f.anticholPlusAlpha2=f.anticholinergic && f.alpha2;   // gefährliche Kombination
+  f.allNames=[].concat(inj.indName?[inj.indName]:[], inj.topNames||[], f.givenNames);
+  return f;
+}
 /* ---------- Beatmungs- & Kapnograf-Coach (Modus/PEEP/VT/Frischgas + gezielte Hilfe) ---------- */
 function ventCoach(){
   var box=$('#ventCoach'); if(!box) return;
-  var r=monResolve(), v=monVitals(), w=state.wt, s=sp(), ctx=injContext();
-  var vtLo=Math.round(10*w), vtHi=Math.round(15*w);
+  var r=monResolve(), v=monVitals(), w=state.wt, s=sp(), ctx=drugContext();
+  var vtLo=Math.round(8*w), vtHi=Math.round(12*w);   /* lungenschonend (AAHA/ACVAA): 8–12 statt 10–15 */
   var afLo=(state.sp==='katze'?10:8), afHi=(state.sp==='katze'?20:15);
   var nrb=w<=7, fgf=nrb?Math.max(500,Math.round(w*250)):Math.max(500,Math.round(w*30));
   var tips=[];
-  if(ctx.any) tips.push(['#22d3ee','Verabreichte Injektionsnarkose berücksichtigt','Gegeben: '+(ctx.indName||'(keine Einleitung)')+(ctx.topNames.length?' + Nachdosierung: '+ctx.topNames.join(' + '):'')+'. '+
-    (ctx.barb?'⚠ Barbiturat (Narkodorm) → KEIN Antidot: bei EtCO₂ ↑ beatmen, nicht nachlegen. ':'')+
-    (ctx.alpha2?'α2 → Bradykardie/initiale Hypertonie erwartet; KEIN Atropin in der Hypertonie-Phase; reversibel mit Atipamezol. ':'')+
-    (ctx.ketamine?'Ketamin → HF/BD eher ↑. ':'')+
-    (ctx.opioid?'Opioid → Atemdepression; Naloxon reversibel (Polamivet: Fenpipramid-Überhang → Tachykardie). ':''),null]);
+  if(ctx.any) tips.push(['#22d3ee','Verabreichte Medikamente berücksichtigt','Gegeben: '+(ctx.allNames.length?ctx.allNames.join(' + '):(ctx.indName||'(keine Einleitung)'))+'. '+
+    (ctx.barb?'⚠ Barbiturat → KEIN Antidot: bei EtCO₂ ↑ beatmen, nicht nachlegen. ':'')+
+    (ctx.respDep&&!ctx.barb?'Atemdepression → kontrolliert (IPPV) bereithalten, EtCO₂/Apnoe überwachen. ':'')+
+    (ctx.alpha2?'α2 → REFLEX-Bradykardie + initiale Hypertonie; KEIN Atropin/Glyco (Hypertonie/VES) → α2 senken/Atipamezol. ':'')+
+    (ctx.bradyVagal?'Opioid-Bradykardie ist vagal → Anticholinergikum hier angemessen. ':'')+
+    (ctx.anticholPlusAlpha2?'⚠ Anticholinergikum + α2 zusammen → schwere Hypertonie/VES-Risiko, EKG überwachen. ':'')+
+    (ctx.ketamine?'Ketamin → HF/BD eher ↑, Atemantrieb meist erhalten'+(ctx.ketamine&&curBreed()&&(curBreed().conditions||[]).indexOf('hcm-cat')>=0?' (HCM-Katze: sehr vorsichtig)':'')+'. ':'')+
+    (ctx.opioid?'Opioid → Atemdepression; Naloxon reversibel. ':'')+
+    (ctx.anticholinergic&&!ctx.anticholPlusAlpha2?'Anticholinergikum → Tachykardie erwartet (nicht als „zu flach" fehldeuten). ':'')+
+    (ctx.phenothiazine?'Acepromazin → Hypotonie, KEIN Antidot, lang wirksam; bei Hypovolämie/BOAS vorsichtig. ':'')+
+    (ctx.vasopressor||ctx.inotrope?'Kreislaufstütze an Bord → Atemwegsdruck niedrig halten. ':'')+
+    (ctx.antagResp?'↩️ Antagonist gegeben → Atemantrieb kehrt zurück, Spontanatmung zulassen/unterstützen. ':'')+
+    (ctx.antiarrhythmic?'Antiarrhythmikum → Rhythmus weiter beobachten. ':''),null]);
   if(state.anMode==='inj-only'){
     if(r.etco2>v.etco2[1]) tips.push(['#a78bfa','Nur Injektion + EtCO₂ hoch → NICHT vertiefen','Beatmen (intubieren + Beutel/Ambu). '+(ctx.reversible?'Ggf. reversibel antagonisieren (α2/Opioid). ':'')+(ctx.barb?'Barbiturat unter Beatmung abwarten (kein Antidot).':''),null]);
     else if(r.hr>v.hr[1]||r.nibp>v.map[1]) tips.push(['#c4b5fd','Reicht die Injektion? – Zeichen für zu flach','Tachykardie/Hypertonie ohne CO₂-Problem → Narkose evtl. zu flach: Analgesie/Tiefe erhöhen – entweder schonend nachdosieren ODER Gasnarkose (Isofluran) ergänzen (dann Beatmung nach Zielwerten).',null]);
@@ -1353,7 +1820,7 @@ function ventCoach(){
   if(r.capno==='baseline') tips.push(['#fcd34d','Rückatmung (Baseline > 0)','Atemkalk erschöpft → wechseln; Frischgasfluss erhöhen. Nicht „gegen-beatmen".',null]);
   if(r.nibp>0&&r.nibp<v.map[0]) tips.push(['#f35588','MAP '+r.nibp+' niedrig → Blutdruck stützen','Häufigste Ursache Iso zu tief → Verdampfer senken; dann Kristalloid-Bolus 3–10 mL/kg; persistiert → Ephedrin, dann Dopamin/Dobutamin CRI.',{inc:'hypotension'}]);
   else if(r.nibp>v.map[1]) tips.push(['#ff8c6b','MAP '+r.nibp+' hoch → Ursache klären','Zu flach/Schmerz → Analgesie/Tiefe; Hyperkapnie → beatmen; α2-Phase → abwarten, KEIN Atropin. Nur schwer/persistierend gezielt senken.',{inc:'hypertension'}]);
-  var tgt='<div class="devr"><span class="dn">Zielwerte '+s.name+' '+fmt(w)+' kg</span><span class="dv"></span><span class="dt">Tidalvol. '+vtLo+'–'+vtHi+' mL (10–15 mL/kg) · AF '+afLo+'–'+afHi+'/min · PEEP 3–5 · Pmax ≤20 cmH₂O · EtCO₂ 35–45</span></div>'+
+  var tgt='<div class="devr"><span class="dn">Zielwerte '+s.name+' '+fmt(w)+' kg</span><span class="dv"></span><span class="dt">Tidalvol. '+vtLo+'–'+vtHi+' mL (lungenschonend 8–12 mL/kg; kranke Lunge 6–8) · AF '+afLo+'–'+afHi+'/min · PEEP 3–5 · Plateau/Pmax ≤15–20 cmH₂O · Driving Pressure (Pplat−PEEP) niedrig · EtCO₂ 35–45</span></div>'+
     '<div class="devr"><span class="dn">Frischgas ('+(nrb?'Nicht-Rückatem ≤7 kg':'Kreissystem >7 kg')+')</span><span class="dv">'+(fgf/1000).toFixed(fgf<1000?2:1)+' L/min</span><span class="dt">'+(nrb?'~'+w+'×250 mL/min (2–3× AMV)':'~'+w+'×30 mL/min (Low-Flow ×15)')+' · Min. 0,5 L/min · Wash-in höher</span></div>'+
     '<div class="devr"><span class="dn">Modus-Wahl</span><span class="dv">'+String(state.dev.mode||'—').toUpperCase()+'</span><span class="dt">VCV Routine · PCV kleine Katze/nicht-compliant/Laparoskopie · SIMV+PSV Weaning · Manuell Notfall/Recruitment</span></div>';
   var tipsHtml=tips.length? tips.map(function(t){ var warn=(t[0]==='#ffd166'||t[0]==='#67e8f9'||t[0]==='#fcd34d')?' warn':''; return '<div class="assess-card'+warn+'" style="border-left-color:'+t[0]+';border-color:'+t[0]+'55"'+(t[3]&&t[3].inc?' data-inc="'+t[3].inc+'"':'')+'><div class="assess-h"><b>'+t[1]+'</b></div><div class="assess-s">🔧 '+t[2]+'</div>'+(t[3]&&t[3].inc?'<div class="assess-go">→ Protokoll</div>':'')+'</div>'; }).join('') : '<div class="assess-d" style="margin-top:6px">✓ Ventilation, Kapno & Blutdruck im Zielbereich – Zielwerte oben halten.</div>';
@@ -1381,10 +1848,10 @@ function renderInjection(){
   var box=$('#injCombos'); if(!box) return; var s=sp();
   ['injSp','injSp2'].forEach(function(id){ var e=$('#'+id); if(e) e.textContent=s.name; });
   var ip=$('#injPat'); if(ip) ip.textContent=s.name+' '+fmt(state.wt)+' kg';
-  var ctx=injContext(); var recEl=$('#injRecord');
+  var ctx=drugContext(); var recEl=$('#injRecord');
   if(recEl){ recEl.innerHTML = ctx.any
-    ? '<div class="mset" style="margin:0"><b>💉 Am Tier verabreicht:</b> '+(ctx.indName||'(keine Einleitung gewählt)')+(ctx.topNames.length?' &nbsp;·&nbsp; <b>Nachdosierung:</b> '+ctx.topNames.join(' + '):'')+' &nbsp; <button class="chip" id="injReset" style="cursor:pointer">✕ zurücksetzen</button><div style="margin-top:5px;font-size:11.5px;color:var(--muted)">Gerät, Analyse &amp; Coach berücksichtigen jetzt diese Wirkstoffe.</div></div>'
-    : '<div class="dose-caution" style="border-color:rgba(0,216,255,.35);background:rgba(0,216,255,.07);color:#bff0ff">👉 Markiere unten bei <b>Einleitung</b> und <b>Nachdosierung</b> „○ als gegeben" – dann weiß die ganze App (Gerät/Analyse/Coach), welche Narkose das Tier bekommen hat.</div>'; }
+    ? '<div class="mset" style="margin:0"><b>💉 Am Tier verabreicht:</b> '+(ctx.indName||'(keine Einleitung gewählt)')+(ctx.topNames.length?' &nbsp;·&nbsp; <b>Nachdosierung:</b> '+ctx.topNames.join(' + '):'')+(ctx.givenNames.length?' &nbsp;·&nbsp; <b>Weitere Medikamente:</b> '+ctx.givenNames.join(' + '):'')+' &nbsp; <button class="chip" id="injReset" style="cursor:pointer">✕ zurücksetzen</button><div style="margin-top:5px;font-size:11.5px;color:var(--muted)">Gerät, Analyse &amp; Coach berücksichtigen jetzt diese Wirkstoffe'+((ctx.respDep||ctx.barb)?' — <b style="color:#ffd7a8">Atemdepression: kontrolliert beatmen bereit</b>':'')+(ctx.antagResp?' — Antagonist an Bord: Atemantrieb kehrt zurück':'')+'.</div></div>'
+    : '<div class="dose-caution" style="border-color:rgba(0,216,255,.35);background:rgba(0,216,255,.07);color:#bff0ff">👉 Markiere Medikamente als „○ als gegeben" – hier bei <b>Einleitung/Nachdosierung</b> oder im Tab <b>Medikamente</b> – dann rechnet die ganze App (Gerät/Analyse/Coach) die Wirkstoffe und ihre Folgen mit.</div>'; }
   var ic=$('#injCase'); if(ic) ic.innerHTML='<div class="thr" style="border-color:rgba(255,140,60,.5);background:rgba(255,140,60,.1);color:#ffd7a8">⚠️ <b>EtCO₂ hoch (z.B. ~70) unter Injektionsnarkose?</b> α2-Agonist + Opioid + Barbiturat dämpfen additiv das Atemzentrum → Hypoventilation, und ohne Gerät kann das CO₂ nicht abgeatmet werden. Vorgehen: <b>intubieren + manuell beatmen (Beutel/Ambu) + O₂</b>; α2 mit Atipamezol, Opioid mit Naloxon antagonisieren (Barbiturat hat KEIN Antidot → Beatmung ist tragend). <b>NICHT tiefer nachdosieren!</b> <button class="chip" data-inc="hypoventilation" style="cursor:pointer;margin-top:6px">→ Protokoll Hypoventilation</button></div>';
   var care=$('#injCare'); if(care){ var sc=(A.speciesCare||{})[state.sp];
     care.innerHTML = sc ? ('<div class="mset" style="margin:0;border-color:rgba(255,140,60,.4);background:rgba(255,140,60,.08)"><b>🐾 '+sc.title+'</b>'+
@@ -1429,7 +1896,7 @@ function renderInjection(){
     else { state.injInduction=(state.injInduction===id)?null:id; }
     renderInjection(); if(mon.running) renderMonValues(); else ventCoach();
   }; });
-  var ir=$('#injReset'); if(ir) ir.onclick=function(){ state.injInduction=null; state.injTopups=[]; renderInjection(); if(mon.running) renderMonValues(); else ventCoach(); };
+  var ir=$('#injReset'); if(ir) ir.onclick=function(){ state.injInduction=null; state.injTopups=[]; state.givenDrugs=[]; renderInjection(); renderDrugs(); if(mon.running) renderMonValues(); else { ventCoach(); renderVentPanel(); } };
 }
 function switchTab(v){
   $$('#tabs .tab').forEach(function(t){ t.classList.toggle('active',t.dataset.view===v); });
@@ -1452,16 +1919,53 @@ function boot(){
   // deep link ?w=weight&s=species
   try{ var q=new URLSearchParams(location.search); if(q.get('kg')){state.wt=parseFloat(q.get('kg'))||state.wt; $('#wt').value=state.wt;} if(q.get('sp')&&A.species.find(function(s){return s.id===q.get('sp');})){state.sp=q.get('sp');} if(q.get('breed')&&VB&&VB.byId(q.get('breed'))){ state.breed=q.get('breed'); } syncPatient(); rerender(); }catch(e){}
 }
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
+/* Bruecke fuer die VetStation-Shell (ui/vetstation-live.js drive()): das ECHTE Narkosegeraet
+ * spiegelt live in dieses virtuelle Geraet (Verdampfer/Frischgas/Modus/Beatmungsparameter).
+ * Die Shell greift auf window.state.dev + diese Render-Funktionen zu; ohne diese additiven
+ * Bruecken liefe der Spiegel-Code ins Leere (state/render sind sonst in dieser IIFE gekapselt).
+ * Rein additiv – aendert nichts am Monitor-/HL7-Pfad. */
+try{ window.state=state;
+  window.renderMachine=renderMachine; window.renderDevCtrl=renderDevCtrl;
+  window.renderVentPanel=renderVentPanel; window.renderVentModes=renderVentModes;
+  window.renderMonValues=renderMonValues;
+  /* AF-Quelle vom Bridge (Kapnograph vor Monitor). Wird am AF-Feld angezeigt. */
+  window.__setAfSource=function(src){ state._afSource=(src==='kapnograph'||src==='monitor')?src:null; try{ if(mon.running) renderMonValues(); }catch(e){} };
+}catch(e){}
 
 /* ===== FERN-LIVE Seam: Werte vom Praxis-PC (VetStation) in die echte App einspeisen =====
- * Wird vom additiven Fern-Ansicht-Modul (unten) aufgerufen. Setzt Spezies/Gewicht/Rasse,
- * schaltet in den Ist-Modus, uebernimmt die Vitalwerte + Rhythmus + Verdampfer-Soll und
- * rendert die App exakt so, als haette man die Werte selbst eingegeben. Read-only. */
+ * Wird vom additiven Fern-Ansicht-Modul (unten) aufgerufen. Es ist DIESELBE Einspeisung, die die
+ * VetStation-Shell lokal ueber vetstation-live.js drive() macht - nur ohne iframe, direkt auf
+ * state. Dadurch sieht und rechnet die Fern-Ansicht exakt wie die App am Praxis-PC: derselbe
+ * virtuelle Monitor, dieselben echten Kurven, dieselbe Beatmungs-Empfehlung (ventAdvice),
+ * dieselben Notfall-Verknuepfungen. Read-only: es wird nichts an ein Geraet zurueckgeschickt.
+ *
+ * WARUM DIE AENDERUNGSERKENNUNG (__liveSig): der Fern-Strom kommt jetzt bis zu 5x pro Sekunde.
+ * rerender() baut Protokolle, Dosen, Rassenprofil und Beatmungspanel komplett neu - das 5x pro
+ * Sekunde zu tun, wuerde die Seite auf einem Tablet sichtbar ruckeln lassen, obwohl sich an
+ * diesen Panels fast nie etwas aendert. Deshalb: Vitalwerte gehen JEDES Mal durch (sie sind
+ * billig und sollen fluessig laufen), der teure Vollaufbau nur, wenn sich wirklich etwas
+ * Strukturelles geaendert hat (Tierart, Gewicht, Rasse, Rhythmus, Verdampfer, Beatmung). */
+function ventModeIdFromName(name){
+  if(!name) return null;
+  var s=String(name).toLowerCase().replace(/[\s._/+-]/g,'');
+  if(/(manu|hand|beutel|bag)/.test(s)) return 'manual';
+  if(/simv/.test(s)) return 'simv';
+  if(/(vsplus|vspls|volumesupportplus|adaptive|adaptiv)/.test(s)) return 'vsplus';
+  if(/(psv|pressuresupport|druckunterst)/.test(s)) return 'psv';
+  if(/(cpap|peeponly|nurpeep|spontanpeep)/.test(s)) return 'cpap';
+  if(/(pcv|druckkontroll|pressurecontrol)/.test(s)) return 'pcv';
+  if(/(vcv|volumenkontroll|volumecontrol|ippv|cmv)/.test(s)) return 'vcv';
+  if(/(vs|volumesupport|volumensupport)/.test(s)) return 'vs';
+  return null;
+}
+var __liveSig=null, __liveAlarmSig=null;
 function applyLive(p){
   if(!p) return;
-  if(p.species && p.species!==state.sp && A.species.find(function(s){return s.id===p.species;})){ state.sp=p.species; }
-  if(p.weightKg>0){ state.wt=p.weightKg; var wtEl=$('#wt'); if(wtEl) wtEl.value=state.wt; }
-  if(p.breed && VB && VB.byId && VB.byId(p.breed)){ state.breed=p.breed; }
+  var schwer=false;   // erzwingt den teuren Vollaufbau
+  if(p.species && p.species!==state.sp && A.species.find(function(s){return s.id===p.species;})){ state.sp=p.species; schwer=true; }
+  if(p.weightKg>0 && state.wt!==p.weightKg){ state.wt=p.weightKg; var wtEl=$('#wt'); if(wtEl) wtEl.value=state.wt; schwer=true; }
+  if(p.breed && VB && VB.byId && VB.byId(p.breed) && state.breed!==p.breed){ state.breed=p.breed; schwer=true; }
   state.monMode='ist';
   if(!state.istVals) istInit();
   var v=p.vitals||{}, iv=state.istVals;
@@ -1469,16 +1973,48 @@ function applyLive(p){
   sv('hr',v.hr); sv('spo2',v.spo2); sv('etco2',v.etco2); sv('rr',(v.af!=null?v.af:v.rr)); sv('temp',v.temp); sv('sys',v.sys); sv('dia',v.dia);
   var s=iv.sys||0, d=iv.dia||0;
   iv.nibp=(s>0&&d>0)?Math.round(d+(s-d)/3):(v.map!=null?v.map:(iv.nibp||0));
-  if(v.ekgRhythm && (A.ekg||[]).some(function(r){return r.id===v.ekgRhythm;})){ state.rhythm=v.ekgRhythm; }
-  if(p.isoPct!=null && !isNaN(p.isoPct)){ state.dev.iso=p.isoPct; }
-  syncPatient();
-  if(typeof renderMonInputs==='function') renderMonInputs();
-  rerender();
+  if(v.ekgRhythm && v.ekgRhythm!==state.rhythm && (A.ekg||[]).some(function(r){return r.id===v.ekgRhythm;})){ state.rhythm=v.ekgRhythm; schwer=true; }
+
+  /* Narkosegeraet spiegeln — genau wie lokal: Verdampfer, Frischgas, Beatmungsmodus, Parameter.
+   * Damit gluehen die Beatmungsmodus-Karten fern mit derselben Empfehlung wie am Praxis-PC. */
+  var dv=state.dev; if(dv){
+    dv.mirror=dv.mirror||{};
+    if(p.isoPct!=null && dv.iso!==p.isoPct){ dv.iso=p.isoPct; dv.mirror.iso=true; dv.live=true; schwer=true; }
+    if(p.o2Flow!=null && dv.o2!==p.o2Flow){ dv.o2=p.o2Flow; dv.mirror.o2=true; dv.live=true; schwer=true; }
+    if(p.ventMode){
+      var id=ventModeIdFromName(p.ventMode);
+      var modes=(A.machine&&A.machine.ventModes)||[];
+      if(id && modes.some(function(m){return m.id===id;}) && dv.mode!==id){ dv.mode=id; dv.mirror.mode=true; dv.live=true; schwer=true; }
+      var autoAn=!/manu|hand/i.test(p.ventMode);
+      if(dv.auto!==autoAn){ dv.auto=autoAn; schwer=true; }
+    }
+    if(p.ventParams && typeof p.ventParams==='object'){
+      dv.vp=dv.vp||{}; dv.mirror.vp=dv.mirror.vp||{};
+      Object.keys(p.ventParams).forEach(function(k){
+        var val=p.ventParams[k]; if(val==null) return;
+        if(dv.vp[k]!==val){ dv.vp[k]=val; schwer=true; }
+        dv.mirror.vp[k]=true;
+      });
+      if(schwer) dv.live=true;
+    }
+  }
+
+  try{ if(window.__setAfSource) window.__setAfSource(p.afSource||null); }catch(e){}
+  /* Geraete-Alarme nur bei echter Aenderung neu setzen (sonst baut die Liste 5x/s neu auf). */
+  try{
+    var asig=(p.alarms||[]).map(function(a){ return a&&a.text?a.text:a; }).join('|');
+    if(asig!==__liveAlarmSig){ __liveAlarmSig=asig; if(window.__setDeviceAlarms) window.__setDeviceAlarms(p.alarms||[]); }
+  }catch(e){}
+
+  var sig=[state.sp,state.wt,state.breed,state.rhythm,dv&&dv.iso,dv&&dv.o2,dv&&dv.mode,dv&&dv.auto].join('|');
+  if(schwer || sig!==__liveSig){ __liveSig=sig; syncPatient(); if(typeof renderMonInputs==='function') renderMonInputs(); rerender(); }
+  else if(typeof renderMonInputs==='function') renderMonInputs();
   if(mon.running) renderMonValues();
 }
-window.__anaesLive = { apply: applyLive, tab: switchTab, gotoIncident: (typeof gotoIncident==='function'?gotoIncident:null), ready:true };
-
-if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
+try{
+  window.__anaesLive={ apply:applyLive, tab:switchTab, monResolve:monResolve,
+    gotoIncident:(typeof gotoIncident==='function'?gotoIncident:null), ready:true };
+}catch(e){}
 })();
 </script>
 
@@ -1512,7 +2048,6 @@ html[data-theme="light"] .vp-cause .row{background:rgba(255,255,255,.6)}
 .vp-mol-stage{position:relative;height:min(52vh,440px);border:1px solid var(--line);border-radius:12px;background:radial-gradient(circle at 50% 42%,rgba(139,124,246,.1),transparent 42%),#06080d;overflow:hidden;touch-action:none}
 .vp-mol-stage canvas{display:block;width:100%;height:100%;cursor:grab}
 .vp-mol-stage canvas:active{cursor:grabbing}
-.vp-mol-load{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#9aa8bb;font-size:13px;text-align:center;padding:20px;line-height:1.6}
 .vp-mol-pal{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .vp-mol-pal button{border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.04);color:var(--text);padding:8px 12px;cursor:pointer;font-size:12.5px;transition:.16s}
 html[data-theme="light"] .vp-mol-pal button{background:rgba(255,255,255,.62)}
@@ -1527,22 +2062,6 @@ html[data-theme="light"] .vp-cause .grt{color:#15202e}
 .vp-cause .row{display:flex;flex-wrap:wrap;align-items:center;gap:5px 9px;border:1px solid var(--line);border-radius:9px;padding:8px 11px;margin-bottom:7px;background:rgba(255,255,255,.03)}
 html[data-theme="light"] .vp-cause .row{background:rgba(255,255,255,.6)}
 .vp-cause .row .why{color:var(--muted);font-size:11.5px;line-height:1.45;flex:1;min-width:150px}
-/* dynamisches 3D-Herz */
-.vp-heart-stage{position:relative;height:230px;border:1px solid var(--line);border-radius:12px;background:radial-gradient(circle at 50% 42%,rgba(255,77,77,.16),transparent 55%),#0a0e14;overflow:hidden}
-.vp-heart-stage canvas{display:block;width:100%;height:100%}
-.vp-heart-lbl{position:absolute;left:12px;bottom:10px;font:12px var(--mono);color:#ffc2c2;background:rgba(8,10,14,.62);padding:5px 10px;border-radius:8px;pointer-events:none}
-.vp-heart-flag{position:absolute;right:12px;top:10px;font:11px var(--mono);padding:4px 9px;border-radius:20px;background:rgba(8,10,14,.62);color:#ffd166;pointer-events:none}
-.vp-heart-leg{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-.vp-heart-leg button{border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);border-radius:20px;padding:5px 10px;cursor:pointer;font-size:11.5px;display:inline-flex;align-items:center;gap:6px;transition:.15s}
-.vp-heart-leg button .dot{width:9px;height:9px;border-radius:50%;background:var(--hc);box-shadow:0 0 6px var(--hc)}
-.vp-heart-leg button:hover{border-color:var(--hc)}
-.vp-heart-leg button.on{border-color:var(--hc);background:color-mix(in srgb,var(--hc) 20%,transparent);color:#fff}
-html[data-theme="light"] .vp-heart-leg button{background:rgba(255,255,255,.62)}
-html[data-theme="light"] .vp-heart-leg button.on{color:#15202e}
-.vp-heart-info{margin-top:10px;border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:calc(12.5px*var(--sc,1));line-height:1.55;background:rgba(255,255,255,.03);color:var(--text)}
-html[data-theme="light"] .vp-heart-info{background:rgba(255,255,255,.6)}
-.vp-heart-info b{color:#ffd166}
-html[data-theme="light"] .vp-heart-info b{color:#b3760a}
 </style>
 
 <script>
@@ -1706,23 +2225,6 @@ var CAUSE={
  }
 };
 
-/* Herz-Verhalten je Zwischenfall (für das dynamische 3D-Herz) */
-var HRMAP={
- bradykardie:{bpm:42,amp:0.17,flag:"langsam"}, tachykardie:{bpm:185,amp:0.2,flag:"schnell"},
- tachypnoe:{bpm:120,amp:0.16,flag:"erhöht"}, hypoxaemie:{bpm:130,amp:0.16,flag:"Hypoxie"},
- hypoventilation:{bpm:100,amp:0.15,flag:"CO₂ ↑"}, hypotension:{bpm:110,amp:0.07,flag:"schwacher Puls"},
- apnoe:{bpm:95,amp:0.15,flag:"Atemstillstand"}, asystolie:{bpm:0,amp:0,flat:true,flag:"STILLSTAND"},
- hyperthermie:{bpm:170,amp:0.2,flag:"heiß/schnell"}, hypothermie:{bpm:50,amp:0.13,flag:"kalt/langsam"}
-};
-var heartState={bpm:85,amp:0.16,flat:false};
-function setHeart(id){
-  var h=HRMAP[id]||{bpm:85,amp:0.16,flag:""};
-  heartState.bpm=h.bpm; heartState.amp=h.amp; heartState.flat=!!h.flat;
-  var lbl=$("#heartLbl"), fl=$("#heartFlag");
-  var inc=(A.incidents||[]).find(function(x){return x.id===id;});
-  if(lbl) lbl.innerHTML='💓 '+(inc?inc.name:'Ruhe')+' · '+(h.flat?'0/min':'~'+h.bpm+'/min');
-  if(fl) fl.textContent=h.flag||'';
-}
 var NAME2ID={}; (A.incidents||[]).forEach(function(i){NAME2ID[(i.name||"").trim()]=i.id;});
 var pbox=$("#protoBox");
 function curIncId(){ var h=pbox&&pbox.querySelector(".proto-head h2"); return h?NAME2ID[h.textContent.trim()]:null; }
@@ -1740,150 +2242,9 @@ function injectCause(){
       (c.note?'<div class="vp-note" style="margin-top:8px">'+c.note+'</div>':'');
     pbox.appendChild(div);
   }
-  setHeart(id);
-}
-/* dynamisches 3D-Herz als persistente Karte im Notfall-Tab */
-var nf=$("#notfall");
-if(nf && !$("#heartCard")){
-  var hc=document.createElement("div"); hc.className="card"; hc.id="heartCard";
-  hc.innerHTML='<h3>💓 3D-Herz (Hund) – anatomisch, beschriftet, schlägt live</h3>'+
-    '<p class="muted" style="font-size:12px;margin:-4px 0 10px">Echtes Herzmodell: <b>Punkt am Herzen antippen</b> oder unten wählen → Name &amp; Funktion (Kammern, Vorhöfe, Klappen, Gefäße). Es schlägt nach dem gewählten Zwischenfall (Bradykardie langsam, Tachykardie schnell, Hypotension schwach, Asystolie Stillstand). Ziehen dreht, Scrollen zoomt.</p>'+
-    '<div class="vp-heart-stage" id="heartStage"><div class="vp-mol-load" id="heartLoad">Herzmodell lädt … (Three.js/WebGL)</div><div class="vp-heart-flag" id="heartFlag"></div><div class="vp-heart-lbl" id="heartLbl">💓 Ruhe</div></div>'+
-    '<div class="vp-heart-leg" id="heartLegend"></div>'+
-    '<div class="vp-heart-info" id="heartInfo">Tippe einen Punkt am Herzen oder eine Beschriftung an – z. B. eine Klappe.</div>';
-  nf.appendChild(hc);
 }
 if(pbox){ new MutationObserver(injectCause).observe(pbox,{childList:true}); injectCause(); }
 
-/* ---------- dynamisches 3D-Herz (Three.js, schlägt nach Zwischenfall) ---------- */
-function loadThree(){return new Promise(function(res,rej){if(window.THREE)return res();var s=document.createElement("script");s.src="https://unpkg.com/three@0.160.0/build/three.min.js";s.onload=res;s.onerror=rej;document.head.appendChild(s);setTimeout(function(){if(!window.THREE)rej();},8000);});}
-/* ---------- anatomische Beschriftungspunkte (auf dem echten Modell kalibriert) ---------- */
-var ANAT=[
- {id:'apex',n:'Herzspitze (Apex cordis)',p:[-0.05,-0.9,0.12],c:0xffd166,
-  d:'Unteres, spitzes Ende des Herzens – v. a. von der <b>linken Kammer</b> gebildet. Hier liegt der tastbare Herzspitzenstoß (Ictus cordis).'},
- {id:'lv',n:'Linke Herzkammer (Ventriculus sinister)',p:[-0.52,-0.5,-0.05],c:0xff6b6b,
-  d:'Dickwandigste Kammer; pumpt sauerstoffreiches Blut über die <b>Aorta</b> in den Körperkreislauf. Bildet den Apex.'},
- {id:'rv',n:'Rechte Herzkammer (Ventriculus dexter)',p:[0.24,-0.34,0.56],c:0xff9d5c,
-  d:'Bildet die vordere Herzfläche; pumpt sauerstoffarmes Blut über den <b>Truncus pulmonalis</b> in die Lunge.'},
- {id:'atria',n:'Vorhöfe & Herzohren (Atria)',p:[0.42,0.48,0.06],c:0x8ab4ff,
-  d:'<b>Rechter Vorhof</b> nimmt das Körpervenenblut (Hohlvenen) auf, <b>linker Vorhof</b> das Lungenvenenblut. Die „Herzohren" (Auriculae) sind ihre Anhänge.'},
- {id:'av',n:'Segelklappen (AV-Klappen)',p:[0.06,0.16,0.44],c:0x00ff87,
-  d:'In der Ventilebene zwischen Vorhof und Kammer: rechts die <b>Trikuspidalklappe</b> (3 Segel, RA→RV), links die <b>Mitral-/Bikuspidalklappe</b> (2 Segel, LA→LV). Schließen in der Systole → kein Rückfluss in die Vorhöfe.'},
- {id:'semi',n:'Taschenklappen (Semilunarklappen)',p:[0.0,0.56,0.12],c:0x00d8ff,
-  d:'An den Ausflussbahnen: <b>Aortenklappe</b> (LV→Aorta) und <b>Pulmonalklappe</b> (RV→Truncus pulmonalis), je 3 Taschen. Schließen in der Diastole → kein Rückfluss aus den Arterien.'},
- {id:'aorta',n:'Aorta & Aortenbogen',p:[0.0,0.95,-0.12],c:0xe0a3a3,
-  d:'Größte Körperarterie; führt sauerstoffreiches Blut aus der linken Kammer in den Körperkreislauf.'},
- {id:'pulm',n:'Truncus pulmonalis & Hohlvenen',p:[-0.26,0.82,0.36],c:0x9ab6e6,
-  d:'Der <b>Truncus pulmonalis</b> führt sauerstoffarmes Blut zur Lunge; die <b>Venae cavae</b> (cranialis/caudalis) bringen Körpervenenblut zum rechten Vorhof.'},
- {id:'coron',n:'Herzkranzgefäße (Koronararterien)',p:[0.16,-0.12,0.55],c:0xffb366,
-  d:'Laufen in den Herzfurchen (Sulci) und versorgen das Myokard selbst. Verschluss → Myokardischämie & Arrhythmie.'}
-];
-var heartFocus=null, heartMarkers=[];
-function heartInfoShow(a){
-  var box=$("#heartInfo"); if(box) box.innerHTML=a?('<b>'+a.n+'</b><br>'+a.d):'Tippe einen Punkt am Herzen oder eine Beschriftung an – z. B. eine Klappe.';
-  Array.prototype.forEach.call(document.querySelectorAll("#heartLegend button"),function(b){b.classList.toggle("on",!!a&&b.getAttribute("data-id")===a.id);});
-  if(window.__heartFocus) window.__heartFocus(a?a.id:null);
-}
-(function buildHeartLegend(){ var lg=$("#heartLegend"); if(!lg) return;
-  lg.innerHTML=ANAT.map(function(a){return '<button data-id="'+a.id+'" style="--hc:#'+a.c.toString(16).padStart(6,"0")+'"><span class="dot"></span>'+a.n.split(" (")[0]+'</button>';}).join("");
-  Array.prototype.forEach.call(lg.querySelectorAll("button"),function(b){b.addEventListener("click",function(){heartInfoShow(ANAT.find(function(x){return x.id===b.getAttribute("data-id");}));});});
-})();
-function initHeart(){
-  var stage=$("#heartStage"); if(!stage||!window.THREE) return;
-  var THREE=window.THREE, w=stage.clientWidth, h=stage.clientHeight||230;
-  var scene=new THREE.Scene(), camera=new THREE.PerspectiveCamera(42,w/h,0.1,100);
-  var renderer=new THREE.WebGLRenderer({antialias:true,alpha:true}); renderer.setSize(w,h); renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-  stage.insertBefore(renderer.domElement, stage.firstChild); var cv=renderer.domElement;
-  scene.add(new THREE.AmbientLight(0xffffff,0.62));
-  var key=new THREE.DirectionalLight(0xffffff,1.15); key.position.set(4,6,6); scene.add(key);
-  var rim=new THREE.PointLight(0xff6b7e,0.85); rim.position.set(-5,2,5); scene.add(rim);
-  var heart=new THREE.Group(); scene.add(heart);
-  var mat=new THREE.MeshStandardMaterial({color:0xb23a48,roughness:0.55,metalness:0.03,emissive:0x3a0a12,emissiveIntensity:0.35});
-  /* schwebendes Namensschild (Sprite) für den gewählten Punkt */
-  var lblCanvas=document.createElement("canvas"); lblCanvas.width=512; lblCanvas.height=128;
-  var lblSprite=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,depthTest:false})); lblSprite.scale.set(1.0,0.25,1); lblSprite.visible=false; scene.add(lblSprite);
-  function setLbl(text,color){ var x=lblCanvas.getContext("2d"); x.clearRect(0,0,512,128);
-    x.font="bold 42px Segoe UI,Arial,sans-serif"; var tw=Math.min(x.measureText(text).width,452), bw=tw+40, bx=(512-bw)/2;
-    x.fillStyle="rgba(8,10,14,.85)"; x.beginPath(); if(x.roundRect){x.roundRect(bx,26,bw,76,16);}else{x.rect(bx,26,bw,76);} x.fill();
-    x.strokeStyle=color; x.lineWidth=3; x.stroke(); x.fillStyle="#fff"; x.textAlign="center"; x.textBaseline="middle"; x.fillText(text,256,64,452);
-    lblSprite.material.map=new THREE.CanvasTexture(lblCanvas); lblSprite.material.needsUpdate=true; }
-  var loadEl=$("#heartLoad"); if(loadEl) loadEl.remove();
-  /* Anatomisch geformtes Herz – prozedural aus Three.js Lathe-Geometrie (kein externes heart.bin nötig) */
-  try{
-    // Ventrikelmasse: Rotationsprofil (x=Radius, y=Höhe) → Herz-Ovoid mit spitzem Apex unten
-    var prof=[[0.02,-1.05],[0.16,-0.98],[0.34,-0.82],[0.50,-0.55],[0.60,-0.22],[0.655,0.08],[0.63,0.34],[0.55,0.56],[0.42,0.72],[0.26,0.84],[0.11,0.90],[0.0,0.92]];
-    var pts=prof.map(function(p){return new THREE.Vector2(p[0],p[1]);});
-    var vgeo=new THREE.LatheGeometry(pts,64); vgeo.computeVertexNormals();
-    var mesh=new THREE.Mesh(vgeo,mat); mesh.scale.set(1.06,1,0.84); heart.add(mesh);
-    // Sulcus coronarius (Herzkranzfurche) – dunklerer Ring in der Ventilebene
-    var groove=new THREE.Mesh(new THREE.TorusGeometry(0.60,0.045,12,52), new THREE.MeshStandardMaterial({color:0x7a2230,roughness:0.7,emissive:0x1a0208,emissiveIntensity:0.3}));
-    groove.rotation.x=Math.PI/2; groove.position.y=0.28; groove.scale.set(1.06,0.84,1); heart.add(groove);
-    // Vorhöfe: rechter (venös, bläulich) + linker Vorhof
-    var raMat=new THREE.MeshStandardMaterial({color:0x8f97c4,roughness:0.6,emissive:0x0b1226,emissiveIntensity:0.28});
-    var laMat=new THREE.MeshStandardMaterial({color:0xa4525f,roughness:0.6,emissive:0x260810,emissiveIntensity:0.3});
-    var ra=new THREE.Mesh(new THREE.SphereGeometry(0.35,28,22),raMat); ra.position.set(0.36,0.70,0.12); ra.scale.set(1,0.82,1); heart.add(ra);
-    var la=new THREE.Mesh(new THREE.SphereGeometry(0.31,28,22),laMat); la.position.set(-0.30,0.74,-0.08); la.scale.set(1,0.82,1); heart.add(la);
-    // Große Gefäße
-    var aoMat=new THREE.MeshStandardMaterial({color:0xd06a6a,roughness:0.5,emissive:0x2a0808,emissiveIntensity:0.22});
-    var pulMat=new THREE.MeshStandardMaterial({color:0x8aa0d0,roughness:0.5,emissive:0x0a1428,emissiveIntensity:0.22});
-    function tube(r1,r2,h,m){ return new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,22,1,false),m); }
-    var aorta=tube(0.15,0.17,0.78,aoMat); aorta.position.set(0.03,1.06,-0.12); aorta.rotation.z=-0.10; heart.add(aorta);
-    var arch=new THREE.Mesh(new THREE.TorusGeometry(0.22,0.145,14,30,Math.PI*0.95), aoMat); arch.position.set(-0.15,1.40,-0.12); arch.rotation.set(0,0,Math.PI*0.52); heart.add(arch);
-    var pulm=tube(0.15,0.17,0.66,pulMat); pulm.position.set(-0.17,1.00,0.18); pulm.rotation.set(-0.14,0,0.20); heart.add(pulm);
-    var cava=tube(0.10,0.11,0.42,pulMat); cava.position.set(0.52,0.96,0.14); cava.rotation.z=0.28; heart.add(cava);
-    // Anatomie-Marker auf die Ventrikeloberfläche projizieren (Fallback: feste Koordinaten)
-    scene.updateMatrixWorld(true);
-    var mkGeo=new THREE.SphereGeometry(0.058,16,14), rc=new THREE.Raycaster();
-    ANAT.forEach(function(a){
-      var col=new THREE.Color(a.c);
-      var dir=new THREE.Vector3(a.p[0],a.p[1],a.p[2]); if(dir.length()<0.001)dir.set(0,-1,0); dir.normalize();
-      rc.set(dir.clone().multiplyScalar(3.6), dir.clone().negate());
-      var hit=rc.intersectObject(mesh,false)[0];
-      var P=hit?hit.point.clone().addScaledVector(dir,0.04):new THREE.Vector3(a.p[0],a.p[1],a.p[2]);
-      var halo=new THREE.Mesh(new THREE.SphereGeometry(0.1,12,10),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.22})); halo.position.copy(P); heart.add(halo);
-      var mk=new THREE.Mesh(mkGeo,new THREE.MeshBasicMaterial({color:col})); mk.position.copy(P); mk.userData.id=a.id; mk.userData.halo=halo; heart.add(mk); heartMarkers.push(mk);
-    });
-    heart.scale.setScalar(0.72);
-  }catch(err){ var le=$("#heartLoad"); if(le) le.textContent="3D-Herz konnte nicht erstellt werden."; }
-  window.__heartFocus=function(id){ heartFocus=id;
-    heartMarkers.forEach(function(mk){var on=mk.userData.id===id; mk.scale.setScalar(on?1.9:1); if(mk.userData.halo)mk.userData.halo.material.opacity=on?0.6:0.22;});
-    var a=id?ANAT.find(function(x){return x.id===id;}):null;
-    if(a){ setLbl(a.n.split(" (")[0], "#"+a.c.toString(16).padStart(6,"0")); lblSprite.visible=true; } else lblSprite.visible=false;
-  };
-  var theta=0.35,phi=1.45,thetaG=theta,phiG=phi,dist=3.05,ptrs=new Map(),lastPinch=0,moved=false,dn=[0,0];
-  function apply(){var st=Math.sin(phi);camera.position.set(dist*st*Math.sin(theta),dist*Math.cos(phi),dist*st*Math.cos(theta));camera.lookAt(0,0,0);}
-  cv.style.touchAction="none";
-  cv.addEventListener("pointerdown",function(e){cv.setPointerCapture&&cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});moved=false;dn=[e.clientX,e.clientY];});
-  cv.addEventListener("pointermove",function(e){if(!ptrs.has(e.pointerId))return;var p=ptrs.get(e.pointerId),dx=e.clientX-p.x,dy=e.clientY-p.y;ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
-    if(Math.abs(e.clientX-dn[0])+Math.abs(e.clientY-dn[1])>4)moved=true;
-    if(ptrs.size===1){thetaG-=dx*0.008;phiG=Math.max(0.2,Math.min(Math.PI-0.2,phiG-dy*0.008));}
-    else if(ptrs.size===2){var a=Array.from(ptrs.values()),d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);if(lastPinch)dist=Math.max(1.8,Math.min(6,dist*lastPinch/d));lastPinch=d;}});
-  var ray=new THREE.Raycaster(), m2=new THREE.Vector2();
-  cv.addEventListener("pointerup",function(e){ptrs.delete(e.pointerId);lastPinch=0;
-    if(!moved&&heartMarkers.length){var r=cv.getBoundingClientRect();m2.x=((e.clientX-r.left)/r.width)*2-1;m2.y=-((e.clientY-r.top)/r.height)*2+1;
-      ray.setFromCamera(m2,camera); var hit=ray.intersectObjects(heartMarkers,false)[0];
-      if(hit){var a=ANAT.find(function(x){return x.id===hit.object.userData.id;}); if(a)heartInfoShow(a);}}});
-  cv.addEventListener("pointercancel",function(e){ptrs.delete(e.pointerId);lastPinch=0;});
-  cv.addEventListener("wheel",function(e){e.preventDefault();dist=Math.max(1.8,Math.min(6,dist*(1+Math.sign(e.deltaY)*0.09)));},{passive:false});
-  var ro=new ResizeObserver(function(){var W=stage.clientWidth,H=stage.clientHeight||230;if(W){renderer.setSize(W,H);camera.aspect=W/H;camera.updateProjectionMatrix();}}); ro.observe(stage);
-  var beat=0,last=0,reduce=(window.VP&&window.VP.get&&window.VP.get("motion")==="reduce"),tmp=new THREE.Vector3();
-  (function loop(now){requestAnimationFrame(loop);
-    /* Performance: nicht rendern, wenn Tab verborgen oder Notfall-Ansicht inaktiv (display:none → offsetParent null) */
-    if(document.hidden || stage.offsetParent===null){ last=now||0; return; }
-    if(!last)last=now||0;var dt=((now||0)-last)/1000;if(dt>0.1)dt=0.1;last=now||0;
-    if(ptrs.size===0&&!reduce&&!heartFocus) thetaG+=0.0032;
-    theta+=(thetaG-theta)*0.12;phi+=(phiG-phi)*0.12;apply();
-    var s=1;
-    if(!heartState.flat&&heartState.bpm>0){beat+=dt*(heartState.bpm/60);var ph=beat%1,pulse=Math.pow(Math.max(0,Math.sin(ph*Math.PI)),2.2);
-      s=1+heartState.amp*(reduce?0.4:1)*pulse; mat.emissiveIntensity=0.35+0.5*pulse;}
-    else {s=0.98;mat.emissiveIntensity=0.16;}
-    heart.scale.setScalar(0.72*s);
-    if(lblSprite.visible&&heartFocus){var mk=heartMarkers.find(function(x){return x.userData.id===heartFocus;});
-      if(mk){mk.getWorldPosition(tmp);tmp.y+=0.22;lblSprite.position.copy(tmp);}}
-    renderer.render(scene,camera);
-  })(0);
-}
-loadThree().then(function(){ initHeart(); setHeart(curIncId()); }).catch(function(){ var l=$("#heartLoad"); if(l) l.textContent="3D-Herz benötigt Internet (Three.js)/WebGL."; });
 })();
 </script>
 
@@ -2098,8 +2459,8 @@ html[data-theme="light"] .vetlive-tag{color:#0587b8;text-shadow:none}
 .vetlive-ro{margin-left:auto;font-size:11.5px;color:var(--muted,#9aa8bb);display:inline-flex;align-items:center;gap:5px}
 .vetlive-pats{display:flex;gap:8px;flex-wrap:wrap;margin-top:7px}
 .vetlive-chip{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:120px;text-align:left;cursor:pointer;
-  border:1px solid var(--line,rgba(255,255,255,.15));border-left:4px solid var(--pc,#35d69a);border-radius:10px;padding:5px 10px;
-  background:rgba(255,255,255,.04);color:inherit;transition:.15s}
+  padding:5px 10px;border-radius:10px;border:1px solid var(--line,rgba(255,255,255,.15));background:rgba(255,255,255,.05);color:inherit;
+  font:inherit;transition:transform .12s,border-color .12s,background .12s}
 html[data-theme="light"] .vetlive-chip{background:rgba(255,255,255,.65)}
 .vetlive-chip:hover{transform:translateY(-1px);border-color:var(--pc,#35d69a)}
 .vetlive-chip.sel{background:color-mix(in srgb,var(--pc,#35d69a) 18%,transparent);box-shadow:0 0 0 1px var(--pc,#35d69a) inset}
@@ -2110,19 +2471,98 @@ html[data-theme="light"] .vetlive-chip{background:rgba(255,255,255,.65)}
 .vetlive-wait{font-size:12px;color:var(--muted,#9aa8bb);padding:4px 0}
 .vetlive-cfg-hint{margin-top:6px;font-size:11.5px;color:#ffb84d;line-height:1.5}
 #vetlive-launch{position:fixed;top:10px;right:12px;z-index:9997;cursor:pointer;font:700 12.5px var(--tech,Segoe UI,Inter,system-ui,sans-serif);
-  color:#04121a;background:linear-gradient(135deg,#00d8ff,#35d69a);border:0;border-radius:20px;padding:8px 14px;
-  box-shadow:0 6px 18px rgba(0,216,255,.35);display:inline-flex;align-items:center;gap:6px;transition:.16s}
+  padding:8px 13px;border-radius:22px;border:1px solid rgba(0,216,255,.5);background:linear-gradient(180deg,#0b2b3d,#08202e);color:#bdf0ff;
+  box-shadow:0 6px 18px rgba(0,0,0,.4);transition:transform .12s,box-shadow .12s}
 #vetlive-launch:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,216,255,.5)}
 @media(max-width:560px){#vetlive-launch{top:8px;right:8px;padding:7px 11px;font-size:12px}}
 html.vetlive-on body{padding-top:96px}
 /* Read-only: Patienten-/Monitor-Eingaben kommen vom Praxis-PC (nicht fern editierbar) */
 html.vetlive-on #spChips,html.vetlive-on #wt,html.vetlive-on #age,html.vetlive-on #breedIn,html.vetlive-on #breedClear,html.vetlive-on #monInputs,html.vetlive-on #anMode{pointer-events:none;opacity:.92}
 html.vetlive-on #spChips::after{content:"🔒 vom Praxis-PC"}
+
+/* ---- Submenü "Fern-Live": der komplette Stand der Station auf einer Seite ---- */
+#fernlive .fl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:9px;margin-top:4px}
+.fl-tile{border:1px solid var(--line,rgba(255,255,255,.15));border-radius:11px;padding:8px 10px;background:rgba(255,255,255,.04)}
+html[data-theme="light"] .fl-tile{background:rgba(255,255,255,.6)}
+.fl-tile .k{font-size:10.5px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted,#9aa8bb)}
+.fl-tile .val{font:800 22px/1.15 var(--tech,Segoe UI,system-ui,sans-serif);font-variant-numeric:tabular-nums}
+.fl-tile .u{font-size:11px;font-weight:600;color:var(--muted,#9aa8bb);margin-left:3px}
+.fl-tile .src{font-size:10px;color:var(--muted,#9aa8bb)}
+.fl-tile.warn{border-color:#ff8c3c}
+.fl-tile.crit{border-color:#ff4d4d;box-shadow:0 0 0 1px rgba(255,77,77,.35) inset}
+.fl-kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12.5px;margin-top:4px}
+.fl-kv .k{color:var(--muted,#9aa8bb)}
+.fl-kv .v{font-weight:700;font-variant-numeric:tabular-nums}
+.fl-al{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.fl-al span{font-size:11.5px;padding:3px 8px;border-radius:7px;border:1px solid}
+.fl-al .phys{border-color:#ff4d4d;color:#ff8a8a}
+.fl-al .tech{border-color:#ffb84d;color:#ffcf8a}
+.fl-top{border-left:3px solid var(--pc,#35d69a);padding:6px 0 6px 10px;margin-top:6px}
+.fl-top b{display:block;font-size:14px}
+.fl-top .fix{font-size:12.5px;color:var(--muted,#9aa8bb);margin-top:2px}
+.fl-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:5px}
+.fl-tbl th,.fl-tbl td{text-align:left;padding:3px 7px;border-bottom:1px solid var(--line,rgba(255,255,255,.1))}
+.fl-tbl th{color:var(--muted,#9aa8bb);font-weight:600}
+.fl-tbl td.n{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+.fl-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;background:#7b8798}
+.fl-dot.on{background:#35d69a;box-shadow:0 0 7px #35d69a}
+.fl-dot.err{background:#ff4d4d;box-shadow:0 0 7px #ff4d4d}
+.fl-hint{font-size:11.5px;color:var(--muted,#9aa8bb);line-height:1.55;margin-top:6px}
+
+/* ---- Anmeldung: eigenes Overlay, NICHT in #vetlive-bar ----
+ * Die Leiste wird von render() jede Sekunde per innerHTML neu aufgebaut. Ein Formular darin
+ * verlöre bei jedem Tastendruck Fokus und Inhalt. Deshalb ein eigenständiges Element. */
+#vetlive-login{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;
+  background:rgba(6,10,16,.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:18px}
+.vl-box{width:min(420px,100%);border-radius:16px;padding:22px;background:linear-gradient(180deg,#0d1826,#0a1420);
+  border:1px solid rgba(0,216,255,.35);box-shadow:0 24px 60px rgba(0,0,0,.6);color:#e8f2ff;
+  font:14px/1.5 var(--tech,Segoe UI,Inter,system-ui,sans-serif)}
+html[data-theme="light"] .vl-box{background:linear-gradient(180deg,#fff,#eef7fd);color:#0b3b5c;border-color:rgba(0,140,190,.4)}
+.vl-box h2{margin:0 0 4px;font-size:19px;letter-spacing:.2px}
+.vl-box .vl-sub{font-size:12.5px;color:#9aa8bb;margin-bottom:16px;line-height:1.55}
+.vl-box label{display:block;font-size:12.5px;color:#9aa8bb;margin-bottom:10px}
+.vl-box input{width:100%;box-sizing:border-box;margin-top:4px;padding:10px 12px;border-radius:9px;font-size:14px;
+  border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:inherit}
+html[data-theme="light"] .vl-box input{background:#fff;border-color:rgba(0,0,0,.18)}
+.vl-box input:focus{outline:none;border-color:#00d8ff;box-shadow:0 0 0 3px rgba(0,216,255,.18)}
+.vl-btns{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+.vl-btn{flex:1;min-width:130px;padding:11px 14px;border-radius:10px;cursor:pointer;font:700 13.5px var(--tech,Segoe UI,system-ui,sans-serif);
+  border:1px solid rgba(0,216,255,.5);background:linear-gradient(180deg,#0b2b3d,#08202e);color:#bdf0ff}
+.vl-btn.sek{background:transparent;border-color:rgba(255,255,255,.2);color:inherit;font-weight:600}
+.vl-btn:disabled{opacity:.5;cursor:default}
+.vl-msg{margin-top:12px;font-size:12.5px;min-height:18px;line-height:1.5}
+.vl-fuss{margin-top:14px;font-size:11.5px;color:#9aa8bb;line-height:1.6}
+
+/* ---- Protokoll + Druck ---- */
+.fl-prot{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:6px}
+.fl-prot th,.fl-prot td{border:1px solid var(--line,rgba(255,255,255,.15));padding:3px 6px;text-align:right;white-space:nowrap}
+.fl-prot th{background:rgba(255,255,255,.05);font-weight:600;text-align:center}
+.fl-prot td.l,.fl-prot th.l{text-align:left}
+.fl-prot tr.mark td{background:rgba(255,140,60,.14)}
+#druckblatt{display:none}
+@media print{
+  /* Feste Elemente und Navigation raus, nur das Protokollblatt drucken. */
+  #vetlive-bar,#vetlive-launch,#vetlive-login,#tabs,.nf-dock,.nf-fab,.topbar,header,footer{display:none !important}
+  html.vetlive-on body{padding-top:0 !important}
+  body{background:#fff !important;color:#000 !important}
+  main.shell,.view{display:none !important}
+  #druckblatt{display:block !important;color:#000;font:11px/1.45 "Segoe UI",Arial,sans-serif}
+  #druckblatt h1{font-size:16px;margin:0 0 2px}
+  #druckblatt h2{font-size:12.5px;margin:12px 0 4px;border-bottom:1px solid #999;padding-bottom:2px}
+  #druckblatt table{width:100%;border-collapse:collapse;font-size:10px}
+  #druckblatt th,#druckblatt td{border:1px solid #999;padding:2px 4px;text-align:right}
+  #druckblatt th{background:#eee;text-align:center}
+  #druckblatt td.l,#druckblatt th.l{text-align:left}
+  #druckblatt .kv{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:1px 10px;font-size:10.5px}
+  #druckblatt .kv b{font-weight:600}
+  #druckblatt .fuss{margin-top:14px;font-size:9px;color:#444;border-top:1px solid #999;padding-top:4px}
+  @page{margin:14mm 12mm}
+}
 </style>
 <script>
 (function(){
 "use strict";
-/* Firebase Web-Konfiguration — ÖFFENTLICH (kein Geheimnis). Projekt vetpharma-f9d98.
+/* Firebase Web-Konfiguration — ÖFFENTLICH (kein Geheimnis). Projekt vet-station.
  * Aus Firebase-Konsole → Projekteinstellungen → Deine Apps → Web-App → SDK-Konfiguration.
  * databaseURL MUSS die Realtime-Database-URL sein. Anleitung: VetStation/docs/FERN-LIVE.md */
 window.VETLIVE_CFG = window.VETLIVE_CFG || {
@@ -2133,38 +2573,113 @@ window.VETLIVE_CFG = window.VETLIVE_CFG || {
 };
 
 var params = new URLSearchParams(location.search);
-var code = params.get('live');
 var demo = params.get('livedemo');
 
 var A = window.ANAES || {species:[]};
 var SDK = "https://www.gstatic.com/firebasejs/10.12.0/";
-var patients = {}, meta = {}, sel = null, lastRecv = 0;
+var patients = {}, meta = {}, protokoll = {}, sel = null, lastRecv = 0;
 var connState = demo ? 'live' : 'init', lastError = '', switched = false;
-var bar = null, activated = false;
+var bar = null, activated = false, kurvenSigGezeigt = null, updates = 0, updRate = 0, rateT0 = 0;
+/* Anmeldung + Laufzeitmessung */
+var FB = null;              // {app, D, auth, db, A:authModul}
+var nutzer = null;          // angemeldetes Praxis-Konto
+var praxis = null;          // Anmelde-Kennung = Datenpfad
+var uhrVersatz = 0;         // Unterschied lokale Uhr <-> Firebase-Serveruhr
+var laufzeit = null;        // gemessene Strecke Praxis -> Datenbank -> hier, in ms
+var laufzeitMin = null, laufzeitMax = null;
 
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 function sp(id){ return (A.species||[]).find(function(x){return x.id===id;}) || {icon:'🐾',name:id||'?'}; }
 function priColor(pri){ pri=pri||0; return pri>=8?'#ff4d4d':pri>=6?'#ff8c3c':pri>=4?'#ffc23c':'#35d69a'; }
+function num(x){ return (x==null||x===''||isNaN(x))?null:x; }
 
 function whenReady(cb){
   if(window.__anaesLive && window.__anaesLive.ready) return cb();
   var t=setInterval(function(){ if(window.__anaesLive && window.__anaesLive.ready){ clearInterval(t); cb(); } },120);
 }
+
+/* ---------------------------------------------------------------------------
+ * ECHTE GERÄTEKURVEN
+ * Der Praxis-PC überträgt die Abtastwerte des LifeVet (EKG 256 Hz, CO2 40 Hz) als Int16+Base64
+ * und nur dann, wenn ein NEUER Streifen vorliegt (kurvenSig). Hier werden sie dekodiert und in
+ * genau denselben Monitor-Hook gegeben, den die VetStation lokal benutzt (__setRealWave) —
+ * deshalb sieht die Kurve zu Hause aus wie im OP und ist keine Nachbildung.
+ * --------------------------------------------------------------------------- */
+function decodeSamples(o){
+  if(!o || !o.b64) return null;
+  var bin; try{ bin=atob(o.b64); }catch(e){ return null; }
+  var n=o.n||Math.floor(bin.length/2), sk=o.skala||1, out=new Array(n);
+  for(var i=0;i<n;i++){
+    var v=(bin.charCodeAt(i*2)|(bin.charCodeAt(i*2+1)<<8));
+    if(v>32767) v-=65536;
+    out[i]=v*sk;
+  }
+  return out;
+}
+function laneOf(kd){
+  var id=((kd.code||'')+' '+(kd.name||'')).toLowerCase();
+  if(/ecg|ekg|elec_potl/.test(id)) return 'ekg';
+  if(/co2|capno|kapno/.test(id)) return 'capno';
+  if(/pleth|oxim/.test(id)) return 'pleth';
+  return null;
+}
+function pushKurven(p){
+  if(typeof window.__setRealWave!=='function') return;
+  var sig=p.kurvenSig||'';
+  if(!sig){ if(kurvenSigGezeigt){ kurvenSigGezeigt=null; try{ window.__setRealWave(null); }catch(e){} } return; }
+  if(sig===kurvenSigGezeigt) return;
+  var kv=p.kurven; if(!kv) return;             // Signatur da, Streifen (noch) nicht — beim nächsten Mal
+  var map={};
+  Object.keys(kv).forEach(function(k){
+    var kd=kv[k], lane=laneOf(kd); if(!lane || map[lane]) return;
+    var s=decodeSamples(kd); if(!s || !s.length) return;
+    map[lane]={ hz:kd.hz, samples:s };
+  });
+  kurvenSigGezeigt=sig;
+  try{ window.__setRealWave(Object.keys(map).length?map:null); }catch(e){}
+}
+
 function applySelected(){
   if(!sel || !patients[sel]) return;
   whenReady(function(){
     try{ window.__anaesLive.apply(patients[sel]); }catch(e){}
+    pushKurven(patients[sel]);
     if(!switched){ try{ window.__anaesLive.tab('geraet'); }catch(e){} switched=true; }
   });
 }
+/* ---------------------------------------------------------------------------
+ * LAUFZEITMESSUNG — wie schnell die Daten wirklich ankommen.
+ *
+ * Der Praxis-PC laesst die Datenbank bei jedem Schreibvorgang meta.sv mit IHRER Uhr stempeln.
+ * Hier wird die eigene Uhr ueber /.info/serverTimeOffset gegen dieselbe Serveruhr korrigiert.
+ * Die Differenz ist damit die tatsaechliche Strecke Praxis -> Datenbank -> hier, unabhaengig
+ * davon, ob die beiden Rechner ueberhaupt richtig gehen. Waeren stattdessen die Rohuhren
+ * verglichen worden, stuende bei einem um eine Minute falsch gehenden Praxis-PC dauerhaft
+ * "Verzoegerung 60 s", obwohl alles in Millisekunden ankommt.
+ * --------------------------------------------------------------------------- */
+function messeLaufzeit(sv){
+  if(typeof sv !== 'number') return;
+  var d = (Date.now() + uhrVersatz) - sv;
+  if(d < -2000 || d > 120000) return;          // unplausibel -> verwerfen statt Unsinn anzeigen
+  if(d < 0) d = 0;
+  laufzeit = d;
+  if(laufzeitMin === null || d < laufzeitMin) laufzeitMin = d;
+  if(laufzeitMax === null || d > laufzeitMax) laufzeitMax = d;
+}
+
 function handleSnapshot(val){
   lastRecv = Date.now();
+  updates++;
+  if(!rateT0) rateT0=lastRecv;
+  else if(lastRecv-rateT0>=2000){ updRate=Math.round(updates/((lastRecv-rateT0)/1000)*10)/10; updates=0; rateT0=lastRecv; }
   meta = (val && val.meta) || {};
   patients = (val && val.patients) || {};
+  messeLaufzeit(meta.sv);
   var keys = Object.keys(patients);
   if(!keys.length){ sel=null; render(); return; }
   if(!sel || !patients[sel]){
     sel = keys.reduce(function(best,k){ return (patients[k].pri||0) > (patients[best].pri||0) ? k : best; }, keys[0]);
+    kurvenSigGezeigt=null;
   }
   applySelected();
   render();
@@ -2173,9 +2688,12 @@ function connBadge(){
   var age = lastRecv ? Math.round((Date.now()-lastRecv)/1000) : null;
   if(connState==='cfg') return {cls:'cfg', txt:'Firebase nicht konfiguriert'};
   if(connState==='err') return {cls:'err', txt:'Verbindungsfehler'};
+  if(connState==='auth') return {cls:'cfg', txt:'nicht angemeldet'};
   if(connState==='init'||connState==='conn') return {cls:'', txt:'verbinde…'};
   if(age!=null && age>=8) return {cls:'stale', txt:'keine neuen Daten ('+age+'s)'};
-  return {cls:'live', txt:'live'+(age!=null?' · vor '+age+'s':'')};
+  // Die gemessene Laufzeit gehoert in die Statuszeile: sie ist die Antwort auf "kommt das
+  // wirklich in Millisekunden an?" — und man sieht sofort, wenn die Leitung schlechter wird.
+  return {cls:'live', txt:'live'+(updRate?' · '+updRate+'/s':'')+(laufzeit!=null?' · '+laufzeit+' ms':'')+(age!=null&&age>1?' · vor '+age+'s':'')};
 }
 function render(){
   var keys = Object.keys(patients);
@@ -2184,23 +2702,353 @@ function render(){
     var p=patients[k], pri=p.pri||0, col=priColor(pri);
     var top=(p.top&&p.top.title)?p.top.title:'stabil';
     return '<button class="vetlive-chip'+(k===sel?' sel':'')+'" data-k="'+esc(k)+'" style="--pc:'+col+'">'+
-      '<span><span class="ic">'+sp(p.species).icon+'</span><b>'+esc(p.patientId||sp(p.species).name)+'</b></span>'+
+      '<span><span class="ic">'+sp(p.species).icon+'</span><b>'+esc(p.patientName||p.patientId||sp(p.species).name)+'</b></span>'+
       '<span class="sub">'+esc(sp(p.species).name)+' · '+(p.weightKg||'?')+' kg'+(p.isoPct!=null?' · Iso '+p.isoPct+'%':'')+'</span>'+
       '<span class="top">'+esc(top)+'</span></button>';
   }).join('');
   var cfgHint = connState==='cfg' ? '<div class="vetlive-cfg-hint">⚠ Die Firebase-Web-Konfiguration ist noch nicht eingetragen (window.VETLIVE_CFG). Siehe VetStation/docs/FERN-LIVE.md.</div>' : '';
   var errHint = (connState==='err' && lastError) ? '<div class="vetlive-cfg-hint">'+esc(lastError)+'</div>' : '';
+  var konto = nutzer ? ('<span class="vetlive-ro" style="margin-left:0">👤 '+esc(nutzer.email||'')+
+    ' · <a href="#" id="vlAbmelden" style="color:inherit;text-decoration:underline">abmelden</a></span>') : '';
+  var warte = (connState==='auth') ? 'bitte anmelden…' : 'warte auf Patienten vom Praxis-PC…';
   bar.innerHTML =
     '<div class="vetlive-head">'+
       '<span class="vetlive-tag">📡 FERN-ANSICHT</span>'+
       '<span class="vetlive-station">'+esc(meta.station||(demo?'DEMO (lokal)':'VetStation'))+'</span>'+
       '<span class="vetlive-conn '+cb.cls+'"><i></i>'+cb.txt+'</span>'+
+      konto+
       '<span class="vetlive-ro">🔒 nur Ansicht · Werte &amp; Empfehlungen vom Praxis-PC</span>'+
     '</div>'+
-    '<div class="vetlive-pats">'+(keys.length?chips:'<span class="vetlive-wait">warte auf Patienten vom Praxis-PC…</span>')+'</div>'+
+    '<div class="vetlive-pats">'+(keys.length?chips:'<span class="vetlive-wait">'+warte+'</span>')+'</div>'+
     cfgHint + errHint;
-  Array.prototype.forEach.call(bar.querySelectorAll('.vetlive-chip'), function(b){ b.onclick=function(){ sel=b.dataset.k; applySelected(); render(); }; });
+  Array.prototype.forEach.call(bar.querySelectorAll('.vetlive-chip'), function(b){
+    b.onclick=function(){ sel=b.dataset.k; kurvenSigGezeigt=null; applySelected(); render(); };
+  });
+  var ab=bar.querySelector('#vlAbmelden');
+  if(ab) ab.onclick=function(e){ e.preventDefault(); abmelden(); };
   try{ document.body.style.paddingTop = bar.offsetHeight+'px'; }catch(e){}
+  renderFernView();
+}
+
+/* ---------------------------------------------------------------------------
+ * SUBMENÜ "📡 Fern-Live": alles, was die Station hat, auf einer Seite.
+ * Der Rest der App (Gerät/Monitor, Notfall, Beatmungsempfehlung, Dosen) läuft ohnehin schon mit
+ * den Fernwerten — dieses Menü zeigt zusätzlich das, was sonst nur der Admin am Praxis-PC sieht:
+ * Geräteadressen, Sendetakt, Alarme, EKG-Befund, Beatmungsparameter und alle Rohwerte.
+ * --------------------------------------------------------------------------- */
+var VITAL_DEF = [
+  {k:'hr',   n:'HF',    u:'/min'},
+  {k:'spo2', n:'SpO₂',  u:'%'},
+  {k:'etco2',n:'EtCO₂', u:'mmHg'},
+  {k:'fico2',n:'FiCO₂', u:'mmHg'},
+  {k:'af',   n:'AF',    u:'/min'},
+  {k:'temp', n:'Temp',  u:'°C'},
+  {k:'sys',  n:'SYS',   u:'mmHg'},
+  {k:'dia',  n:'DIA',   u:'mmHg'},
+  {k:'map',  n:'MAP',   u:'mmHg'},
+  {k:'paw',  n:'Paw',   u:'cmH₂O'}
+];
+function tile(label,val,unit,sub,cls){
+  return '<div class="fl-tile'+(cls?' '+cls:'')+'"><div class="k">'+esc(label)+'</div>'+
+    '<div class="val">'+(val==null?'–':esc(String(val)))+(val!=null&&unit?'<span class="u">'+unit+'</span>':'')+'</div>'+
+    (sub?'<div class="src">'+sub+'</div>':'')+'</div>';
+}
+function kv(rows){
+  var r=rows.filter(function(x){return x[1]!=null && x[1]!=='';});
+  if(!r.length) return '<div class="fl-hint">– keine Angaben –</div>';
+  return '<div class="fl-kv">'+r.map(function(x){ return '<span class="k">'+esc(x[0])+'</span><span class="v">'+esc(String(x[1]))+'</span>'; }).join('')+'</div>';
+}
+var flLast=0;
+function renderFernView(sofort){
+  var box=document.getElementById('fernlive'); if(!box) return;
+  /* Nur zeichnen, wenn das Menü auch offen ist, und höchstens ~2x/s. Der Fern-Strom kommt bis zu
+   * 5x pro Sekunde; diese Seite enthält eine Rohwerttabelle mit bis zu 80 Zeilen — die 5x/s neu
+   * aufzubauen, während der Nutzer in einem ganz anderen Menü steht, wäre reine Verschwendung
+   * und würde auf einem Tablet ruckeln. Die Vitalwerte im Monitor laufen davon unberührt weiter. */
+  if(!box.classList.contains('active')) return;
+  var jetzt=Date.now();
+  if(!sofort && jetzt-flLast<400) return;
+  flLast=jetzt;
+  var p = sel && patients[sel];
+  if(!p){
+    box.innerHTML='<section class="card"><h3>📡 Fern-Live</h3><div class="fl-hint">'+
+      (connState==='live'?'Verbunden — aber es ist gerade kein Patient an der Station aktiv.':'Noch keine Verbindung zur Praxis-Station.')+
+      '</div></section>';
+    return;
+  }
+  var v=p.vitals||{};
+  var tiles=VITAL_DEF.map(function(d){
+    var sub = (d.k==='af' && p.afSource) ? ('⬤ '+(p.afSource==='kapnograph'?'Kapno':'Monitor')) : '';
+    return tile(d.n, num(v[d.k]), d.u, sub, '');
+  }).join('');
+
+  var top = p.top||{};
+  var beurteilung = '<section class="card"><h3>Beurteilung der Station</h3>'+
+    '<div class="fl-kv"><span class="k">Priorität</span><span class="v" style="color:'+priColor(p.pri)+'">'+(p.pri!=null?p.pri:'–')+'</span></div>'+
+    (top.title?('<div class="fl-top" style="--pc:'+priColor(p.pri)+'"><b>'+esc(top.title)+'</b>'+
+      (top.fix?'<div class="fix">'+esc(top.fix)+'</div>':'')+
+      (top.incident?'<div style="margin-top:6px"><button class="btn" type="button" data-fl-inc="'+esc(top.incident)+'">→ Notfallprotokoll öffnen</button></div>':'')+
+      '</div>'):'<div class="fl-hint">Keine auffälligen Befunde.</div>')+
+    '<div class="fl-hint">Diese Bewertung rechnet der Praxis-PC. Die Beatmungs- und Dosis-Empfehlungen in den anderen Menüs rechnet dieses Gerät live aus denselben Werten — beide benutzen dieselbe Regelbasis.</div>'+
+    '</section>';
+
+  var e=p.ekgAnalyse;
+  var ekg = '<section class="card"><h3>EKG-Befund vom Gerät</h3>'+
+    (e ? kv([['Rhythmus',e.rhythmus],['HF aus RR-Abständen',e.hf!=null?e.hf+'/min':null],
+             ['QRS-Breite',e.qrsBreiteMs!=null?e.qrsBreiteMs+' ms':null],['ST',e.st],
+             ['Güte',e.guete!=null?e.guete:null],['Streifenlänge',e.sekunden!=null?e.sekunden+' s':null],
+             ['Auswertbar',e.brauchbar?'ja':'nein'+(e.warum?' ('+e.warum+')':'')]])
+       : '<div class="fl-hint">Das Gerät liefert derzeit keinen auswertbaren EKG-Streifen.</div>')+
+    '</section>';
+
+  var vp=p.ventParams||{};
+  var vpRows=Object.keys(vp).map(function(k){ return [k, vp[k]]; });
+  var beatmung = '<section class="card"><h3>Narkosegerät &amp; Beatmung</h3>'+
+    kv([['Beatmungsmodus',p.ventMode],['Isofluran',p.isoPct!=null?p.isoPct+' %':null],
+        ['Frischgas O₂',p.o2Flow!=null?p.o2Flow+' L/min':null]].concat(vpRows))+
+    '</section>';
+
+  var devs=(p.devices||[]);
+  var geraete = '<section class="card"><h3>Geräte an diesem Patienten</h3>'+
+    (devs.length ? '<table class="fl-tbl"><tr><th>Gerät</th><th>Rolle</th><th>Adresse</th><th>Takt</th><th>letzte Daten</th></tr>'+
+      devs.map(function(d){
+        var on = d.sekundenSeitDaten==null || d.sekundenSeitDaten<15;
+        return '<tr><td><span class="fl-dot '+(on?'on':'err')+'"></span>'+esc(d.model||'?')+'</td>'+
+          '<td>'+esc(d.role||'')+'</td>'+
+          '<td>'+esc((d.ip||'?')+(d.port?':'+d.port:''))+'</td>'+
+          '<td class="n">'+(d.taktMs!=null?d.taktMs+' ms':'–')+'</td>'+
+          '<td class="n">'+(d.sekundenSeitDaten!=null?'vor '+d.sekundenSeitDaten+' s':'–')+'</td></tr>';
+      }).join('')+'</table>' : '<div class="fl-hint">– keine Geräte gemeldet –</div>')+
+    '</section>';
+
+  var al=(p.alarms||[]);
+  var alarme = '<section class="card"><h3>Alarme des Geräts</h3>'+
+    (al.length ? '<div class="fl-al">'+al.map(function(a){
+        var t=(a&&a.text)?a.text:String(a);
+        var phys=/^\s*\*\*/.test(t);
+        return '<span class="'+(phys?'phys':'tech')+'">'+esc(t)+'</span>';
+      }).join('')+'</div>' : '<div class="fl-hint">Keine aktiven Alarme.</div>')+
+    '</section>';
+
+  var roh=(p.roh||[]);
+  var rohwerte = roh.length ? ('<section class="card"><h3>Alle Werte vom Gerät ('+roh.length+')</h3>'+
+    '<table class="fl-tbl"><tr><th>Bezeichnung</th><th>Code</th><th>Wert</th><th>Gerät</th></tr>'+
+    roh.map(function(r){ return '<tr><td>'+esc(r.label||'')+'</td><td>'+esc(r.code!=null?r.code:'')+'</td>'+
+      '<td class="n">'+esc(r.wert!=null?r.wert:'')+' '+esc(r.einheit||'')+'</td><td>'+esc(r.modell||r.von||'')+'</td></tr>'; }).join('')+
+    '</table></section>') : '';
+
+  var stamm = '<section class="card"><h3>Patient</h3>'+
+    kv([['Kennung',p.patientId],['Name',p.patientName],['Tierart',sp(p.species).name],
+        ['Gewicht',p.weightKg!=null?p.weightKg+' kg':null],['Geburtsdatum',p.gebDatum],['Geschlecht',p.geschlecht],
+        ['Zuordnung',p.manual?'von Hand gekoppelt':'automatisch']])+
+    (p.patientName?'':'<div class="fl-hint">Tiername und Patientenakte werden aus Datenschutzgründen nicht übertragen. Am Praxis-PC einschaltbar über <code>cloud.stammdaten</code>.</div>')+
+    '</section>';
+
+  /* Verbindung + GEMESSENE Laufzeit. Das ist die Antwort auf "kommt das wirklich schnell an?" —
+   * gemessen gegen die Uhr der Datenbank, also unabhaengig davon, ob die beiden Rechner
+   * richtig gehen. */
+  var stationInfo = '<section class="card"><h3>Verbindung &amp; Geschwindigkeit</h3>'+
+    kv([['Station',meta.station],['Praxis-Konto',nutzer?nutzer.email:null],
+        ['Sendetakt der Station',meta.taktMs?meta.taktMs+' ms':null],
+        ['Aktualisierungen hier',updRate?updRate+' pro Sekunde':null],
+        ['Laufzeit Praxis → hier',laufzeit!=null?laufzeit+' ms':null],
+        ['davon best-/schlechtestenfalls',(laufzeitMin!=null&&laufzeitMax!=null)?(laufzeitMin+' ms / '+laufzeitMax+' ms'):null],
+        ['Datenalter',lastRecv?Math.round((Date.now()-lastRecv)/1000)+' s':null],
+        ['Echte Gerätekurven',meta.kurven?'ja':'nein'],['Datenformat','v'+(meta.v||1)]])+
+    '<div class="fl-hint">Die Laufzeit wird gegen die Uhr der Datenbank gemessen, nicht gegen die Uhr dieses Geräts — ' +
+    'sie stimmt also auch dann, wenn ein Rechner falsch geht. Unter 300 ms ist die Anzeige praktisch verzögerungsfrei; ' +
+    'dauerhaft über 1000 ms deutet auf eine schwache Internetverbindung hin.</div>'+
+    '<div class="fl-hint">🔒 Diese Ansicht ist reine Anzeige. Es wird nichts an die Geräte in der Praxis zurückgesendet.</div>'+
+    '</section>';
+
+  /* ---- OP-Protokoll: live vom Praxis-PC, hier ansehen und drucken ---- */
+  var pid = p.patientId || sel;
+  var prot = protokoll[pid] || {};
+  var zeilen = Object.keys(prot).sort(function(a,b){ return Number(a)-Number(b); }).map(function(t){ return prot[t]; })
+    .filter(function(x){ return x && x.ts; });
+  var protokollBlock = '<section class="card"><h3>📋 Narkoseprotokoll</h3>'+
+    (zeilen.length
+      ? '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px">'+
+          '<button class="btn" type="button" id="flDruck">🖨 Protokoll drucken</button>'+
+          '<span class="fl-hint" style="margin:0">'+zeilen.length+' Einträge · '+
+          esc(zeitText(zeilen[0].ts))+' bis '+esc(zeitText(zeilen[zeilen.length-1].ts))+'</span></div>'+
+        protokollTabelle(zeilen.slice(-40), 'fl-prot')+
+        (zeilen.length>40?'<div class="fl-hint">Angezeigt: die letzten 40 Einträge. Der Ausdruck enthält alle '+zeilen.length+'.</div>':'')
+      : '<div class="fl-hint">Für diesen Patienten liegt noch kein Protokolleintrag vor. Die Station legt einen Eintrag an, sobald Werte ankommen — danach alle 12 Sekunden und zusätzlich bei jedem neuen Befund.</div>')+
+    '</section>';
+
+  box.innerHTML =
+    '<section class="card"><h3>📡 Live-Werte der Station</h3><div class="fl-grid">'+tiles+'</div>'+
+      '<div class="fl-hint">Rhythmus: <b>'+esc(v.ekgRhythm||'–')+'</b> · Kapnogramm-Form: <b>'+esc(v.capnoShape||'–')+'</b> · Pleth: <b>'+esc(v.pleth||'–')+'</b></div>'+
+    '</section>'+
+    beurteilung + protokollBlock + beatmung + ekg + alarme + geraete + stamm + stationInfo + rohwerte;
+
+  var incBtn=box.querySelector('[data-fl-inc]');
+  if(incBtn) incBtn.onclick=function(){
+    try{ if(window.__anaesLive && window.__anaesLive.gotoIncident) window.__anaesLive.gotoIncident(incBtn.dataset.flInc); }catch(e){}
+  };
+  var dr=box.querySelector('#flDruck');
+  if(dr) dr.onclick=function(){ drucke(p, zeilen); };
+}
+
+function zeitText(ts){
+  try{ return new Date(ts).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+  catch(e){ return String(ts); }
+}
+function z(x, n){ return (x==null||x==='')?'–':(typeof x==='number'?(n?x.toFixed(n):String(x)):esc(String(x))); }
+
+function protokollTabelle(zeilen, cls){
+  var kopf='<tr><th class="l">Zeit</th><th>HF</th><th>SpO₂</th><th>EtCO₂</th><th>AF</th><th>SYS/DIA</th><th>MAP</th><th>Temp</th><th>Iso</th><th class="l">Befund / Rhythmus</th></tr>';
+  var body=zeilen.map(function(e){
+    var bd = e.finding || e.rhythm || '';
+    return '<tr'+(e.finding?' class="mark"':'')+'>'+
+      '<td class="l">'+esc(zeitText(e.ts))+'</td>'+
+      '<td>'+z(e.hr)+'</td><td>'+z(e.spo2)+'</td><td>'+z(e.etco2)+'</td><td>'+z(e.af)+'</td>'+
+      '<td>'+(e.sys!=null&&e.dia!=null?(e.sys+'/'+e.dia):'–')+'</td>'+
+      '<td>'+z(e.map)+'</td><td>'+z(e.temp,1)+'</td><td>'+z(e.iso,1)+'</td>'+
+      '<td class="l">'+esc(bd)+'</td></tr>';
+  }).join('');
+  return '<div style="overflow-x:auto"><table class="'+cls+'">'+kopf+body+'</table></div>';
+}
+
+/*
+ * DRUCKEN.
+ * Das Blatt wird beim Klick EINMAL aus dem aktuellen Stand gebaut und eingefroren — nicht aus der
+ * laufenden Ansicht. Die aktualisiert sich bis zu fuenfmal pro Sekunde; ohne Einfrieren koennte
+ * sich der Inhalt zwischen Aufbau und Druckdialog noch aendern, und auf dem Papier stuende ein
+ * anderer Stand als auf dem Bildschirm. Fuer ein Dokument, das eine Narkose belegt, waere das
+ * nicht hinnehmbar.
+ */
+function drucke(p, zeilen){
+  var blatt=document.getElementById('druckblatt'); if(!blatt) return;
+  var v=p.vitals||{}, vp=p.ventParams||{};
+  var jetzt=new Date();
+  function kv(paare){
+    return '<div class="kv">'+paare.filter(function(x){return x[1]!=null&&x[1]!=='';})
+      .map(function(x){ return '<b>'+esc(x[0])+'</b><span>'+esc(String(x[1]))+'</span>'; }).join('')+'</div>';
+  }
+  var vpTxt=Object.keys(vp).map(function(k){ return k+' '+vp[k]; }).join(' · ');
+  blatt.innerHTML =
+    '<h1>Anästhesie- / Narkoseüberwachungsprotokoll</h1>'+
+    '<div style="font-size:10px;color:#444;margin-bottom:8px">'+esc(meta.station||'VetStation')+
+      ' · erstellt '+esc(jetzt.toLocaleString('de-DE'))+' · Fern-Ansicht (Canis Anæsthesia)</div>'+
+    '<h2>Patient</h2>'+
+    kv([['Kennung', p.patientId],['Name', p.patientName],['Tierart', sp(p.species).name],
+        ['Gewicht', p.weightKg!=null?p.weightKg+' kg':null],['Geburtsdatum', p.gebDatum],
+        ['Geschlecht', p.geschlecht],
+        ['Besitzer', p.akte && p.akte.besitzer],['Tierarzt', p.akte && (p.akte.arzt||p.akte.doctor)]])+
+    '<h2>Stand bei Erstellung</h2>'+
+    kv([['HF', v.hr!=null?v.hr+'/min':null],['SpO₂', v.spo2!=null?v.spo2+' %':null],
+        ['EtCO₂', v.etco2!=null?v.etco2+' mmHg':null],['AF', v.af!=null?v.af+'/min':null],
+        ['Blutdruck', (v.sys!=null&&v.dia!=null)?(v.sys+'/'+v.dia+' mmHg'):null],
+        ['MAP', v.map!=null?v.map+' mmHg':null],['Temperatur', v.temp!=null?v.temp+' °C':null],
+        ['Rhythmus', v.ekgRhythm],['Kapnogramm', v.capnoShape],
+        ['Isofluran', p.isoPct!=null?p.isoPct+' %':null],['Frischgas O₂', p.o2Flow!=null?p.o2Flow+' L/min':null],
+        ['Beatmungsmodus', p.ventMode],['Beatmungsparameter', vpTxt||null]])+
+    (p.top && p.top.title ? '<h2>Befund der Station</h2><div style="font-size:11px">'+
+      esc(p.top.title)+(p.top.fix?' — '+esc(p.top.fix):'')+
+      (p.pri!=null?' (Priorität '+esc(String(p.pri))+')':'')+'</div>' : '')+
+    (p.ekgAnalyse ? '<h2>EKG-Befund</h2>'+kv([['Rhythmus',p.ekgAnalyse.rhythmus],
+        ['HF aus RR-Abständen', p.ekgAnalyse.hf!=null?p.ekgAnalyse.hf+'/min':null],
+        ['QRS-Breite', p.ekgAnalyse.qrsBreiteMs!=null?p.ekgAnalyse.qrsBreiteMs+' ms':null],
+        ['ST', p.ekgAnalyse.st]]) : '')+
+    '<h2>Verlauf ('+zeilen.length+' Einträge)</h2>'+
+    protokollTabelle(zeilen, 'druck')+
+    '<div class="fuss">Erstellt aus der Fern-Ansicht der VetStation. Die Werte stammen unverändert von den ' +
+      'angeschlossenen Geräten. Diese Auswertung ersetzt keine tierärztliche Beurteilung; ' +
+      'Dosierungen und Maßnahmen sind vor Anwendung zu prüfen.</div>';
+  // Nach dem Drucken wieder leeren, damit das Blatt nicht veraltet stehen bleibt.
+  var aufraeumen=function(){ blatt.innerHTML=''; window.removeEventListener('afterprint', aufraeumen); };
+  window.addEventListener('afterprint', aufraeumen);
+  setTimeout(function(){ window.print(); }, 60);
+}
+/* Das Submenü als echten Reiter in die Navigation haengen — nur im Fern-Betrieb. */
+function injectTab(){
+  var tabs=document.getElementById('tabs'); if(!tabs || document.getElementById('fernlive')) return;
+  var b=document.createElement('button');
+  b.className='tab'; b.dataset.view='fernlive';
+  b.setAttribute('data-vp-tip','Alle Werte, Kurven, Geräte, Alarme und Empfehlungen der Praxis-Station – live aus der Ferne');
+  b.innerHTML='📡 Fern-Live';
+  b.onclick=function(){ if(window.__anaesLive) window.__anaesLive.tab('fernlive'); renderFernView(true); };
+  tabs.insertBefore(b, tabs.firstChild);
+  var view=document.createElement('section');
+  view.className='view'; view.id='fernlive';
+  var main=document.querySelector('main.shell'); if(main) main.appendChild(view);
+}
+
+/* ---------------------------------------------------------------------------
+ * ANMELDUNG MIT DEM PRAXIS-KONTO
+ *
+ * Bis 0.9.0 genuegte ein Zugangscode in der Adresse (?live=<code>). Das war die Schwachstelle:
+ * der Code stand im weiterleitbaren Link, im Browserverlauf und im Log, die Daten waren fuer
+ * JEDEN lesbar, und ohne Anmeldung liessen sich sogar Vitalwerte faelschen. Jetzt gilt:
+ * jede Praxis hat ein eigenes Konto, die Daten liegen unter dessen Anmelde-Kennung, und die
+ * Sicherheitsregel der Datenbank vergleicht diese Kennung mit dem angemeldeten Konto.
+ * Kein anderes Konto kommt an die Daten — auch nicht mit dem richtigen Pfad.
+ *
+ * Das Anmeldefenster ist ein EIGENES Element und liegt bewusst nicht in der Statusleiste:
+ * die wird jede Sekunde neu aufgebaut, ein Formular darin verlöre Fokus und Eingabe.
+ * --------------------------------------------------------------------------- */
+function zeigeAnmeldung(vorbelegt, hinweis){
+  var alt=document.getElementById('vetlive-login'); if(alt) alt.remove();
+  var w=document.createElement('div'); w.id='vetlive-login';
+  w.innerHTML =
+    '<div class="vl-box" role="dialog" aria-label="Praxis-Anmeldung">'+
+      '<h2>📡 Fern-Zugang</h2>'+
+      '<div class="vl-sub">Mit dem <b>Konto Ihrer Praxis</b> anmelden — demselben, das auf dem Praxis-PC in VetStation hinterlegt ist. '+
+        'Sie sehen dann alle angeschlossenen Geräte und Patienten dieser Praxis live. Andere Praxen sehen Ihre Daten nicht.</div>'+
+      '<label>E-Mail der Praxis<input id="vlMail" type="email" autocomplete="username" value="'+esc(vorbelegt||'')+'" placeholder="praxis@beispiel.de"></label>'+
+      '<label>Passwort<input id="vlPw" type="password" autocomplete="current-password" placeholder="••••••••"></label>'+
+      '<div class="vl-btns">'+
+        '<button class="vl-btn" id="vlLogin" type="button">Anmelden</button>'+
+        '<button class="vl-btn sek" id="vlNeu" type="button">Neues Praxis-Konto</button>'+
+      '</div>'+
+      '<div class="vl-msg" id="vlMsg">'+(hinweis?esc(hinweis):'')+'</div>'+
+      '<div class="vl-fuss">🔒 Nur Ansicht — von hier kann kein Gerät bedient werden. '+
+        'Die Anmeldung bleibt auf diesem Gerät gespeichert, bis Sie sich abmelden.</div>'+
+    '</div>';
+  document.body.appendChild(w);
+  var mail=w.querySelector('#vlMail'), pw=w.querySelector('#vlPw'), msg=w.querySelector('#vlMsg');
+  var bLogin=w.querySelector('#vlLogin'), bNeu=w.querySelector('#vlNeu');
+  function sag(t,f){ msg.textContent=t; msg.style.color=f||'#9aa8bb'; }
+  function sperre(an){ bLogin.disabled=an; bNeu.disabled=an; }
+  function tun(neu){
+    var m=(mail.value||'').trim(), p=pw.value||'';
+    if(!m||!p){ sag('Bitte E-Mail und Passwort eingeben.','#ffb84d'); return; }
+    if(neu && p.length<6){ sag('Das Passwort muss mindestens 6 Zeichen haben.','#ffb84d'); return; }
+    sperre(true); sag(neu?'lege Konto an…':'melde an…');
+    var f = neu ? FB.A.createUserWithEmailAndPassword : FB.A.signInWithEmailAndPassword;
+    f(FB.auth, m, p).then(function(){ pw.value=''; /* onAuthStateChanged uebernimmt */ })
+      .catch(function(e){ sperre(false); sag(anmeldeFehler(e), '#ff8ba0'); });
+  }
+  bLogin.onclick=function(){ tun(false); };
+  bNeu.onclick=function(){ tun(true); };
+  pw.addEventListener('keydown', function(e){ if(e.key==='Enter') tun(false); });
+  (mail.value? pw : mail).focus();
+}
+function versteckeAnmeldung(){ var w=document.getElementById('vetlive-login'); if(w) w.remove(); }
+
+// Firebase antwortet mit Kuerzeln wie auth/invalid-credential. Auf dem Bildschirm eines
+// Tierarztes hat das nichts verloren — hier steht, was zu tun ist.
+function anmeldeFehler(e){
+  var c=(e&&e.code)||'';
+  if(/invalid-credential|wrong-password|user-not-found|invalid-login/i.test(c)) return 'E-Mail oder Passwort stimmt nicht.';
+  if(/email-already-in-use/i.test(c)) return 'Für diese E-Mail gibt es schon ein Konto — bitte „Anmelden" verwenden.';
+  if(/invalid-email/i.test(c)) return 'Diese E-Mail-Adresse ist nicht gültig.';
+  if(/weak-password/i.test(c)) return 'Das Passwort ist zu kurz (mindestens 6 Zeichen).';
+  if(/too-many-requests/i.test(c)) return 'Zu viele Fehlversuche. Bitte einige Minuten warten.';
+  if(/network-request-failed/i.test(c)) return 'Keine Internetverbindung.';
+  if(/operation-not-allowed/i.test(c)) return 'Die E-Mail-Anmeldung ist im Firebase-Projekt noch nicht freigeschaltet.';
+  return (e&&e.message)||String(e);
+}
+
+function abmelden(){
+  if(!FB) return;
+  FB.A.signOut(FB.auth).then(function(){
+    patients={}; meta={}; protokoll={}; sel=null; lastRecv=0; laufzeit=null;
+    laufzeitMin=null; laufzeitMax=null; kurvenSigGezeigt=null;
+    connState='auth'; render();
+  });
 }
 
 /* ---- Quelle: echtes Firebase (Standard) ODER lokale Demo (?livedemo=1) ---- */
@@ -2209,31 +3057,121 @@ function connectFirebase(){
   if(!cfg.databaseURL || /DEIN_FIREBASE|EINTRAGEN/i.test(cfg.apiKey||'') || /DEIN_FIREBASE|EINTRAGEN/i.test(cfg.databaseURL||'')){
     connState='cfg'; render(); return;
   }
-  Promise.all([ import(SDK+"firebase-app.js"), import(SDK+"firebase-database.js") ]).then(function(m){
+  Promise.all([
+    import(SDK+"firebase-app.js"),
+    import(SDK+"firebase-database.js"),
+    import(SDK+"firebase-auth.js")
+  ]).then(function(m){
     var app = m[0].initializeApp(cfg);
-    var D = m[1];
-    var db = D.getDatabase(app);
-    connState='conn'; render();
-    D.onValue(D.ref(db, 'live/'+code), function(snap){ connState='live'; handleSnapshot(snap.val()); },
-      function(err){ connState='err'; lastError=(err&&err.message)||String(err); render(); });
+    var D = m[1], Au = m[2];
+    FB = { app:app, D:D, A:Au, db:D.getDatabase(app), auth:Au.getAuth(app) };
+    connState='auth'; render();
+
+    /* Die Uhr des Servers, gegen die gemessen wird. Kommt sofort und dann bei jeder Korrektur. */
+    D.onValue(D.ref(FB.db, '.info/serverTimeOffset'), function(s){
+      var v=s.val(); if(typeof v === 'number') uhrVersatz = v;
+    });
+
+    /* Anmeldezustand fuehrt alles Weitere. Beim erneuten Oeffnen der Seite meldet Firebase das
+     * gespeicherte Konto von selbst — der Tierarzt muss zu Hause nicht jedes Mal tippen. */
+    Au.onAuthStateChanged(FB.auth, function(u){
+      nutzer = u || null;
+      if(!u){ praxis=null; connState='auth'; zeigeAnmeldung(letzteMail(), ''); render(); return; }
+      praxis = u.uid;
+      try{ localStorage.setItem('vetlive_mail', u.email||''); }catch(e){}
+      versteckeAnmeldung();
+      connState='conn'; render();
+      abonniere();
+    });
   }).catch(function(e){ connState='err'; lastError='Firebase-SDK-Ladefehler: '+((e&&e.message)||e); render(); });
 }
+function letzteMail(){ try{ return localStorage.getItem('vetlive_mail')||''; }catch(e){ return ''; } }
+
+/*
+ * Abonnement: meta und patients GETRENNT.
+ * Waere es ein einziges Abonnement auf live/<Kennung>, kaeme bei jeder Wertaenderung — also
+ * fuenfmal pro Sekunde — auch das komplette OP-Protokoll mit durch die Aufbereitung. Das sind
+ * schnell ein paar tausend Zeilen. Das Protokoll haengt deshalb an einem eigenen Abonnement,
+ * das nur bei Bedarf laeuft.
+ */
+function abonniere(){
+  var D=FB.D, db=FB.db, p='live/'+praxis;
+  var fehler=function(err){ connState='err'; lastError=(err&&err.message)||String(err); render(); };
+  D.onValue(D.ref(db, p+'/meta'), function(s){
+    connState='live'; lastRecv=Date.now();
+    meta = s.val() || {};
+    messeLaufzeit(meta.sv);
+    updates++;
+    if(!rateT0) rateT0=lastRecv;
+    else if(lastRecv-rateT0>=2000){ updRate=Math.round(updates/((lastRecv-rateT0)/1000)*10)/10; updates=0; rateT0=lastRecv; }
+    render();
+  }, fehler);
+  D.onValue(D.ref(db, p+'/patients'), function(s){
+    connState='live'; lastRecv=Date.now();
+    patients = s.val() || {};
+    var keys=Object.keys(patients);
+    if(!keys.length){ sel=null; render(); return; }
+    if(!sel || !patients[sel]){
+      sel = keys.reduce(function(best,k){ return (patients[k].pri||0) > (patients[best].pri||0) ? k : best; }, keys[0]);
+      kurvenSigGezeigt=null;
+    }
+    protokollAbo();          // fuer neu hinzugekommene Patienten das Protokoll mit abonnieren
+    applySelected(); render();
+  }, fehler);
+  // Protokoll: die letzten 600 Zeilen je Patient reichen fuer Anzeige und Ausdruck.
+  D.onValue(D.query(D.ref(db, p+'/protokoll'), D.limitToLast(1)), function(){
+    // Der Elternknoten meldet nur, DASS sich etwas geaendert hat; die Zeilen selbst holt
+    // protokollAbo() je Patient — sonst laege bei mehreren Patienten alles gleichzeitig im Speicher.
+  }, function(){});
+  protokollAbo();
+}
+var protAbos = {};
+function protokollAbo(){
+  if(!FB || !praxis) return;
+  var D=FB.D, db=FB.db;
+  Object.keys(patients).forEach(function(k){
+    var pid = patients[k].patientId || k;
+    if(protAbos[pid]) return;
+    protAbos[pid] = true;
+    D.onValue(D.query(D.ref(db, 'live/'+praxis+'/protokoll/'+pid), D.limitToLast(600)), function(s){
+      protokoll[pid] = s.val() || {};
+      if(document.getElementById('fernlive') && document.getElementById('fernlive').classList.contains('active')) renderFernView(true);
+    }, function(){});
+  });
+}
 function startDemo(){
-  meta={station:'DEMO (lokal)'}; var t0=Date.now();
+  meta={station:'DEMO (lokal)', taktMs:200, kurven:true, v:2, code:'demo'}; var t0=Date.now();
   setInterval(function(){
     var s=(Date.now()-t0)/1000, hr=Math.round(42+26*Math.sin(s/3.5)), brady=hr<48;
     patients={
       'sw_hund_22':{ patientId:'Bello (Demo)', species:'hund', weightKg:22, isoPct:2.6, ts:Date.now(),
-        vitals:{ hr:hr, spo2:Math.round(90+7*Math.sin(s/4)), etco2:Math.round(46+14*Math.sin(s/5)), af:9, sys:96, dia:54, map:68, temp:37.5, ekgRhythm:brady?'sinusbrady':'sinus', capnoShape:'normal' },
-        pri:brady?8:3, top:{sev:brady?4:2, title:brady?'Bradykardie bei zu tiefer Narkose':'Werte grenzwertig'} },
+        ventMode:'VCV', o2Flow:1.2, ventParams:{Vt:220, AF:12, PEEP:3, Pinsp:14},
+        afSource:'kapnograph',
+        devices:[{model:'LifeVet 10C (Demo)',role:'combo',ip:'192.168.0.51',port:4601,taktMs:1000,sekundenSeitDaten:0}],
+        alarms:[{text:'**HF zu tief'},{text:'EKG lernen'}],
+        vitals:{ hr:hr, spo2:Math.round(90+7*Math.sin(s/4)), etco2:Math.round(46+14*Math.sin(s/5)), fico2:1, af:9, sys:96, dia:54, map:68, temp:37.5, paw:12, ekgRhythm:brady?'sinusbrady':'sinus', capnoShape:'normal', pleth:'normal' },
+        pri:brady?8:3, top:{sev:brady?4:2, title:brady?'Bradykardie bei zu tiefer Narkose':'Werte grenzwertig', fix:brady?'Isofluran reduzieren, Anticholinergikum erwägen':'', incident:brady?'bradykardie':null} },
       'sw_katze_4':{ patientId:'Minka (Demo)', species:'katze', weightKg:4.2, isoPct:1.5, ts:Date.now(),
+        devices:[{model:'uMEC12 Vet (Demo)',role:'monitor',ip:'192.168.0.50',port:4601,sekundenSeitDaten:1}],
         vitals:{ hr:152, spo2:98, etco2:40, af:18, sys:120, dia:80, map:93, temp:38.4, ekgRhythm:'sinus', capnoShape:'normal' },
         pri:1, top:{sev:1, title:'stabil'} }
     };
-    connState='live'; lastRecv=Date.now();
+    // Demo-Protokoll, damit sich Ansicht und Ausdruck auch ohne Praxis-PC pruefen lassen.
+    if(!protokoll['Bello (Demo)']) protokoll['Bello (Demo)']={};
+    var pd=protokoll['Bello (Demo)'];
+    var stufe=Math.floor((Date.now()-t0)/6000)*6000+t0;
+    if(!pd[stufe] && Object.keys(pd).length<80){
+      pd[stufe]={ ts:stufe, hr:hr, spo2:Math.round(90+7*Math.sin(s/4)), etco2:Math.round(46+14*Math.sin(s/5)),
+        af:9, sys:96, dia:54, map:68, temp:37.5, iso:2.6, rhythm:brady?'sinusbrady':'sinus',
+        finding: brady?'Bradykardie bei zu tiefer Narkose':null };
+    }
+    laufzeit=Math.round(60+40*Math.abs(Math.sin(s/7)));
+    if(laufzeitMin===null||laufzeit<laufzeitMin) laufzeitMin=laufzeit;
+    if(laufzeitMax===null||laufzeit>laufzeitMax) laufzeitMax=laufzeit;
+    connState='live'; lastRecv=Date.now(); updRate=5;
     if(!sel||!patients[sel]) sel='sw_hund_22';
     applySelected(); render();
-  },1000);
+  },200);
 }
 
 function activate(){
@@ -2242,23 +3180,27 @@ function activate(){
   document.body.appendChild(bar);
   document.documentElement.classList.add('vetlive-on');
   var lb=document.getElementById('vetlive-launch'); if(lb) lb.remove();
+  if(!document.getElementById('druckblatt')){
+    var d=document.createElement('div'); d.id='druckblatt'; document.body.appendChild(d);
+  }
+  whenReady(injectTab);
   render();
   setInterval(render, 1000);   // Alters-/Status-Anzeige aktuell halten
   if(demo) startDemo(); else connectFirebase();
 }
-// Sichtbarer Einstieg (Menü/Button), damit man Fern-Live OHNE URL-Parameter starten kann.
+// Sichtbarer Einstieg, damit man den Fern-Zugang ohne Adresszusatz starten kann.
 function injectLauncher(){
   var b=document.createElement('button'); b.id='vetlive-launch'; b.type='button';
-  b.innerHTML='📡 Fern-Live'; b.title='Live-Werte, Monitor & Empfehlungen einer Praxis-Station aus der Ferne ansehen (Read-only)';
-  b.onclick=function(){
-    var c=prompt('Fern-Live – Zugangscode der Praxis-Station eingeben\n(steht in VetStation ▸ Admin ▸ 📡 Fern-Live):', code||'');
-    if(c===null) return; c=String(c).trim(); if(!c) return; code=c;
-    try{ var u=new URL(location.href); u.searchParams.set('live', code); history.replaceState(null,'',u); }catch(e){}
-    activate();
-  };
+  b.innerHTML='📡 Fern-Zugang'; b.title='Live-Werte, Monitor, Protokoll & Empfehlungen der eigenen Praxis aus der Ferne ansehen (nur Ansicht)';
+  b.onclick=activate;
   document.body.appendChild(b);
 }
-if(code||demo) activate(); else injectLauncher();
+/*
+ * Wer sich schon einmal angemeldet hat, soll die Seite oeffnen und sofort seine Station sehen —
+ * ohne erst einen Knopf zu suchen. Firebase merkt sich die Anmeldung im Browser; das Merkmal
+ * dafuer liegt in localStorage und wird hier nur als Hinweis benutzt.
+ */
+if(demo || letzteMail()) activate(); else injectLauncher();
 })();
 </script>
 </body>

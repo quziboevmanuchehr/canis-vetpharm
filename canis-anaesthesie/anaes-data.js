@@ -515,7 +515,7 @@ window.ANAES = {
 
     /* Parameter-Metadaten (Bereiche + Empfehlungshinweise + Auswahloptionen) */
     ventParams: {
-      vt:     { label:'Vt',      unit:'ml',    hint:'Atemzugvolumen 10–15 ml/kg (lungenschonend 8–12).', range:'8–15 ml/kg' },
+      vt:     { label:'Vt',      unit:'ml',    hint:'Atemzugvolumen lungenschonend 8–12 ml/kg (kranke Lunge 6–8); Plateaudruck ≤ 15–20 cmH₂O, Driving Pressure (Pplat−PEEP) niedrig halten. [AAHA/ACVAA]', range:'6–12 ml/kg' },
       vtref:  { label:'VtRef',   unit:'ml',    hint:'Ziel-Atemzugvolumen, adaptiv gehalten.',            range:'8–15 ml/kg' },
       af:     { label:'AF',      unit:'/min',  hint:'Atemfrequenz (Beatmungshübe/min).',                 range:'art-abhängig' },
       minaf:  { label:'Min. AF', unit:'/min',  hint:'Minimale Backup-Frequenz, falls das Tier zu selten atmet.', range:'art-abhängig' },
@@ -579,6 +579,9 @@ window.ANAES = {
     { title:'ACVAA / AVA Anästhesie-Monitoring-Leitlinien' },
     { title:'RECOVER Initiative – CPR-Leitlinien Kleintier (2012, aktualisiert 2024)', url:'https://recoverinitiative.org/2024-guidelines/' },
     { title:'AAHA 2020 Anesthesia & Monitoring Guidelines (Dogs & Cats)', url:'https://www.aaha.org/resources/2020-aaha-anesthesia-and-monitoring-guidelines-for-dogs-and-cats/' },
+    { title:'Clinician’s Brief – Anticholinergika + α2-Agonisten: Bradykardie NICHT mit Atropin/Glyco behandeln (Reflexbradykardie)', url:'https://www.cliniciansbrief.com/article/preanesthetic-drug-combinations' },
+    { title:'Dexmedetomidin-Bradykardie im Kleintier (Clinician’s Brief) – Mechanismus & Management', url:'https://www.cliniciansbrief.com/article/heart-rate-veterinary-dexmedetomidine' },
+    { title:'Lungenschonende Beatmung Kleintier – Tidalvolumen & Driving Pressure (J Vet Sci 2019)', url:'https://vetsci.org/DOIx.php?id=10.4142/jvs.2019.20.e21' },
     { title:'Carpenter – Exotic Animal Formulary' },
     { title:'Mindray Veta 5 Plus / uMEC12 Vet – Bedienungshandbücher' }
   ]
