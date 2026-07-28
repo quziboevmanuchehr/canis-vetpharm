@@ -2470,11 +2470,24 @@ html[data-theme="light"] .vetlive-chip{background:rgba(255,255,255,.65)}
 .vetlive-chip .top{font-size:11px;font-weight:700;color:var(--pc,#35d69a);max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vetlive-wait{font-size:12px;color:var(--muted,#9aa8bb);padding:4px 0}
 .vetlive-cfg-hint{margin-top:6px;font-size:11.5px;color:#ffb84d;line-height:1.5}
-#vetlive-launch{position:fixed;top:10px;right:12px;z-index:9997;cursor:pointer;font:700 12.5px var(--tech,Segoe UI,Inter,system-ui,sans-serif);
-  padding:8px 13px;border-radius:22px;border:1px solid rgba(0,216,255,.5);background:linear-gradient(180deg,#0b2b3d,#08202e);color:#bdf0ff;
-  box-shadow:0 6px 18px rgba(0,0,0,.4);transition:transform .12s,box-shadow .12s}
-#vetlive-launch:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,216,255,.5)}
-@media(max-width:560px){#vetlive-launch{top:8px;right:8px;padding:7px 11px;font-size:12px}}
+/* Der Einstieg in die Fern-Ansicht sitzt IN der Kopfleiste, neben „🚨 CPR".
+ * Vorher lag er als fest positionierter Knopf oben rechts — und deckte damit genau die
+ * Bedienelemente zu, die darunter liegen: den CPR-Knopf, das Zahnrad, das Menü und den
+ * Hell/Dunkel-Schalter. Einen Notfallknopf zu verdecken ist inakzeptabel, deshalb ist er jetzt
+ * ein regulärer Knopf in der Reihe und kann konstruktionsbedingt nichts mehr überlagern. */
+#vetlive-launch{cursor:pointer;white-space:nowrap;
+  border-color:rgba(0,216,255,.55) !important;color:#bdf0ff !important;
+  background:linear-gradient(180deg,#0b2b3d,#08202e) !important}
+html[data-theme="light"] #vetlive-launch{color:#06556f !important;
+  background:linear-gradient(180deg,#e8f8ff,#d4eefa) !important;border-color:rgba(0,140,190,.5) !important}
+#vetlive-launch:hover{filter:brightness(1.12)}
+/* Auf schmalen Bildschirmen nur das Symbol — sonst drückt die Leiste die anderen Knöpfe weg. */
+@media(max-width:700px){#vetlive-launch .vl-lang{display:none}}
+/* Rückfall, falls die Kopfleiste einmal fehlen sollte: unten LINKS, wo weder das Notfall-Dock
+ * noch die Kopfzeile liegt — niemals wieder oben rechts über den Bedienknöpfen. */
+#vetlive-launch.frei{position:fixed;left:12px;bottom:12px;z-index:9997;padding:8px 13px;
+  border-radius:22px;border:1px solid rgba(0,216,255,.5);font:700 12.5px var(--tech,Segoe UI,Inter,system-ui,sans-serif);
+  box-shadow:0 6px 18px rgba(0,0,0,.4)}
 html.vetlive-on body{padding-top:96px}
 /* Read-only: Patienten-/Monitor-Eingaben kommen vom Praxis-PC (nicht fern editierbar) */
 html.vetlive-on #spChips,html.vetlive-on #wt,html.vetlive-on #age,html.vetlive-on #breedIn,html.vetlive-on #breedClear,html.vetlive-on #monInputs,html.vetlive-on #anMode{pointer-events:none;opacity:.92}
@@ -3265,12 +3278,40 @@ function activate(){
   setInterval(render, 1000);   // Alters-/Status-Anzeige aktuell halten
   if(demo) startDemo(); else connectFirebase();
 }
-// Sichtbarer Einstieg, damit man den Fern-Zugang ohne Adresszusatz starten kann.
+/*
+ * Sichtbarer Einstieg in die Fern-Ansicht.
+ *
+ * Er gehört IN die Kopfleiste neben „🚨 CPR" — nicht als schwebender Knopf darüber. Vorher lag er
+ * fest oben rechts und verdeckte dort genau die Bedienelemente, die dort schon sind: CPR, Zahnrad,
+ * Menü, Hell/Dunkel. Einen Notfallknopf zu überlagern geht nicht.
+ *
+ * Die Kopfleiste wird von der gemeinsamen Oberfläche (vetpharm-ui.js) noch um Zahnrad und Menü
+ * ergänzt, kann also später fertig werden als dieses Skript. Deshalb wird kurz darauf gewartet;
+ * erst wenn sie partout nicht auftaucht, wird der Knopf frei platziert — dann aber unten links,
+ * wo er niemandem im Weg ist.
+ */
 function injectLauncher(){
   var b=document.createElement('button'); b.id='vetlive-launch'; b.type='button';
-  b.innerHTML='📡 Fern-Zugang'; b.title='Live-Werte, Monitor, Protokoll & Empfehlungen der eigenen Praxis aus der Ferne ansehen (nur Ansicht)';
+  b.className='btn';
+  b.innerHTML='📡 <span class="vl-lang">Fern-Zugang</span>';
+  b.title='Live-Werte, Monitor, Protokoll & Empfehlungen der eigenen Praxis aus der Ferne ansehen (nur Ansicht)';
   b.onclick=activate;
-  document.body.appendChild(b);
+
+  var versuche=0;
+  (function platzieren(){
+    var leiste=document.querySelector('header .actions');
+    if(leiste){
+      // Direkt hinter CPR: gut sichtbar, ohne CPR von seinem Platz zu verdrängen.
+      var cpr=leiste.querySelector('#btnPanic');
+      if(cpr && cpr.nextSibling) leiste.insertBefore(b, cpr.nextSibling);
+      else if(cpr) leiste.appendChild(b);
+      else leiste.insertBefore(b, leiste.firstChild);
+      return;
+    }
+    if(++versuche<25){ setTimeout(platzieren,120); return; }
+    b.classList.add('frei');
+    document.body.appendChild(b);
+  })();
 }
 /*
  * Wer sich schon einmal angemeldet hat, soll die Seite oeffnen und sofort seine Station sehen —
