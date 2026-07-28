@@ -2531,9 +2531,10 @@ html[data-theme="light"] .vl-box input{background:#fff;border-color:rgba(0,0,0,.
 .vl-btn.sek{background:transparent;border-color:rgba(255,255,255,.2);color:inherit;font-weight:600}
 .vl-btn:disabled{opacity:.5;cursor:default}
 /* Google gibt die Gestaltung seines Anmeldeknopfes vor: weißer Grund, dunkle Schrift, Originallogo. */
-.vl-btn.google{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:14px;
+.vl-btn.google{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;
   background:#fff;color:#3c4043;border:1px solid #dadce0;font-weight:600}
 .vl-btn.google:hover{background:#f7f8f8}
+.vl-btn.google.ms{margin-bottom:14px}
 .vl-trenn{display:flex;align-items:center;gap:10px;margin:0 0 14px;font-size:11.5px;color:#9aa8bb}
 .vl-trenn::before,.vl-trenn::after{content:"";flex:1;height:1px;background:currentColor;opacity:.25}
 .vl-msg{margin-top:12px;font-size:12.5px;min-height:18px;line-height:1.5}
@@ -2590,6 +2591,7 @@ var bar = null, activated = false, kurvenSigGezeigt = null, updates = 0, updRate
 var FB = null;              // {app, D, auth, db, A:authModul}
 var nutzer = null;          // angemeldetes Praxis-Konto
 var praxis = null;          // Anmelde-Kennung = Datenpfad
+var anmeldeHinweis = '';    // Fehler einer Weiterleitungs-Anmeldung, bis das Fenster wieder da ist
 var uhrVersatz = 0;         // Unterschied lokale Uhr <-> Firebase-Serveruhr
 var laufzeit = null;        // gemessene Strecke Praxis -> Datenbank -> hier, in ms
 var laufzeitMin = null, laufzeitMax = null;
@@ -3003,9 +3005,14 @@ function zeigeAnmeldung(vorbelegt, hinweis){
       '<h2>📡 Fern-Zugang</h2>'+
       '<div class="vl-sub">Mit dem <b>Konto Ihrer Praxis</b> anmelden — demselben, das auf dem Praxis-PC in VetStation hinterlegt ist. '+
         'Sie sehen dann alle angeschlossenen Geräte und Patienten dieser Praxis live. Andere Praxen sehen Ihre Daten nicht.</div>'+
-      '<button class="vl-btn google" id="vlGoogle" type="button">'+
+      '<button class="vl-btn google" data-anb="google.com" type="button">'+
         '<svg viewBox="0 0 18 18" width="17" height="17" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>'+
         'Mit Google anmelden</button>'+
+      '<button class="vl-btn google ms" data-anb="microsoft.com" type="button">'+
+        '<svg viewBox="0 0 18 18" width="16" height="16" aria-hidden="true">'+
+          '<rect x="0" y="0" width="8.4" height="8.4" fill="#F25022"/><rect x="9.6" y="0" width="8.4" height="8.4" fill="#7FBA00"/>'+
+          '<rect x="0" y="9.6" width="8.4" height="8.4" fill="#00A4EF"/><rect x="9.6" y="9.6" width="8.4" height="8.4" fill="#FFB900"/></svg>'+
+        'Mit Microsoft / Outlook anmelden</button>'+
       '<div class="vl-trenn"><span>oder mit E-Mail und Passwort</span></div>'+
       '<label>E-Mail der Praxis<input id="vlMail" type="email" autocomplete="username" value="'+esc(vorbelegt||'')+'" placeholder="praxis@beispiel.de"></label>'+
       '<label>Passwort<input id="vlPw" type="password" autocomplete="current-password" placeholder="••••••••"></label>'+
@@ -3013,7 +3020,7 @@ function zeigeAnmeldung(vorbelegt, hinweis){
         '<button class="vl-btn" id="vlLogin" type="button">Anmelden</button>'+
         '<button class="vl-btn sek" id="vlNeu" type="button">Neues Praxis-Konto</button>'+
       '</div>'+
-      '<div class="vl-msg" id="vlMsg">'+(hinweis?esc(hinweis):'')+'</div>'+
+      '<div class="vl-msg" id="vlMsg"'+(hinweis?' style="color:#ff8ba0"':'')+'>'+(hinweis?esc(hinweis):'')+'</div>'+
       '<div class="vl-fuss">🔒 Nur Ansicht — von hier kann kein Gerät bedient werden. '+
         'Die Anmeldung bleibt auf diesem Gerät gespeichert, bis Sie sich abmelden.</div>'+
     '</div>';
@@ -3035,28 +3042,49 @@ function zeigeAnmeldung(vorbelegt, hinweis){
   bNeu.onclick=function(){ tun(true); };
   pw.addEventListener('keydown', function(e){ if(e.key==='Enter') tun(false); });
 
-  /* Google: erst das Popup versuchen, bei Blockade auf Weiterleitung ausweichen.
-   * Das Popup ist angenehmer (die Seite bleibt stehen), wird aber auf manchen Geräten und in
-   * Kiosk-Browsern grundsätzlich unterdrückt — dann muss die Weiterleitung übernehmen, sonst
-   * steht der Nutzer vor einem Knopf, der scheinbar nichts tut. */
-  var bG=w.querySelector('#vlGoogle');
-  bG.onclick=function(){
-    sperre(true); bG.disabled=true; sag('öffne Google…');
-    var p=new FB.A.GoogleAuthProvider();
-    p.setCustomParameters({ prompt:'select_account' });
-    FB.A.signInWithPopup(FB.auth, p).catch(function(e){
-      var c=(e&&e.code)||'';
-      if(/popup-blocked|popup-closed-by-user|cancelled-popup-request|operation-not-supported/i.test(c)){
-        if(/popup-closed-by-user|cancelled-popup/i.test(c)){ sperre(false); bG.disabled=false; sag(''); return; }
-        try{ localStorage.setItem('vetlive_google_weiter','1'); }catch(x){}
-        return FB.A.signInWithRedirect(FB.auth, p);
-      }
-      sperre(false); bG.disabled=false; sag(anmeldeFehler(e), '#ff8ba0');
-    });
-  };
+  /* Google und Microsoft/Outlook: erst das Popup versuchen, bei Blockade auf Weiterleitung
+   * ausweichen. Das Popup ist angenehmer (die Seite bleibt stehen), wird aber auf manchen Geräten
+   * und in Kiosk-Browsern grundsätzlich unterdrückt — ohne Rückfall stünde der Nutzer vor einem
+   * Knopf, der scheinbar nichts tut. */
+  Array.prototype.forEach.call(w.querySelectorAll('[data-anb]'), function(btn){
+    btn.onclick=function(){
+      var anb=btn.dataset.anb;
+      sperre(true); btn.disabled=true; sag('öffne '+anbieterName(anb)+'…');
+      var p=anbieter(anb);
+      FB.A.signInWithPopup(FB.auth, p).catch(function(e){
+        var c=(e&&e.code)||'';
+        if(/popup-closed-by-user|cancelled-popup/i.test(c)){ sperre(false); btn.disabled=false; sag(''); return; }
+        if(/popup-blocked|operation-not-supported/i.test(c)){
+          try{ localStorage.setItem('vetlive_google_weiter','1'); }catch(x){}
+          return FB.A.signInWithRedirect(FB.auth, p);
+        }
+        sperre(false); btn.disabled=false; sag(anmeldeFehler(e), '#ff8ba0');
+      });
+    };
+  });
   (mail.value? pw : mail).focus();
 }
 function versteckeAnmeldung(){ var w=document.getElementById('vetlive-login'); if(w) w.remove(); }
+
+/*
+ * Anmelde-Anbieter. Google hat in Firebase eine eigene Klasse, alle übrigen laufen über
+ * OAuthProvider mit ihrer Kennung — Microsoft/Outlook ist "microsoft.com".
+ *
+ * prompt=select_account erzwingt die Kontowahl. Ohne das meldet ein Gerät, auf dem schon ein
+ * Konto im Browser hängt, den Nutzer stillschweigend damit an — in einer Praxis, in der mehrere
+ * Personen denselben Rechner benutzen, landet man so im falschen Datenpfad.
+ *
+ * Microsoft: kein "tenant" gesetzt, damit die Vorgabe "common" gilt — dann funktionieren sowohl
+ * persönliche Outlook-/Hotmail-Konten als auch Geschäftskonten einer Praxis.
+ */
+function anbieter(id){
+  var p;
+  if(id==='google.com'){ p=new FB.A.GoogleAuthProvider(); }
+  else { p=new FB.A.OAuthProvider(id); }
+  p.setCustomParameters({ prompt:'select_account' });
+  return p;
+}
+function anbieterName(id){ return id==='microsoft.com' ? 'Microsoft' : 'Google'; }
 
 // Firebase antwortet mit Kuerzeln wie auth/invalid-credential. Auf dem Bildschirm eines
 // Tierarztes hat das nichts verloren — hier steht, was zu tun ist.
@@ -3068,7 +3096,12 @@ function anmeldeFehler(e){
   if(/weak-password/i.test(c)) return 'Das Passwort ist zu kurz (mindestens 6 Zeichen).';
   if(/too-many-requests/i.test(c)) return 'Zu viele Fehlversuche. Bitte einige Minuten warten.';
   if(/network-request-failed/i.test(c)) return 'Keine Internetverbindung.';
-  if(/operation-not-allowed/i.test(c)) return 'Die E-Mail-Anmeldung ist im Firebase-Projekt noch nicht freigeschaltet.';
+  if(/operation-not-allowed/i.test(c)) return 'Dieses Anmeldeverfahren ist im Firebase-Projekt noch nicht freigeschaltet.';
+  if(/unauthorized-domain/i.test(c)) return 'Diese Adresse ist in Firebase nicht als erlaubte Domain eingetragen.';
+  /* Kommt vor, wenn dieselbe E-Mail schon über ein anderes Verfahren angelegt wurde und in
+   * Firebase NICHT „Konten mit derselben E-Mail-Adresse verknüpfen" eingestellt ist. */
+  if(/account-exists-with-different-credential/i.test(c))
+    return 'Für diese E-Mail gibt es bereits ein Konto mit einem anderen Anmeldeweg. Bitte den bisherigen Weg verwenden.';
   return (e&&e.message)||String(e);
 }
 
@@ -3107,16 +3140,20 @@ function connectFirebase(){
      * nach der Rueckkehr wieder vor dem Anmeldefenster, ohne zu erfahren warum. */
     try{ localStorage.removeItem('vetlive_google_weiter'); }catch(e){}
     Au.getRedirectResult(FB.auth).catch(function(e){
-      lastError = anmeldeFehler(e);
+      /* Den Fehler MERKEN, nicht nur ins Anmeldefenster schreiben: nach der Rückkehr von Google
+       * oder Microsoft ist die Seite frisch geladen, das Fenster existiert zu diesem Zeitpunkt
+       * meist noch gar nicht. Ohne das Merken verschwände die Ursache spurlos, und der Nutzer
+       * stünde wieder vor demselben Knopf, ohne zu erfahren warum es nicht ging. */
+      anmeldeHinweis = anmeldeFehler(e);
       var m=document.getElementById('vlMsg');
-      if(m){ m.textContent = lastError; m.style.color='#ff8ba0'; }
+      if(m){ m.textContent = anmeldeHinweis; m.style.color='#ff8ba0'; }
     });
 
     /* Anmeldezustand fuehrt alles Weitere. Beim erneuten Oeffnen der Seite meldet Firebase das
      * gespeicherte Konto von selbst — der Tierarzt muss zu Hause nicht jedes Mal tippen. */
     Au.onAuthStateChanged(FB.auth, function(u){
       nutzer = u || null;
-      if(!u){ praxis=null; connState='auth'; zeigeAnmeldung(letzteMail(), ''); render(); return; }
+      if(!u){ praxis=null; connState='auth'; zeigeAnmeldung(letzteMail(), anmeldeHinweis); anmeldeHinweis=''; render(); return; }
       praxis = u.uid;
       try{ localStorage.setItem('vetlive_mail', u.email||''); }catch(e){}
       versteckeAnmeldung();
