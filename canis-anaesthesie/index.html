@@ -2525,8 +2525,8 @@ html[data-theme="light"] .fl-tile{background:rgba(255,255,255,.6)}
 /* ---- Anmeldung: eigenes Overlay, NICHT in #vetlive-bar ----
  * Die Leiste wird von render() jede Sekunde per innerHTML neu aufgebaut. Ein Formular darin
  * verlöre bei jedem Tastendruck Fokus und Inhalt. Deshalb ein eigenständiges Element. */
-#vetlive-login{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;
-  background:rgba(6,10,16,.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:18px}
+#vetlive-login,#vetlive-signup{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;
+  background:rgba(6,10,16,.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:18px;overflow:auto}
 .vl-box{width:min(420px,100%);border-radius:16px;padding:22px;background:linear-gradient(180deg,#0d1826,#0a1420);
   border:1px solid rgba(0,216,255,.35);box-shadow:0 24px 60px rgba(0,0,0,.6);color:#e8f2ff;
   font:14px/1.5 var(--tech,Segoe UI,Inter,system-ui,sans-serif)}
@@ -2562,7 +2562,7 @@ html[data-theme="light"] .vl-box input{background:#fff;border-color:rgba(0,0,0,.
 #druckblatt{display:none}
 @media print{
   /* Feste Elemente und Navigation raus, nur das Protokollblatt drucken. */
-  #vetlive-bar,#vetlive-launch,#vetlive-login,#tabs,.nf-dock,.nf-fab,.topbar,header,footer{display:none !important}
+  #vetlive-bar,#vetlive-launch,#vetlive-login,#vetlive-signup,#tabs,.nf-dock,.nf-fab,.topbar,header,footer{display:none !important}
   html.vetlive-on body{padding-top:0 !important}
   body{background:#fff !important;color:#000 !important}
   main.shell,.view{display:none !important}
@@ -2591,6 +2591,16 @@ window.VETLIVE_CFG = window.VETLIVE_CFG || {
   databaseURL: "https://vet-station-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "vet-station"
 };
+/*
+ * Liegt die Seite selbst auf dem Firebase-Hosting dieses Projekts (vet-station.web.app oder
+ * vet-station.firebaseapp.com), dann ist die Anmeldung UNTER DERSELBEN ADRESSE erreichbar —
+ * dort liefert auch die Weiterleitung wieder ein Konto. Auf github.io geht das nicht: dort
+ * gehoert die Anmeldung einer fremden Adresse, und der Browser trennt deren Speicher ab.
+ * Deshalb hier ein Handgriff und keine feste Zeile: dieselbe Datei laeuft an beiden Orten.
+ */
+if(/^vet-station\.(web\.app|firebaseapp\.com)$/i.test(location.hostname)){
+  window.VETLIVE_CFG.authDomain = location.hostname;
+}
 
 var params = new URLSearchParams(location.search);
 var demo = params.get('livedemo');
@@ -3010,74 +3020,240 @@ function injectTab(){
  * Das Anmeldefenster ist ein EIGENES Element und liegt bewusst nicht in der Statusleiste:
  * die wird jede Sekunde neu aufgebaut, ein Formular darin verlöre Fokus und Eingabe.
  * --------------------------------------------------------------------------- */
+/*
+ * ZWEI GETRENNTE FENSTER: ANMELDEN und KONTO ANLEGEN.
+ *
+ * Vorher lag beides in einem Fenster — unter denselben zwei Feldern standen „Anmelden" und
+ * „Neues Praxis-Konto" nebeneinander. Wer sich beim Passwort vertippt hatte und dann auf den
+ * zweiten Knopf ausgewichen ist, hat damit ein ZWEITES, leeres Konto angelegt und sah danach
+ * eine leere Station: die Werte hängen am ersten Konto. Anlegen ist ein anderer Vorgang als
+ * Anmelden und bekommt deshalb ein eigenes Fenster — mit Passwort-Wiederholung.
+ *
+ * FREMDANBIETER (Google, Microsoft/Outlook) LAUFEN IM EIGENEN FENSTER — das ist kein Geschmack:
+ * Die Weiterleitung (signInWithRedirect) kommt zwar zurück, liefert aber KEIN Konto, sobald der
+ * Browser den Speicher von vet-station.firebaseapp.com vom Speicher dieser Seite trennt. Genau
+ * das tut Chrome inzwischen von sich aus. Gemessen am 29.07.2026 auf quziboevmanuchehr.github.io:
+ * getRedirectResult lieferte zweimal null — ohne Fehler, ohne Konto, ohne jede Meldung. Deshalb
+ * gilt jetzt: eigenes Fenster zuerst; die Weiterleitung bleibt nur der letzte Ausweg, und wenn
+ * sie leer zurückkommt, wird das ERKANNT und im Klartext gesagt statt still zu scheitern.
+ */
+var OAUTH_MARKE='vetlive_oauth_weiter';
+var SVG_GOOGLE='<svg viewBox="0 0 18 18" width="17" height="17" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>';
+var SVG_MS='<svg viewBox="0 0 18 18" width="16" height="16" aria-hidden="true">'+
+  '<rect x="0" y="0" width="8.4" height="8.4" fill="#F25022"/><rect x="9.6" y="0" width="8.4" height="8.4" fill="#7FBA00"/>'+
+  '<rect x="0" y="9.6" width="8.4" height="8.4" fill="#00A4EF"/><rect x="9.6" y="9.6" width="8.4" height="8.4" fill="#FFB900"/></svg>';
+
+/* Derselbe Anbieter-Block in beiden Fenstern, nur das Zeitwort wechselt. */
+function anbieterKnoepfe(wort){
+  return '<button class="vl-btn google" data-anb="google.com" type="button">'+SVG_GOOGLE+'Mit Google '+wort+'</button>'+
+         '<button class="vl-btn google ms" data-anb="microsoft.com" type="button">'+SVG_MS+'Mit Microsoft / Outlook '+wort+'</button>';
+}
+
+/*
+ * IST DIESER ANBIETER IM PROJEKT UEBERHAUPT FREIGESCHALTET?
+ *
+ * Firebase beantwortet das oeffentlich (createAuthUri braucht keine Anmeldung): ein nicht
+ * eingerichteter Anbieter meldet OPERATION_NOT_ALLOWED. Ohne diese Frage sieht der Nutzer einen
+ * einladenden Knopf, klickt, wartet — und bekommt erst dann zu hoeren, dass es diesen Weg gar
+ * nicht gibt. Am 29.07.2026 war genau das bei Microsoft der Fall.
+ *
+ * Die Antwort wird VORHER geholt und gemerkt, nicht im Klick: ein Popup muss unmittelbar aus dem
+ * Klick heraus geoeffnet werden, sonst haelt der Browser es fuer ungefragt und blockiert es.
+ * Bei Netzstoerung bleibt der Knopf bedienbar — im Zweifel lieber probieren als sperren.
+ */
+var anbieterFrei={};
+function pruefeAnbieter(id, fertig){
+  if(anbieterFrei[id]!==undefined){ fertig(anbieterFrei[id]); return; }
+  var cfg=window.VETLIVE_CFG||{};
+  if(!cfg.apiKey){ fertig(true); return; }
+  fetch('https://identitytoolkit.googleapis.com/v1/accounts:createAuthUri?key='+encodeURIComponent(cfg.apiKey), {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ providerId:id, continueUri: location.origin+location.pathname })
+  }).then(function(r){ return r.json(); }).then(function(j){
+    var frei = !(j && j.error && /OPERATION_NOT_ALLOWED|CONFIGURATION_NOT_FOUND/i.test(j.error.message||''));
+    anbieterFrei[id]=frei; fertig(frei);
+  }).catch(function(){ fertig(true); });
+}
+/* Einen nicht freigeschalteten Knopf ehrlich beschriften statt ihn ins Leere laufen zu lassen. */
+function markiereAnbieter(w){
+  Array.prototype.forEach.call(w.querySelectorAll('[data-anb]'), function(btn){
+    pruefeAnbieter(btn.dataset.anb, function(frei){
+      if(frei || !btn.isConnected) return;
+      btn.disabled=true; btn.style.opacity='.55'; btn.style.cursor='not-allowed';
+      btn.title='Dieser Anmeldeweg ist im Firebase-Projekt noch nicht freigeschaltet.';
+      var n=document.createElement('span');
+      n.style.cssText='font-weight:600;font-size:11.5px;opacity:.8';
+      n.textContent=' — noch nicht freigeschaltet';
+      btn.appendChild(n);
+    });
+  });
+}
+
+/*
+ * Anmeldung über einen Fremdanbieter, in einem EIGENEN FENSTER.
+ *
+ * Der Wecker ist kein Schmuck: schließt jemand das Anmeldefenster über das Kreuz des
+ * Betriebssystems statt über „Abbrechen", meldet Firebase auf manchen Geräten nie zurück. Ohne
+ * Wecker bliebe das Fenster für immer gesperrt und der Knopf tot — genau der Zustand, den ein
+ * Tierarzt als „geht nicht" erlebt.
+ */
+function starteAnbieter(anb, zweck, sag, sperre){
+  if(anbieterFrei[anb]===false){ sag(anmeldeFehler({code:'auth/operation-not-allowed'}), '#ffb84d'); return; }
+  sperre(true);
+  sag('Ein eigenes Anmeldefenster von '+anbieterName(anb)+' ist offen — bitte dort fortfahren. '+
+      'Erscheint keins, ist es vom Browser blockiert (Symbol in der Adressleiste).');
+  var fertig=false;
+  var wecker=setTimeout(function(){
+    if(fertig) return;
+    sperre(false);
+    sag('Das Anmeldefenster von '+anbieterName(anb)+' steht noch offen. Wenn Sie es geschlossen haben, hier einfach noch einmal klicken.','#ffb84d');
+  }, 90000);
+  FB.A.signInWithPopup(FB.auth, anbieter(anb)).then(function(){
+    fertig=true; clearTimeout(wecker);   /* onAuthStateChanged uebernimmt ab hier */
+  }).catch(function(e){
+    fertig=true; clearTimeout(wecker);
+    var c=(e&&e.code)||'';
+    if(/popup-closed-by-user|cancelled-popup|user-cancelled/i.test(c)){ sperre(false); sag('Abgebrochen.'); return; }
+    if(/popup-blocked|operation-not-supported|web-storage-unsupported/i.test(c)){
+      /* Letzter Ausweg. Merken, WAS versucht wurde — nur so laesst sich nach der Rueckkehr
+       * feststellen, ob der Browser die Anmeldung unterwegs verworfen hat. */
+      try{ localStorage.setItem(OAUTH_MARKE, JSON.stringify({anb:anb, zweck:zweck, ts:Date.now()})); }catch(x){}
+      sag('Der Browser hat das eigene Fenster blockiert — ich versuche es über eine Weiterleitung…','#ffb84d');
+      FB.A.signInWithRedirect(FB.auth, anbieter(anb)).catch(function(e2){
+        try{ localStorage.removeItem(OAUTH_MARKE); }catch(x){}
+        sperre(false); sag(anmeldeFehler(e2), '#ff8ba0');
+      });
+      return;
+    }
+    sperre(false); sag(anmeldeFehler(e), '#ff8ba0');
+  });
+}
+function verdrahteAnbieter(w, zweck, sag, sperre){
+  Array.prototype.forEach.call(w.querySelectorAll('[data-anb]'), function(btn){
+    btn.onclick=function(){ starteAnbieter(btn.dataset.anb, zweck, sag, sperre); };
+  });
+  markiereAnbieter(w);
+}
+/* Sperrt ALLE Knoepfe des Fensters — auch die Anbieterknoepfe, die frueher offen blieben. */
+function fensterSperre(w){
+  return function(an){
+    Array.prototype.forEach.call(w.querySelectorAll('button'), function(b){ b.disabled=an; });
+  };
+}
+
 function zeigeAnmeldung(vorbelegt, hinweis){
-  var alt=document.getElementById('vetlive-login'); if(alt) alt.remove();
+  versteckeAnmeldung();
   var w=document.createElement('div'); w.id='vetlive-login';
   w.innerHTML =
     '<div class="vl-box" role="dialog" aria-label="Praxis-Anmeldung">'+
       '<h2>📡 Fern-Zugang</h2>'+
       '<div class="vl-sub">Mit dem <b>Konto Ihrer Praxis</b> anmelden — demselben, das auf dem Praxis-PC in VetStation hinterlegt ist. '+
         'Sie sehen dann alle angeschlossenen Geräte und Patienten dieser Praxis live. Andere Praxen sehen Ihre Daten nicht.</div>'+
-      '<button class="vl-btn google" data-anb="google.com" type="button">'+
-        '<svg viewBox="0 0 18 18" width="17" height="17" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>'+
-        'Mit Google anmelden</button>'+
-      '<button class="vl-btn google ms" data-anb="microsoft.com" type="button">'+
-        '<svg viewBox="0 0 18 18" width="16" height="16" aria-hidden="true">'+
-          '<rect x="0" y="0" width="8.4" height="8.4" fill="#F25022"/><rect x="9.6" y="0" width="8.4" height="8.4" fill="#7FBA00"/>'+
-          '<rect x="0" y="9.6" width="8.4" height="8.4" fill="#00A4EF"/><rect x="9.6" y="9.6" width="8.4" height="8.4" fill="#FFB900"/></svg>'+
-        'Mit Microsoft / Outlook anmelden</button>'+
+      anbieterKnoepfe('anmelden')+
       '<div class="vl-trenn"><span>oder mit E-Mail und Passwort</span></div>'+
       '<label>E-Mail der Praxis<input id="vlMail" type="email" autocomplete="username" value="'+esc(vorbelegt||'')+'" placeholder="praxis@beispiel.de"></label>'+
       '<label>Passwort<input id="vlPw" type="password" autocomplete="current-password" placeholder="••••••••"></label>'+
       '<div class="vl-btns">'+
         '<button class="vl-btn" id="vlLogin" type="button">Anmelden</button>'+
-        '<button class="vl-btn sek" id="vlNeu" type="button">Neues Praxis-Konto</button>'+
       '</div>'+
       '<div class="vl-msg" id="vlMsg"'+(hinweis?' style="color:#ff8ba0"':'')+'>'+(hinweis?esc(hinweis):'')+'</div>'+
+      '<div class="vl-trenn" style="margin:16px 0 10px"><span>noch kein Konto?</span></div>'+
+      '<div class="vl-btns">'+
+        '<button class="vl-btn sek" id="vlNeu" type="button">Neues Praxis-Konto anlegen</button>'+
+      '</div>'+
       '<div class="vl-fuss">🔒 Nur Ansicht — von hier kann kein Gerät bedient werden. '+
         'Die Anmeldung bleibt auf diesem Gerät gespeichert, bis Sie sich abmelden.</div>'+
     '</div>';
   document.body.appendChild(w);
   var mail=w.querySelector('#vlMail'), pw=w.querySelector('#vlPw'), msg=w.querySelector('#vlMsg');
-  var bLogin=w.querySelector('#vlLogin'), bNeu=w.querySelector('#vlNeu');
+  var sperre=fensterSperre(w);
   function sag(t,f){ msg.textContent=t; msg.style.color=f||'#9aa8bb'; }
-  function sperre(an){ bLogin.disabled=an; bNeu.disabled=an; }
-  function tun(neu){
+  function anmelden(){
     var m=(mail.value||'').trim(), p=pw.value||'';
     if(!m||!p){ sag('Bitte E-Mail und Passwort eingeben.','#ffb84d'); return; }
-    if(neu && p.length<6){ sag('Das Passwort muss mindestens 6 Zeichen haben.','#ffb84d'); return; }
-    sperre(true); sag(neu?'lege Konto an…':'melde an…');
-    var f = neu ? FB.A.createUserWithEmailAndPassword : FB.A.signInWithEmailAndPassword;
-    f(FB.auth, m, p).then(function(){ pw.value=''; /* onAuthStateChanged uebernimmt */ })
+    sperre(true); sag('melde an…');
+    FB.A.signInWithEmailAndPassword(FB.auth, m, p)
+      .then(function(){ pw.value=''; /* onAuthStateChanged uebernimmt */ })
       .catch(function(e){ sperre(false); sag(anmeldeFehler(e), '#ff8ba0'); });
   }
-  bLogin.onclick=function(){ tun(false); };
-  bNeu.onclick=function(){ tun(true); };
-  pw.addEventListener('keydown', function(e){ if(e.key==='Enter') tun(false); });
-
-  /* Google und Microsoft/Outlook: erst das Popup versuchen, bei Blockade auf Weiterleitung
-   * ausweichen. Das Popup ist angenehmer (die Seite bleibt stehen), wird aber auf manchen Geräten
-   * und in Kiosk-Browsern grundsätzlich unterdrückt — ohne Rückfall stünde der Nutzer vor einem
-   * Knopf, der scheinbar nichts tut. */
-  Array.prototype.forEach.call(w.querySelectorAll('[data-anb]'), function(btn){
-    btn.onclick=function(){
-      var anb=btn.dataset.anb;
-      sperre(true); btn.disabled=true; sag('öffne '+anbieterName(anb)+'…');
-      var p=anbieter(anb);
-      FB.A.signInWithPopup(FB.auth, p).catch(function(e){
-        var c=(e&&e.code)||'';
-        if(/popup-closed-by-user|cancelled-popup/i.test(c)){ sperre(false); btn.disabled=false; sag(''); return; }
-        if(/popup-blocked|operation-not-supported/i.test(c)){
-          try{ localStorage.setItem('vetlive_google_weiter','1'); }catch(x){}
-          return FB.A.signInWithRedirect(FB.auth, p);
-        }
-        sperre(false); btn.disabled=false; sag(anmeldeFehler(e), '#ff8ba0');
-      });
-    };
-  });
+  w.querySelector('#vlLogin').onclick=anmelden;
+  w.querySelector('#vlNeu').onclick=function(){ zeigeRegistrierung((mail.value||'').trim()); };
+  pw.addEventListener('keydown', function(e){ if(e.key==='Enter') anmelden(); });
+  verdrahteAnbieter(w, 'anmelden', sag, sperre);
   (mail.value? pw : mail).focus();
 }
-function versteckeAnmeldung(){ var w=document.getElementById('vetlive-login'); if(w) w.remove(); }
+
+/*
+ * EIGENES FENSTER FUER DIE REGISTRIERUNG.
+ *
+ * Wichtig und deshalb ausgeschrieben: Über Google oder Microsoft gibt es KEINE getrennte
+ * Registrierung — die allererste Anmeldung legt das Konto an. Wer das nicht weiß, sucht in
+ * beiden Fenstern nach einem Knopf, den es nicht gibt, und hält die App für kaputt.
+ */
+function zeigeRegistrierung(vorbelegt){
+  versteckeAnmeldung();
+  var w=document.createElement('div'); w.id='vetlive-signup';
+  w.innerHTML =
+    '<div class="vl-box" role="dialog" aria-label="Neues Praxis-Konto">'+
+      '<h2>🆕 Neues Praxis-Konto</h2>'+
+      '<div class="vl-sub"><b>Ein Konto je Praxis.</b> Alle Werte, Kurven und Protokolle dieser Praxis liegen darunter und '+
+        'sind für kein anderes Konto lesbar. <b>Dasselbe Konto</b> muss danach auf dem Praxis-PC in VetStation '+
+        '(Verwaltung → Fern-Live) hinterlegt werden — sonst sendet die Station in einen anderen Datenpfad und '+
+        'die Ansicht hier bleibt leer.</div>'+
+      anbieterKnoepfe('registrieren')+
+      '<div class="vl-fuss" style="margin:-4px 0 14px">Bei Google und Microsoft ist das Anlegen und das Anmelden derselbe Vorgang: '+
+        'Ihre erste Anmeldung legt das Konto an. Ein Passwort für uns brauchen Sie dann nicht.</div>'+
+      '<div class="vl-trenn"><span>oder mit E-Mail und Passwort</span></div>'+
+      '<label>E-Mail der Praxis<input id="vsMail" type="email" autocomplete="username" value="'+esc(vorbelegt||'')+'" placeholder="praxis@beispiel.de"></label>'+
+      '<label>Passwort wählen (mindestens 6 Zeichen)<input id="vsPw" type="password" autocomplete="new-password" placeholder="••••••••"></label>'+
+      '<label>Passwort wiederholen<input id="vsPw2" type="password" autocomplete="new-password" placeholder="••••••••"></label>'+
+      '<div class="vl-btns">'+
+        '<button class="vl-btn" id="vsGo" type="button">Konto anlegen</button>'+
+        '<button class="vl-btn sek" id="vsBack" type="button">← Zurück zur Anmeldung</button>'+
+      '</div>'+
+      '<div class="vl-msg" id="vsMsg"></div>'+
+      '<div class="vl-fuss">🔒 Nur Ansicht — von hier kann kein Gerät bedient werden. '+
+        'Das Passwort kennt nur Google/Firebase, nicht diese Seite.</div>'+
+    '</div>';
+  document.body.appendChild(w);
+  var mail=w.querySelector('#vsMail'), pw=w.querySelector('#vsPw'), pw2=w.querySelector('#vsPw2'), msg=w.querySelector('#vsMsg');
+  var sperre=fensterSperre(w);
+  function sag(t,f){ msg.textContent=t; msg.style.color=f||'#9aa8bb'; }
+  function anlegen(){
+    var m=(mail.value||'').trim(), p=pw.value||'', p2=pw2.value||'';
+    if(!m||!p){ sag('Bitte E-Mail und Passwort eingeben.','#ffb84d'); return; }
+    if(p.length<6){ sag('Das Passwort muss mindestens 6 Zeichen haben.','#ffb84d'); return; }
+    if(p!==p2){ sag('Die beiden Passwörter sind nicht gleich.','#ffb84d'); pw2.focus(); return; }
+    sperre(true); sag('lege Konto an…');
+    FB.A.createUserWithEmailAndPassword(FB.auth, m, p)
+      .then(function(){ pw.value=''; pw2.value=''; /* onAuthStateChanged uebernimmt */ })
+      .catch(function(e){
+        sperre(false);
+        var c=(e&&e.code)||'';
+        /* Der haeufigste Fall beim Anlegen: das Konto gibt es schon. Dann gehoert der Nutzer
+         * ins Anmeldefenster — mit bereits eingetragener Adresse, nicht auf eine leere Maske. */
+        if(/email-already-in-use/i.test(c)){
+          zeigeAnmeldung(m, 'Für '+m+' gibt es bereits ein Konto. Bitte hier anmelden.');
+          return;
+        }
+        sag(anmeldeFehler(e), '#ff8ba0');
+      });
+  }
+  w.querySelector('#vsGo').onclick=anlegen;
+  w.querySelector('#vsBack').onclick=function(){ zeigeAnmeldung((mail.value||'').trim(), ''); };
+  pw2.addEventListener('keydown', function(e){ if(e.key==='Enter') anlegen(); });
+  verdrahteAnbieter(w, 'registrieren', sag, sperre);
+  (mail.value? pw : mail).focus();
+}
+function versteckeAnmeldung(){
+  var a=document.getElementById('vetlive-login'); if(a) a.remove();
+  var b=document.getElementById('vetlive-signup'); if(b) b.remove();
+}
+/* Eine Meldung, die erst nach dem Aufbau des Fensters eintrifft, in das gerade offene schreiben. */
+function meldeInsFenster(text){
+  var m=document.getElementById('vlMsg')||document.getElementById('vsMsg');
+  if(m && text){ m.textContent=text; m.style.color='#ff8ba0'; }
+}
 
 /*
  * Anmelde-Anbieter. Google hat in Firebase eine eigene Klasse, alle übrigen laufen über
@@ -3109,8 +3285,11 @@ function anmeldeFehler(e){
   if(/weak-password/i.test(c)) return 'Das Passwort ist zu kurz (mindestens 6 Zeichen).';
   if(/too-many-requests/i.test(c)) return 'Zu viele Fehlversuche. Bitte einige Minuten warten.';
   if(/network-request-failed/i.test(c)) return 'Keine Internetverbindung.';
-  if(/operation-not-allowed/i.test(c)) return 'Dieses Anmeldeverfahren ist im Firebase-Projekt noch nicht freigeschaltet.';
-  if(/unauthorized-domain/i.test(c)) return 'Diese Adresse ist in Firebase nicht als erlaubte Domain eingetragen.';
+  if(/operation-not-allowed/i.test(c)) return 'Dieser Anmeldeweg ist im Firebase-Projekt noch nicht freigeschaltet. '+
+    'Solange das so ist: mit Google anmelden — oder unten ein Konto mit E-Mail und Passwort anlegen. '+
+    'Ihre Outlook-Adresse können Sie dafür genauso verwenden.';
+  if(/unauthorized-domain/i.test(c)) return 'Diese Adresse ist in Firebase nicht als erlaubte Domain eingetragen '+
+    '(Authentication → Einstellungen → Autorisierte Domains).';
   /* Kommt vor, wenn dieselbe E-Mail schon über ein anderes Verfahren angelegt wurde und in
    * Firebase NICHT „Konten mit derselben E-Mail-Adresse verknüpfen" eingestellt ist. */
   if(/account-exists-with-different-credential/i.test(c))
@@ -3148,18 +3327,30 @@ function connectFirebase(){
       var v=s.val(); if(typeof v === 'number') uhrVersatz = v;
     });
 
-    /* Ergebnis einer Google-Weiterleitung abholen. Die Anmeldung selbst schliesst das SDK auch
-     * ohne diesen Aufruf ab — aber nur hier werden FEHLER sichtbar. Ohne das stuende der Nutzer
-     * nach der Rueckkehr wieder vor dem Anmeldefenster, ohne zu erfahren warum. */
-    try{ localStorage.removeItem('vetlive_google_weiter'); }catch(e){}
-    Au.getRedirectResult(FB.auth).catch(function(e){
-      /* Den Fehler MERKEN, nicht nur ins Anmeldefenster schreiben: nach der Rückkehr von Google
-       * oder Microsoft ist die Seite frisch geladen, das Fenster existiert zu diesem Zeitpunkt
-       * meist noch gar nicht. Ohne das Merken verschwände die Ursache spurlos, und der Nutzer
-       * stünde wieder vor demselben Knopf, ohne zu erfahren warum es nicht ging. */
+    /* Ergebnis einer Weiterleitungs-Anmeldung abholen — und die STILLE Blockade erkennen.
+     *
+     * Zwei verschiedene Ausgaenge muessen hier auseinandergehalten werden:
+     *  - Die Weiterleitung meldet einen Fehler → den zeigen.
+     *  - Die Weiterleitung meldet GAR NICHTS: getRedirectResult liefert null, kein Fehler, kein
+     *    Konto. Genau so verhaelt sich Chrome, wenn er den Speicher von vet-station.firebaseapp.com
+     *    getrennt haelt. Ohne diese Erkennung landet der Tierarzt wieder vor demselben Knopf und
+     *    haelt die Anmeldung fuer kaputt — was der Sache nach auch stimmt, nur ohne Grund dabei.
+     *
+     * Der Fehler wird GEMERKT, nicht nur geschrieben: nach der Rueckkehr ist die Seite frisch
+     * geladen, das Anmeldefenster existiert zu diesem Zeitpunkt meist noch gar nicht. */
+    var weiter=null;
+    try{ weiter=JSON.parse(localStorage.getItem(OAUTH_MARKE)||'null'); }catch(e){}
+    try{ localStorage.removeItem(OAUTH_MARKE); localStorage.removeItem('vetlive_google_weiter'); }catch(e){}
+    Au.getRedirectResult(FB.auth).then(function(res){
+      if(!weiter || (res && res.user) || FB.auth.currentUser) return;
+      anmeldeHinweis = 'Ihr Browser hat die Anmeldung über '+anbieterName(weiter.anb)+' auf dem Rückweg verworfen — '+
+        'er trennt den Speicher fremder Adressen. Bitte den Knopf noch einmal drücken: dann öffnet sich ein '+
+        'eigenes Anmeldefenster, und das funktioniert. Falls kein Fenster erscheint, in der Adressleiste '+
+        'Pop-ups für diese Seite erlauben.';
+      meldeInsFenster(anmeldeHinweis);
+    }).catch(function(e){
       anmeldeHinweis = anmeldeFehler(e);
-      var m=document.getElementById('vlMsg');
-      if(m){ m.textContent = anmeldeHinweis; m.style.color='#ff8ba0'; }
+      meldeInsFenster(anmeldeHinweis);
     });
 
     /* Anmeldezustand fuehrt alles Weitere. Beim erneuten Oeffnen der Seite meldet Firebase das
@@ -3318,8 +3509,16 @@ function injectLauncher(){
  * ohne erst einen Knopf zu suchen. Firebase merkt sich die Anmeldung im Browser; das Merkmal
  * dafuer liegt in localStorage und wird hier nur als Hinweis benutzt.
  */
-function googleWeiterleitungOffen(){ try{ return localStorage.getItem('vetlive_google_weiter')==='1'; }catch(e){ return false; } }
-if(demo || letzteMail() || googleWeiterleitungOffen()) activate(); else injectLauncher();
+function weiterleitungOffen(){
+  try{
+    if(localStorage.getItem('vetlive_google_weiter')==='1') return true;   // Altlast aus 1.0.1
+    var w=JSON.parse(localStorage.getItem(OAUTH_MARKE)||'null');
+    /* Nur eine FRISCHE Marke zaehlt. Eine alte wuerde die Fern-Ansicht bei jedem Seitenaufruf
+     * aufreissen, obwohl niemand sich anmelden wollte. */
+    return !!(w && w.ts && (Date.now()-w.ts) < 10*60*1000);
+  }catch(e){ return false; }
+}
+if(demo || letzteMail() || weiterleitungOffen()) activate(); else injectLauncher();
 })();
 </script>
 </body>

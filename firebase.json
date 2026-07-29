@@ -1,0 +1,39 @@
+{
+  "//": [
+    "Zusaetzliche Bereitstellung auf dem Firebase-Hosting des Projekts vet-station.",
+    "",
+    "WARUM UEBERHAUPT: Die Anmeldung von Google und Microsoft laeuft ueber",
+    "vet-station.firebaseapp.com. Auf quziboevmanuchehr.github.io ist das eine FREMDE Adresse,",
+    "und Chrome, Edge, Safari und Firefox trennen deren Speicher inzwischen ab. Die Anmeldung",
+    "per Weiterleitung kommt dann leer zurueck: kein Konto, kein Fehler, keine Meldung",
+    "(nachgemessen am 29.07.2026). Liegt die Seite dagegen unter vet-station.web.app bzw.",
+    "vet-station.firebaseapp.com, gehoert die Anmeldung zur SELBEN Adresse - dann funktionieren",
+    "beide Wege, auch der ohne eigenes Fenster (Kiosk, iPhone-Kurzbefehl, In-App-Browser).",
+    "Die Web-App stellt ihre authDomain selbst um, sobald sie dort ausgeliefert wird.",
+    "",
+    "GitHub Pages bleibt unveraendert bestehen - das hier ist eine ZWEITE Adresse, kein Umzug.",
+    "",
+    "VEROEFFENTLICHEN:  firebase login   (einmalig)",
+    "                   firebase deploy --only hosting",
+    "                   danach: https://vet-station.web.app/canis-anaesthesie/"
+  ],
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      "**/.*",
+      "**/node_modules/**",
+      "vetstation/**",
+      "canis-reise/**"
+    ],
+    "cleanUrls": true,
+    "headers": [
+      {
+        "//": "Die App wird oft geaendert; ein zwischengespeichertes altes index.html waere hier das Schlimmste - der Tierarzt saehe eine Version, die es nicht mehr gibt.",
+        "source": "**/*.html",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      }
+    ]
+  }
+}
