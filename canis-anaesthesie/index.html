@@ -2011,8 +2011,40 @@ function applyLive(p){
   else if(typeof renderMonInputs==='function') renderMonInputs();
   if(mon.running) renderMonValues();
 }
+/* ---------------------------------------------------------------------------
+ * neuerPatient(p) — DER SAALWECHSEL, und er gehoert HIER hinein, nicht ins Fern-Modul.
+ *
+ * WARUM (gemessen am 31.07.2026): Das Fern-Modul am Dateiende laeuft in einem ANDEREN Gueltigkeits-
+ * bereich als dieser Block. istInit, monVitals und applyLive sind dort schlicht nicht sichtbar —
+ * `typeof istInit` ergab dort "undefined". Der erste Versuch, den Wechsel von aussen zu bauen,
+ * fiel deshalb still in seinen Rueckfallzweig und setzte alle Messkanaele auf null. Und null ist
+ * hier gefaehrlich: renderAssess vergleicht x < band[0], also null < 60 = wahr, und applyLive zieht
+ * iv.nibp auf die Zahl 0. Das ergab fuer ein gesundes Tier in einem Saal ohne Manschette und ohne
+ * Temperatursonde drei erfundene Notfallbefunde samt Wirkstoffdosis ("MAP 0 mmHg - Hypotension",
+ * "Apnoe", "Hypothermie"). Nachgestellt im Browser, nicht hergeleitet.
+ *
+ * Der richtige Zustand nach einem Wechsel ist der, in dem diese App STARTET: istInit() mit den
+ * Bandmitten der NEUEN Tierart. Er behauptet keine Messung — im Gegensatz zu null, das eine
+ * Messung von 0 behauptet. Tierart, Gewicht und Rasse werden vorher gesetzt, weil istInit() die
+ * Baender daraus rechnet.
+ *
+ * Zusaetzlich geraeumt wird alles, was applyLive nur BEDINGT zuweist und deshalb aus dem vorigen
+ * Saal stehenbliebe: der EKG-Rhythmus (ein 'flat' von dort ergibt "Asystolie - CPR" fuer ein
+ * gesundes Tier) und die Geraeteeinstellungen samt Spiegelmarken.
+ * --------------------------------------------------------------------------- */
+function neuerPatient(p){
+  var art=(p&&p.species)||null;
+  state.sp=(art&&A.species.some(function(s){return s.id===art;}))?art:((A.species[0]&&A.species[0].id)||'hund');
+  state.wt=(p&&p.weightKg>0)?p.weightKg:10;
+  state.breed=(p&&p.breed&&VB&&VB.byId&&VB.byId(p.breed))?p.breed:null;
+  state.rhythm='sinus';
+  var wtEl=$('#wt'); if(wtEl) wtEl.value=state.wt;
+  istInit();
+  var dv=state.dev; if(dv){ dv.mirror={}; dv.vp={}; dv.live=false; dv.o2=1; dv.iso=2; dv.mode='vcv'; dv.auto=false; }
+  __liveSig=null; __liveAlarmSig=null;
+}
 try{
-  window.__anaesLive={ apply:applyLive, tab:switchTab, monResolve:monResolve,
+  window.__anaesLive={ apply:applyLive, tab:switchTab, monResolve:monResolve, neuerPatient:neuerPatient,
     gotoIncident:(typeof gotoIncident==='function'?gotoIncident:null), ready:true };
 }catch(e){}
 })();
@@ -2607,17 +2639,52 @@ var demo = params.get('livedemo');
 
 var A = window.ANAES || {species:[]};
 var SDK = "https://www.gstatic.com/firebasejs/10.12.0/";
-var patients = {}, meta = {}, protokoll = {}, sel = null, lastRecv = 0;
+
+/* ---------------------------------------------------------------------------
+ * MEHRERE OP-SAELE (Plan docs/PLAN-MEHRERE-SAELE.md, Feld "oberflaechen", Schritt 19).
+ *
+ * ZWEI GETRENNTE AUFGABEN, und die Trennung ist der ganze Punkt:
+ *  1. Die TAFEL zeigt DAUERHAFT jeden Saal des Praxis-Kontos. Sie kommt aus dem EINEN
+ *     Abonnement live/<uid>/tafel und ist klein (1 Hz, rund 230 Byte je Patient).
+ *  2. GENAU EIN gefuehrter Saal treibt die Narkose-App. Das ist keine Bequemlichkeit:
+ *     applyLive() schreibt in den EINEN globalen state des Motor-Blocks, und
+ *     window.__setRealWave bedient EINEN Monitor. Zwei gefuehrte Saele sind baulich unmoeglich.
+ *
+ * WARUM ABBILDUNGEN JE SID statt der frueheren Skalare lastRecv/laufzeit/laufzeitMin/laufzeitMax:
+ * mit einem gemeinsamen Wert laesst ein weiterlaufender Saal einen ausgefallenen frisch
+ * erscheinen (die Uhr wird ja von IRGENDEINEM Ereignis weitergesetzt), und ein schwaches WLAN
+ * in OP 2 treibt die Laufzeitanzeige von OP 1 auf 1200 ms. Beides war in 1.0.3 so und ist im
+ * Plan als getragenes Restrisiko der ALTEN App benannt — hier wird es behoben.
+ * --------------------------------------------------------------------------- */
+var saele = {};             // sid -> {meta:{...}, uebersicht:{key:{...}}}
+var selSaal = null;         // der EINE gefuehrte Saal
+var patientsSaal = {};      // sid -> voller Patientensatz; gefuellt NUR fuer den gefuehrten Saal
+var sel = null;             // patientKey innerhalb des gefuehrten Saals
+var protokoll = {};         // 'sid|pid' -> {ts:zeile}
+var protAbos = {};          // 'sid|pid' -> Abmeldefunktion (Rueckgabe von onValue, also off())
+var lastRecvSid = {};       // sid -> lokale Uhr des letzten Ereignisses DIESES Saals
+var laufzeitSid = {}, laufzeitMinSid = {}, laufzeitMaxSid = {};
+var taktSid = {};           // sid -> {n, t0, rate} fuer "Aktualisierungen hier"
+
 var connState = demo ? 'live' : 'init', lastError = '', switched = false;
-var bar = null, activated = false, kurvenSigGezeigt = null, updates = 0, updRate = 0, rateT0 = 0;
+var bar = null, activated = false, kurvenSigGezeigt = null;
+var wechselFrisch = false;  // gesetzt von waehleSaal(): der naechste applySelected() setzt zurueck
 /* Anmeldung + Laufzeitmessung */
 var FB = null;              // {app, D, auth, db, A:authModul}
 var nutzer = null;          // angemeldetes Praxis-Konto
 var praxis = null;          // Anmelde-Kennung = Datenpfad
 var anmeldeHinweis = '';    // Fehler einer Weiterleitungs-Anmeldung, bis das Fenster wieder da ist
 var uhrVersatz = 0;         // Unterschied lokale Uhr <-> Firebase-Serveruhr
-var laufzeit = null;        // gemessene Strecke Praxis -> Datenbank -> hier, in ms
-var laufzeitMin = null, laufzeitMax = null;
+
+/* Der Pseudo-Saal fuer die alte flache Ebene. Er steht in derselben Tafel wie ein echter Saal,
+ * damit eine noch nicht aktualisierte 1.0.3-Station nicht einfach VERSCHWINDET — genau das waere
+ * die Verwechslungsgefahr, die der Umbau beseitigen soll. */
+var FLACH = '__flach';
+/* Deckel (Nachbesserung N17): bei mehr Saelen bzw. mehr Patienten wird nicht still verworfen,
+ * sondern die Zahl der nicht gezeigten Karten steht im Klartext darunter. */
+var DECKEL_SAELE = 8, DECKEL_KACHELN = 12;
+/* Schwellen der UEBERTRAGUNG (nur sie darf Zahlen verstecken). */
+var SCHWELLE_GELB = 12000, SCHWELLE_TOT = 60000;
 
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 function sp(id){ return (A.species||[]).find(function(x){return x.id===id;}) || {icon:'🐾',name:id||'?'}; }
@@ -2627,6 +2694,81 @@ function num(x){ return (x==null||x===''||isNaN(x))?null:x; }
 function whenReady(cb){
   if(window.__anaesLive && window.__anaesLive.ready) return cb();
   var t=setInterval(function(){ if(window.__anaesLive && window.__anaesLive.ready){ clearInterval(t); cb(); } },120);
+}
+
+/* ---------------------------------------------------------------------------
+ * SAAL-HILFEN
+ * sid6 ist die Kurzform aus dem Datenmodell: die ersten 6 Zeichen der Stationskennung ohne 'st'.
+ * Sie steht ueberall NEBEN dem Saalnamen, weil zwei frische Installationen denselben Namen tragen
+ * koennen (bridge/config/devices.json existiert im Feld nicht) — der Name allein unterscheidet
+ * die Saele also nicht zuverlaessig.
+ * --------------------------------------------------------------------------- */
+function sid6(sid){ return sid===FLACH ? 'flach' : String(sid==null?'':sid).replace(/^st/,'').slice(0,6); }
+function saalMeta(sid){ var s=saele[sid]; return (s&&s.meta)||{}; }
+function saalName(sid){
+  if(sid===FLACH) return 'Praxis (alte Ansicht)';
+  var m=saalMeta(sid);
+  return String(m.name || m.station || ('Saal '+sid6(sid)));
+}
+function saalTitel(sid){ return sid==null ? '' : (saalName(sid)+' · '+sid6(sid)); }
+/*
+ * FESTE REIHENFOLGE NACH SAALNAME — nie nach Prioritaet.
+ * Eine nach Prioritaet sortierte Tafel wechselt die Plaetze, sobald irgendwo ein Wert kippt.
+ * Wer im Halbblick auf die zweite Karte tippt, oeffnet dann einen anderen Saal als gemeint.
+ * Bei gleichem Namen entscheidet die sid, damit die Reihenfolge auch dann stabil ist.
+ */
+function saalListe(){
+  return Object.keys(saele).sort(function(a,b){
+    var na=saalName(a).toLowerCase(), nb=saalName(b).toLowerCase();
+    if(na<nb) return -1; if(na>nb) return 1;
+    return a<b?-1:(a>b?1:0);
+  });
+}
+function uebersichtVon(sid){ var s=saele[sid]; return (s&&s.uebersicht)||{}; }
+function patientenVon(sid){ return patientsSaal[sid] || {}; }
+function jetztServer(){ return Date.now()+uhrVersatz; }
+
+/* ---------------------------------------------------------------------------
+ * ZWEI ALTERSANZEIGEN JE SAAL, mit VERSCHIEDENEN Texten — sie beantworten zwei verschiedene
+ * Fragen, und wer sie zusammenwirft, haelt einen ausgefallenen Kapnographen fuer eine schlechte
+ * Leitung (oder umgekehrt):
+ *   "Uebertragung"  = jetzt - meta.sv        Wie alt ist der Weg Praxis -> Datenbank -> hier?
+ *   "Geraetedaten"  = altMs + (jetzt - sv)   Wie alt ist der MESSWERT selbst am Geraet?
+ * altMs ist eine DAUER an der Quelle (registry seitMs), kein Zeitstempel — deshalb ueberlebt sie
+ * einen Uhrensprung auf dem Praxis-PC.
+ *
+ * NEGATIVES ALTER WIRD NIE AUF 0 GEKLEMMT. Geht die Uhr eines Saals vor, stuende sonst ein toter
+ * Saal dauerhaft als "vor 0 s" auf jedem Bildschirm. Er meldet stattdessen "Alter unbekannt".
+ * --------------------------------------------------------------------------- */
+function uebertragungsAlter(sid){
+  var sv = saalMeta(sid).sv;
+  if(typeof sv !== 'number') return null;
+  var d = jetztServer() - sv;
+  if(d < 0) return null;
+  return d;
+}
+function uebertragungsZustand(sid){
+  var d = uebertragungsAlter(sid);
+  if(d === null) return {stufe:'unbekannt', ms:null, txt:'Alter unbekannt'};
+  if(d < SCHWELLE_GELB) return {stufe:'live', ms:d, txt:'live'};
+  if(d <= SCHWELLE_TOT) return {stufe:'gelb', ms:d, txt:'keine neuen Daten ('+Math.round(d/1000)+'s)'};
+  return {stufe:'tot', ms:d, txt:saalName(sid)+' offline seit '+minuten(d)+' min'};
+}
+function minuten(ms){ return Math.max(1, Math.round(ms/60000)); }
+function alterText(ms){
+  if(ms === null || ms === undefined) return 'Alter unbekannt';
+  if(ms < 1000) return 'vor '+ms+' ms';
+  if(ms < 60000) return 'vor '+(Math.round(ms/100)/10)+' s';
+  return 'vor '+minuten(ms)+' min';
+}
+function geraeteAlter(sid, altMs){
+  var d = uebertragungsAlter(sid);
+  if(d === null || typeof altMs !== 'number' || altMs < 0) return null;
+  return altMs + d;
+}
+function laufzeitText(sid){
+  var l = laufzeitSid[sid];
+  return (typeof l === 'number') ? (l+' ms') : null;
 }
 
 /* ---------------------------------------------------------------------------
@@ -2670,16 +2812,124 @@ function pushKurven(p){
   try{ window.__setRealWave(Object.keys(map).length?map:null); }catch(e){}
 }
 
+/* ---------------------------------------------------------------------------
+ * RUECKSETZEN BEIM SAALWECHSEL — Befund B2-1 des Plans, dort als TOEDLICH eingestuft.
+ *
+ * WAS OHNE DIESES RUECKSETZEN PASSIERT: sv() in applyLive() uebernimmt nur nicht-leere Werte,
+ * und iv.nibp faellt auf iv.nibp||0 zurueck. Hat OP 2 keine Temperatursonde und keine
+ * Kapnografie, stehen EtCO2, Temp und AF des Tiers aus OP 1 unter dem NAMEN des Tiers aus OP 2 —
+ * ausgewiesen als gemessene Istwerte — und gehen unveraendert in Dosis- und Beatmungsempfehlung
+ * ein. Bei zwei 22-kg-Hunden faellt es niemandem auf: der patientKey ist bei beiden sw_hund_22.
+ *
+ * WARUM UEBER window.state: state liegt in der IIFE des Motor-Blocks und ist nur ueber die dort
+ * gesetzte Bruecke window.state erreichbar. Diese Datei darf ausschliesslich ihren eigenen,
+ * letzten script-Block aendern (Dateidisziplin des Umbaus).
+ *
+ * __liveSig UND __liveAlarmSig sind in derselben IIFE gekapselt und von hier NICHT setzbar.
+ * Sie sind aber reine Funktionen der EINGEHENDEN Daten, nicht des Saals:
+ *  - __liveAlarmSig vergleicht die Alarmtexte des neuen Patienten. Sind sie gleich, ist das
+ *    Nicht-Neusetzen richtig; sind sie verschieden, wird ohnehin neu gesetzt. Ein Leeren von
+ *    hier waere sogar SCHAEDLICH: __setDeviceAlarms([]) mit anschliessend gleicher Signatur
+ *    liesse die Alarmliste des neuen Saals dauerhaft leer.
+ *  - __liveSig entscheidet nur, OB der teure Vollaufbau laeuft. Genau dort sitzt die Gefahr:
+ *    bei zwei gleichen Hunden ist die Signatur identisch, der Vollaufbau entfaellt, und die
+ *    Panels rechnen mit den soeben geleerten Werten weiter. Deshalb wird der Vollaufbau hier
+ *    ueber die exportierten Zeichenfunktionen ERZWUNGEN (saalNeuZeichnenErzwingen).
+ *    Die naheliegende Alternative — state.wt kurz auf einen Sentinelwert setzen, damit
+ *    applyLive() 'schwer' erkennt — ist verworfen: dann rechnet die Dosisseite fuer einen
+ *    Sekundenbruchteil mit einem falschen Gewicht, und genau das soll dieser Umbau verhindern.
+ * --------------------------------------------------------------------------- */
+var IST_FELDER = ['hr','spo2','etco2','rr','temp','sys','dia','nibp'];
+/* ---------------------------------------------------------------------------
+ * WARUM HIER NICHT AUF null GESETZT WIRD — nachgerechnet und gemessen am 31.07.2026.
+ *
+ * Die erste Fassung setzte die acht Messkanaele auf null. Das schliesst B2-1 wirklich (die Werte
+ * des vorigen Saals verschwinden), erzeugt dabei aber einen NEUEN und schlimmeren Zustand: der
+ * Motor dieser App rechnet mit ZAHLEN, nie mit null.
+ *   - renderAssess vergleicht  x < band[0]  — mit x = null ist das  null < 60  = WAHR.
+ *     Ergebnis: "EtCO2 tief -> Apnoe" und "Temp tief -> Hypothermie", beide mit far = 1.00,
+ *     also groesstmoeglicher Abweichung, samt Protokollschritt und Wirkstoffdosis.
+ *   - applyLive zieht  iv.nibp = ... : (iv.nibp || 0)  — aus null wird die ZAHL 0, und
+ *     renderAssess wertet  p.id==='nibp' && x<=0  ausdruecklich als "crit".
+ *     Ergebnis: "MAP 0 mmHg - Hypotension" fuer ein Tier, an dem gar keine Manschette haengt.
+ *   - monResolve macht aus dem fehlenden EtCO2 capno='flat', woraufhin ventAdvice
+ *     "Keine Eigenatmung -> kontrolliert beatmen" empfiehlt, obwohl AF 16/min gemeldet ist.
+ * Das trifft JEDEN Nutzer, nicht nur den, der den Saal wechselt: waehleSaalWennKeiner() waehlt
+ * beim ersten Anmelden den ersten Saal ueber waehleSaal(ziel, true) und setzt dabei ebenfalls
+ * zurueck. Ein Saal ohne Blutdruckmanschette oder Temperatursonde ist der Normalfall.
+ *
+ * RICHTIG IST istInit(): genau der Zustand, in dem diese App startet und in dem sie auch lokal
+ * steht, solange ein Kanal kein Geraet hat — mittlere Bandwerte fuer die Tierart, die applyLive
+ * im selben Durchgang durch die echten Werte des neuen Saals ersetzt. Der Unterschied zu null ist
+ * keine Kosmetik: null BEHAUPTET eine Messung von 0, istInit behauptet keine Messung.
+ *
+ * DREI FELDER, DIE DER PLAN NICHT AUFZAEHLT, hier aber dazugehoeren — derselbe Fehlerbau wie
+ * B2-1, nur an anderen Feldern, weil applyLive sie nur BEDINGT zuweist:
+ *   state.wt      Gewicht. Meldet der neue Saal keines, rechnete JEDE Dosis mit dem Gewicht des
+ *                 Tiers aus dem vorigen Saal, waehrend das Saalband daneben gar keines zeigt.
+ *   state.sp      Tierart. Sie bestimmt alle Normbereiche UND alle Dosen.
+ *   state.rhythm  EKG-Rhythmus. War er im vorigen Saal 'flat' oder 'chaos', zeigt die
+ *                 Kreuz-Analyse fuer das gesunde Tier "Asystolie - CPR - Verdampfer AUF NULL".
+ * Dazu der Verdampfer (dev.iso/o2/mode/auto): ein Saal mit Monitor, aber ohne Narkosegeraet
+ * uebernahm sonst den Verdampferwert des vorigen Saals — und weil dev.mirror geleert wird,
+ * erschien er dabei nicht mehr als gespiegelt, sondern wie eine eigene Einstellung.
+ *
+ * Uebergeben wird der NEUE Patient, damit Tierart und Gewicht schon vor istInit() stimmen: die
+ * Normbereiche haengen an der Tierart, und ein istInit() mit der alten Art waere wieder ein Wert
+ * aus dem vorigen Saal, nur besser versteckt.
+ * --------------------------------------------------------------------------- */
+var DEV_VORGABE = { o2:1, iso:2, mode:'vcv', auto:false };
+function saalRuecksetzen(neu){
+  kurvenSigGezeigt = null;
+  try{ if(typeof window.__setRealWave==='function') window.__setRealWave(null); }catch(e){}
+  var st = window.state;
+  if(st){
+    /* DER WECHSEL WIRD IM MOTOR AUSGEFUEHRT, nicht hier — er kennt istInit(), die Normbereiche
+     * und die Rassenliste, dieses Modul kennt nichts davon (anderer Gueltigkeitsbereich).
+     * Fehlt die Bruecke (alte Fassung der App), bleibt das Leeren als Rueckfall: lieber drei
+     * erfundene Befunde als die Messwerte des vorigen Tiers unter dem Namen des neuen. */
+    var motor = window.__anaesLive;
+    if(motor && typeof motor.neuerPatient === 'function'){
+      try{ motor.neuerPatient(neu || null); }
+      catch(e){ if(st.istVals){ IST_FELDER.forEach(function(k){ st.istVals[k] = null; }); } }
+    } else {
+      if(st.istVals){ IST_FELDER.forEach(function(k){ st.istVals[k] = null; }); }
+      if(st.dev){
+        st.dev.mirror = {}; st.dev.vp = {}; st.dev.live = false;
+        st.dev.o2 = DEV_VORGABE.o2; st.dev.iso = DEV_VORGABE.iso;
+        st.dev.mode = DEV_VORGABE.mode; st.dev.auto = DEV_VORGABE.auto;
+      }
+    }
+  }
+  try{ if(typeof window.__setAfSource==='function') window.__setAfSource(null); }catch(e){}
+}
+function saalNeuZeichnenErzwingen(){
+  ['renderMonValues','renderMachine','renderDevCtrl','renderVentPanel','renderVentModes'].forEach(function(f){
+    try{ if(typeof window[f]==='function') window[f](); }catch(e){}
+  });
+}
+
 function applySelected(){
-  if(!sel || !patients[sel]) return;
+  var pats = patientenVon(selSaal);
+  if(!sel || !pats[sel]){
+    /* Kein Patient im gefuehrten Saal: trotzdem zuruecksetzen, sonst stehen die Messwerte des
+     * VORIGEN Saals unter einem leeren Saal auf dem Monitor. */
+    /* Kein Patient da: es gibt auch keine Tierart und kein Gewicht zu uebernehmen — die
+     * Vorgaben der App gelten. Genau dafuer ist der Parameter optional. */
+    if(wechselFrisch){ wechselFrisch=false; saalRuecksetzen(null); saalNeuZeichnenErzwingen(); }
+    return;
+  }
   whenReady(function(){
-    try{ window.__anaesLive.apply(patients[sel]); }catch(e){}
-    pushKurven(patients[sel]);
+    if(wechselFrisch){ wechselFrisch=false; saalRuecksetzen(pats[sel]); }
+    try{ window.__anaesLive.apply(pats[sel]); }catch(e){}
+    saalNeuZeichnenErzwingen();
+    pushKurven(pats[sel]);
     if(!switched){ try{ window.__anaesLive.tab('geraet'); }catch(e){} switched=true; }
   });
 }
+
 /* ---------------------------------------------------------------------------
- * LAUFZEITMESSUNG — wie schnell die Daten wirklich ankommen.
+ * LAUFZEITMESSUNG — wie schnell die Daten wirklich ankommen, JE SAAL.
  *
  * Der Praxis-PC laesst die Datenbank bei jedem Schreibvorgang meta.sv mit IHRER Uhr stempeln.
  * Hier wird die eigene Uhr ueber /.info/serverTimeOffset gegen dieselbe Serveruhr korrigiert.
@@ -2688,55 +2938,184 @@ function applySelected(){
  * verglichen worden, stuende bei einem um eine Minute falsch gehenden Praxis-PC dauerhaft
  * "Verzoegerung 60 s", obwohl alles in Millisekunden ankommt.
  * --------------------------------------------------------------------------- */
-function messeLaufzeit(sv){
-  if(typeof sv !== 'number') return;
-  var d = (Date.now() + uhrVersatz) - sv;
+function messeLaufzeit(sid, sv){
+  if(typeof sv !== 'number' || !sid) return;
+  var d = jetztServer() - sv;
   if(d < -2000 || d > 120000) return;          // unplausibel -> verwerfen statt Unsinn anzeigen
   if(d < 0) d = 0;
-  laufzeit = d;
-  if(laufzeitMin === null || d < laufzeitMin) laufzeitMin = d;
-  if(laufzeitMax === null || d > laufzeitMax) laufzeitMax = d;
+  laufzeitSid[sid] = d;
+  if(laufzeitMinSid[sid] == null || d < laufzeitMinSid[sid]) laufzeitMinSid[sid] = d;
+  if(laufzeitMaxSid[sid] == null || d > laufzeitMaxSid[sid]) laufzeitMaxSid[sid] = d;
 }
+function zaehleTakt(sid){
+  if(!sid) return;
+  var t = taktSid[sid] || (taktSid[sid] = {n:0, t0:0, rate:0});
+  var jetzt = Date.now();
+  lastRecvSid[sid] = jetzt;
+  t.n++;
+  if(!t.t0) t.t0 = jetzt;
+  else if(jetzt - t.t0 >= 2000){ t.rate = Math.round(t.n/((jetzt-t.t0)/1000)*10)/10; t.n=0; t.t0=jetzt; }
+}
+function taktRate(sid){ var t=taktSid[sid]; return (t&&t.rate)||0; }
 
-function handleSnapshot(val){
-  lastRecv = Date.now();
-  updates++;
-  if(!rateT0) rateT0=lastRecv;
-  else if(lastRecv-rateT0>=2000){ updRate=Math.round(updates/((lastRecv-rateT0)/1000)*10)/10; updates=0; rateT0=lastRecv; }
-  meta = (val && val.meta) || {};
-  patients = (val && val.patients) || {};
-  messeLaufzeit(meta.sv);
-  var keys = Object.keys(patients);
-  if(!keys.length){ sel=null; render(); return; }
-  if(!sel || !patients[sel]){
-    sel = keys.reduce(function(best,k){ return (patients[k].pri||0) > (patients[best].pri||0) ? k : best; }, keys[0]);
-    kurvenSigGezeigt=null;
+/* ---------------------------------------------------------------------------
+ * SAALWECHSEL. Fragt zurueck und NENNT BEIDE TIERE — nicht aus Hoeflichkeit: nach dem Wechsel
+ * rechnet die ganze App (Dosis, Beatmung, Vorfall) mit dem anderen Tier weiter, und die
+ * Messwerte des bisherigen werden verworfen. Wer das versehentlich ausloest, waehrend er eine
+ * Dosis ablesen will, bekommt sonst lautlos die Zahlen eines anderen Patienten.
+ *
+ * ALTE ABONNEMENTS WERDEN ABGEBAUT (off()). Dafuer werden die Rueckgabewerte von onValue()
+ * seit diesem Umbau FESTGEHALTEN — in 1.0.3 wurden sie weggeworfen, weshalb jedes Neuanmelden
+ * ein weiteres Dauerabonnement hinterliess.
+ * --------------------------------------------------------------------------- */
+function abbestellen(fn){ try{ if(typeof fn === 'function') fn(); }catch(e){} }
+
+function waehleSaal(sid, ohneRueckfrage){
+  if(!sid || sid === selSaal) return;
+  if(!ohneRueckfrage && selSaal && istBesetzt(selSaal)){
+    var alt = tierText(selSaal, sel);
+    var neu = tierText(sid, ersterPatient(sid));
+    var frage = 'Von '+saalTitel(selSaal)+(alt?' ('+alt+')':'')+
+      ' zu '+saalTitel(sid)+(neu?' ('+neu+')':'')+' wechseln?\n\n'+
+      'Die Narkose-App rechnet danach ausschließlich mit den Werten aus '+saalName(sid)+'. '+
+      'Alle Messwerte aus '+saalName(selSaal)+' werden dabei verworfen.';
+    var ja = true;
+    try{ ja = window.confirm(frage); }catch(e){ ja = true; }
+    if(!ja) return;
   }
+  abbauPatientenAbo();
+  abbauProtokollAbos(sid);
+  selSaal = sid;
+  sel = null;
+  kurvenSigGezeigt = null;
+  wechselFrisch = true;
+  try{ localStorage.setItem('vetlive_saal', sid); }catch(e){}
+  aboPatienten();
   applySelected();
   render();
 }
-function connBadge(){
-  var age = lastRecv ? Math.round((Date.now()-lastRecv)/1000) : null;
+function istBesetzt(sid){ return Object.keys(uebersichtVon(sid)).length > 0 || Object.keys(patientenVon(sid)).length > 0; }
+function ersterPatient(sid){
+  var u = uebersichtVon(sid), k = Object.keys(u);
+  if(k.length) return k[0];
+  var p = Object.keys(patientenVon(sid));
+  return p.length ? p[0] : null;
+}
+/* "Bello · Hund · 22 kg" — dieselbe Zeile in der Rueckfrage, in der Leiste und in jedem
+ * rechnenden Bereich, damit kein Bildschirm eine andere Auskunft gibt als der daneben. */
+function tierText(sid, key){
+  if(!sid || !key) return '';
+  var u = uebersichtVon(sid)[key];
+  var p = patientenVon(sid)[key];
+  var name = (u && (u.n || u.pid)) || (p && (p.patientName || p.patientId)) || key;
+  var art  = (u && u.a) || (p && p.species) || null;
+  var kg   = (u && u.g != null) ? u.g : (p && p.weightKg != null ? p.weightKg : null);
+  return name + ' · ' + sp(art).name + (kg != null ? ' · ' + kg + ' kg' : '');
+}
+
+/* ---------------------------------------------------------------------------
+ * TAFEL — eine Karte je Saal, dauerhaft sichtbar.
+ * --------------------------------------------------------------------------- */
+function maxPri(sid){
+  var u = uebersichtVon(sid), m = 0;
+  Object.keys(u).forEach(function(k){ var p=u[k]&&u[k].pri||0; if(p>m) m=p; });
+  return m;
+}
+function topText(u){
+  if(!u) return '';
+  if(typeof u.top === 'string') return u.top;
+  if(u.top && u.top.title) return u.top.title;
+  return '';
+}
+function saalKarte(sid){
+  var z = uebertragungsZustand(sid);
+  var tot = (z.stufe === 'tot');
+  var u = uebersichtVon(sid);
+  var keys = Object.keys(u).sort();
+  var gezeigt = keys.slice(0, DECKEL_KACHELN);
+  var pri = maxPri(sid);
+  var cls = 'vetlive-saal' + (sid===selSaal ? ' sel' : '') + (' z-'+z.stufe) +
+            ((sid!==selSaal && pri>=6) ? ' alarm' : '');
+  var zeilen = gezeigt.map(function(k){
+    var e = u[k] || {};
+    var col = priColor(e.pri);
+    var werte;
+    if(tot){
+      werte = '<span class="s-ersatz">Stand vor '+minuten(z.ms)+' min</span>';
+    } else {
+      werte = [['HF',e.hr],['SpO₂',e.sp],['EtCO₂',e.et],['AF',e.af],['MAP',e.map],['Temp',e.t]]
+        .map(function(x){ return '<span class="w"><i>'+x[0]+'</i>'+(x[1]==null?'–':esc(String(x[1])))+'</span>'; }).join('');
+    }
+    var gAlt = geraeteAlter(sid, e.altMs);
+    return '<div class="s-pat'+(sid===selSaal&&k===sel?' sel':'')+'" data-sid="'+esc(sid)+'" data-k="'+esc(k)+'" style="--pc:'+col+'">'+
+      '<div class="s-pat-kopf"><span class="ic">'+sp(e.a).icon+'</span><b>'+esc(e.n||e.pid||sp(e.a).name)+'</b>'+
+        '<span class="sub">'+esc(sp(e.a).name)+(e.g!=null?' · '+esc(String(e.g))+' kg':'')+'</span></div>'+
+      '<div class="s-werte">'+werte+'</div>'+
+      (topText(e)?'<div class="s-top">'+esc(topText(e))+'</div>':'')+
+      '<div class="s-alt">Gerätedaten '+esc(tot?('Stand vor '+minuten(z.ms)+' min'):alterText(gAlt))+'</div>'+
+      '</div>';
+  }).join('');
+  var rest = keys.length - gezeigt.length;
+  var deckelZeile = rest>0 ? '<div class="s-deckel">'+rest+' weitere Patienten werden nicht angezeigt — Deckel erreicht</div>' : '';
+  var leer = keys.length ? '' : '<div class="s-leer">'+(sid===FLACH&&sid!==selSaal
+      ? 'Patienten der alten flachen Ebene — zum Ansehen öffnen'
+      : 'keine Patienten gemeldet')+'</div>';
+  var knopf = (sid===selSaal) ? '<span class="s-gefuehrt">▶ geführter Saal</span>'
+    : '<button class="s-oeffnen" type="button" data-oeffne="'+esc(sid)+'">'+esc(saalName(sid))+' öffnen</button>';
+  var stopp = demo ? '<button class="s-stopp" type="button" data-demo-stopp="'+esc(sid)+'">'+
+      (demoAus[sid]?'▶ Saal weiterlaufen lassen':'⏸ Saal anhalten')+'</button>' : '';
+  return '<div class="'+cls+'" data-sid="'+esc(sid)+'">'+
+    '<div class="s-kopf"><b>'+esc(saalName(sid))+'</b><span class="s-sid">· '+esc(sid6(sid))+'</span>'+
+      '<span class="s-conn '+z.stufe+'"><i></i>'+esc(z.txt)+'</span></div>'+
+    '<div class="s-uebertragung">Übertragung '+esc(z.stufe==='unbekannt'?'Alter unbekannt':alterText(z.ms))+
+      (laufzeitText(sid)?' · Laufzeit '+esc(laufzeitText(sid)):'')+'</div>'+
+    '<div class="s-pats">'+zeilen+leer+'</div>'+deckelZeile+
+    '<div class="s-fuss">'+knopf+stopp+'</div>'+
+    '</div>';
+}
+function tafelHtml(){
+  var alle = saalListe();
+  if(!alle.length) return '';
+  var gezeigt = alle.slice(0, DECKEL_SAELE);
+  var rest = alle.length - gezeigt.length;
+  return '<div class="vetlive-saele">'+gezeigt.map(saalKarte).join('')+'</div>'+
+    (rest>0 ? '<div class="vetlive-deckel">'+rest+' weitere OP-Säle werden nicht angezeigt — Deckel erreicht</div>' : '');
+}
+
+/* Der Kopf zeigt den Zustand des GEFUEHRTEN Saals. Ein Fehler der Anmeldung oder der
+ * Konfiguration gilt dagegen fuer die ganze Verbindung und hat Vorrang. */
+function kopfBadge(){
   if(connState==='cfg') return {cls:'cfg', txt:'Firebase nicht konfiguriert'};
   if(connState==='err') return {cls:'err', txt:'Verbindungsfehler'};
   if(connState==='auth') return {cls:'cfg', txt:'nicht angemeldet'};
   if(connState==='init'||connState==='conn') return {cls:'', txt:'verbinde…'};
-  if(age!=null && age>=8) return {cls:'stale', txt:'keine neuen Daten ('+age+'s)'};
-  // Die gemessene Laufzeit gehoert in die Statuszeile: sie ist die Antwort auf "kommt das
-  // wirklich in Millisekunden an?" — und man sieht sofort, wenn die Leitung schlechter wird.
-  return {cls:'live', txt:'live'+(updRate?' · '+updRate+'/s':'')+(laufzeit!=null?' · '+laufzeit+' ms':'')+(age!=null&&age>1?' · vor '+age+'s':'')};
+  if(!selSaal) return {cls:'', txt:'kein Saal gewählt'};
+  var z = uebertragungsZustand(selSaal);
+  if(z.stufe==='live'){
+    var r = taktRate(selSaal), l = laufzeitText(selSaal);
+    return {cls:'live', txt:'live'+(r?' · '+r+'/s':'')+(l?' · '+l:'')};
+  }
+  if(z.stufe==='gelb') return {cls:'stale', txt:z.txt};
+  if(z.stufe==='tot') return {cls:'err', txt:z.txt};
+  return {cls:'stale', txt:'Alter unbekannt'};
 }
+
 function render(){
-  var keys = Object.keys(patients);
-  var cb = connBadge();
-  var chips = keys.map(function(k){
-    var p=patients[k], pri=p.pri||0, col=priColor(pri);
+  if(!bar) return;
+  /* Ist der gefuehrte Saal verschwunden (Station abgeschaltet, Zweig entfernt), wird NICHT
+   * still auf einen anderen umgeschaltet — der Wechsel ueber Saalgrenzen bleibt eine Handlung
+   * eines Menschen. Der Saal bleibt gewaehlt und seine Karte meldet den Ausfall. */
+  var pats = patientenVon(selSaal);
+  var keys = Object.keys(pats);
+  var chips = keys.slice(0, DECKEL_KACHELN).map(function(k){
+    var p=pats[k], pri=p.pri||0, col=priColor(pri);
     var top=(p.top&&p.top.title)?p.top.title:'stabil';
     return '<button class="vetlive-chip'+(k===sel?' sel':'')+'" data-k="'+esc(k)+'" style="--pc:'+col+'">'+
       '<span><span class="ic">'+sp(p.species).icon+'</span><b>'+esc(p.patientName||p.patientId||sp(p.species).name)+'</b></span>'+
       '<span class="sub">'+esc(sp(p.species).name)+' · '+(p.weightKg||'?')+' kg'+(p.isoPct!=null?' · Iso '+p.isoPct+'%':'')+'</span>'+
       '<span class="top">'+esc(top)+'</span></button>';
   }).join('');
+  var cb = kopfBadge();
   var cfgHint = connState==='cfg' ? '<div class="vetlive-cfg-hint">⚠ Die Firebase-Web-Konfiguration ist noch nicht eingetragen (window.VETLIVE_CFG). Siehe VetStation/docs/FERN-LIVE.md.</div>' : '';
   var errHint = (connState==='err' && lastError) ? '<div class="vetlive-cfg-hint">'+esc(lastError)+'</div>' : '';
   var konto = nutzer ? ('<span class="vetlive-ro" style="margin-left:0">👤 '+esc(nutzer.email||'')+
@@ -2745,20 +3124,61 @@ function render(){
   bar.innerHTML =
     '<div class="vetlive-head">'+
       '<span class="vetlive-tag">📡 FERN-ANSICHT</span>'+
-      '<span class="vetlive-station">'+esc(meta.station||(demo?'DEMO (lokal)':'VetStation'))+'</span>'+
-      '<span class="vetlive-conn '+cb.cls+'"><i></i>'+cb.txt+'</span>'+
+      '<span class="vetlive-station">'+esc(selSaal?saalTitel(selSaal):'kein Saal gewählt')+'</span>'+
+      '<span class="vetlive-conn '+cb.cls+'"><i></i>'+esc(cb.txt)+'</span>'+
       konto+
       '<span class="vetlive-ro">🔒 nur Ansicht · Werte &amp; Empfehlungen vom Praxis-PC</span>'+
     '</div>'+
+    tafelHtml()+
     '<div class="vetlive-pats">'+(keys.length?chips:'<span class="vetlive-wait">'+warte+'</span>')+'</div>'+
     cfgHint + errHint;
   Array.prototype.forEach.call(bar.querySelectorAll('.vetlive-chip'), function(b){
     b.onclick=function(){ sel=b.dataset.k; kurvenSigGezeigt=null; applySelected(); render(); };
   });
+  Array.prototype.forEach.call(bar.querySelectorAll('[data-oeffne]'), function(b){
+    b.onclick=function(){ waehleSaal(b.dataset.oeffne); };
+  });
+  Array.prototype.forEach.call(bar.querySelectorAll('[data-demo-stopp]'), function(b){
+    b.onclick=function(){ var s=b.dataset.demoStopp; demoAus[s]=!demoAus[s]; render(); };
+  });
+  /* Ein Klick auf eine Patientenzeile der TAFEL waehlt innerhalb des gefuehrten Saals sofort und
+   * fuehrt bei einem fremden Saal ueber dieselbe Rueckfrage wie der Oeffnen-Knopf. */
+  Array.prototype.forEach.call(bar.querySelectorAll('.s-pat'), function(b){
+    b.onclick=function(){
+      var s=b.dataset.sid, k=b.dataset.k;
+      if(s!==selSaal){ waehleSaal(s); return; }
+      sel=k; kurvenSigGezeigt=null; applySelected(); render();
+    };
+  });
   var ab=bar.querySelector('#vlAbmelden');
   if(ab) ab.onclick=function(e){ e.preventDefault(); abmelden(); };
   try{ document.body.style.paddingTop = bar.offsetHeight+'px'; }catch(e){}
+  renderSaalBand();
   renderFernView();
+}
+
+/* ---------------------------------------------------------------------------
+ * SAALNAME + TIERART + GEWICHT IN JEDEM RECHNENDEN BEREICH (Befund C2-8).
+ * Nicht nur in der Leiste: wer im Dosis-Rechner steht, sieht die Leiste nicht zwangslaeufig,
+ * und die Zahl auf dem Bildschirm gilt fuer GENAU EIN Tier in GENAU EINEM Saal.
+ * Das Band wird von hier eingehaengt, weil die Ansichten selbst dem Motor-Block gehoeren.
+ * --------------------------------------------------------------------------- */
+var RECHNENDE_ANSICHTEN = ['notfall','geraet','injektion','medis','settings'];
+function renderSaalBand(){
+  var txt = selSaal
+    ? (saalTitel(selSaal) + (sel ? ' — ' + tierText(selSaal, sel) : ' — kein Patient gewählt'))
+    : 'kein OP-Saal gewählt';
+  RECHNENDE_ANSICHTEN.forEach(function(id){
+    var v = document.getElementById(id); if(!v) return;
+    var b = v.querySelector(':scope > .vetlive-saalband');
+    if(!b){
+      b = document.createElement('div');
+      b.className = 'vetlive-saalband';
+      v.insertBefore(b, v.firstChild);
+    }
+    /* textContent statt innerHTML: der Saalname kommt aus der Datenbank. */
+    b.textContent = '📡 ' + txt;
+  });
 }
 
 /* ---------------------------------------------------------------------------
@@ -2800,13 +3220,15 @@ function renderFernView(sofort){
   var jetzt=Date.now();
   if(!sofort && jetzt-flLast<400) return;
   flLast=jetzt;
-  var p = sel && patients[sel];
+  var p = sel && patientenVon(selSaal)[sel];
   if(!p){
     box.innerHTML='<section class="card"><h3>📡 Fern-Live</h3><div class="fl-hint">'+
-      (connState==='live'?'Verbunden — aber es ist gerade kein Patient an der Station aktiv.':'Noch keine Verbindung zur Praxis-Station.')+
+      (connState==='live'?'Verbunden — aber in '+esc(selSaal?saalName(selSaal):'diesem Konto')+' ist gerade kein Patient aktiv.':'Noch keine Verbindung zur Praxis-Station.')+
       '</div></section>';
     return;
   }
+  var mSaal = saalMeta(selSaal);
+  var zSaal = uebertragungsZustand(selSaal);
   var v=p.vitals||{};
   var tiles=VITAL_DEF.map(function(d){
     var sub = (d.k==='af' && p.afSource) ? ('⬤ '+(p.afSource==='kapnograph'?'Kapno':'Monitor')) : '';
@@ -2835,6 +3257,7 @@ function renderFernView(sofort){
   var vp=p.ventParams||{};
   var vpRows=Object.keys(vp).map(function(k){ return [k, vp[k]]; });
   var beatmung = '<section class="card"><h3>Narkosegerät &amp; Beatmung</h3>'+
+    '<div class="fl-hint">Gilt für '+esc(saalTitel(selSaal))+' — '+esc(tierText(selSaal, sel))+'</div>'+
     kv([['Beatmungsmodus',p.ventMode],['Isofluran',p.isoPct!=null?p.isoPct+' %':null],
         ['Frischgas O₂',p.o2Flow!=null?p.o2Flow+' L/min':null]].concat(vpRows))+
     '</section>';
@@ -2869,7 +3292,7 @@ function renderFernView(sofort){
     '</table></section>') : '';
 
   var stamm = '<section class="card"><h3>Patient</h3>'+
-    kv([['Kennung',p.patientId],['Name',p.patientName],['Tierart',sp(p.species).name],
+    kv([['OP-Saal',saalTitel(selSaal)],['Kennung',p.patientId],['Name',p.patientName],['Tierart',sp(p.species).name],
         ['Gewicht',p.weightKg!=null?p.weightKg+' kg':null],['Geburtsdatum',p.gebDatum],['Geschlecht',p.geschlecht],
         ['Zuordnung',p.manual?'von Hand gekoppelt':'automatisch']])+
     (p.patientName?'':'<div class="fl-hint">Tiername und Patientenakte werden aus Datenschutzgründen nicht übertragen. Am Praxis-PC einschaltbar über <code>cloud.stammdaten</code>.</div>')+
@@ -2877,39 +3300,51 @@ function renderFernView(sofort){
 
   /* Verbindung + GEMESSENE Laufzeit. Das ist die Antwort auf "kommt das wirklich schnell an?" —
    * gemessen gegen die Uhr der Datenbank, also unabhaengig davon, ob die beiden Rechner
-   * richtig gehen. */
+   * richtig gehen. Beide Alterszahlen stehen hier NEBENEINANDER und getrennt benannt. */
+  var gAlt = geraeteAlter(selSaal, (uebersichtVon(selSaal)[sel]||{}).altMs);
   var stationInfo = '<section class="card"><h3>Verbindung &amp; Geschwindigkeit</h3>'+
-    kv([['Station',meta.station],['Praxis-Konto',nutzer?nutzer.email:null],
-        ['Sendetakt der Station',meta.taktMs?meta.taktMs+' ms':null],
-        ['Aktualisierungen hier',updRate?updRate+' pro Sekunde':null],
-        ['Laufzeit Praxis → hier',laufzeit!=null?laufzeit+' ms':null],
-        ['davon best-/schlechtestenfalls',(laufzeitMin!=null&&laufzeitMax!=null)?(laufzeitMin+' ms / '+laufzeitMax+' ms'):null],
-        ['Datenalter',lastRecv?Math.round((Date.now()-lastRecv)/1000)+' s':null],
-        ['Echte Gerätekurven',meta.kurven?'ja':'nein'],['Datenformat','v'+(meta.v||1)]])+
-    '<div class="fl-hint">Die Laufzeit wird gegen die Uhr der Datenbank gemessen, nicht gegen die Uhr dieses Geräts — ' +
-    'sie stimmt also auch dann, wenn ein Rechner falsch geht. Unter 300 ms ist die Anzeige praktisch verzögerungsfrei; ' +
-    'dauerhaft über 1000 ms deutet auf eine schwache Internetverbindung hin.</div>'+
+    kv([['OP-Saal',saalTitel(selSaal)],['Praxis-Konto',nutzer?nutzer.email:null],
+        ['Sendetakt der Station',mSaal.taktMs?mSaal.taktMs+' ms':null],
+        ['Aktualisierungen hier',taktRate(selSaal)?taktRate(selSaal)+' pro Sekunde':null],
+        ['Laufzeit Praxis → hier',laufzeitText(selSaal)],
+        ['davon best-/schlechtestenfalls',(laufzeitMinSid[selSaal]!=null&&laufzeitMaxSid[selSaal]!=null)?(laufzeitMinSid[selSaal]+' ms / '+laufzeitMaxSid[selSaal]+' ms'):null],
+        ['Alter der Übertragung',zSaal.stufe==='unbekannt'?'Alter unbekannt':alterText(zSaal.ms)],
+        ['Alter der Gerätedaten',gAlt==null?'Alter unbekannt':alterText(gAlt)],
+        ['Zustand dieses Saals',zSaal.txt],
+        ['Echte Gerätekurven',mSaal.kurven?'ja':'nein'],['Datenformat','v'+(mSaal.v||1)]])+
+    '<div class="fl-hint">„Übertragung" ist der Weg Praxis → Datenbank → hier. „Gerätedaten" ist das Alter des '+
+    'Messwerts am Gerät selbst. Nur die Übertragung entscheidet, ob Zahlen überhaupt noch gezeigt werden: '+
+    'unter 12 s live, bis 60 s gelb, darüber wird der Saal als offline geführt und die Zahlen werden durch '+
+    '„Stand vor X min" ersetzt.</div>'+
     '<div class="fl-hint">🔒 Diese Ansicht ist reine Anzeige. Es wird nichts an die Geräte in der Praxis zurückgesendet.</div>'+
     '</section>';
 
   /* ---- OP-Protokoll: live vom Praxis-PC, hier ansehen und drucken ---- */
   var pid = p.patientId || sel;
-  var prot = protokoll[pid] || {};
+  var prot = protokoll[protSchluessel(selSaal, pid)] || {};
   var zeilen = Object.keys(prot).sort(function(a,b){ return Number(a)-Number(b); }).map(function(t){ return prot[t]; })
     .filter(function(x){ return x && x.ts; });
+  var andere = verlegungSaele(pid).filter(function(s){ return s!==selSaal; });
   var protokollBlock = '<section class="card"><h3>📋 Narkoseprotokoll</h3>'+
+    '<div class="fl-hint">'+esc(saalTitel(selSaal))+' — '+esc(tierText(selSaal, sel))+'</div>'+
     (zeilen.length
       ? '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px">'+
           '<button class="btn" type="button" id="flDruck">🖨 Protokoll drucken</button>'+
+          (andere.length?'<button class="btn" type="button" id="flDruck2">🖨 Verlauf beider Säle drucken</button>':'')+
           '<span class="fl-hint" style="margin:0">'+zeilen.length+' Einträge · '+
           esc(zeitText(zeilen[0].ts))+' bis '+esc(zeitText(zeilen[zeilen.length-1].ts))+'</span></div>'+
+        (andere.length?'<div class="fl-hint">Dieselbe Patienten-Kennung läuft auch in '+
+          esc(andere.map(saalTitel).join(', '))+' — vermutlich eine Verlegung. Zusammengeführt wird nur das '+
+          'Papier, kein Datensatz.</div>':'')+
         protokollTabelle(zeilen.slice(-40), 'fl-prot')+
         (zeilen.length>40?'<div class="fl-hint">Angezeigt: die letzten 40 Einträge. Der Ausdruck enthält alle '+zeilen.length+'.</div>':'')
       : '<div class="fl-hint">Für diesen Patienten liegt noch kein Protokolleintrag vor. Die Station legt einen Eintrag an, sobald Werte ankommen — danach alle 12 Sekunden und zusätzlich bei jedem neuen Befund.</div>')+
     '</section>';
 
   box.innerHTML =
-    '<section class="card"><h3>📡 Live-Werte der Station</h3><div class="fl-grid">'+tiles+'</div>'+
+    '<section class="card"><h3>📡 Live-Werte der Station</h3>'+
+      '<div class="fl-hint">'+esc(saalTitel(selSaal))+' — '+esc(tierText(selSaal, sel))+'</div>'+
+      '<div class="fl-grid">'+tiles+'</div>'+
       '<div class="fl-hint">Rhythmus: <b>'+esc(v.ekgRhythm||'–')+'</b> · Kapnogramm-Form: <b>'+esc(v.capnoShape||'–')+'</b> · Pleth: <b>'+esc(v.pleth||'–')+'</b></div>'+
     '</section>'+
     beurteilung + protokollBlock + beatmung + ekg + alarme + geraete + stamm + stationInfo + rohwerte;
@@ -2920,6 +3355,8 @@ function renderFernView(sofort){
   };
   var dr=box.querySelector('#flDruck');
   if(dr) dr.onclick=function(){ drucke(p, zeilen); };
+  var dr2=box.querySelector('#flDruck2');
+  if(dr2) dr2.onclick=function(){ druckeVerlegung(p, pid); };
 }
 
 function zeitText(ts){
@@ -2928,11 +3365,13 @@ function zeitText(ts){
 }
 function z(x, n){ return (x==null||x==='')?'–':(typeof x==='number'?(n?x.toFixed(n):String(x)):esc(String(x))); }
 
-function protokollTabelle(zeilen, cls){
-  var kopf='<tr><th class="l">Zeit</th><th>HF</th><th>SpO₂</th><th>EtCO₂</th><th>AF</th><th>SYS/DIA</th><th>MAP</th><th>Temp</th><th>Iso</th><th class="l">Befund / Rhythmus</th></tr>';
+function protokollTabelle(zeilen, cls, mitSaal){
+  var kopf='<tr>'+(mitSaal?'<th class="l">Saal</th>':'')+
+    '<th class="l">Zeit</th><th>HF</th><th>SpO₂</th><th>EtCO₂</th><th>AF</th><th>SYS/DIA</th><th>MAP</th><th>Temp</th><th>Iso</th><th class="l">Befund / Rhythmus</th></tr>';
   var body=zeilen.map(function(e){
     var bd = e.finding || e.rhythm || '';
     return '<tr'+(e.finding?' class="mark"':'')+'>'+
+      (mitSaal?'<td class="l">'+esc(e.__saal||'')+'</td>':'')+
       '<td class="l">'+esc(zeitText(e.ts))+'</td>'+
       '<td>'+z(e.hr)+'</td><td>'+z(e.spo2)+'</td><td>'+z(e.etco2)+'</td><td>'+z(e.af)+'</td>'+
       '<td>'+(e.sys!=null&&e.dia!=null?(e.sys+'/'+e.dia):'–')+'</td>'+
@@ -2949,7 +3388,13 @@ function protokollTabelle(zeilen, cls){
  * sich der Inhalt zwischen Aufbau und Druckdialog noch aendern, und auf dem Papier stuende ein
  * anderer Stand als auf dem Bildschirm. Fuer ein Dokument, das eine Narkose belegt, waere das
  * nicht hinnehmbar.
+ *
+ * DER KOPF NENNT DEN SAAL, nicht mehr das eine meta.station. In einer Praxis mit zwei OP-Saelen
+ * stuende dort sonst fuer BEIDE Tiere derselbe Text.
  */
+function druckKopf(sid){
+  return sid ? (saalName(sid)+' · '+sid6(sid)) : 'VetStation';
+}
 function drucke(p, zeilen){
   var blatt=document.getElementById('druckblatt'); if(!blatt) return;
   var v=p.vitals||{}, vp=p.ventParams||{};
@@ -2961,10 +3406,11 @@ function drucke(p, zeilen){
   var vpTxt=Object.keys(vp).map(function(k){ return k+' '+vp[k]; }).join(' · ');
   blatt.innerHTML =
     '<h1>Anästhesie- / Narkoseüberwachungsprotokoll</h1>'+
-    '<div style="font-size:10px;color:#444;margin-bottom:8px">'+esc(meta.station||'VetStation')+
+    '<div style="font-size:10px;color:#444;margin-bottom:8px">'+esc(druckKopf(selSaal))+
       ' · erstellt '+esc(jetzt.toLocaleString('de-DE'))+' · Fern-Ansicht (Canis Anæsthesia)</div>'+
     '<h2>Patient</h2>'+
-    kv([['Kennung', p.patientId],['Name', p.patientName],['Tierart', sp(p.species).name],
+    kv([['OP-Saal', druckKopf(selSaal)],
+        ['Kennung', p.patientId],['Name', p.patientName],['Tierart', sp(p.species).name],
         ['Gewicht', p.weightKg!=null?p.weightKg+' kg':null],['Geburtsdatum', p.gebDatum],
         ['Geschlecht', p.geschlecht],
         ['Besitzer', p.akte && p.akte.besitzer],['Tierarzt', p.akte && (p.akte.arzt||p.akte.doctor)]])+
@@ -2988,11 +3434,73 @@ function drucke(p, zeilen){
     '<div class="fuss">Erstellt aus der Fern-Ansicht der VetStation. Die Werte stammen unverändert von den ' +
       'angeschlossenen Geräten. Diese Auswertung ersetzt keine tierärztliche Beurteilung; ' +
       'Dosierungen und Maßnahmen sind vor Anwendung zu prüfen.</div>';
+  druckAusloesen(blatt);
+}
+
+/*
+ * VERLEGUNG: derselbe Patient war in zwei OP-Saelen. Erkannt wird das an einer GLEICHEN, NICHT
+ * LEEREN Patienten-Kennung in zwei Tafel-Uebersichten — der patientKey taugt dafuer nicht, denn
+ * zwei verschiedene 22-kg-Hunde tragen beide sw_hund_22.
+ *
+ * ZUSAMMENGEFUEHRT WIRD NUR DAS PAPIER, NIE EIN KNOTEN. Die beiden Protokolle bleiben in ihren
+ * Saalzweigen getrennt und unveraendert; hier entsteht nur eine nach ts sortierte Tabelle mit
+ * fuehrender Spalte "Saal". Alles andere waere eine zweite, ungepflegte Wahrheit ueber eine
+ * Narkose — und die unveraenderlichen Zeilen liessen sich nicht mehr auseinanderdividieren.
+ */
+function verlegungSaele(pid){
+  if(pid == null || pid === '') return [];
+  var treffer = [];
+  saalListe().forEach(function(s){
+    var u = uebersichtVon(s);
+    var da = Object.keys(u).some(function(k){ var e=u[k]||{}; return e.pid != null && e.pid !== '' && String(e.pid) === String(pid); });
+    if(!da){
+      var ps = patientenVon(s);
+      da = Object.keys(ps).some(function(k){ var e=ps[k]||{}; return e.patientId != null && e.patientId !== '' && String(e.patientId) === String(pid); });
+    }
+    if(da) treffer.push(s);
+  });
+  return treffer;
+}
+function druckeVerlegung(p, pid){
+  var blatt=document.getElementById('druckblatt'); if(!blatt) return;
+  var saeleMitPid = verlegungSaele(pid);
+  var alle = [];
+  saeleMitPid.forEach(function(s){
+    var prot = protokoll[protSchluessel(s, pid)] || {};
+    Object.keys(prot).forEach(function(t){
+      var e = prot[t];
+      if(!e || !e.ts) return;
+      var kopie = {}; Object.keys(e).forEach(function(f){ kopie[f]=e[f]; });
+      kopie.__saal = druckKopf(s);
+      alle.push(kopie);
+    });
+  });
+  alle.sort(function(a,b){ return Number(a.ts)-Number(b.ts); });
+  var jetzt=new Date();
+  blatt.innerHTML =
+    '<h1>Anästhesie- / Narkoseüberwachungsprotokoll</h1>'+
+    '<div style="font-size:10px;color:#444;margin-bottom:8px">aus zwei OP-Sälen zusammengestellt · '+
+      esc(saeleMitPid.map(druckKopf).join(' + '))+' · erstellt '+esc(jetzt.toLocaleString('de-DE'))+
+      ' · Fern-Ansicht (Canis Anæsthesia)</div>'+
+    '<h2>Patient</h2>'+
+    '<div class="kv"><b>Kennung</b><span>'+esc(String(pid))+'</span>'+
+      (p&&p.patientName?'<b>Name</b><span>'+esc(p.patientName)+'</span>':'')+
+      '<b>Tierart</b><span>'+esc(sp(p&&p.species).name)+'</span>'+
+      ((p&&p.weightKg!=null)?'<b>Gewicht</b><span>'+esc(p.weightKg+' kg')+'</span>':'')+'</div>'+
+    '<h2>Verlauf beider Säle ('+alle.length+' Einträge)</h2>'+
+    protokollTabelle(alle, 'druck', true)+
+    '<div class="fuss">Die Zeilen stammen unverändert aus den getrennten Saalprotokollen und sind hier nur '+
+      'nach Uhrzeit zusammengestellt — in der Datenbank bleibt jedes Protokoll bei seinem OP-Saal. '+
+      'Diese Auswertung ersetzt keine tierärztliche Beurteilung.</div>';
+  druckAusloesen(blatt);
+}
+function druckAusloesen(blatt){
   // Nach dem Drucken wieder leeren, damit das Blatt nicht veraltet stehen bleibt.
   var aufraeumen=function(){ blatt.innerHTML=''; window.removeEventListener('afterprint', aufraeumen); };
   window.addEventListener('afterprint', aufraeumen);
   setTimeout(function(){ window.print(); }, 60);
 }
+
 /* Das Submenü als echten Reiter in die Navigation haengen — nur im Fern-Betrieb. */
 function injectTab(){
   var tabs=document.getElementById('tabs'); if(!tabs || document.getElementById('fernlive')) return;
@@ -3005,6 +3513,60 @@ function injectTab(){
   var view=document.createElement('section');
   view.className='view'; view.id='fernlive';
   var main=document.querySelector('main.shell'); if(main) main.appendChild(view);
+}
+
+/*
+ * CSS DER TAFEL WIRD VON HIER EINGESETZT.
+ * Die Stilbloecke der Seite gehoeren anderen Bausteinen; dieser Umbau darf ausschliesslich
+ * seinen eigenen script-Block aendern. Ein eigenes style-Element ist deshalb kein Notbehelf,
+ * sondern die einzige Fassung, die die Dateidisziplin einhaelt — und sie haelt Tafel-Stil und
+ * Tafel-Code an einer Stelle zusammen.
+ */
+function injectCss(){
+  if(document.getElementById('vetlive-saal-css')) return;
+  var s=document.createElement('style'); s.id='vetlive-saal-css';
+  s.textContent =
+    '.vetlive-saele{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}'+
+    '.vetlive-saal{flex:1 1 250px;min-width:230px;max-width:420px;border:1px solid var(--line,rgba(255,255,255,.16));'+
+      'border-radius:11px;padding:7px 9px;background:rgba(255,255,255,.05)}'+
+    'html[data-theme="light"] .vetlive-saal{background:rgba(255,255,255,.6)}'+
+    '.vetlive-saal.sel{box-shadow:0 0 0 2px #00d8ff inset}'+
+    '.vetlive-saal.z-gelb{border-color:#ff8c3c}'+
+    '.vetlive-saal.z-tot,.vetlive-saal.z-unbekannt{border-color:#ff4d4d;opacity:.85}'+
+    '.vetlive-saal.alarm{animation:vetliveSaalPuls 1.2s infinite}'+
+    '@keyframes vetliveSaalPuls{0%,100%{box-shadow:0 0 0 1px #ff8c3c inset}50%{box-shadow:0 0 14px 1px #ff8c3c}}'+
+    '.vetlive-saal .s-kopf{display:flex;align-items:center;gap:6px;flex-wrap:wrap}'+
+    '.vetlive-saal .s-kopf b{font-size:13px}'+
+    '.vetlive-saal .s-sid{font-size:10.5px;color:var(--muted,#9aa8bb)}'+
+    '.vetlive-saal .s-conn{margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-size:11px;'+
+      'padding:1px 7px;border-radius:20px;border:1px solid var(--line,rgba(255,255,255,.15))}'+
+    '.vetlive-saal .s-conn i{width:8px;height:8px;border-radius:50%;background:#ffc23c}'+
+    '.vetlive-saal .s-conn.live i{background:#35d69a;animation:vetlivePulse 1.6s infinite}'+
+    '.vetlive-saal .s-conn.gelb i{background:#ff8c3c}'+
+    '.vetlive-saal .s-conn.tot i,.vetlive-saal .s-conn.unbekannt i{background:#ff4d4d}'+
+    '.vetlive-saal .s-uebertragung{font-size:10.5px;color:var(--muted,#9aa8bb);margin:2px 0 4px}'+
+    '.vetlive-saal .s-pats{display:flex;flex-direction:column;gap:4px}'+
+    '.vetlive-saal .s-pat{cursor:pointer;border-left:3px solid var(--pc,#35d69a);padding:3px 0 3px 6px;'+
+      'border-radius:4px;background:rgba(255,255,255,.04)}'+
+    '.vetlive-saal .s-pat.sel{background:color-mix(in srgb,var(--pc,#35d69a) 20%,transparent)}'+
+    '.vetlive-saal .s-pat-kopf{display:flex;align-items:baseline;gap:5px;flex-wrap:wrap}'+
+    '.vetlive-saal .s-pat-kopf b{font-size:12.5px}'+
+    '.vetlive-saal .s-pat-kopf .sub{font-size:10px;color:var(--muted,#9aa8bb)}'+
+    '.vetlive-saal .s-werte{display:flex;gap:7px;flex-wrap:wrap;font-size:11.5px;margin-top:1px}'+
+    '.vetlive-saal .s-werte i{font-style:normal;font-size:9.5px;color:var(--muted,#9aa8bb);margin-right:2px}'+
+    '.vetlive-saal .s-ersatz{font-size:11.5px;color:#ff8c3c;font-weight:700}'+
+    '.vetlive-saal .s-top{font-size:11px;font-weight:700;color:var(--pc,#35d69a)}'+
+    '.vetlive-saal .s-alt{font-size:10px;color:var(--muted,#9aa8bb)}'+
+    '.vetlive-saal .s-leer,.vetlive-saal .s-deckel{font-size:10.5px;color:var(--muted,#9aa8bb);padding:2px 0}'+
+    '.vetlive-saal .s-fuss{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}'+
+    '.vetlive-saal .s-oeffnen,.vetlive-saal .s-stopp{font:inherit;font-size:11px;cursor:pointer;border-radius:7px;'+
+      'padding:2px 8px;border:1px solid var(--line,rgba(255,255,255,.2));background:rgba(255,255,255,.07);color:inherit}'+
+    '.vetlive-saal .s-gefuehrt{font-size:11px;font-weight:700;color:#00d8ff}'+
+    '.vetlive-deckel{font-size:11px;color:#ffb84d;margin-top:5px}'+
+    '.vetlive-saalband{font-size:11.5px;font-weight:700;color:#00d8ff;border:1px dashed rgba(0,216,255,.45);'+
+      'border-radius:8px;padding:4px 9px;margin:0 0 10px}'+
+    'html[data-theme="light"] .vetlive-saalband{color:#0587b8;border-color:rgba(5,135,184,.45)}';
+  document.head.appendChild(s);
 }
 
 /* ---------------------------------------------------------------------------
@@ -3148,7 +3710,7 @@ function zeigeAnmeldung(vorbelegt, hinweis){
     '<div class="vl-box" role="dialog" aria-label="Praxis-Anmeldung">'+
       '<h2>📡 Fern-Zugang</h2>'+
       '<div class="vl-sub">Mit dem <b>Konto Ihrer Praxis</b> anmelden — demselben, das auf dem Praxis-PC in VetStation hinterlegt ist. '+
-        'Sie sehen dann alle angeschlossenen Geräte und Patienten dieser Praxis live. Andere Praxen sehen Ihre Daten nicht.</div>'+
+        'Sie sehen dann alle OP-Säle, Geräte und Patienten dieser Praxis live. Andere Praxen sehen Ihre Daten nicht.</div>'+
       anbieterKnoepfe('anmelden')+
       '<div class="vl-trenn"><span>oder mit E-Mail und Passwort</span></div>'+
       '<label>E-Mail der Praxis<input id="vlMail" type="email" autocomplete="username" value="'+esc(vorbelegt||'')+'" placeholder="praxis@beispiel.de"></label>'+
@@ -3297,16 +3859,25 @@ function anmeldeFehler(e){
   return (e&&e.message)||String(e);
 }
 
+/*
+ * ABMELDEN raeumt JEDES Abonnement ab — auch die Protokoll-Abonnements.
+ * In 1.0.3 wurde protAbos nie abgebaut und nur als Merkzettel benutzt ("schon abonniert").
+ * Nach einem Abmelden und erneuten Anmelden stand dort weiterhin true, das alte Abonnement war
+ * aber am alten Konto haengengeblieben — das Protokoll blieb dauerhaft leer. Seit diesem Umbau
+ * speichert protAbos die ABMELDEFUNKTION, und der Schluessel traegt zusaetzlich den Saal.
+ */
 function abmelden(){
   if(!FB) return;
   FB.A.signOut(FB.auth).then(function(){
-    patients={}; meta={}; protokoll={}; sel=null; lastRecv=0; laufzeit=null;
-    laufzeitMin=null; laufzeitMax=null; kurvenSigGezeigt=null;
+    abbauAlleAbos();
+    saele={}; patientsSaal={}; protokoll={}; protAbos={};
+    lastRecvSid={}; laufzeitSid={}; laufzeitMinSid={}; laufzeitMaxSid={}; taktSid={};
+    selSaal=null; sel=null; kurvenSigGezeigt=null;
     connState='auth'; render();
   });
 }
 
-/* ---- Quelle: echtes Firebase (Standard) ODER lokale Demo (?livedemo=1) ---- */
+/* ---- Quelle: echtes Firebase (Standard) ODER lokale Demo (?livedemo=1 / ?livedemo=2) ---- */
 function connectFirebase(){
   var cfg = window.VETLIVE_CFG || {};
   if(!cfg.databaseURL || /DEIN_FIREBASE|EINTRAGEN/i.test(cfg.apiKey||'') || /DEIN_FIREBASE|EINTRAGEN/i.test(cfg.databaseURL||'')){
@@ -3323,7 +3894,7 @@ function connectFirebase(){
     connState='auth'; render();
 
     /* Die Uhr des Servers, gegen die gemessen wird. Kommt sofort und dann bei jeder Korrektur. */
-    D.onValue(D.ref(FB.db, '.info/serverTimeOffset'), function(s){
+    aboZeit = D.onValue(D.ref(FB.db, '.info/serverTimeOffset'), function(s){
       var v=s.val(); if(typeof v === 'number') uhrVersatz = v;
     });
 
@@ -3357,7 +3928,10 @@ function connectFirebase(){
      * gespeicherte Konto von selbst — der Tierarzt muss zu Hause nicht jedes Mal tippen. */
     Au.onAuthStateChanged(FB.auth, function(u){
       nutzer = u || null;
-      if(!u){ praxis=null; connState='auth'; zeigeAnmeldung(letzteMail(), anmeldeHinweis); anmeldeHinweis=''; render(); return; }
+      if(!u){
+        abbauAlleAbos();
+        praxis=null; connState='auth'; zeigeAnmeldung(letzteMail(), anmeldeHinweis); anmeldeHinweis=''; render(); return;
+      }
       praxis = u.uid;
       try{ localStorage.setItem('vetlive_mail', u.email||''); }catch(e){}
       versteckeAnmeldung();
@@ -3367,96 +3941,279 @@ function connectFirebase(){
   }).catch(function(e){ connState='err'; lastError='Firebase-SDK-Ladefehler: '+((e&&e.message)||e); render(); });
 }
 function letzteMail(){ try{ return localStorage.getItem('vetlive_mail')||''; }catch(e){ return ''; } }
+function letzterSaal(){ try{ return localStorage.getItem('vetlive_saal')||''; }catch(e){ return ''; } }
 
-/*
- * Abonnement: meta und patients GETRENNT.
- * Waere es ein einziges Abonnement auf live/<Kennung>, kaeme bei jeder Wertaenderung — also
- * fuenfmal pro Sekunde — auch das komplette OP-Protokoll mit durch die Aufbereitung. Das sind
- * schnell ein paar tausend Zeilen. Das Protokoll haengt deshalb an einem eigenen Abonnement,
- * das nur bei Bedarf laeuft.
- */
+/* ---------------------------------------------------------------------------
+ * ABONNEMENTS.
+ *
+ * DREI EBENEN, und die Aufteilung spart genau das ein, was den Kontingentdeckel reissen wuerde:
+ *  - tafel        (alle Saele, 1 Hz, ~230 Byte je Patient)  IMMER
+ *  - saele/<sid>/patients  (voller Strom, 5 Hz)             NUR fuer den gefuehrten Saal
+ *  - saele/<sid>/protokoll/<pid>                            nur je sichtbarem Patienten
+ * Die alte flache Ebene wird NUR mit ihrem meta gelesen — zur Erkennung einer noch nicht
+ * aktualisierten 1.0.3-Station. Ihre Patienten kommen erst, wenn der Pseudo-Saal geoeffnet wird.
+ *
+ * JEDER Rueckgabewert von onValue wird festgehalten. Ohne das laesst sich kein Abonnement mehr
+ * abbauen, und ein Saalwechsel legt bei jedem Klick ein weiteres 5-Hz-Dauerabonnement dazu.
+ * --------------------------------------------------------------------------- */
+var aboZeit=null, aboTafel=null, aboFlachMeta=null, aboPatientenFn=null, aboPatientenSid=null;
+
+function abbauPatientenAbo(){
+  abbestellen(aboPatientenFn);
+  aboPatientenFn=null;
+  if(aboPatientenSid){ delete patientsSaal[aboPatientenSid]; aboPatientenSid=null; }
+}
+function abbauAlleAbos(){
+  abbestellen(aboTafel);      aboTafel=null;
+  abbestellen(aboFlachMeta);  aboFlachMeta=null;
+  abbauPatientenAbo();
+  Object.keys(protAbos).forEach(function(k){ abbestellen(protAbos[k]); delete protAbos[k]; });
+}
+function protSchluessel(sid, pid){ return String(sid)+'|'+String(pid); }
+/* Alles abbauen, was NICHT zum kuenftigen Saal gehoert. */
+function abbauProtokollAbos(behalteSid){
+  Object.keys(protAbos).forEach(function(k){
+    if(behalteSid && k.indexOf(behalteSid+'|')===0) return;
+    abbestellen(protAbos[k]); delete protAbos[k]; delete protokoll[k];
+  });
+}
+
 function abonniere(){
   var D=FB.D, db=FB.db, p='live/'+praxis;
   var fehler=function(err){ connState='err'; lastError=(err&&err.message)||String(err); render(); };
-  D.onValue(D.ref(db, p+'/meta'), function(s){
-    connState='live'; lastRecv=Date.now();
-    meta = s.val() || {};
-    messeLaufzeit(meta.sv);
-    updates++;
-    if(!rateT0) rateT0=lastRecv;
-    else if(lastRecv-rateT0>=2000){ updRate=Math.round(updates/((lastRecv-rateT0)/1000)*10)/10; updates=0; rateT0=lastRecv; }
+
+  /* DIE TAFEL — ein einziges Abonnement fuer ALLE Saele. */
+  aboTafel = D.onValue(D.ref(db, p+'/tafel'), function(s){
+    connState='live';
+    var val = s.val() || {};
+    var neu = {};
+    Object.keys(val).forEach(function(sid){
+      var e = val[sid] || {};
+      neu[sid] = { meta: e.meta || {}, uebersicht: e.uebersicht || {} };
+      var svAlt = (saele[sid] && saele[sid].meta && saele[sid].meta.sv);
+      var svNeu = neu[sid].meta.sv;
+      if(typeof svNeu === 'number' && svNeu !== svAlt){ zaehleTakt(sid); messeLaufzeit(sid, svNeu); }
+    });
+    /* Der Pseudo-Saal der flachen Ebene wird von diesem Abonnement NICHT geliefert und darf
+     * deshalb nicht mit verschwinden. */
+    if(saele[FLACH]) neu[FLACH] = saele[FLACH];
+    saele = neu;
+    verschwundeneAufraeumen();
+    waehleSaalWennKeiner();
+    protokollAbo();
     render();
   }, fehler);
-  D.onValue(D.ref(db, p+'/patients'), function(s){
-    connState='live'; lastRecv=Date.now();
-    patients = s.val() || {};
-    var keys=Object.keys(patients);
-    if(!keys.length){ sel=null; render(); return; }
-    if(!sel || !patients[sel]){
-      sel = keys.reduce(function(best,k){ return (patients[k].pri||0) > (patients[best].pri||0) ? k : best; }, keys[0]);
+
+  /* Die flache Ebene NUR mit meta — Erkennung einer 1.0.3-Station. */
+  aboFlachMeta = D.onValue(D.ref(db, p+'/meta'), function(s){
+    var m = s.val() || {};
+    var frisch = typeof m.sv === 'number';
+    if(!frisch && !m.station){ delete saele[FLACH]; render(); return; }
+    saele[FLACH] = saele[FLACH] || {meta:{}, uebersicht:{}};
+    saele[FLACH].meta = { name: m.station || 'Praxis (alte Ansicht)', sv: m.sv, ts: m.ts,
+                          taktMs: m.taktMs, kurven: m.kurven, v: m.v, q: m.q };
+    if(frisch){ zaehleTakt(FLACH); messeLaufzeit(FLACH, m.sv); }
+    waehleSaalWennKeiner();
+    render();
+  }, fehler);
+
+  aboPatienten();
+}
+
+/*
+ * KEIN AUTOMATISCHES UMSCHALTEN UEBER SAALGRENZEN. Hier wird genau EINMAL ein Saal gewaehlt —
+ * wenn noch keiner gefuehrt wird. Danach bleibt der Wechsel eine Handlung eines Menschen:
+ * ein Alarm im Nachbarsaal laesst dessen Karte pulsieren und bietet "OP 2 oeffnen", er reisst
+ * aber niemandem die Dosisseite unter der Hand weg.
+ */
+function waehleSaalWennKeiner(){
+  /* Auch ein AUSGEFALLENER gefuehrter Saal bleibt gefuehrt. Sonst waere der Ausfall von OP 1
+   * genau der Ausloeser, der die App auf OP 2 umlegt — mitten in einer Narkose, ohne Rueckfrage. */
+  if(selSaal) return;
+  var liste = saalListe();
+  if(!liste.length) return;
+  var gemerkt = letzterSaal();
+  var ziel = (gemerkt && saele[gemerkt]) ? gemerkt : liste[0];
+  waehleSaal(ziel, true);
+}
+
+function aboPatienten(){
+  if(!FB || !praxis || !selSaal) return;
+  if(aboPatientenSid === selSaal) return;
+  abbauPatientenAbo();
+  var D=FB.D, db=FB.db;
+  var sid = selSaal;
+  var pfad = (sid===FLACH) ? ('live/'+praxis+'/patients')
+                           : ('live/'+praxis+'/saele/'+encodeURIComponent(sid)+'/patients');
+  aboPatientenSid = sid;
+  aboPatientenFn = D.onValue(D.ref(db, pfad), function(s){
+    connState='live';
+    patientsSaal[sid] = s.val() || {};
+    if(sid===FLACH) flachUebersichtBauen();
+    zaehleTakt(sid);
+    var pats = patientsSaal[sid];
+    var keys=Object.keys(pats);
+    if(!keys.length){ sel=null; protokollAbo(); render(); return; }
+    /* pri-Automatik NUR INNERHALB des gewaehlten Saals. */
+    if(!sel || !pats[sel]){
+      sel = keys.reduce(function(best,k){ return (pats[k].pri||0) > (pats[best].pri||0) ? k : best; }, keys[0]);
       kurvenSigGezeigt=null;
     }
-    protokollAbo();          // fuer neu hinzugekommene Patienten das Protokoll mit abonnieren
+    protokollAbo();
     applySelected(); render();
-  }, fehler);
-  // Protokoll: die letzten 600 Zeilen je Patient reichen fuer Anzeige und Ausdruck.
-  D.onValue(D.query(D.ref(db, p+'/protokoll'), D.limitToLast(1)), function(){
-    // Der Elternknoten meldet nur, DASS sich etwas geaendert hat; die Zeilen selbst holt
-    // protokollAbo() je Patient — sonst laege bei mehreren Patienten alles gleichzeitig im Speicher.
-  }, function(){});
-  protokollAbo();
+  }, function(err){ connState='err'; lastError=(err&&err.message)||String(err); render(); });
 }
-var protAbos = {};
+
+/* Aus den vollen Patienten der flachen Ebene eine Tafel-Uebersicht bauen, damit der Pseudo-Saal
+ * dieselbe Karte bekommt wie ein echter. */
+function flachUebersichtBauen(){
+  var pats = patientsSaal[FLACH] || {};
+  var u = {};
+  Object.keys(pats).forEach(function(k){
+    var p = pats[k]||{}, v = p.vitals||{};
+    u[k] = { pid:p.patientId, n:p.patientName, a:p.species, g:p.weightKg,
+             hr:v.hr, sp:v.spo2, et:v.etco2, af:v.af, map:v.map, t:v.temp,
+             pri:p.pri, top:(p.top&&p.top.title)||'', altMs:null };
+  });
+  saele[FLACH] = saele[FLACH] || {meta:{}, uebersicht:{}};
+  saele[FLACH].uebersicht = u;
+}
+
+/* Verschwundener Saal oder verschwundener Patient: Abonnement UND Speicher raeumen. Ohne das
+ * bleibt eine Karteileiche im Speicher und ihr Protokoll-Abonnement laeuft weiter. */
+function verschwundeneAufraeumen(){
+  Object.keys(protAbos).forEach(function(k){
+    var teile = k.split('|'), sid = teile[0], pid = teile.slice(1).join('|');
+    var lebt = !!saele[sid] && (
+      Object.keys(uebersichtVon(sid)).some(function(x){ var e=uebersichtVon(sid)[x]||{}; return String(e.pid||x)===pid; }) ||
+      Object.keys(patientenVon(sid)).some(function(x){ var e=patientenVon(sid)[x]||{}; return String(e.patientId||x)===pid; })
+    );
+    if(!lebt){ abbestellen(protAbos[k]); delete protAbos[k]; delete protokoll[k]; }
+  });
+  Object.keys(patientsSaal).forEach(function(sid){ if(!saele[sid]) delete patientsSaal[sid]; });
+}
+
+/*
+ * PROTOKOLL JE (SAAL, PATIENT). Der Schluessel ist sid+'|'+pid, nicht mehr pid allein:
+ * ein verlegter Patient traegt in beiden Saelen dieselbe Kennung, und ein gemeinsamer Schluessel
+ * wuerde die beiden unveraenderlichen Verlaeufe im Speicher UEBEREINANDER legen.
+ */
 function protokollAbo(){
-  if(!FB || !praxis) return;
+  if(!FB || !praxis || !selSaal) return;
   var D=FB.D, db=FB.db;
-  Object.keys(patients).forEach(function(k){
-    var pid = patients[k].patientId || k;
-    if(protAbos[pid]) return;
-    protAbos[pid] = true;
-    D.onValue(D.query(D.ref(db, 'live/'+praxis+'/protokoll/'+pid), D.limitToLast(600)), function(s){
-      protokoll[pid] = s.val() || {};
+  var ziele = [];
+  Object.keys(patientenVon(selSaal)).forEach(function(k){
+    var pid = patientenVon(selSaal)[k].patientId || k;
+    ziele.push([selSaal, pid]);
+    /* Bei erkannter Verlegung auch den anderen Saal mitlesen — nur so laesst sich der
+     * gemeinsame Ausdruck ueberhaupt bauen. */
+    verlegungSaele(pid).forEach(function(s){ if(s!==selSaal) ziele.push([s, pid]); });
+  });
+  ziele.forEach(function(zp){
+    var sid=zp[0], pid=zp[1], k=protSchluessel(sid, pid);
+    if(protAbos[k]) return;
+    var pfad = (sid===FLACH) ? ('live/'+praxis+'/protokoll/'+encodeURIComponent(pid))
+                             : ('live/'+praxis+'/saele/'+encodeURIComponent(sid)+'/protokoll/'+encodeURIComponent(pid));
+    // Protokoll: die letzten 600 Zeilen je Patient reichen fuer Anzeige und Ausdruck.
+    protAbos[k] = D.onValue(D.query(D.ref(db, pfad), D.limitToLast(600)), function(s){
+      protokoll[k] = s.val() || {};
       if(document.getElementById('fernlive') && document.getElementById('fernlive').classList.contains('active')) renderFernView(true);
     }, function(){});
   });
 }
+
+/* ---------------------------------------------------------------------------
+ * DEMOBETRIEB (Nachbesserung N15) — ohne ihn ist der Umbau nicht pruefbar.
+ *
+ * ?livedemo=1  ein Saal (wie bisher)
+ * ?livedemo=2  ZWEI Saele, je ein Patient, BEIDE unter demselben patientKey sw_hund_22,
+ *              und OP 2 OHNE Temperatursonde (und ohne NIBP). Genau diese Kombination weist
+ *              den toedlichen Befund B2-1 nach: ohne Ruecksetzen stuenden nach dem Wechsel
+ *              Temp und Blutdruck des Tiers aus OP 1 unter dem Namen des Tiers aus OP 2.
+ *
+ * Jede Saalkarte hat im Demobetrieb einen Schalter, der GENAU EINEN Saal anhaelt: dessen sv
+ * bleibt stehen, das Alter waechst, und nur SEINE Karte geht nach 12 s auf gelb und nach 60 s
+ * auf offline. Der andere bleibt live — das ist der Nachweis fuer die Abbildungen je sid.
+ * --------------------------------------------------------------------------- */
+var DEMO_SAELE = [
+  { sid:'stde3010000001', name:'OP 1', tier:'Bello (Demo)', pid:'D-1001', temp:true,  nibp:true  },
+  { sid:'stde3020000002', name:'OP 2', tier:'Rex (Demo)',   pid:'D-1002', temp:false, nibp:false }
+];
+var demoAus = {};   // sid -> true: dieser Saal ist angehalten
 function startDemo(){
-  meta={station:'DEMO (lokal)', taktMs:200, kurven:true, v:2, code:'demo'}; var t0=Date.now();
+  var wieViele = (demo === '2') ? 2 : 1;
+  var liste = DEMO_SAELE.slice(0, wieViele);
+  var t0 = Date.now();
+  liste.forEach(function(d){
+    saele[d.sid] = { meta:{ sid:d.sid, name:d.name, v:4, bv:'1.1.0-demo', taktMs:200, kurven:true, ts:t0, sv:t0 }, uebersicht:{} };
+  });
+  selSaal = liste[0].sid;
+  sel = 'sw_hund_22';
   setInterval(function(){
-    var s=(Date.now()-t0)/1000, hr=Math.round(42+26*Math.sin(s/3.5)), brady=hr<48;
-    patients={
-      'sw_hund_22':{ patientId:'Bello (Demo)', species:'hund', weightKg:22, isoPct:2.6, ts:Date.now(),
-        ventMode:'VCV', o2Flow:1.2, ventParams:{Vt:220, AF:12, PEEP:3, Pinsp:14},
-        afSource:'kapnograph',
-        devices:[{model:'LifeVet 10C (Demo)',role:'combo',ip:'192.168.0.51',port:4601,taktMs:1000,sekundenSeitDaten:0}],
-        alarms:[{text:'**HF zu tief'},{text:'EKG lernen'}],
-        vitals:{ hr:hr, spo2:Math.round(90+7*Math.sin(s/4)), etco2:Math.round(46+14*Math.sin(s/5)), fico2:1, af:9, sys:96, dia:54, map:68, temp:37.5, paw:12, ekgRhythm:brady?'sinusbrady':'sinus', capnoShape:'normal', pleth:'normal' },
-        pri:brady?8:3, top:{sev:brady?4:2, title:brady?'Bradykardie bei zu tiefer Narkose':'Werte grenzwertig', fix:brady?'Isofluran reduzieren, Anticholinergikum erwägen':'', incident:brady?'bradykardie':null} },
-      'sw_katze_4':{ patientId:'Minka (Demo)', species:'katze', weightKg:4.2, isoPct:1.5, ts:Date.now(),
-        devices:[{model:'uMEC12 Vet (Demo)',role:'monitor',ip:'192.168.0.50',port:4601,sekundenSeitDaten:1}],
-        vitals:{ hr:152, spo2:98, etco2:40, af:18, sys:120, dia:80, map:93, temp:38.4, ekgRhythm:'sinus', capnoShape:'normal' },
-        pri:1, top:{sev:1, title:'stabil'} }
-    };
-    // Demo-Protokoll, damit sich Ansicht und Ausdruck auch ohne Praxis-PC pruefen lassen.
-    if(!protokoll['Bello (Demo)']) protokoll['Bello (Demo)']={};
-    var pd=protokoll['Bello (Demo)'];
-    var stufe=Math.floor((Date.now()-t0)/6000)*6000+t0;
-    if(!pd[stufe] && Object.keys(pd).length<80){
-      pd[stufe]={ ts:stufe, hr:hr, spo2:Math.round(90+7*Math.sin(s/4)), etco2:Math.round(46+14*Math.sin(s/5)),
-        af:9, sys:96, dia:54, map:68, temp:37.5, iso:2.6, rhythm:brady?'sinusbrady':'sinus',
-        finding: brady?'Bradykardie bei zu tiefer Narkose':null };
-    }
-    laufzeit=Math.round(60+40*Math.abs(Math.sin(s/7)));
-    if(laufzeitMin===null||laufzeit<laufzeitMin) laufzeitMin=laufzeit;
-    if(laufzeitMax===null||laufzeit>laufzeitMax) laufzeitMax=laufzeit;
-    connState='live'; lastRecv=Date.now(); updRate=5;
-    if(!sel||!patients[sel]) sel='sw_hund_22';
+    var jetzt = Date.now();
+    var s=(jetzt-t0)/1000, hr=Math.round(42+26*Math.sin(s/3.5)), brady=hr<48;
+    liste.forEach(function(d, i){
+      if(demoAus[d.sid]) return;                 // angehaltener Saal: sv bleibt stehen
+      var zwei = (i===1);
+      var pat = {
+        patientId:d.pid, patientName:d.tier, species:'hund', weightKg:22, isoPct: zwei?2.0:2.6, ts:jetzt,
+        ventMode: zwei?'PCV':'VCV', o2Flow: zwei?1.0:1.2,
+        ventParams: zwei?{Vt:210, AF:14, PEEP:2, Pinsp:13}:{Vt:220, AF:12, PEEP:3, Pinsp:14},
+        afSource: zwei?'monitor':'kapnograph',
+        devices: zwei
+          ? [{model:'uMEC12 Vet (Demo)',role:'monitor',ip:'192.168.0.60',port:4601,taktMs:1000,sekundenSeitDaten:1}]
+          : [{model:'LifeVet 10C (Demo)',role:'combo',ip:'192.168.0.51',port:4601,taktMs:1000,sekundenSeitDaten:0}],
+        alarms: zwei?[]:[{text:'**HF zu tief'},{text:'EKG lernen'}],
+        vitals: zwei
+          /* OP 2: KEINE Temperatursonde, KEIN NIBP, KEINE Kapnografie. */
+          ? { hr:118, spo2:97, af:16, ekgRhythm:'sinus', pleth:'normal' }
+          : { hr:hr, spo2:Math.round(90+7*Math.sin(s/4)), etco2:Math.round(46+14*Math.sin(s/5)), fico2:1,
+              af:9, sys:96, dia:54, map:68, temp:37.5, paw:12,
+              ekgRhythm:brady?'sinusbrady':'sinus', capnoShape:'normal', pleth:'normal' },
+        pri: zwei?2:(brady?8:3),
+        top: zwei ? {sev:1, title:'stabil'}
+                  : {sev:brady?4:2, title:brady?'Bradykardie bei zu tiefer Narkose':'Werte grenzwertig',
+                     fix:brady?'Isofluran reduzieren, Anticholinergikum erwägen':'', incident:brady?'bradykardie':null}
+      };
+      var v = pat.vitals;
+      saele[d.sid].meta.ts = jetzt;
+      saele[d.sid].meta.sv = jetzt;
+      saele[d.sid].uebersicht = { 'sw_hund_22': {
+        pid:d.pid, n:d.tier, a:'hund', g:22, hr:v.hr, sp:v.spo2, et:v.etco2==null?null:v.etco2,
+        af:v.af, sys:v.sys==null?null:v.sys, dia:v.dia==null?null:v.dia, map:v.map==null?null:v.map,
+        t:v.temp==null?null:v.temp, rh:v.ekgRhythm, pri:pat.pri, top:pat.top.title,
+        al:(pat.alarms||[]).length, dev:1, ts:jetzt, altMs: zwei?1400:300 } };
+      zaehleTakt(d.sid);
+      laufzeitSid[d.sid] = Math.round((zwei?110:60)+40*Math.abs(Math.sin(s/7)));
+      if(laufzeitMinSid[d.sid]==null||laufzeitSid[d.sid]<laufzeitMinSid[d.sid]) laufzeitMinSid[d.sid]=laufzeitSid[d.sid];
+      if(laufzeitMaxSid[d.sid]==null||laufzeitSid[d.sid]>laufzeitMaxSid[d.sid]) laufzeitMaxSid[d.sid]=laufzeitSid[d.sid];
+      /* Nur der GEFUEHRTE Saal traegt den vollen Patientensatz — genau wie im echten Betrieb.
+       * Der verlassene Saal wird geleert, sonst blieben seine Werte im Speicher stehen und der
+       * Demobetrieb wuerde den Umbau nicht ehrlich abbilden. */
+      if(d.sid===selSaal) patientsSaal[d.sid] = { 'sw_hund_22': pat };
+      else delete patientsSaal[d.sid];
+      // Demo-Protokoll, damit sich Ansicht und Ausdruck auch ohne Praxis-PC pruefen lassen.
+      var pk = protSchluessel(d.sid, d.pid);
+      if(!protokoll[pk]) protokoll[pk]={};
+      var pd=protokoll[pk];
+      var stufe=Math.floor((jetzt-t0)/6000)*6000+t0;
+      if(!pd[stufe] && Object.keys(pd).length<80){
+        pd[stufe]={ ts:stufe, hr:v.hr, spo2:v.spo2, etco2:v.etco2==null?null:v.etco2,
+          af:v.af, sys:v.sys==null?null:v.sys, dia:v.dia==null?null:v.dia, map:v.map==null?null:v.map,
+          temp:v.temp==null?null:v.temp, iso:pat.isoPct, rhythm:v.ekgRhythm,
+          finding: (!zwei && brady) ? 'Bradykardie bei zu tiefer Narkose' : null };
+      }
+    });
+    connState='live';
+    var pats = patientenVon(selSaal);
+    if(!sel || !pats[sel]){ var k=Object.keys(pats); sel = k.length?k[0]:null; kurvenSigGezeigt=null; }
     applySelected(); render();
   },200);
 }
 
 function activate(){
   if(activated) return; activated=true;
+  injectCss();
   bar = document.createElement('div'); bar.id='vetlive-bar';
   document.body.appendChild(bar);
   document.documentElement.classList.add('vetlive-on');
@@ -3485,7 +4242,7 @@ function injectLauncher(){
   var b=document.createElement('button'); b.id='vetlive-launch'; b.type='button';
   b.className='btn';
   b.innerHTML='📡 <span class="vl-lang">Fern-Zugang</span>';
-  b.title='Live-Werte, Monitor, Protokoll & Empfehlungen der eigenen Praxis aus der Ferne ansehen (nur Ansicht)';
+  b.title='Live-Werte, Monitor, Protokoll & Empfehlungen aller eigenen OP-Säle aus der Ferne ansehen (nur Ansicht)';
   b.onclick=activate;
 
   var versuche=0;
