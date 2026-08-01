@@ -3043,13 +3043,27 @@ function saalKarte(sid){
     if(tot){
       werte = '<span class="s-ersatz">Stand vor '+minuten(z.ms)+' min</span>';
     } else {
-      werte = [['HF',e.hr],['SpO₂',e.sp],['EtCO₂',e.et],['AF',e.af],['MAP',e.map],['Temp',e.t]]
+      /* RR (systolisch/diastolisch) und der EKG-Rhythmus kamen je Kachel längst an und wurden
+       * nirgends gezeigt (Befund 01.08.2026). Gerade der Blutdruck ist der Wert, wegen dem man
+       * auf eine fremde Saalkarte schaut — ein Mitteldruck allein sagt nicht, ob 60/40 oder
+       * 120/20 dahintersteht. */
+      var rr = (e.sys!=null||e.dia!=null) ? ((e.sys==null?'–':e.sys)+'/'+(e.dia==null?'–':e.dia)) : null;
+      werte = [['HF',e.hr],['SpO₂',e.sp],['EtCO₂',e.et],['AF',e.af],['RR',rr],['MAP',e.map],['Temp',e.t]]
         .map(function(x){ return '<span class="w"><i>'+x[0]+'</i>'+(x[1]==null?'–':esc(String(x[1])))+'</span>'; }).join('');
+      if(e.rh) werte += '<span class="w rh"><i>Rhythmus</i>'+esc(String(e.rh))+'</span>';
     }
+    /* ALARME DES FREMDEN SAALS (Befund 01.08.2026).
+     * Die Anzahl (al) wird je Kachel gesendet und wurde nie angezeigt. Ein Alarm in OP 2 ist
+     * genau die Information, wegen der ein Tierarzt in OP 1 auf die Nachbarkarte sieht —
+     * sie wegzulassen macht die Karte hübsch und nutzlos. Nur die ZAHL, nicht der Text: die
+     * Alarmtexte stehen im vollen Strom des geführten Saals, und der wird bewusst nicht für
+     * alle Säle geladen. */
+    var alarmBadge = (!tot && e.al > 0)
+      ? '<span class="s-alarm">'+esc(String(e.al))+' Alarm'+(e.al>1?'e':'')+'</span>' : '';
     var gAlt = geraeteAlter(sid, e.altMs);
     return '<div class="s-pat'+(sid===selSaal&&k===sel?' sel':'')+'" data-sid="'+esc(sid)+'" data-k="'+esc(k)+'" style="--pc:'+col+'">'+
       '<div class="s-pat-kopf"><span class="ic">'+sp(e.a).icon+'</span><b>'+esc(e.n||e.pid||sp(e.a).name)+'</b>'+
-        '<span class="sub">'+esc(sp(e.a).name)+(e.g!=null?' · '+esc(String(e.g))+' kg':'')+'</span></div>'+
+        '<span class="sub">'+esc(sp(e.a).name)+(e.g!=null?' · '+esc(String(e.g))+' kg':'')+'</span>'+alarmBadge+'</div>'+
       '<div class="s-werte">'+werte+'</div>'+
       (topText(e)?'<div class="s-top">'+esc(topText(e))+'</div>':'')+
       '<div class="s-alt">Gerätedaten '+esc(tot?('Stand vor '+minuten(z.ms)+' min'):alterText(gAlt))+'</div>'+
@@ -3057,6 +3071,42 @@ function saalKarte(sid){
   }).join('');
   var rest = keys.length - gezeigt.length;
   var deckelZeile = rest>0 ? '<div class="s-deckel">'+rest+' weitere Patienten werden nicht angezeigt — Deckel erreicht</div>' : '';
+
+  /* DIE GERÄTE DIESES SAALS (ergänzt 01.08.2026).
+   *
+   * Gefordert war: „alle Geräte, die im eingeloggten Konto drin sind, im gleichen Dashboard“.
+   * Bis hierher zeigte die Karte nur, WIE ALT die Gerätedaten sind — welche Geräte es überhaupt
+   * sind, stand nur in der Vollansicht des EINEN geführten Saals. Die Station überträgt die Zeilen
+   * längst (tafel/<sid>/geraete, bis zu 16 je Saal, mit Modell, Rolle, Status, Adresse, Port und
+   * Übertragungsweg) — sie wurden nur nie angezeigt.
+   *
+   * Bewusst kompakt: eine Zeile je Gerät, Ampel nach Status. Es ist eine ÜBERSICHT, kein Ersatz
+   * für die Vollansicht — und ausdrücklich NUR ANSICHT, wie alles in der Fern-Ansicht. */
+  var gObj = (saele[sid] && saele[sid].geraete) || {};
+  var gKeys = Object.keys(gObj).sort();
+  var geraeteZeilen = '';
+  if(gKeys.length){
+    geraeteZeilen = '<div class="s-geraete"><div class="s-geraete-h">Geräte in diesem Saal ('+gKeys.length+')</div>'+
+      gKeys.slice(0, 8).map(function(gk){
+        var d = gObj[gk] || {};
+        /* Die Statuswörter kommen unverändert aus registry.getDevices() — dieselbe Wortwahl wie
+         * im Koppel-Dialog vor Ort. Zwei Namenswelten für denselben Zustand wären eine
+         * zusätzliche Fehlerquelle (steht so auch im Kopf von tafel.js). */
+        var stu = (d.status==='active') ? 'ok' : (d.status==='connected' ? 'warn' : 'aus');
+        var txt = (d.status==='active') ? 'liefert Werte'
+                : (d.status==='connected' ? 'verbunden, keine Werte'
+                : (d.status==='error' ? 'Fehler' : 'offline'));
+        return '<div class="s-ger '+stu+'"><i></i>'+
+          '<b>'+esc(d.model||gk)+'</b>'+
+          (d.role?'<span class="r">'+esc(d.role)+'</span>':'')+
+          '<span class="a">'+esc(txt)+'</span>'+
+          (d.ip?'<span class="ip">'+esc(d.ip)+(d.port?':'+esc(String(d.port)):'')+'</span>':'')+
+          (d.transport?'<span class="tr">'+esc(d.transport)+'</span>':'')+
+          '</div>';
+      }).join('')+
+      (gKeys.length>8 ? '<div class="s-deckel">'+(gKeys.length-8)+' weitere Geräte werden nicht angezeigt</div>' : '')+
+      '</div>';
+  }
   var leer = keys.length ? '' : '<div class="s-leer">'+(sid===FLACH&&sid!==selSaal
       ? 'Patienten der alten flachen Ebene — zum Ansehen öffnen'
       : 'keine Patienten gemeldet')+'</div>';
@@ -3069,7 +3119,7 @@ function saalKarte(sid){
       '<span class="s-conn '+z.stufe+'"><i></i>'+esc(z.txt)+'</span></div>'+
     '<div class="s-uebertragung">Übertragung '+esc(z.stufe==='unbekannt'?'Alter unbekannt':alterText(z.ms))+
       (laufzeitText(sid)?' · Laufzeit '+esc(laufzeitText(sid)):'')+'</div>'+
-    '<div class="s-pats">'+zeilen+leer+'</div>'+deckelZeile+
+    '<div class="s-pats">'+zeilen+leer+'</div>'+deckelZeile+geraeteZeilen+
     '<div class="s-fuss">'+knopf+stopp+'</div>'+
     '</div>';
 }
@@ -3558,6 +3608,22 @@ function injectCss(){
     '.vetlive-saal .s-top{font-size:11px;font-weight:700;color:var(--pc,#35d69a)}'+
     '.vetlive-saal .s-alt{font-size:10px;color:var(--muted,#9aa8bb)}'+
     '.vetlive-saal .s-leer,.vetlive-saal .s-deckel{font-size:10.5px;color:var(--muted,#9aa8bb);padding:2px 0}'+
+    /* Geräteliste je Saal (01.08.2026). Bewusst schmaler und ruhiger als die Patientenkacheln:
+     * der Patient steht im Vordergrund, die Geräte sind die Auskunft dahinter. */
+    '.vetlive-saal .s-alarm{margin-left:auto;font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;'+
+      'background:rgba(255,138,160,.18);color:#ff8ba0;border:1px solid rgba(255,138,160,.45)}'+
+    '.vetlive-saal .s-werte .w.rh i{opacity:.7}'+
+    '.vetlive-saal .s-geraete{margin-top:6px;padding-top:5px;border-top:1px solid var(--line,rgba(255,255,255,.12))}'+
+    '.vetlive-saal .s-geraete-h{font-size:10px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted,#9aa8bb);margin-bottom:3px}'+
+    '.vetlive-saal .s-ger{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;font-size:10.5px;line-height:1.6}'+
+    '.vetlive-saal .s-ger>i{width:7px;height:7px;border-radius:50%;flex:none;background:var(--muted,#9aa8bb)}'+
+    '.vetlive-saal .s-ger.ok>i{background:#35d69a;box-shadow:0 0 6px #35d69a}'+
+    '.vetlive-saal .s-ger.warn>i{background:#ffc23c}'+
+    '.vetlive-saal .s-ger.aus>i{background:rgba(255,255,255,.25)}'+
+    '.vetlive-saal .s-ger b{font-weight:700}'+
+    '.vetlive-saal .s-ger .r,.vetlive-saal .s-ger .ip,.vetlive-saal .s-ger .tr{color:var(--muted,#9aa8bb)}'+
+    '.vetlive-saal .s-ger.ok .a{color:#35d69a}.vetlive-saal .s-ger.warn .a{color:#ffc23c}'+
+    '.vetlive-saal .s-ger.aus .a{color:var(--muted,#9aa8bb)}'+
     '.vetlive-saal .s-fuss{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}'+
     '.vetlive-saal .s-oeffnen,.vetlive-saal .s-stopp{font:inherit;font-size:11px;cursor:pointer;border-radius:7px;'+
       'padding:2px 8px;border:1px solid var(--line,rgba(255,255,255,.2));background:rgba(255,255,255,.07);color:inherit}'+
@@ -3989,7 +4055,12 @@ function abonniere(){
     var neu = {};
     Object.keys(val).forEach(function(sid){
       var e = val[sid] || {};
-      neu[sid] = { meta: e.meta || {}, uebersicht: e.uebersicht || {} };
+      /* geraete WIRD MITGENOMMEN (Befund 01.08.2026). Die Station schreibt seit 1.1.0 je Saal
+       * eine Zeile pro Gerät nach tafel/<sid>/geraete — sie kam hier an und wurde beim Umbau
+       * dieses Objekts stillschweigend weggelassen. Ergebnis: die Geräte der ANDEREN Säle waren
+       * im Konto vorhanden, aber auf keinem Bildschirm zu sehen. Genau das war die Forderung
+       * „alle Geräte des eingeloggten Kontos im gleichen Dashboard“. */
+      neu[sid] = { meta: e.meta || {}, uebersicht: e.uebersicht || {}, geraete: e.geraete || {} };
       var svAlt = (saele[sid] && saele[sid].meta && saele[sid].meta.sv);
       var svNeu = neu[sid].meta.sv;
       if(typeof svNeu === 'number' && svNeu !== svAlt){ zaehleTakt(sid); messeLaufzeit(sid, svNeu); }
@@ -4183,6 +4254,16 @@ function startDemo(){
         af:v.af, sys:v.sys==null?null:v.sys, dia:v.dia==null?null:v.dia, map:v.map==null?null:v.map,
         t:v.temp==null?null:v.temp, rh:v.ekgRhythm, pri:pat.pri, top:pat.top.title,
         al:(pat.alarms||[]).length, dev:1, ts:jetzt, altMs: zwei?1400:300 } };
+      /* Die GERAETEZEILEN je Saal — genau der Zweig, den die Station nach tafel/<sid>/geraete
+       * schreibt. Sie fehlten in der Demo, und deshalb liess sich die Anzeige der Geraete anderer
+       * Saele bis 01.08.2026 ohne zwei echte Praxis-PCs gar nicht pruefen. */
+      saele[d.sid].geraete = zwei
+        ? { 'demo-umec': { model:'uMEC12 Vet (Demo)', role:'monitor', status:'active',
+                           ip:'192.168.0.60', port:4601, transport:'HL7/MLLP', taktMs:1000 } }
+        : { 'demo-lifevet': { model:'LifeVet 10C (Demo)', role:'combo', status:'active',
+                              ip:'192.168.0.51', port:8830, transport:'HL7/MLLP', taktMs:1000 },
+            'demo-veta': { model:'Veta 5 Plus (Demo)', role:'anesthesia', status:'offline',
+                           ip:'192.168.0.52', port:4601, transport:'MD2 (nicht lesbar)' } };
       zaehleTakt(d.sid);
       laufzeitSid[d.sid] = Math.round((zwei?110:60)+40*Math.abs(Math.sin(s/7)));
       if(laufzeitMinSid[d.sid]==null||laufzeitSid[d.sid]<laufzeitMinSid[d.sid]) laufzeitMinSid[d.sid]=laufzeitSid[d.sid];
