@@ -195,9 +195,37 @@ html[data-theme="light"] .va-link:hover{background:rgba(20,40,70,.07)}
 html[data-theme="light"] .vm-btn.vm-good::before{border-color:rgba(18,148,96,.5)}
 
 /* tabs */
-.tabs{position:sticky;top:132px;z-index:30;display:flex;gap:8px;overflow:auto;background:rgba(10,12,16,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:8px 14px}
+/* Die Sticky-Eigenschaft ist von .tabs auf .navbar gewandert: die Zurück/Weiter-Knöpfe müssen
+   stehen bleiben, während die Reiterleiste daneben waagerecht scrollt. */
+.navbar{position:sticky;top:132px;z-index:30;display:flex;align-items:center;gap:8px;background:rgba(10,12,16,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:8px 14px}
+.tabs{display:flex;gap:8px;overflow:auto;flex:1;min-width:0;padding:0;background:none;border:0}
 .tab{flex:0 0 auto;border:1px solid var(--line);background:rgba(255,255,255,.035);color:var(--muted);height:38px;border-radius:9px;padding:0 14px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:7px}
 .tab.active{background:rgba(10,162,196,.16);color:#fff;border-color:var(--brand);box-shadow:inset 0 0 0 1px rgba(10,162,196,.45),0 6px 18px rgba(10,162,196,.16)}
+/* Ansichts-Verlauf (Zurück/Weiter) */
+.navhist{display:flex;gap:6px;flex:0 0 auto}
+.nh{height:38px;min-width:40px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--text);border-radius:9px;padding:0 11px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.nh .nhpfeil{font-size:15px;line-height:1}
+.nh:hover:not(:disabled){border-color:var(--cyan);background:rgba(0,216,255,.12)}
+.nh:disabled{opacity:.35;cursor:default}
+html[data-theme="light"] .navbar{background:rgba(233,238,247,.92)}
+html[data-theme="light"] .nh{background:rgba(20,40,70,.05);color:#15202e}
+
+/* Verabreichungs-Protokoll: NUR bestätigte Gaben, nie Empfehlungen */
+.med-log-box{border:1px solid rgba(34,217,141,.42);background:rgba(34,217,141,.07);border-radius:10px;padding:10px 12px}
+.med-log-h{font-weight:800;font-size:13px;color:#9bffcf;margin-bottom:6px}
+html[data-theme="light"] .med-log-box{background:rgba(34,217,141,.12)}
+html[data-theme="light"] .med-log-h{color:#0d7a4d}
+.gabe-row{display:grid;grid-template-columns:66px minmax(120px,1.2fr) 118px minmax(0,1.6fr);gap:8px;align-items:baseline;padding:4px 0;border-top:1px solid var(--line);font-size:12.5px}
+.gabe-row:first-of-type{border-top:none}
+.gabe-row .t{font:11.5px var(--mono);color:var(--muted)}
+.gabe-row .n{font-weight:700}
+.gabe-row .k{font:10.5px var(--mono);text-transform:uppercase;letter-spacing:.5px;color:var(--violet)}
+.gabe-row .d{color:#bff0ff}
+html[data-theme="light"] .gabe-row .d{color:#0b5c72}
+.gabe-row.storno{opacity:.62}
+.gabe-row.storno .n{text-decoration:line-through}
+.med-log-f{margin-top:7px;font-size:11.5px;color:var(--muted);line-height:1.5}
+@media(max-width:760px){.gabe-row{grid-template-columns:60px 1fr;row-gap:0}.gabe-row .k,.gabe-row .d{grid-column:2}}
 
 .shell{max-width:1560px;margin:0 auto;padding:16px}
 .view{display:none;gap:16px}.view.active{display:grid}
@@ -294,7 +322,7 @@ html[data-theme="light"] .vm-btn.vm-good::before{border-color:rgba(18,148,96,.5)
 .src{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5}
 .src a{color:var(--blue)}
 
-@media(max-width:900px){.grid-2{grid-template-columns:1fr}.patient{top:56px}.tabs{top:auto;position:sticky}}
+@media(max-width:900px){.grid-2{grid-template-columns:1fr}.patient{top:56px}.navbar{top:auto;position:sticky}.nh .nhtxt{display:none}}
 @media(max-width:560px){.pchip-note{display:none}.title p{display:none}.sp-chip{min-width:56px}}
 
 /* Monitor */
@@ -454,6 +482,11 @@ html[data-theme="light"] .vm-btn.vm-good::before{border-color:rgba(18,148,96,.5)
 </div></div>
 <div class="breed-banner" id="breedBanner" hidden></div>
 
+<div class="navbar">
+<div class="navhist">
+  <button class="nh" id="navBack" type="button" disabled data-vp-tip="Zur zuletzt gezeigten Ansicht zurück (Alt+←)"><span class="nhpfeil">←</span><span class="nhtxt">Zurück</span></button>
+  <button class="nh" id="navFwd" type="button" disabled data-vp-tip="Wieder vorwärts (Alt+→)"><span class="nhtxt">Weiter</span><span class="nhpfeil">→</span></button>
+</div>
 <nav class="tabs" id="tabs">
   <button class="tab active" data-view="notfall" data-vp-tip="Narkosezwischenfälle mit Schwellen, Sofortmaßnahmen, Geräte-Einstellung & berechneten Dosen – jetzt mit Ursache über Blutwerte/Stoffwechsel/Reise">🚨 Notfall</button>
   <button class="tab" data-view="geraet" data-vp-tip="Virtueller Monitor (EKG/Kapno) + Narkosegerät: Verdampfer drehen, Flowmeter schieben, Werte eingeben">🖥️ Gerät (Monitor + Narkose)</button>
@@ -464,6 +497,7 @@ html[data-theme="light"] .vm-btn.vm-good::before{border-color:rgba(18,148,96,.5)
   <button class="tab" data-view="settings" data-vp-tip="Geräte-Startwerte (O₂, Isofluran, AZV, PIP …) pro Patient">⚙️ Einstellungen</button>
   <button class="tab" data-view="info" data-vp-tip="Über das Modul, Quellen und Verknüpfungen">📋 Info</button>
 </nav>
+</div>
 
 <main class="shell">
   <section class="view active" id="notfall">
@@ -479,6 +513,7 @@ html[data-theme="light"] .vm-btn.vm-good::before{border-color:rgba(18,148,96,.5)
       <p class="muted" style="font-size:12.5px;margin-top:-4px">Kombinationen für Einleitung, Nachdosierung (oft mit 0,9 % NaCl verdünnt) und Sedierung – Dosen berechnet für <b id="injPat">…</b>. Reine Spontanatmung → <b>O₂-Zufuhr + Monitoring</b> (SpO₂/EtCO₂) und Antagonisten bereithalten.</p>
       <div class="mset" style="margin:8px 0" data-vp-tip="Praxis-Wandprotokoll-Regeln – gelten für alle Injektionskombinationen">💉 <b>Praxis-Regeln:</b> Bei <b>Nagern/Exoten Ketamin SC statt IM</b> (IM → Muskelnekrose; SC = langsamerer Eintritt) · Tiere <b>&lt; 100 g: kein Ketamin</b> · Exoten warm halten &amp; nie alleine aufwachen lassen · Augensalbe (Ketamin → Exophthalmus) · Nachdosierung meist „gleiche Menge/⅓ der Initialdosis, mit NaCl verdünnt".</div>
       <div id="injRecord" style="margin-top:10px"></div>
+      <div class="med-log" style="margin-top:10px"></div>
       <div id="injCase" style="margin-top:10px"></div>
       <div id="injCare" style="margin-top:10px"></div>
       <div id="injCombos" style="margin-top:12px"></div>
@@ -491,6 +526,7 @@ html[data-theme="light"] .vm-btn.vm-good::before{border-color:rgba(18,148,96,.5)
   <section class="view" id="medis">
     <div class="card">
       <h3>Dosis-Rechner · Anästhesie & Notfall</h3>
+      <div class="med-log" style="margin-bottom:12px"></div>
       <div id="laCalc"></div>
       <input class="dsearch" id="dSearch" placeholder="Suchen: Propofol, Atropin, Adrenalin, Metamizol …">
       <div class="dfilters" id="dFilters"></div>
@@ -613,7 +649,7 @@ html[data-theme="light"] .vm-btn.vm-good::before{border-color:rgba(18,148,96,.5)
 var A = window.ANAES || {drugs:[],incidents:[],machine:{controls:[],ventModes:[]},fluids:[],species:[],vitals:{},info:"",sources:[]};
 var $ = function(s,r){return (r||document).querySelector(s);};
 var $$ = function(s,r){return Array.from((r||document).querySelectorAll(s));};
-var state = { sp: (A.species[0]&&A.species[0].id)||'hund', wt: 10, age:'adult', breed:null, incident:null, dfilter:'Alle', q:'', monMode:'ist', istVals:null, rhythm:'sinus', adrHigh:false, anMode:'gas', injInduction:null, injTopups:[], givenDrugs:[], dev:{o2:1, iso:2, mode:'vcv', auto:false, vp:{}}, ventSit:null };
+var state = { sp: (A.species[0]&&A.species[0].id)||'hund', wt: 10, age:'adult', breed:null, incident:null, dfilter:'Alle', q:'', monMode:'ist', istVals:null, rhythm:'sinus', adrHigh:false, anMode:'gas', injInduction:null, injTopups:[], givenDrugs:[], medGaben:[], dev:{o2:1, iso:2, mode:'vcv', auto:false, vp:{}}, ventSit:null };
 
 /* ---------- helpers: dose math ---------- */
 function parseConc(s){ if(!s) return null; var m = String(s).replace(',','.').match(/([0-9]*\.?[0-9]+)\s*(mg|mcg|µg|g|iu|u|units?)\s*\/\s*ml/i); if(!m) return null; var v=parseFloat(m[1]); var u=m[2].toLowerCase(); if(u==='g') v=v*1000; if(u==='mcg'||u==='µg') v=v/1000; return v; /* mg per mL, bzw. U/mL für Einheiten-Präparate (vasopressin/insulin) */ }
@@ -748,7 +784,7 @@ function renderIncidents(){
     html+=cats[c].map(function(i){ return '<button class="inc-btn'+(state.incident===i.id?' active':'')+'" data-inc="'+i.id+'" style="--c:'+(i.color||'var(--red)')+'" data-vp-tip="'+i.name+' – Schwelle, Sofortmaßnahmen, Geräte-Korrektur &amp; berechnete Dosen"><span class="ic">'+i.icon+'</span><span class="inc-tx"><b>'+i.name+'</b><span>'+(i.short||i.cls||'')+'</span></span><span class="inc-go">›</span></button>'; }).join('');
   });
   $('#incList').innerHTML=html;
-  $$('#incList .inc-btn').forEach(function(b){ b.onclick=function(){ state.incident=b.dataset.inc; state.ventSit=null; renderIncidents(); renderProto(); renderVentReco(); }; });
+  $$('#incList .inc-btn').forEach(function(b){ b.onclick=function(){ state.incident=b.dataset.inc; state.ventSit=null; renderIncidents(); renderProto(); renderVentReco(); navMerke(); }; });
 }
 function drugById(id){ return A.drugs.find(function(d){return d.id===id;}); }
 /* §7 Lokalanästhetika- & Lidocain-Höchst-Gesamtdosen (mg/kg) */
@@ -820,7 +856,11 @@ function renderDrugs(){
       '<div class="chips" style="margin-top:8px">'+giveBtn+fxTag+'</div>'+
       (d.sources&&d.sources.length?'<div class="src">Quelle: '+d.sources.join('; ')+'</div>':'')+'</div>';
   }).join('') : '<p class="muted">Keine Treffer.</p>';
-  $$('#drugList [data-give-drug]').forEach(function(b){ b.onclick=function(){ var id=b.dataset.giveDrug; var ix=state.givenDrugs.indexOf(id); if(ix>=0) state.givenDrugs.splice(ix,1); else state.givenDrugs.push(id);
+  $$('#drugList [data-give-drug]').forEach(function(b){ b.onclick=function(){ var id=b.dataset.giveDrug; var ix=state.givenDrugs.indexOf(id); var dd=drugById(id);
+    if(ix>=0) state.givenDrugs.splice(ix,1); else state.givenDrugs.push(id);
+    /* Erst JETZT wird protokolliert — die angezeigte Empfehlung allein erzeugt keine Zeile. */
+    medBuchen({kind:'medikament', kindText:(dd&&dd.cls)||'Medikament', id:id, name:(dd&&dd.name)||id,
+               dosis:medDosisText(id), storno:(ix>=0)});
     renderDrugs(); renderInjection(); if(mon.running) renderMonValues(); else { ventCoach(); renderVentPanel(); } }; });
 }
 /* Kurzes Folgen-Etikett fürs Medikament (aus DRUGFX-Tags) */
@@ -990,7 +1030,7 @@ function monResolve(){
 function monAlarms(r){ var v=r.v; function o(x,b){return x<b[0]||x>b[1];}
   return { hr:(r.hr===0||o(r.hr,v.hr)), spo2:r.spo2<v.spo2[0], etco2:(r.etco2===0||r.etco2<v.etco2[0]||r.etco2>v.etco2[1]), nibp:(r.nibp===0||r.nibp<v.map[0]), rr:(r.rr===0||r.rr<v.rr[0]||r.rr>v.rr[1]), temp:o(r.temp,v.temp) }; }
 function incName(id){ var i=(A.incidents||[]).find(function(x){return x.id===id;}); return i?i.name:id; }
-function gotoIncident(id){ if(!id)return; state.incident=id; switchTab('notfall'); renderIncidents(); renderProto(); window.scrollTo({top:0,behavior:'smooth'}); }
+function gotoIncident(id){ if(!id)return; navBuendel(function(){ state.incident=id; switchTab('notfall'); renderIncidents(); renderProto(); }); window.scrollTo({top:0,behavior:'smooth'}); }
 
 function renderMonScenarios(){
   $('#monScenarios').innerHTML=(MON().scenarios||[]).map(function(s){
@@ -1882,33 +1922,215 @@ function renderInjection(){
     var dose=d?(fmtRange(d[0],d[1])+' mg/kg'+(r.conc?' · '+r.conc+' mg/mL':'')):'für '+s.name+' nicht standardisiert';
     var mg=d?'<span class="dpill mg"><b>'+fmtRange(d[0]*state.wt,d[1]*state.wt)+' mg</b></span>':'';
     var ml=(d&&r.conc)?'<span class="dpill ml">≈ <b>'+fmtRange(d[0]*state.wt/r.conc,d[1]*state.wt/r.conc)+' mL</b></span>':'';
-    return '<div class="dose-card" id="rev-'+r.id+'" style="margin-bottom:8px"><div class="dose-top"><span class="dose-name">↩ '+r.name+'</span><span class="dose-cls">'+r.route+'</span></div>'+
+    var giv=(state.givenDrugs||[]).indexOf(r.id)>=0;
+    var giveR='<button class="chip give-chip'+(giv?' on':'')+'" data-give-rev="'+r.id+'" style="cursor:pointer" data-vp-tip="Als am Tier verabreicht markieren – erst dann steht der Antagonist im Narkoseprotokoll, und Berater/Coach rechnen ihn mit">'+(giv?'✓ gegeben':'○ als gegeben')+'</button>';
+    return '<div class="dose-card" id="rev-'+r.id+'" style="margin-bottom:8px'+(giv?';border-color:var(--green);box-shadow:0 0 0 1px var(--green) inset':'')+'"><div class="dose-top"><span class="dose-name">↩ '+r.name+'</span><span class="dose-cls">'+r.route+'</span></div>'+
       '<div class="dose-meta">Gegen: '+r.target+'</div>'+
       '<div class="dose-calc" style="margin-top:6px">'+mg+ml+'<span class="dpill">'+dose+'</span></div>'+
       '<div class="dose-meta" style="margin-top:5px"><b>Regel:</b> '+r.rule+'</div>'+
-      '<div class="dose-caution">⚠️ '+r.caution+'</div></div>';
+      '<div class="dose-caution">⚠️ '+r.caution+'</div>'+
+      '<div class="chips" style="margin-top:8px">'+giveR+'</div></div>';
   }).join('');
   $$('#injektion [data-inc]').forEach(function(b){ b.onclick=function(){ gotoIncident(b.dataset.inc); }; });
   $$('#injektion [data-scn]').forEach(function(b){ b.onclick=function(){ var c=(A.injection||[]).find(function(x){return x.id===b.dataset.scn;}); if(c&&c.scenario) loadInjScenario(c.scenario); }; });
   $$('#injektion [data-rev]').forEach(function(b){ b.onclick=function(){ var el=$('#rev-'+b.dataset.rev); if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); el.style.boxShadow='0 0 0 2px var(--cyan)'; setTimeout(function(){el.style.boxShadow='';},1400); } }; });
   $$('#injektion [data-give]').forEach(function(b){ b.onclick=function(){ var id=b.dataset.give, kind=b.dataset.kind;
-    if(kind==='Nachdosierung'){ var ix=state.injTopups.indexOf(id); if(ix>=0) state.injTopups.splice(ix,1); else state.injTopups.push(id); }
-    else { state.injInduction=(state.injInduction===id)?null:id; }
+    var kombo=function(cid){ return (A.injection||[]).find(function(x){return x.id===cid;}); };
+    var buche=function(cid, storno){ var c=kombo(cid); medBuchen({kind:'narkose', kindText:(c&&c.kind)||kind, id:cid,
+      name:(c&&c.name)||cid, dosis:c?medKomboText(c):'', route:(c&&c.route)||'', storno:!!storno}); };
+    if(kind==='Nachdosierung'){ var ix=state.injTopups.indexOf(id); if(ix>=0) state.injTopups.splice(ix,1); else state.injTopups.push(id); buche(id, ix>=0); }
+    else {
+      /* Beim Wechsel der Einleitung fällt die vorherige stillschweigend weg — das muss im
+       * Protokoll sichtbar sein, sonst stünde dort eine Narkose, die nie gegeben wurde. */
+      var vorher=state.injInduction, an=(vorher!==id);
+      state.injInduction=an?id:null;
+      if(an && vorher && vorher!==id) buche(vorher, true);
+      buche(id, !an);
+    }
     renderInjection(); if(mon.running) renderMonValues(); else ventCoach();
   }; });
-  var ir=$('#injReset'); if(ir) ir.onclick=function(){ state.injInduction=null; state.injTopups=[]; state.givenDrugs=[]; renderInjection(); renderDrugs(); if(mon.running) renderMonValues(); else { ventCoach(); renderVentPanel(); } };
+  /* Antagonisten sind ebenfalls Medikamente, die der Tierarzt gibt ODER bewusst nicht gibt —
+   * also dieselbe Bestätigung wie überall. Ihre IDs stehen auch in A.drugs, deshalb rechnet
+   * drugContext()/ventAdvice() sie sofort mit (Antagonist an Bord → Atemantrieb kehrt zurück). */
+  $$('#injektion [data-give-rev]').forEach(function(b){ b.onclick=function(){ var id=b.dataset.giveRev;
+    var r=(A.reversal||[]).find(function(x){return x.id===id;});
+    var ix=state.givenDrugs.indexOf(id); if(ix>=0) state.givenDrugs.splice(ix,1); else state.givenDrugs.push(id);
+    medBuchen({kind:'antagonist', kindText:'Antagonist', id:id, name:(r&&r.name)||id, dosis:medRevText(r),
+               route:(r&&r.route)||'', storno:(ix>=0)});
+    renderInjection(); renderDrugs(); if(mon.running) renderMonValues(); else { ventCoach(); renderVentPanel(); }
+  }; });
+  var ir=$('#injReset'); if(ir) ir.onclick=function(){
+    state.injInduction=null; state.injTopups=[]; state.givenDrugs=[];
+    /* Die Markierungen gehen, die Protokollzeilen bleiben: eine Dokumentation, die sich mit einem
+     * Knopfdruck ausradieren lässt, wäre keine. Der Vorgang selbst wird als Zeile vermerkt. */
+    medBuchen({kind:'hinweis', kindText:'Markierungen', name:'Alle „gegeben"-Markierungen zurückgesetzt', dosis:'', storno:true});
+    renderInjection(); renderDrugs(); if(mon.running) renderMonValues(); else { ventCoach(); renderVentPanel(); } };
 }
+/* =========================================================================
+ * VERABREICHUNGS-PROTOKOLL — es wird NUR protokolliert, was bestätigt wurde
+ * =========================================================================
+ * Regel (Wunsch 01.08.2026, Tierarzt): Eine EMPFEHLUNG ist keine Gabe. Die App rechnet und
+ * empfiehlt laufend Narkosemittel und Notfallmedikamente — davon darf nichts im Narkoseprotokoll
+ * landen. Der Tierarzt kann jede Empfehlung übergehen (anderes Mittel, andere Dosis, gar nichts).
+ * Erst der ausdrückliche Klick auf „○ als gegeben" macht aus einer Empfehlung eine Gabe; dann
+ * wird sie mit Uhrzeit, Dosis und Weg festgehalten — und zwar an ALLEN drei Stellen, an denen
+ * markiert werden kann: Injektionsnarkose (Einleitung/Nachdosierung/Sedierung), Antagonisten und
+ * der Medikamenten-Rechner.
+ *
+ * WOHIN DER EINTRAG GEHT: er bleibt nicht in diesem Browserfenster. Die App meldet ihn per
+ * postMessage an die VetStation-Shell (ui/vetstation-live.js). Die kennt den Patienten dieses
+ * Fensters und schickt ihn über die Bridge in das dauerhafte OP-Protokoll
+ * (bridge/data/protokoll.json) — von dort steht er im PDF-Ausdruck UND in der Fern-Ansicht der
+ * Web-App. Läuft die App ohne Shell (Web-App, Einzelaufruf), bleibt die Liste lokal sichtbar;
+ * es wird nie etwas an ein Gerät zurückgeschickt.
+ *
+ * ZURÜCKNEHMEN LÖSCHT NICHTS. Wer das Häkchen wieder entfernt, erzeugt eine eigene Zeile
+ * („zurückgenommen"). Ein Narkoseprotokoll, aus dem sich Zeilen entfernen lassen, wäre als
+ * Dokument wertlos — genau derselbe Grund, aus dem die Datenbankregel die Zeilen unveränderlich
+ * macht (installer/firebase-rtdb-rules.json).                                                  */
+function escH(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function medZeit(ts){ var d=new Date(ts); function p(n){ return (n<10?'0':'')+n; } return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()); }
+/* Dosistext eines Einzelmedikaments — dieselbe Rechnung wie im angezeigten Dosis-Rechner. */
+function medDosisText(id){
+  var d=drugById(id), spd=d&&d.species?d.species[state.sp]:null;
+  if(!spd||spd.low==null) return '';
+  var dd={low:spd.low,high:spd.high,unit:spd.unit,conc:spd.conc};
+  if(id==='adrenalin'&&state.adrHigh){ dd.low=0.1; dd.high=0.1; }
+  var c=calc(dd,state.wt); if(!c) return '';
+  var t=fmtRange(c.amtLo,c.amtHi)+' '+c.amtUnit;
+  if(c.mlLo!=null) t+=' ≈ '+fmtRange(c.mlLo,c.mlHi)+' mL';
+  return t+(spd.route?' '+spd.route:'');
+}
+/* Dosistext einer Injektions-Kombination: jede Komponente einzeln, wie auf der Karte gerechnet. */
+function medKomboText(c){
+  return (c.comp||[]).map(function(k){
+    if(k.titr) return k.n+' → '+k.titr;
+    if(k.mlkg) return k.n+' → '+fmtRange(k.mlkg[0]*state.wt,k.mlkg[1]*state.wt)+' mL';
+    var t=k.n+' → '+fmtRange(k.mgkg[0]*state.wt,k.mgkg[1]*state.wt)+' mg';
+    if(k.conc) t+=' ≈ '+fmtRange(k.mgkg[0]*state.wt/k.conc,k.mgkg[1]*state.wt/k.conc)+' mL';
+    return t;
+  }).join(' + ');
+}
+/* Dosistext eines Antagonisten. */
+function medRevText(r){
+  var d=r&&r.sp?r.sp[state.sp]:null; if(!d) return '';
+  var t=fmtRange(d[0]*state.wt,d[1]*state.wt)+' mg';
+  if(r.conc) t+=' ≈ '+fmtRange(d[0]*state.wt/r.conc,d[1]*state.wt/r.conc)+' mL';
+  return t+(r.route?' '+r.route:'');
+}
+/* Läuft diese App in der VetStation-Shell (also mit angeschlossener Station), oder allein?
+ * Davon hängt ab, was der Fusstext verspricht — in der Fern-Ansicht und beim Einzelaufruf gibt
+ * es keine Bridge, die Liste bliebe dann in diesem Browser. Ein Versprechen, das nicht gilt,
+ * wäre bei einer Krankenakte schlimmer als gar keins. */
+function medAnStation(){ try{ return !!(window.parent && window.parent!==window); }catch(e){ return false; } }
+function medBuchen(rec){
+  if(!rec||!rec.name) return;
+  rec.ts=Date.now(); rec.sp=state.sp; rec.spName=sp().name; rec.kg=state.wt;
+  state.medGaben.push(rec);
+  if(state.medGaben.length>400) state.medGaben.shift();
+  /* An die Shell melden. '*' als Ziel ist hier richtig: die Shell liegt auf DEMSELBEN Ursprung
+   * (127.0.0.1:8770), und ein engeres targetOrigin müsste den Port fest kennen — der ist
+   * konfigurierbar. Der Eintrag enthält ohnehin nur das, was der Tierarzt selbst angeklickt hat. */
+  try{ if(medAnStation()) window.parent.postMessage({vsMed:rec}, '*'); }catch(e){}
+  renderMedLog();
+}
+function medLogHtml(){
+  var L=state.medGaben||[];
+  if(!L.length) return '<div class="dose-caution" style="border-color:rgba(0,216,255,.35);background:rgba(0,216,255,.07);color:#bff0ff">📋 <b>Verabreichungs-Protokoll noch leer.</b> Empfohlene Narkosemittel und Medikamente werden <b>nicht</b> von selbst protokolliert – du entscheidest. Erst ein Klick auf „○ als gegeben" schreibt die Gabe mit Uhrzeit und Dosis ins Narkoseprotokoll (PDF <b>und</b> Fern-Ansicht).</div>';
+  return '<div class="med-log-box"><div class="med-log-h">📋 Verabreicht &amp; protokolliert · '+(L.length===1?'1 Eintrag':L.length+' Einträge')+'</div>'+
+    L.slice().reverse().map(function(r){
+      return '<div class="gabe-row'+(r.storno?' storno':'')+'"><span class="t">'+medZeit(r.ts)+'</span>'+
+        '<span class="n">'+(r.storno?'↩ ':'')+escH(r.name)+'</span>'+
+        '<span class="k">'+escH(r.storno?'zurückgenommen':(r.kindText||r.kind||''))+'</span>'+
+        '<span class="d">'+escH(r.dosis||'')+'</span></div>';
+    }).join('')+
+    '<div class="med-log-f">'+(medAnStation()
+      ? 'Diese Zeilen stehen im Narkoseprotokoll — im PDF-Ausdruck und in der Fern-Ansicht. Nur Bestätigtes; eine übergangene Empfehlung erscheint dort nie.'
+      : 'Ohne angeschlossene Station bleibt diese Liste in diesem Browser. Das verbindliche Narkoseprotokoll führt die VetStation am Praxis-PC — dort markierte Gaben stehen in der Fern-Ansicht unter „📋 Narkoseprotokoll".')+'</div></div>';
+}
+function renderMedLog(){ $$('.med-log').forEach(function(el){ el.innerHTML=medLogHtml(); }); }
+
+/* =========================================================================
+ * ANSICHTS-VERLAUF — Zurück und Weiter, weil es hier keinen Browser-Knopf gibt
+ * =========================================================================
+ * Die App springt an vielen Stellen VON SELBST in eine andere Ansicht: gotoIncident() aus dem
+ * Monitor, „→ Protokoll" aus dem Beatmungsberater, das Notfall-Dock, „▶ Folge im Monitor". Wer
+ * dorthin gesprungen ist, saß bisher in einer Sackgasse — der Kiosk läuft in einem Edge ohne
+ * Fensterrahmen (kein Zurück-Knopf), und in der Web-App würde der Browser-Zurück die Seite
+ * ganz verlassen. Deshalb führt die App ihren eigenen Verlauf: Ansicht + gewählter Zwischenfall.
+ * Alt+← / Alt+→ tun dasselbe wie die Knöpfe. */
+var navHist=[], navPos=-1, navStumm=false;
+function navAktiv(){ var a=document.querySelector('.view.active'); return a?a.id:'notfall'; }
+/* Ein Sprung, EIN Verlaufseintrag. Mehrere Wege hierher bestehen aus zwei Schritten (erst den
+ * Reiter „Notfall" wählen, dann den Zwischenfall) — ohne Bündelung entstünde eine Zwischenstation
+ * „Notfall ohne Zwischenfall", und „Zurück" führte dorthin statt an die Stelle, von der man kam. */
+function navBuendel(fn){
+  var vorher=navStumm; navStumm=true;
+  try{ fn(); } finally { navStumm=vorher; }
+  navMerke();
+}
+function navMerke(){
+  if(navStumm) return;
+  var z={view:navAktiv(), inc:state.incident||null}, cur=navHist[navPos];
+  if(cur && cur.view===z.view && cur.inc===z.inc) return;
+  navHist=navHist.slice(0,navPos+1);
+  navHist.push(z);
+  if(navHist.length>60) navHist.shift();
+  navPos=navHist.length-1;
+  navKnoepfe();
+}
+function navName(z){
+  if(!z) return '';
+  var t=document.querySelector('#tabs .tab[data-view="'+z.view+'"]');
+  var n=t?t.textContent.trim():z.view;
+  if(z.inc){ var i=(A.incidents||[]).find(function(x){return x.id===z.inc;}); if(i) n+=' · '+i.name; }
+  return n;
+}
+function navGehe(n){
+  var z=navHist[n]; if(!z) return;
+  navPos=n; navStumm=true;
+  try{
+    if((z.inc||null)!==(state.incident||null)){ state.incident=z.inc; state.ventSit=null; renderIncidents(); renderProto(); }
+    switchTab(z.view);
+  } finally { navStumm=false; }
+  navKnoepfe();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function navZurueck(){ if(navPos>0) navGehe(navPos-1); }
+function navVor(){ if(navPos<navHist.length-1) navGehe(navPos+1); }
+function navKnoepfe(){
+  var b=$('#navBack'), f=$('#navFwd');
+  if(b){ var kann=navPos>0; b.disabled=!kann; b.title=kann?('Zurück zu: '+navName(navHist[navPos-1])+'   (Alt+←)'):'Keine vorherige Ansicht'; }
+  if(f){ var k2=navPos<navHist.length-1; f.disabled=!k2; f.title=k2?('Weiter zu: '+navName(navHist[navPos+1])+'   (Alt+→)'):'Keine nächste Ansicht'; }
+}
+
 function switchTab(v){
   $$('#tabs .tab').forEach(function(t){ t.classList.toggle('active',t.dataset.view===v); });
   $$('.view').forEach(function(x){ x.classList.toggle('active',x.id===v); });
   if(v==='geraet'){ monStart(); renderMachine(); renderDevCtrl(); renderVentPanel(); } else { monStop(); }
   if(v==='settings') renderSettings();
   if(v==='bedienung') renderOperating();
+  /* Zusatzansichten, die von aussen angehängt werden (die Fern-Ansicht der Web-App hängt einen
+   * eigenen Reiter ein), erfahren so von einem Wechsel — auch dann, wenn er über Zurück/Weiter
+   * kommt und nicht über einen Klick auf den Reiter. Ohne das stünde nach „Zurück" eine
+   * eingefrorene Ansicht da, bis zufällig der nächste Datentakt sie neu zeichnet. */
+  try{ document.dispatchEvent(new CustomEvent('vs:view',{detail:{view:v}})); }catch(e){}
+  navMerke();
 }
-function rerender(){ renderProto(); renderLaCalc(); renderDrugs(); renderSettings(); renderMachine(); renderDevCtrl(); renderVentPanel(); renderInjection(); renderBreedProfile(); updateBreedBanner(); if(mon.running) renderMonValues(); }
+function rerender(){ renderProto(); renderLaCalc(); renderDrugs(); renderSettings(); renderMachine(); renderDevCtrl(); renderVentPanel(); renderInjection(); renderBreedProfile(); updateBreedBanner(); renderMedLog(); if(mon.running) renderMonValues(); }
 function boot(){
-  syncPatient(); renderIncidents(); renderFilters(); renderLaCalc(); renderDrugs(); renderInfo(); renderCapno(); renderEkgGallery(); renderInjection(); renderBreedProfile(); renderVentPanel();
+  syncPatient(); renderIncidents(); renderFilters(); renderLaCalc(); renderDrugs(); renderInfo(); renderCapno(); renderEkgGallery(); renderInjection(); renderBreedProfile(); renderVentPanel(); renderMedLog();
   $$('#tabs .tab').forEach(function(t){ t.onclick=function(){ switchTab(t.dataset.view); }; });
+  /* Ansichts-Verlauf: Knöpfe + Tastatur. Die erste Ansicht wird als Anfang des Verlaufs gemerkt,
+   * damit „Zurück" nach dem ersten Sprung sofort funktioniert. */
+  if($('#navBack')) $('#navBack').onclick=function(){ navZurueck(); };
+  if($('#navFwd')) $('#navFwd').onclick=function(){ navVor(); };
+  document.addEventListener('keydown',function(e){
+    if(!e.altKey||e.ctrlKey||e.metaKey||e.shiftKey) return;
+    if(e.key==='ArrowLeft'){ e.preventDefault(); navZurueck(); }
+    else if(e.key==='ArrowRight'){ e.preventDefault(); navVor(); }
+  });
+  navMerke();
   $('#wt').addEventListener('input',function(e){ var v=parseFloat(e.target.value); state.wt=(v>0?v:0); syncPatient(); rerender(); });
   $('#age').addEventListener('change',function(e){ state.age=e.target.value; renderSettings(); });
   if($('#breedIn')) $('#breedIn').addEventListener('change',function(e){ commitBreed(e.target.value); });
@@ -1929,6 +2151,13 @@ try{ window.state=state;
   window.renderMachine=renderMachine; window.renderDevCtrl=renderDevCtrl;
   window.renderVentPanel=renderVentPanel; window.renderVentModes=renderVentModes;
   window.renderMonValues=renderMonValues;
+  /* Verabreichungs-Protokoll + Ansichts-Verlauf nach aussen: die Shell liest die Gaben fuer den
+   * PDF-Ausdruck, und ein Fensterkopf-Knopf kann zurueckblaettern. OHNE window.* waere beides am
+   * Ende dieser IIFE eingesperrt — genau der Fehler, an dem der Veta-5-Spiegel einmal still tot
+   * war (siehe Kommentar oben). */
+  window.medGaben=function(){ return (state.medGaben||[]).slice(); };
+  window.renderMedLog=renderMedLog;
+  window.navZurueck=navZurueck; window.navVor=navVor; window.navBuendel=navBuendel;
   /* AF-Quelle vom Bridge (Kapnograph vor Monitor). Wird am AF-Feld angezeigt. */
   window.__setAfSource=function(src){ state._afSource=(src==='kapnograph'||src==='monitor')?src:null; try{ if(mon.running) renderMonValues(); }catch(e){} };
 }catch(e){}
@@ -2458,8 +2687,13 @@ var fab=document.createElement('button'); fab.type='button'; fab.className='nf-f
 fab.setAttribute('aria-label','Notfall-Schnellzugriff einblenden'); fab.setAttribute('data-vp-tip','Notfall-Schnellzugriff');
 document.body.appendChild(fab);
 function goInc(id){
-  var tab=document.querySelector('.tab[data-view="notfall"]'); if(tab) tab.click();
-  var b=document.querySelector('#incList .inc-btn[data-inc="'+id+'"]'); if(b) b.click();
+  /* Reiter + Zwischenfall sind EIN Sprung, also auch ein einziger Verlaufseintrag —
+   * sonst führte „Zurück" auf einen leeren Notfall-Reiter statt dorthin, wo man war. */
+  var tun=function(){
+    var tab=document.querySelector('.tab[data-view="notfall"]'); if(tab) tab.click();
+    var b=document.querySelector('#incList .inc-btn[data-inc="'+id+'"]'); if(b) b.click();
+  };
+  if(typeof window.navBuendel==='function') window.navBuendel(tun); else tun();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 dock.addEventListener('click',function(e){
@@ -2592,9 +2826,33 @@ html[data-theme="light"] .vl-box input{background:#fff;border-color:rgba(0,0,0,.
 .fl-prot td.l,.fl-prot th.l{text-align:left}
 .fl-prot tr.mark td{background:rgba(255,140,60,.14)}
 #druckblatt{display:none}
+/* Druckvorschau: das fertige Blatt IN der Seite, mit Rückweg (siehe druckAusloesen). */
+#druckvorschau{position:fixed;inset:0;z-index:10050;display:none;flex-direction:column;background:#0a0c10}
+#druckvorschau.open{display:flex}
+html.dv-on,html.dv-on body{overflow:hidden}
+#druckvorschau .dv-head{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line,rgba(255,255,255,.15));background:rgba(255,255,255,.04);flex-wrap:wrap}
+#druckvorschau .dv-back{border-color:var(--cyan,#1cbfe0);color:#bff0ff;font-weight:700}
+#druckvorschau .dv-title{font-size:13.5px;font-weight:700;padding:0 4px}
+#druckvorschau .dv-body{flex:1;overflow:auto;padding:18px;display:flex;justify-content:center;background:#3a3f45}
+#druckvorschau .dv-blatt{background:#fff;color:#000;width:min(900px,100%);height:max-content;padding:18mm 14mm;border-radius:3px;box-shadow:0 10px 40px rgba(0,0,0,.5);font:11px/1.45 "Segoe UI",Arial,sans-serif}
+#druckvorschau .dv-blatt h1{font-size:16px;margin:0 0 2px}
+#druckvorschau .dv-blatt h2{font-size:12.5px;margin:12px 0 4px;border-bottom:1px solid #999;padding-bottom:2px}
+#druckvorschau .dv-blatt table{width:100%;border-collapse:collapse;font-size:10px}
+#druckvorschau .dv-blatt th,#druckvorschau .dv-blatt td{border:1px solid #999;padding:2px 4px;text-align:right}
+#druckvorschau .dv-blatt th{background:#eee;text-align:center}
+#druckvorschau .dv-blatt td.l,#druckvorschau .dv-blatt th.l{text-align:left}
+#druckvorschau .dv-blatt .kv{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:1px 10px;font-size:10.5px}
+#druckvorschau .dv-blatt .fuss{margin-top:14px;font-size:9px;color:#444;border-top:1px solid #999;padding-top:4px}
+#druckvorschau .dv-blatt tr.medrow td{background:#eef6ff;text-align:left}
+#druckvorschau .dv-blatt tr.storno td{text-decoration:line-through;color:#666}
+#druckvorschau .dv-foot{padding:7px 12px;font-size:11.5px;color:var(--muted,#9aa8bb);border-top:1px solid var(--line,rgba(255,255,255,.15))}
+/* Gaben-Zeilen in der Bildschirmtabelle hervorheben */
+.fl-prot tr.medrow td{background:rgba(34,217,141,.16);text-align:left}
+.fl-prot tr.storno td{opacity:.6;text-decoration:line-through}
 @media print{
   /* Feste Elemente und Navigation raus, nur das Protokollblatt drucken. */
-  #vetlive-bar,#vetlive-launch,#vetlive-login,#vetlive-signup,#tabs,.nf-dock,.nf-fab,.topbar,header,footer{display:none !important}
+  #druckvorschau{display:none !important}
+  #vetlive-bar,#vetlive-launch,#vetlive-login,#vetlive-signup,#tabs,.navbar,.nf-dock,.nf-fab,.topbar,header,footer{display:none !important}
   html.vetlive-on body{padding-top:0 !important}
   body{background:#fff !important;color:#000 !important}
   main.shell,.view{display:none !important}
@@ -2603,6 +2861,8 @@ html[data-theme="light"] .vl-box input{background:#fff;border-color:rgba(0,0,0,.
   #druckblatt h2{font-size:12.5px;margin:12px 0 4px;border-bottom:1px solid #999;padding-bottom:2px}
   #druckblatt table{width:100%;border-collapse:collapse;font-size:10px}
   #druckblatt th,#druckblatt td{border:1px solid #999;padding:2px 4px;text-align:right}
+  #druckblatt tr.medrow td{background:#eef6ff;text-align:left}
+  #druckblatt tr.storno td{text-decoration:line-through;color:#666}
   #druckblatt th{background:#eee;text-align:center}
   #druckblatt td.l,#druckblatt th.l{text-align:left}
   #druckblatt .kv{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:1px 10px;font-size:10.5px}
@@ -3272,9 +3532,18 @@ function renderFernView(sofort){
   flLast=jetzt;
   var p = sel && patientenVon(selSaal)[sel];
   if(!p){
+    /* Wer das Anmeldefenster geschlossen hat (es hat seit 1.2.3 einen Rückweg), muss von hier
+     * wieder hineinkommen — sonst wäre der Reiter eine Sackgasse mit einem Satz darin. */
+    var nochNicht = (connState==='auth');
     box.innerHTML='<section class="card"><h3>📡 Fern-Live</h3><div class="fl-hint">'+
-      (connState==='live'?'Verbunden — aber in '+esc(selSaal?saalName(selSaal):'diesem Konto')+' ist gerade kein Patient aktiv.':'Noch keine Verbindung zur Praxis-Station.')+
-      '</div></section>';
+      (connState==='live'?'Verbunden — aber in '+esc(selSaal?saalName(selSaal):'diesem Konto')+' ist gerade kein Patient aktiv.'
+        : nochNicht?'Noch nicht angemeldet. Melden Sie sich mit dem Praxis-Konto an, dann erscheinen hier alle OP-Säle dieser Praxis.'
+        :'Noch keine Verbindung zur Praxis-Station.')+
+      '</div>'+
+      (nochNicht?'<div style="margin-top:8px"><button class="btn" type="button" id="flAnmelden">🔑 Jetzt anmelden</button></div>':'')+
+      '</section>';
+    var an=box.querySelector('#flAnmelden');
+    if(an) an.onclick=function(){ zeigeAnmeldung(letzteMail(), ''); };
     return;
   }
   var mSaal = saalMeta(selSaal);
@@ -3375,6 +3644,22 @@ function renderFernView(sofort){
   var zeilen = Object.keys(prot).sort(function(a,b){ return Number(a)-Number(b); }).map(function(t){ return prot[t]; })
     .filter(function(x){ return x && x.ts; });
   var andere = verlegungSaele(pid).filter(function(s){ return s!==selSaal; });
+
+  /* ---- Verabreichte Medikamente: eigene Karte, weil es die erste Frage an ein Narkoseprotokoll ist ----
+   * Hier steht ausschliesslich, was der Tierarzt an der Station als „gegeben" bestaetigt hat.
+   * Die Empfehlungen, die die App danebenrechnet, kommen NICHT hierher — er kann jede uebergehen. */
+  var gaben = nurGaben(zeilen);
+  var gabenBlock = '<section class="card"><h3>💉 Verabreichte Medikamente &amp; Narkosemittel</h3>'+
+    (gaben.length
+      ? '<div class="fl-hint">'+(gaben.length===1?'1 bestätigter Eintrag':gaben.length+' bestätigte Einträge')+' · zuletzt '+
+          esc(zeitText(gaben[gaben.length-1].ts))+'</div>'+
+        gabenTabelle(gaben, 'fl-prot')+
+        '<div class="fl-hint">Nur was am Praxis-PC ausdrücklich als „gegeben" markiert wurde. Berechnete '+
+          'Empfehlungen der Station stehen hier nie — der Tierarzt entscheidet, ob er sie gibt.</div>'
+      : '<div class="fl-hint">Noch keine Gabe bestätigt. Die Station protokolliert ein Medikament erst, wenn '+
+          'es am Praxis-PC als „gegeben" markiert wird — empfohlene Mittel erscheinen hier absichtlich nicht.</div>')+
+    '</section>';
+
   var protokollBlock = '<section class="card"><h3>📋 Narkoseprotokoll</h3>'+
     '<div class="fl-hint">'+esc(saalTitel(selSaal))+' — '+esc(tierText(selSaal, sel))+'</div>'+
     (zeilen.length
@@ -3397,7 +3682,7 @@ function renderFernView(sofort){
       '<div class="fl-grid">'+tiles+'</div>'+
       '<div class="fl-hint">Rhythmus: <b>'+esc(v.ekgRhythm||'–')+'</b> · Kapnogramm-Form: <b>'+esc(v.capnoShape||'–')+'</b> · Pleth: <b>'+esc(v.pleth||'–')+'</b></div>'+
     '</section>'+
-    beurteilung + protokollBlock + beatmung + ekg + alarme + geraete + stamm + stationInfo + rohwerte;
+    beurteilung + gabenBlock + protokollBlock + beatmung + ekg + alarme + geraete + stamm + stationInfo + rohwerte;
 
   var incBtn=box.querySelector('[data-fl-inc]');
   if(incBtn) incBtn.onclick=function(){
@@ -3415,10 +3700,44 @@ function zeitText(ts){
 }
 function z(x, n){ return (x==null||x==='')?'–':(typeof x==='number'?(n?x.toFixed(n):String(x)):esc(String(x))); }
 
+/*
+ * MEDIKAMENTENGABEN IM VERLAUF.
+ *
+ * Die Station schreibt eine vom Tierarzt bestaetigte Gabe als eigene Protokollzeile
+ * (art:'med', registry.js medikamentGabe). Sie hat keine Messwerte — acht leere Zellen mit einem
+ * Text ganz rechts waeren hier das Schlechteste, was man daraus machen kann: genau die Zeile, auf
+ * die es ankommt, waere die unauffaelligste der Tabelle. Deshalb bekommt sie eine durchgehende
+ * Zeile mit Uhrzeit, Mittel und Dosis. Eine zurueckgenommene Markierung bleibt sichtbar und wird
+ * durchgestrichen — geloescht wird in einem Narkoseprotokoll nichts.
+ */
+function medSpaltenzahl(mitSaal){ return (mitSaal?1:0)+10; }
+function medZeile(e, mitSaal){
+  var m=e.med||{};
+  var txt=(m.storno?'zurückgenommen: ':'gegeben: ')+(m.name||'')+(m.dosis?' — '+m.dosis:'')+(m.route?' · '+m.route:'');
+  return '<tr class="medrow'+(m.storno?' storno':'')+'">'+
+    (mitSaal?'<td class="l">'+esc(e.__saal||'')+'</td>':'')+
+    '<td class="l">'+esc(zeitText(e.ts))+'</td>'+
+    '<td class="l" colspan="'+(medSpaltenzahl(mitSaal)-(mitSaal?2:1))+'">'+
+      '<b>'+(m.storno?'↩':'💉')+' '+esc(m.kindText||m.kind||'Medikament')+'</b> · '+esc(txt)+'</td></tr>';
+}
+/* Nur die Gaben aus einer Protokollliste — fuer die eigene Karte und den Ausdruck. */
+function nurGaben(zeilen){ return (zeilen||[]).filter(function(e){ return e && e.art==='med' && e.med; }); }
+function gabenTabelle(gaben, cls){
+  if(!gaben.length) return '';
+  return '<div style="overflow-x:auto"><table class="'+cls+'">'+
+    '<tr><th class="l">Zeit</th><th class="l">Art</th><th class="l">Mittel</th><th class="l">Dosis / Weg</th></tr>'+
+    gaben.map(function(e){ var m=e.med||{};
+      return '<tr'+(m.storno?' class="storno"':'')+'><td class="l">'+esc(zeitText(e.ts))+'</td>'+
+        '<td class="l">'+esc(m.storno?'zurückgenommen':(m.kindText||m.kind||''))+'</td>'+
+        '<td class="l">'+esc(m.name||'')+'</td>'+
+        '<td class="l">'+esc((m.dosis||'')+(m.route?'  '+m.route:''))+'</td></tr>';
+    }).join('')+'</table></div>';
+}
 function protokollTabelle(zeilen, cls, mitSaal){
   var kopf='<tr>'+(mitSaal?'<th class="l">Saal</th>':'')+
     '<th class="l">Zeit</th><th>HF</th><th>SpO₂</th><th>EtCO₂</th><th>AF</th><th>SYS/DIA</th><th>MAP</th><th>Temp</th><th>Iso</th><th class="l">Befund / Rhythmus</th></tr>';
   var body=zeilen.map(function(e){
+    if(e && e.art==='med') return medZeile(e, mitSaal);
     var bd = e.finding || e.rhythm || '';
     return '<tr'+(e.finding?' class="mark"':'')+'>'+
       (mitSaal?'<td class="l">'+esc(e.__saal||'')+'</td>':'')+
@@ -3479,12 +3798,23 @@ function drucke(p, zeilen){
         ['HF aus RR-Abständen', p.ekgAnalyse.hf!=null?p.ekgAnalyse.hf+'/min':null],
         ['QRS-Breite', p.ekgAnalyse.qrsBreiteMs!=null?p.ekgAnalyse.qrsBreiteMs+' ms':null],
         ['ST', p.ekgAnalyse.st]]) : '')+
+    (function(){ var g=nurGaben(zeilen);
+      return '<h2>Verabreichte Medikamente / Narkosemittel ('+g.length+')</h2>'+
+        (g.length ? gabenTabelle(g, 'druck')
+          : '<div style="font-size:11px">Keine Gabe bestätigt. Die Station protokolliert nur, was am '+
+            'Praxis-PC ausdrücklich als „gegeben" markiert wurde — berechnete Empfehlungen erscheinen nicht.</div>'); })()+
     '<h2>Verlauf ('+zeilen.length+' Einträge)</h2>'+
     protokollTabelle(zeilen, 'druck')+
     '<div class="fuss">Erstellt aus der Fern-Ansicht der VetStation. Die Werte stammen unverändert von den ' +
       'angeschlossenen Geräten. Diese Auswertung ersetzt keine tierärztliche Beurteilung; ' +
       'Dosierungen und Maßnahmen sind vor Anwendung zu prüfen.</div>';
-  druckAusloesen(blatt);
+  var pid2 = p.patientId || sel;
+  var andere2 = verlegungSaele(pid2).filter(function(s){ return s!==selSaal; });
+  druckAusloesen(blatt, {
+    titel: 'Narkoseprotokoll · '+(p.patientName||p.patientId||'Patient')+' · '+druckKopf(selSaal),
+    andereTitel: andere2.length ? 'Verlauf beider Säle ›' : null,
+    andere: andere2.length ? function(){ druckeVerlegung(p, pid2); } : null,
+  });
 }
 
 /*
@@ -3537,19 +3867,67 @@ function druckeVerlegung(p, pid){
       (p&&p.patientName?'<b>Name</b><span>'+esc(p.patientName)+'</span>':'')+
       '<b>Tierart</b><span>'+esc(sp(p&&p.species).name)+'</span>'+
       ((p&&p.weightKg!=null)?'<b>Gewicht</b><span>'+esc(p.weightKg+' kg')+'</span>':'')+'</div>'+
+    (function(){ var g=nurGaben(alle);
+      return g.length ? ('<h2>Verabreichte Medikamente / Narkosemittel ('+g.length+')</h2>'+gabenTabelle(g,'druck')) : ''; })()+
     '<h2>Verlauf beider Säle ('+alle.length+' Einträge)</h2>'+
     protokollTabelle(alle, 'druck', true)+
     '<div class="fuss">Die Zeilen stammen unverändert aus den getrennten Saalprotokollen und sind hier nur '+
       'nach Uhrzeit zusammengestellt — in der Datenbank bleibt jedes Protokoll bei seinem OP-Saal. '+
       'Diese Auswertung ersetzt keine tierärztliche Beurteilung.</div>';
-  druckAusloesen(blatt);
+  druckAusloesen(blatt, {
+    titel: 'Narkoseprotokoll · beide Säle · '+String(pid),
+    andereTitel: '‹ Nur '+saalName(selSaal),
+    andere: function(){ var prot2=protokoll[protSchluessel(selSaal, pid)] || {};
+      var z2=Object.keys(prot2).sort(function(a,b){ return Number(a)-Number(b); }).map(function(t){ return prot2[t]; })
+        .filter(function(x){ return x && x.ts; });
+      drucke(p, z2); },
+  });
 }
-function druckAusloesen(blatt){
-  // Nach dem Drucken wieder leeren, damit das Blatt nicht veraltet stehen bleibt.
-  var aufraeumen=function(){ blatt.innerHTML=''; window.removeEventListener('afterprint', aufraeumen); };
-  window.addEventListener('afterprint', aufraeumen);
-  setTimeout(function(){ window.print(); }, 60);
+/*
+ * DRUCKVORSCHAU MIT RUECKWEG.
+ *
+ * Bis 1.2.2 sprang der Klick auf „Protokoll drucken" sofort in den Druckdialog des Browsers.
+ * Der ist ein FREMDES Fenster: er legt sich vor die Seite, zeigt das Blatt als PDF und hat keinen
+ * Knopf, der in das Dashboard zurueckfuehrt — auf einem Tablet in der Praxis ist das eine
+ * Sackgasse, und wer den Dialog wegwischt, weiss nicht, ob er noch beim richtigen Patienten ist.
+ *
+ * Deshalb wird das fertige Blatt zuerst IN der Seite gezeigt, mit einer Kopfzeile, die drei Wege
+ * anbietet: zurueck zur Ansicht, zwischen den beiden Blaettern blaettern (ein Saal / beide Saele
+ * bei einer Verlegung) und erst dann drucken. Esc fuehrt ebenfalls zurueck. Gedruckt wird
+ * unveraendert dasselbe eingefrorene Blatt — die Vorschau ist genau das, was aufs Papier geht.
+ */
+var druckZurueck=null;      // Funktion, die die Vorschau schliesst (auch fuer Esc)
+function druckAusloesen(blatt, opt){
+  opt=opt||{};
+  var host=document.getElementById('druckvorschau');
+  if(!host){ host=document.createElement('div'); host.id='druckvorschau'; document.body.appendChild(host); }
+  var kopf='<div class="dv-head">'+
+    '<button class="btn dv-back" type="button" id="dvBack">← Zurück zur Ansicht</button>'+
+    (opt.andereTitel?'<button class="btn" type="button" id="dvAlt">'+esc(opt.andereTitel)+'</button>':'')+
+    '<span class="dv-title">'+esc(opt.titel||'Narkoseprotokoll')+'</span>'+
+    '<div style="flex:1"></div>'+
+    '<button class="btn" type="button" id="dvPrint">🖨 Jetzt drucken</button>'+
+    '<button class="btn" type="button" id="dvClose">✕</button></div>';
+  host.innerHTML=kopf+'<div class="dv-body"><div class="dv-blatt">'+blatt.innerHTML+'</div></div>'+
+    '<div class="dv-foot">Das Blatt ist beim Klick eingefroren — gedruckt wird genau das, was hier steht. '+
+    'Zurück geht immer: Knopf oben links oder Esc.</div>';
+  host.classList.add('open');
+  document.documentElement.classList.add('dv-on');
+
+  var zu=function(){
+    host.classList.remove('open'); document.documentElement.classList.remove('dv-on');
+    host.innerHTML=''; blatt.innerHTML=''; druckZurueck=null;
+  };
+  druckZurueck=zu;
+  host.querySelector('#dvBack').onclick=zu;
+  host.querySelector('#dvClose').onclick=zu;
+  host.querySelector('#dvPrint').onclick=function(){ setTimeout(function(){ window.print(); },30); };
+  var alt=host.querySelector('#dvAlt');
+  if(alt && typeof opt.andere==='function') alt.onclick=function(){ zu(); opt.andere(); };
 }
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape' && druckZurueck) druckZurueck();
+});
 
 /* Das Submenü als echten Reiter in die Navigation haengen — nur im Fern-Betrieb. */
 function injectTab(){
@@ -3559,6 +3937,12 @@ function injectTab(){
   b.setAttribute('data-vp-tip','Alle Werte, Kurven, Geräte, Alarme und Empfehlungen der Praxis-Station – live aus der Ferne');
   b.innerHTML='📡 Fern-Live';
   b.onclick=function(){ if(window.__anaesLive) window.__anaesLive.tab('fernlive'); renderFernView(true); };
+  /* Auch der Ansichts-Verlauf (Zurück/Weiter) fuehrt hierher zurueck — und dann gibt es keinen
+   * Klick auf den Reiter. switchTab meldet jeden Wechsel per 'vs:view'; ohne diese Zeile stuende
+   * nach „Zurück" die eingefrorene alte Ansicht da, bis zufaellig der naechste Datentakt kommt. */
+  document.addEventListener('vs:view', function(ev){
+    if(ev && ev.detail && ev.detail.view==='fernlive') renderFernView(true);
+  });
   tabs.insertBefore(b, tabs.firstChild);
   var view=document.createElement('section');
   view.className='view'; view.id='fernlive';
@@ -3789,10 +4173,25 @@ function zeigeAnmeldung(vorbelegt, hinweis){
       '<div class="vl-btns">'+
         '<button class="vl-btn sek" id="vlNeu" type="button">Neues Praxis-Konto anlegen</button>'+
       '</div>'+
+      '<div class="vl-btns" style="margin-top:12px">'+
+        '<button class="vl-btn sek" id="vlZurueck" type="button">← Zurück zur App (ohne Anmeldung)</button>'+
+      '</div>'+
       '<div class="vl-fuss">🔒 Nur Ansicht — von hier kann kein Gerät bedient werden. '+
         'Die Anmeldung bleibt auf diesem Gerät gespeichert, bis Sie sich abmelden.</div>'+
     '</div>';
   document.body.appendChild(w);
+  /*
+   * RÜCKWEG AUS DEM ANMELDEFENSTER (01.08.2026).
+   *
+   * Es liegt als Vollbild über der ganzen App und hatte keinen Ausgang: wer „Fern-Zugang" nur
+   * ausprobiert hat oder das Passwort gerade nicht zur Hand hat, kam an die Narkose-App nicht
+   * mehr heran — mitten in einer Narkose ist das das Schlimmste, was eine Anmeldemaske tun kann.
+   * Zurück schließt nur dieses Fenster; die Fern-Ansicht selbst bleibt eingeschaltet und der
+   * Reiter „📡 Fern-Live" führt jederzeit wieder hierher.
+   */
+  var zurueck=function(){ versteckeAnmeldung(); };
+  w.querySelector('#vlZurueck').onclick=zurueck;
+  w.addEventListener('keydown', function(e){ if(e.key==='Escape') zurueck(); });
   var mail=w.querySelector('#vlMail'), pw=w.querySelector('#vlPw'), msg=w.querySelector('#vlMsg');
   var sperre=fensterSperre(w);
   function sag(t,f){ msg.textContent=t; msg.style.color=f||'#9aa8bb'; }
@@ -4283,6 +4682,19 @@ function startDemo(){
           af:v.af, sys:v.sys==null?null:v.sys, dia:v.dia==null?null:v.dia, map:v.map==null?null:v.map,
           temp:v.temp==null?null:v.temp, iso:pat.isoPct, rhythm:v.ekgRhythm,
           finding: (!zwei && brady) ? 'Bradykardie bei zu tiefer Narkose' : null };
+      }
+      /* Zwei bestaetigte Gaben in die Demo, damit sich Karte, Tabelle und Ausdruck auch ohne
+       * Praxis-PC pruefen lassen. Genau so schreibt die Station sie (registry.medikamentGabe):
+       * art:'med' + med{...} + Klartext im Feld finding. */
+      if(!pd[t0+1500]){
+        pd[t0+1500]={ ts:t0+1500, art:'med', finding:'💉 gegeben: Propofol — 22–44 mg ≈ 2.2–4.4 mL IV nach Wirkung',
+          med:{ name:'Propofol', kind:'medikament', kindText:'Injektionsnarkotikum', wirkstoffId:'propofol',
+                dosis:'22–44 mg ≈ 2.2–4.4 mL IV nach Wirkung', route:null, kg:pat.weightKg, storno:false } };
+      }
+      if(!pd[t0+9500]){
+        pd[t0+9500]={ ts:t0+9500, art:'med', finding:'💉 gegeben: Atropin — 0.44–0.88 mg ≈ 0.88–1.76 mL IV/IM/SC',
+          med:{ name:'Atropin', kind:'medikament', kindText:'Anticholinergikum', wirkstoffId:'atropin',
+                dosis:'0.44–0.88 mg ≈ 0.88–1.76 mL IV/IM/SC', route:null, kg:pat.weightKg, storno:false } };
       }
     });
     connState='live';
