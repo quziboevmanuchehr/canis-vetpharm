@@ -3007,12 +3007,60 @@ function uebertragungsAlter(sid){
   if(d < 0) return null;
   return d;
 }
+/* ---------------------------------------------------------------------------
+ * WERTESTILLSTAND — der Herzschlag sagt NICHT, ob noch Werte kommen (Befund 02.08.2026).
+ *
+ * Die Station schreibt auf ZWEI Wegen und mit ZWEI getrennten Fehlerkonten:
+ *   Weg T (Tafel):  tafel/<sid>/meta   — der Herzschlag. Laeuft auch dann weiter, wenn Weg L
+ *                                        sich abgeschaltet hat; das ist ausdruecklich so gebaut,
+ *                                        damit ein gestoerter Saal nicht wie ein AUSGESCHALTETER
+ *                                        aussieht.
+ *   Weg L (Werte):  saele/<sid>/patients — die Vitalwerte und Kurven.
+ * Bis hierher las diese Ansicht ausschliesslich meta.sv, also Weg T. Steht Weg L still — nach
+ * einer Selbstabschaltung, in einer Wartezeit nach einem Schreibfehler, oder weil die Regel genau
+ * ein Patientenfeld ablehnt —, dann zeigte die Fern-Ansicht die Zahlen von vor zwanzig Minuten
+ * mit dem gruenen Etikett "live". Ein Tierarzt, der die Narkose von zu Hause mitverfolgt, sieht
+ * ein stabiles Tier, waehrend im OP etwas anderes passiert. Kein Fehler, keine Farbe, keine
+ * Meldung — das ist die gefaehrlichste Anzeige, die diese App haben kann.
+ *
+ * GEMESSEN WIRD MIT ZWEI UHREN DESSELBEN RECHNERS, nicht gegen die eigene:
+ * meta.ts und patients[..].ts stammen beide vom Praxis-PC. Ihre Differenz ist deshalb unabhaengig
+ * davon, ob die Uhr hier oder dort falsch geht — ein Vergleich gegen jetztServer() waere es nicht.
+ * --------------------------------------------------------------------------- */
+var WERTE_STILL_MS = 20000;   /* mehr als jeder normale Sendetakt (Werte 0,5 s, Tafel 2 s) und
+                                 mehr als der Ruhetakt eines leeren Saals (5 s). */
+function werteStillstand(sid){
+  var m = saalMeta(sid);
+  if(typeof m.ts !== 'number') return null;          /* alte Station ohne meta.ts: nicht messbar */
+  var ps = patientenVon(sid), jung = null, n = 0;
+  for(var k in ps){
+    if(!Object.prototype.hasOwnProperty.call(ps,k)) continue;
+    var t = ps[k] && ps[k].ts;
+    if(typeof t !== 'number') continue;
+    n++;
+    if(jung === null || t > jung) jung = t;
+  }
+  /* Kein Patient = kein Stillstand. Ein leerer OP-Saal ist keine Stoerung, und der volle
+     Wertestrom wird ohnehin nur fuer den EINEN gefuehrten Saal abonniert. */
+  if(!n || jung === null) return null;
+  var d = m.ts - jung;
+  if(!(d > 0)) return null;
+  return d;
+}
 function uebertragungsZustand(sid){
   var d = uebertragungsAlter(sid);
   if(d === null) return {stufe:'unbekannt', ms:null, txt:'Alter unbekannt'};
-  if(d < SCHWELLE_GELB) return {stufe:'live', ms:d, txt:'live'};
-  if(d <= SCHWELLE_TOT) return {stufe:'gelb', ms:d, txt:'keine neuen Daten ('+Math.round(d/1000)+'s)'};
-  return {stufe:'tot', ms:d, txt:saalName(sid)+' offline seit '+minuten(d)+' min'};
+  if(d >= SCHWELLE_GELB && d > SCHWELLE_TOT) return {stufe:'tot', ms:d, txt:saalName(sid)+' offline seit '+minuten(d)+' min'};
+  if(d >= SCHWELLE_GELB) return {stufe:'gelb', ms:d, txt:'keine neuen Daten ('+Math.round(d/1000)+'s)'};
+  /* Der Weg meldet sich — aber stehen die WERTE? Diese Frage kommt vor dem gruenen "live".
+     Die Stufe heisst bewusst NICHT 'tot': der Saal ist erreichbar, es ist der Wertestrom, der
+     haengt. Wer das verwechselt, sucht am falschen Ende. */
+  var s = werteStillstand(sid);
+  if(s !== null && s > WERTE_STILL_MS){
+    return {stufe:'werte-still', ms:d, stillMs:s,
+      txt:'Werte stehen still seit '+Math.round(s/1000)+' s — der Saal meldet sich noch'};
+  }
+  return {stufe:'live', ms:d, txt:'live'};
 }
 function minuten(ms){ return Math.max(1, Math.round(ms/60000)); }
 function alterText(ms){
@@ -3289,7 +3337,9 @@ function topText(u){
 }
 function saalKarte(sid){
   var z = uebertragungsZustand(sid);
-  var tot = (z.stufe === 'tot');
+  /* 'werte-still' wird hier wie 'tot' behandelt: die Kachel darf keine Zahl zeigen, die es
+     laengst nicht mehr gibt. Der Text unter der Kachel nennt trotzdem den richtigen Grund. */
+  var tot = (z.stufe === 'tot' || z.stufe === 'werte-still');
   var u = uebersichtVon(sid);
   var keys = Object.keys(u).sort();
   var gezeigt = keys.slice(0, DECKEL_KACHELN);
@@ -3301,7 +3351,11 @@ function saalKarte(sid){
     var col = priColor(e.pri);
     var werte;
     if(tot){
-      werte = '<span class="s-ersatz">Stand vor '+minuten(z.ms)+' min</span>';
+      /* Zwei verschiedene Ursachen, zwei verschiedene Saetze — und zwei verschiedene Zeiten:
+         bei 'tot' ist es das Alter der UEBERTRAGUNG, bei 'werte-still' das Alter der WERTE. */
+      werte = (z.stufe === 'werte-still')
+        ? '<span class="s-ersatz">Werte stehen seit '+minuten(z.stillMs)+' min still</span>'
+        : '<span class="s-ersatz">Stand vor '+minuten(z.ms)+' min</span>';
     } else {
       /* RR (systolisch/diastolisch) und der EKG-Rhythmus kamen je Kachel längst an und wurden
        * nirgends gezeigt (Befund 01.08.2026). Gerade der Blutdruck ist der Wert, wegen dem man
@@ -3407,6 +3461,9 @@ function kopfBadge(){
   }
   if(z.stufe==='gelb') return {cls:'stale', txt:z.txt};
   if(z.stufe==='tot') return {cls:'err', txt:z.txt};
+  /* Werte stehen still: rot wie ein Ausfall, denn die angezeigten Zahlen sind veraltet — aber
+     mit eigenem Text, weil die Ursache eine andere ist als bei einem offline gemeldeten Saal. */
+  if(z.stufe==='werte-still') return {cls:'err', txt:z.txt};
   return {cls:'stale', txt:'Alter unbekannt'};
 }
 
@@ -3623,6 +3680,11 @@ function renderFernView(sofort){
   var gAlt = geraeteAlter(selSaal, (uebersichtVon(selSaal)[sel]||{}).altMs);
   var stationInfo = '<section class="card"><h3>Verbindung &amp; Geschwindigkeit</h3>'+
     kv([['OP-Saal',saalTitel(selSaal)],['Praxis-Konto',nutzer?nutzer.email:null],
+        /* Die Konto-Kennung, dieselben acht Zeichen wie im Admin-Bereich der Station. Warum sie
+           hier stehen muss: die Daten liegen unter live/<uid>. Sitzen Station und diese Ansicht
+           auf verschiedenen uids, bleibt hier alles leer — und beide Bildschirme zeigen dieselbe
+           E-Mail. Ohne diesen Wert gibt es nichts zu vergleichen. */
+        ['Konto-Kennung', (nutzer&&nutzer.uid)?(String(nutzer.uid).slice(0,8)+'… (muss mit der Station übereinstimmen)'):null],
         ['Sendetakt der Station',mSaal.taktMs?mSaal.taktMs+' ms':null],
         ['Aktualisierungen hier',taktRate(selSaal)?taktRate(selSaal)+' pro Sekunde':null],
         ['Laufzeit Praxis → hier',laufzeitText(selSaal)],
@@ -3967,6 +4029,10 @@ function injectCss(){
     '.vetlive-saal.sel{box-shadow:0 0 0 2px #00d8ff inset}'+
     '.vetlive-saal.z-gelb{border-color:#ff8c3c}'+
     '.vetlive-saal.z-tot,.vetlive-saal.z-unbekannt{border-color:#ff4d4d;opacity:.85}'+
+    /* Werte stehen still: rot wie ein Ausfall, aber NICHT blass — der Saal lebt, es sind die
+       Zahlen, die stehen. Ein blasser Rahmen liest sich als "abgeschaltet". */
+    '.vetlive-saal.z-werte-still{border-color:#ff4d4d;box-shadow:inset 0 0 0 1px #ff4d4d}'+
+    '.s-conn.werte-still i{background:#ff4d4d}'+
     '.vetlive-saal.alarm{animation:vetliveSaalPuls 1.2s infinite}'+
     '@keyframes vetliveSaalPuls{0%,100%{box-shadow:0 0 0 1px #ff8c3c inset}50%{box-shadow:0 0 14px 1px #ff8c3c}}'+
     '.vetlive-saal .s-kopf{display:flex;align-items:center;gap:6px;flex-wrap:wrap}'+
