@@ -252,7 +252,7 @@
     },
     'mh': {
       name: 'Maligne-Hyperthermie-Risiko (RYR1)',
-      praemed: 'Stress vermeiden; kein Succinylcholin einplanen. Dantrolen 1–3 mg/kg i.v. VOR Narkosebeginn bereitstellen (aufgelöst, gerechnet).',
+      praemed: 'Stress vermeiden; kein Succinylcholin einplanen. Dantrolen bereitstellen, aufgelöst und für dieses Tier ausgerechnet, BEVOR die Narkose beginnt: 1–3 mg/kg i.v. (MSD Veterinary Manual), CliniPharm nennt 2–3 mg/kg i.v. bzw. 3,5 mg/kg p.o. alle 12 h.',
       einleitung: 'Reine TIVA: Propofol oder Alfaxalon + Opioid ± Ketamin/Benzodiazepin.',
       erhalt: 'TIVA fortführen. Kein Verdampfer am Kreisteil — bei bekanntem Risiko den Kreisteil vorher mit frischem Absorber und 10 min Hochfluss spülen bzw. eine triggerfreie Maschine nutzen.',
       analgesie: 'Opioid + Lokal-/Regionalanästhesie. Nicht-depolarisierende Relaxanzien (Atracurium, Rocuronium) sind sicher.',
@@ -568,7 +568,7 @@
         'Volatiles Anästhetikum SOFORT abstellen, Verdampfer abnehmen; auf TIVA umstellen.',
         'Frischgasfluss auf Maximum, Schlauchsystem und Absorber wechseln (das alte System gibt weiter Trigger ab).',
         '100 % Sauerstoff, Hyperventilation (2–3-faches Minutenvolumen) gegen die CO₂-Last.',
-        'Dantrolen 1–3 mg/kg i.v., wiederholen bis Wirkung (bis ca. 5–10 mg/kg gesamt) — das ist das einzige kausale Mittel.',
+        'Dantrolen 1–3 mg/kg i.v. (CliniPharm: 2–3 mg/kg), wiederholen bis Wirkung, bis etwa 5–10 mg/kg gesamt — das einzige kausale Mittel.',
         'Aktiv kühlen: kalte Infusion, Alkohol/Wasser an Pfoten und Bauch, Ventilator. Bei 39 °C aufhören zu kühlen (Unterkühlung droht).',
         'Azidose und Hyperkaliämie behandeln (Natriumbicarbonat nach Blutgas, Glukose-Insulin oder Kalziumglukonat bei EKG-Veränderungen).',
         'Eingriff abbrechen; Nierenschutz durch Diurese (Myoglobin).'

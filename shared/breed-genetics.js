@@ -375,7 +375,9 @@
   function _condText(b) {
     if (b.__ct != null) return b.__ct;
     var t = '';
-    (b.conditions || []).forEach(function (k) { var c = CONDITIONS[k]; if (c) t += ' ' + k + ' ' + c.name + ' ' + (c.gene || ''); });
+    /* Ohne c.gene — dort stehen Rassenamen drin ("MYBPC3 Maine Coon A31P / Ragdoll R820W").
+     * Sonst faende die Eingabe „ragdoll" jede Katze mit HCM statt der Ragdoll. */
+    (b.conditions || []).forEach(function (k) { var c = CONDITIONS[k]; if (c) t += ' ' + k + ' ' + c.name; });
     (b.groups || []).forEach(function (k) { var g = GROUPS[k]; if (g) t += ' ' + k + ' ' + g.name; });
     b.__ct = norm(t);
     return b.__ct;
@@ -391,6 +393,7 @@
       out = pool.slice().sort(function (a, z) { return norm(a.name) < norm(z.name) ? -1 : 1; });
       return out.slice(0, max).map(function (b) { return { breed: b, score: 0 }; });
     }
+    var ueberErkrankung = [];
     pool.forEach(function (b) {
       var n = norm(b.name), al = (b.aliases || []).map(norm), s = 0;
       if (n === t || b.id === t || al.indexOf(t) >= 0) s = 100;
@@ -400,9 +403,13 @@
       else if (al.some(function (a) { return _wortAnfang(a, t); })) s = 50;
       else if (n.indexOf(t) >= 0) s = 40;
       else if (al.some(function (a) { return a.indexOf(t) >= 0; })) s = 30;
-      else if (_condText(b).indexOf(t) >= 0) s = 12;
+      else if (_condText(b).indexOf(t) >= 0) { ueberErkrankung.push({ breed: b, score: 12 }); return; }
       if (s) out.push({ breed: b, score: s });
     });
+    /* Erkrankungstreffer NUR, wenn der Name gar nichts hergibt. Wer „hcm" oder „mdr1" tippt,
+     * sucht die betroffenen Rassen; wer „ragdoll" tippt, sucht die Ragdoll und nicht die
+     * dreiundzwanzig anderen Katzen, bei denen HCM hinterlegt ist. */
+    if (!out.length) out = ueberErkrankung;
     out.sort(function (a, z) {
       if (z.score !== a.score) return z.score - a.score;
       var an = norm(a.breed.name), zn = norm(z.breed.name);
