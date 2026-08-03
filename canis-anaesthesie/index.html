@@ -66,6 +66,44 @@ html[data-theme="light"] .breed-banner{background:rgba(139,124,246,.12);border-c
 html[data-theme="light"] .breed-warn{background:rgba(255,255,255,.62)}
 html[data-theme="light"] .breed-in,html[data-theme="light"] .breed-clear{background:#fff;color:#15202e}
 @media(max-width:900px){.breed-in{min-width:130px}}
+/* Sofortsuche Rasse — eigenes Aufklappfeld statt <datalist>: die Liste zeigt Risiko-Zeichen,
+   filtert schon beim ersten Buchstaben und laesst sich mit den Pfeiltasten bedienen. */
+.breed-box{position:relative}
+.breed-pop{position:absolute;top:44px;left:0;z-index:60;min-width:340px;max-width:520px;max-height:52vh;overflow:auto;
+  background:#0d1219;border:1px solid var(--line);border-radius:10px;box-shadow:0 18px 44px rgba(0,0,0,.55);padding:4px}
+.breed-pop .bp-i{display:flex;align-items:center;gap:7px;padding:6px 9px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text)}
+.breed-pop .bp-i:hover,.breed-pop .bp-i.sel{background:rgba(139,124,246,.20)}
+.breed-pop .bp-n{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.breed-pop .bp-m{color:var(--muted);font-size:11px;margin-left:auto;white-space:nowrap}
+.breed-pop .bp-r{display:inline-block;width:8px;height:8px;border-radius:99px;flex:0 0 auto}
+.breed-pop .bp-r.hoch{background:#ff4d4d}.breed-pop .bp-r.mittel{background:#ffc23c}.breed-pop .bp-r.niedrig{background:#7fd6ff}.breed-pop .bp-r.ohne{background:rgba(255,255,255,.18)}
+.breed-pop .bp-leer{padding:8px 10px;color:var(--muted);font-size:12.5px}
+.breed-pop .bp-kopf{padding:5px 9px;color:var(--muted);font:10.5px var(--mono);letter-spacing:.4px;text-transform:uppercase}
+html[data-theme="light"] .breed-pop{background:#fff}
+.breed-banner.risk-hoch{border-color:rgba(255,77,77,.55);background:rgba(255,77,77,.10)}
+.breed-banner.risk-mittel{border-color:rgba(255,194,60,.5);background:rgba(255,194,60,.09)}
+/* Warnung im Augenblick der bestaetigten Gabe — das Mittel ist schon drin, deshalb steht hier
+   nicht „nicht geben", sondern was jetzt zu tun ist. */
+.gabe-warn{position:fixed;right:14px;bottom:14px;z-index:9000;width:min(520px,92vw);max-height:74vh;overflow:auto;
+  border:1px solid var(--red);border-left:5px solid var(--red);background:#150d10;border-radius:12px;padding:12px 14px;box-shadow:0 22px 60px rgba(0,0,0,.6)}
+.gabe-warn.lvl-reduce{border-color:#ff8c3c;border-left-color:#ff8c3c;background:#170f0a}
+.gabe-warn.lvl-caution,.gabe-warn.lvl-monitor{border-color:#ffc23c;border-left-color:#ffc23c;background:#151208}
+.gabe-warn .gw-h{display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;color:#ffd9d9}
+.gabe-warn .gw-x{margin-left:auto;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--text);border-radius:8px;padding:3px 9px;cursor:pointer;font-size:12px}
+.gabe-warn .gw-b{margin-top:8px;font-size:12.5px;line-height:1.55;color:var(--text)}
+.gabe-warn .gw-s{margin-top:8px;border-top:1px solid var(--line);padding-top:7px}
+.gabe-warn .gw-s b{display:block;font-size:12px;margin-bottom:3px}
+.gabe-warn ol{margin:4px 0 0 17px;padding:0;font-size:12.5px;line-height:1.55}
+.gabe-warn .gw-src{display:block;margin-top:6px;font:10.5px var(--mono);color:var(--muted)}
+html[data-theme="light"] .gabe-warn{background:#fff5f5}
+/* Rasse-Narkoseplan */
+.plan-card{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px;background:rgba(255,255,255,.03)}
+.plan-card .pc-h{font-weight:800;font-size:13px;margin-bottom:5px}
+.plan-card .pc-z{font-size:12.5px;line-height:1.55;margin-top:3px}
+.plan-card .pc-z b{color:var(--brand)}
+.plan-meiden{border-left:4px solid var(--red)}
+.plan-rettung{border-left:4px solid #ff8c3c}
+.plan-ziel{border-left:4px solid #7fd6ff}
 /* Beatmungsmodi-Konfigurator */
 .vent-modebar{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
 .vm-btn{flex:1 1 88px;min-width:82px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);border-radius:10px;padding:8px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;transition:.15s}
@@ -476,8 +514,8 @@ html[data-theme="light"] .gabe-row .d{color:#0b5c72}
   <div class="pfield"><label>Narkose-Typ</label><select id="anMode" data-vp-tip="Bestimmt die Logik: Gasnarkose (Iso), Injektion als Einleitung mit anschließendem Gas, oder NUR Injektion ohne Gas (Iso aus → reine Spontanatmung).">
     <option value="gas">Gasnarkose (Iso)</option><option value="inj-ind">Injektion → dann Gas</option><option value="inj-only">Nur Injektion (ohne Gas)</option></select></div>
   <div class="pfield" id="breedWrap"><label>Rasse (optional)</label>
-    <div class="breed-box"><input class="breed-in" id="breedIn" list="breedList" placeholder="Rasse tippen/wählen…" autocomplete="off" spellcheck="false" data-vp-tip="Rasse eingeben → rassespezifische genetische Warnungen (MDR1, Windhund-Typ, brachyzephal, HCM …) bei Medikamenten & Narkose"><button class="breed-clear" id="breedClear" title="Rasse löschen" aria-label="Rasse löschen" hidden>✕</button></div>
-    <datalist id="breedList"></datalist></div>
+    <div class="breed-box"><input class="breed-in" id="breedIn" placeholder="Rasse tippen…" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="breedPop" data-vp-tip="Rasse eingeben → sofortige Trefferliste der gewählten Tierart, mit rassespezifischen Erbkrankheiten, Narkose-Erstwahl und Warnungen bei Medikamenten"><button class="breed-clear" id="breedClear" title="Rasse löschen" aria-label="Rasse löschen" hidden>✕</button>
+      <div class="breed-pop" id="breedPop" role="listbox" hidden></div></div></div>
   <div class="pchip-note" id="patNote"></div>
 </div></div>
 <div class="breed-banner" id="breedBanner" hidden></div>
@@ -641,7 +679,9 @@ html[data-theme="light"] .gabe-row .d{color:#0b5c72}
 </main>
 
 <script src="anaes-data.js?v=11"></script>
-<script src="../shared/breed-genetics.js?v=1"></script>
+<script src="../shared/breed-genetics.js?v=2"></script>
+<script src="../shared/narkose-risiko.js?v=1"></script>
+<script src="../shared/breed-katalog.js?v=1"></script>
 <script>
 /* ============ Canis Anæsthesia – Engine ============ */
 (function(){
@@ -698,36 +738,101 @@ function propagateLinks(){
 /* ---------- Rasse / Genetik (window.VETBREED) ---------- */
 var VB = window.VETBREED || null;
 function curBreed(){ return (VB && state.breed) ? VB.byId(state.breed) : null; }
-function breedSupported(){ return state.sp==='hund' || state.sp==='katze'; }
+/* Das Rassefeld erscheint fuer JEDE Tierart, fuer die der Katalog Rassen kennt — frueher fest
+ * auf Hund/Katze verdrahtet, obwohl Kaninchen, Meerschweinchen, Frettchen und Reptilien
+ * genauso rassespezifische Narkoserisiken haben (Satin-Meerschweinchen, Widderkaninchen,
+ * Spider-Koenigspython …). Die Liste selbst entscheidet, nicht eine Aufzaehlung im Code. */
+var _spBreedCount=null;
+function breedSupported(){
+  if(!VB || !VB.speciesWithBreeds) return state.sp==='hund'||state.sp==='katze';
+  if(!_spBreedCount) _spBreedCount=VB.speciesWithBreeds();
+  return (_spBreedCount[state.sp]||0)>0;
+}
 function appDrugIds(){ return (A.drugs||[]).map(function(d){ return d.id; }); }
 function warnDot(l){ return l==='avoid'?'#ff4d4d':l==='reduce'?'#ff8c3c':l==='caution'?'#ffc23c':'#7fd6ff'; }
 function warnLabel(l){ return l==='avoid'?'MEIDEN':l==='reduce'?'REDUZIEREN':l==='caution'?'VORSICHT':'ÜBERWACHEN'; }
 function renderBreedField(){
   var wrap=$('#breedWrap'); if(!wrap||!VB) return;
-  if(!breedSupported()){ wrap.style.display='none'; var i0=$('#breedIn'); if(i0)i0.value=''; return; }
+  if(!breedSupported()){ wrap.style.display='none'; var i0=$('#breedIn'); if(i0)i0.value=''; breedPopZu(); return; }
   wrap.style.display='';
-  var dl=$('#breedList'); if(dl){ dl.innerHTML=VB.bySpecies(state.sp).map(function(b){ return '<option value="'+b.name+'">'+(b.freq?('· '+b.freq):(b.note||''))+'</option>'; }).join(''); }
   var inp=$('#breedIn'), b=curBreed();
-  if(inp && document.activeElement!==inp) inp.value=b?b.name:'';
+  if(inp){
+    if(document.activeElement!==inp) inp.value=b?b.name:'';
+    inp.placeholder=(_spBreedCount&&_spBreedCount[state.sp])? (_spBreedCount[state.sp]+' Rassen – tippen…') : 'Rasse tippen…';
+  }
   var clr=$('#breedClear'); if(clr) clr.hidden=!state.breed;
+}
+/* ---------- Sofortsuche: Trefferliste beim Tippen ----------
+ * Frueher hing das Feld an einer <datalist>. Die zeigt in Edge erst nach Fokus+Tippen eine
+ * ungeordnete Liste, kann keine Risikofarbe tragen und bricht bei mehreren hundert Eintraegen
+ * ein. Jetzt eigene Liste: gewichtete Treffer (VETBREED.search), Risiko-Punkt, Pfeiltasten. */
+var breedSel=-1, breedTreffer=[];
+function breedRiskKlasse(b){ var r=VB&&VB.riskOf?VB.riskOf(b):null; return r||'ohne'; }
+/* Ein Halbsatz reicht: die Zeile soll die Rasse unterscheidbar machen, nicht erklären.
+ * Der ganze Text steht danach im Rasseprofil. */
+function breedZeileText(b){
+  var c=(b.conditions||[]).map(function(k){ var x=VB.CONDITIONS[k]; return x?(x.icon||'')+' '+x.name.split(' (')[0].split(' –')[0]:null; }).filter(Boolean);
+  var t=c.slice(0,2).join(' · ') || b.freq || b.note || '';
+  return t.length>52 ? t.slice(0,50).replace(/[\s,;.]+$/,'')+'…' : t;
+}
+function breedPopZu(){ var p=$('#breedPop'); if(p){ p.hidden=true; p.innerHTML=''; } breedSel=-1; breedTreffer=[];
+  var i=$('#breedIn'); if(i) i.setAttribute('aria-expanded','false'); }
+function breedPopAuf(txt){
+  var p=$('#breedPop'); if(!p||!VB||!breedSupported()) return;
+  breedTreffer=VB.search(txt, state.sp, 60); breedSel=-1;
+  var i=$('#breedIn'); if(i) i.setAttribute('aria-expanded','true');
+  if(!breedTreffer.length){
+    p.innerHTML='<div class="bp-leer">Keine Rasse dieser Art gefunden. Ohne Rasse geht es weiter – die artspezifischen Dosen gelten trotzdem.</div>';
+    p.hidden=false; return;
+  }
+  var kopf=(txt?'':'<div class="bp-kopf">'+sp().name+' · '+(_spBreedCount[state.sp]||0)+' Rassen</div>');
+  p.innerHTML=kopf+breedTreffer.map(function(t,ix){ var b=t.breed;
+    return '<div class="bp-i" role="option" data-ix="'+ix+'" data-id="'+b.id+'"><span class="bp-r '+breedRiskKlasse(b)+'"></span>'+
+      '<span class="bp-n">'+escH(b.name)+'</span><span class="bp-m">'+escH(breedZeileText(b))+'</span></div>';
+  }).join('');
+  p.hidden=false;
+  p.querySelectorAll('.bp-i').forEach(function(el){
+    el.onmousedown=function(ev){ ev.preventDefault(); waehleBreed(el.dataset.id); };
+  });
+}
+function breedPopMarkiere(d){
+  var p=$('#breedPop'); if(!p||p.hidden||!breedTreffer.length) return;
+  breedSel=Math.max(0, Math.min(breedTreffer.length-1, breedSel+d));
+  var items=p.querySelectorAll('.bp-i');
+  items.forEach(function(el,i){ el.classList.toggle('sel', i===breedSel); });
+  if(items[breedSel]) items[breedSel].scrollIntoView({block:'nearest'});
+}
+function waehleBreed(id){
+  var b=VB?VB.byId(id):null;
+  state.breed=b?b.id:null;
+  var inp=$('#breedIn'); if(inp) inp.value=b?b.name:'';
+  breedPopZu(); breedUebernommen();
 }
 function commitBreed(txt){
   if(!VB) return;
   state.breed = txt ? (function(){ var b=VB.resolve(txt, state.sp); return b?b.id:null; })() : null;
+  breedPopZu(); breedUebernommen();
+}
+/* Eine Rasse aendert mehr als ein Feld: Banner, Rasseprofil, Dosiskarten, Injektionskarten,
+ * die Beatmungsempfehlung (BOAS/HCM) und die Notfall-Protokolle. Alles an EINER Stelle. */
+function breedUebernommen(){
   renderBreedField(); updateBreedBanner(); renderBreedProfile(); propagateLinks();
   renderProto(); renderDrugs(); renderInjection();
-  renderVentPanel(); /* Rasse (z. B. BOAS) in die Beatmungsmodus-Empfehlung einbeziehen */
+  renderVentPanel();
 }
 function updateBreedBanner(){
   var el=$('#breedBanner'); if(!el||!VB) return;
   var b=curBreed();
   if(!b){ el.hidden=true; el.innerHTML=''; return; }
   var conds=VB.conditionsOf(b), aff=VB.affectedDrugs(b, appDrugIds());
+  var risk=VB.riskOf?VB.riskOf(b):null, pl=VB.plan?VB.plan(b):null;
   var chips=conds.map(function(c){ return '<span class="bchip" style="--bc:'+((VB.GROUPS[(b.groups||[])[0]]||{}).color||'#8b7cf6')+'">'+c.icon+' '+c.name.split(' (')[0]+'</span>'; }).join('');
   el.hidden=false;
-  el.innerHTML='<span class="bb-h">🧬 '+b.name+(b.freq?' · '+b.freq:'')+'</span>'+chips+
-    (aff.length?'<button class="bb-aff">⚠️ '+aff.length+' betroffene Medikament(e) – Details</button>':'<span class="bb-ok">keine hinterlegte Wirkstoff-Warnung</span>');
-  var btn=el.querySelector('.bb-aff'); if(btn) btn.onclick=function(){ switchTab('rasse'); window.scrollTo({top:0,behavior:'smooth'}); };
+  el.className='breed-banner'+(risk?' risk-'+risk:'');
+  el.innerHTML='<span class="bb-h">🧬 '+escH(b.name)+(b.freq?' · '+escH(b.freq):'')+'</span>'+chips+
+    ((pl&&pl.erstwahl.length)?'<button class="bb-aff" data-go="plan" style="border-color:var(--brand);background:rgba(139,124,246,.16);color:#e6e0ff">💉 Narkose erste Wahl</button>':'')+
+    (aff.length?'<button class="bb-aff" data-go="med">⚠️ '+aff.length+' betroffene Medikament(e)</button>':(pl&&pl.erstwahl.length?'':'<span class="bb-ok">keine hinterlegte Wirkstoff-Warnung</span>'));
+  el.querySelectorAll('.bb-aff').forEach(function(btn){ btn.onclick=function(){ switchTab('rasse'); window.scrollTo({top:0,behavior:'smooth'}); }; });
 }
 /* Warn-HTML für einen Wirkstoff – wird in Dosiskarten eingebettet */
 function breedWarnHtml(drugRef){
@@ -745,13 +850,58 @@ function injComboBreedWarn(c){
     h+='<div class="breed-warn lvl-'+w.level+'" style="margin-top:6px"><span class="bw-tag" style="background:'+warnDot(w.level)+'">🧬 '+warnLabel(w.level)+(w.factor?' · '+w.factor:'')+'</span> <span class="bw-tx">'+w.text+'</span></div>'; }); });
   return h;
 }
+/* ---------- Narkoseplan der Rasse: Erstwahl · Meiden · Ziele · Rettung ----------
+ * Die vier Bloecke sind bewusst getrennt und in dieser Reihenfolge: was nehme ich, was lasse ich
+ * weg, worauf schaue ich — und ganz unten, was ich tue, wenn schon das Falsche im Tier ist.
+ * Der letzte Block ist der, den man im Ernstfall sucht, deshalb steht er als eigener Kasten da
+ * und nicht als Nebensatz in einer Erkrankungsbeschreibung. */
+function planHtml(pl){
+  if(!pl) return '';
+  var h='';
+  if(pl.erstwahl.length){
+    h+='<div class="sec-h">💉 Narkose – erste Wahl für diese Rasse</div>';
+    h+=pl.erstwahl.map(function(p){
+      var z='';
+      if(p.praemed)    z+='<div class="pc-z"><b>Prämedikation:</b> '+escH(p.praemed)+'</div>';
+      if(p.einleitung) z+='<div class="pc-z"><b>Einleitung:</b> '+escH(p.einleitung)+'</div>';
+      if(p.erhalt)     z+='<div class="pc-z"><b>Erhalt:</b> '+escH(p.erhalt)+'</div>';
+      if(p.analgesie)  z+='<div class="pc-z"><b>Analgesie:</b> '+escH(p.analgesie)+'</div>';
+      if(p.ziele)      z+='<div class="pc-z"><b>Zielwerte:</b> '+escH(p.ziele)+'</div>';
+      if(p.warum)      z+='<div class="pc-z" style="color:var(--muted)"><b>Warum:</b> '+escH(p.warum)+'</div>';
+      return '<div class="plan-card"><div class="pc-h">'+escH(p.name||'')+'</div>'+z+
+        (p.sources&&p.sources.length?'<div class="src">Quelle: '+escH(p.sources.join('; '))+'</div>':'')+'</div>';
+    }).join('');
+  }
+  if(pl.meiden.length){
+    h+='<div class="sec-h">⛔ Bei dieser Rasse meiden</div><div class="plan-card plan-meiden">'+
+      pl.meiden.map(function(m){ return '<div class="pc-z">• '+escH(m.text)+' <span style="color:var(--muted)">('+escH(m.von)+')</span></div>'; }).join('')+'</div>';
+  }
+  if(pl.monitoring.length){
+    h+='<div class="sec-h">🎯 Worauf achten</div><div class="plan-card plan-ziel">'+
+      pl.monitoring.map(function(m){ return '<div class="pc-z">• '+escH(m.text)+' <span style="color:var(--muted)">('+escH(m.von)+')</span></div>'; }).join('')+'</div>';
+  }
+  if(pl.rettung.length){
+    h+='<div class="sec-h">🆘 Wenn schon das Falsche gegeben wurde – stabilisieren</div>';
+    h+=pl.rettung.map(function(r){
+      return '<div class="plan-card plan-rettung"><div class="pc-h">'+escH(r.name||'')+'</div>'+
+        (r.zeichen?'<div class="pc-z"><b>Erkennen:</b> '+escH(r.zeichen)+'</div>':'')+
+        (r.schritte.length?'<ol style="margin:6px 0 0 17px;font-size:12.5px;line-height:1.55">'+r.schritte.map(function(s){return '<li>'+escH(s)+'</li>';}).join('')+'</ol>':'')+
+        (r.nicht&&r.nicht.length?'<div class="pc-z" style="color:#ffb3b3;margin-top:5px"><b>NICHT:</b> '+escH(r.nicht.join(' · '))+'</div>':'')+
+        (r.sources&&r.sources.length?'<div class="src">Quelle: '+escH(r.sources.join('; '))+'</div>':'')+'</div>';
+    }).join('');
+  }
+  return h;
+}
 function renderBreedProfile(){
   var box=$('#breedCard'); if(!box||!VB) return;
   var b=curBreed();
-  if(!b){ box.innerHTML='<p class="muted">Wähle oben in der Patientenleiste eine <b>Rasse</b> (Hund/Katze) – dann erscheinen hier die rassespezifischen genetischen Besonderheiten (MDR1/ABCB1, Windhund-Typ, brachyzephales Atemwegssyndrom, HCM …) mit betroffenen Medikamenten und Narkose-Folgen.</p>'; return; }
+  if(!b){ box.innerHTML='<p class="muted">Wähle oben in der Patientenleiste eine <b>Rasse</b> – dann erscheinen hier die rassespezifischen Erbkrankheiten (MDR1/ABCB1, Windhund-Typ, brachyzephales Atemwegssyndrom, HCM, PKD …), die <b>Narkose erster Wahl</b>, was zu meiden ist und wie der Patient wieder stabil wird, wenn schon das Falsche gegeben wurde.</p>'; return; }
   var conds=VB.conditionsOf(b), grps=VB.groupsOf(b), aff=VB.affectedDrugs(b, appDrugIds());
-  var html='<div class="proto-head"><span class="ic">🧬</span><div><h2 style="margin:0">'+b.name+'</h2><span class="dose-cls">'+(b.sp==='katze'?'Katze':'Hund')+(b.freq?' · '+b.freq:'')+(grps.length?' · '+grps.map(function(g){return g.name;}).join(', '):'')+'</span></div></div>';
-  if(b.note) html+='<div class="thr">🐾 '+b.note+'</div>';
+  var pl=VB.plan?VB.plan(b):null, risk=VB.riskOf?VB.riskOf(b):null;
+  var spN=(A.species.find(function(s){return s.id===b.sp;})||{}).name||b.sp;
+  var html='<div class="proto-head"><span class="ic">🧬</span><div><h2 style="margin:0">'+escH(b.name)+'</h2><span class="dose-cls">'+escH(spN)+(b.freq?' · '+escH(b.freq):'')+(grps.length?' · '+grps.map(function(g){return g.name;}).join(', '):'')+(risk?' · Risiko '+risk:'')+'</span></div></div>';
+  if(b.note) html+='<div class="thr">🐾 '+escH(b.note)+'</div>';
+  if(pl) html+=planHtml(pl);
   html+='<div class="sec-h">Genetische Besonderheiten</div>';
   html+=conds.map(function(c){
     return '<div class="dose-card" style="border-color:var(--line)"><div class="dose-top"><span class="dose-name">'+c.icon+' '+c.name+'</span><span class="dose-cls">'+c.cat+(c.gene?' · '+c.gene:'')+'</span></div>'+
@@ -767,8 +917,11 @@ function renderBreedProfile(){
     }).join('');
   } else { html+='<p class="muted">Für diese Rasse ist zu den Wirkstoffen dieses Moduls keine spezifische Warnung hinterlegt – die genetischen Besonderheiten oben trotzdem beachten.</p>'; }
   var links=[]; conds.forEach(function(c){ var lk=(VB.CONDITIONS[c.key]||{}).links||{}; (lk.blut||[]).forEach(function(w){ links.push('<a class="vp-xl blut" href="../canis-haematica/?w='+w+'" target="_blank" rel="noopener">🩸 '+w+'</a>'); }); });
-  html+='<div class="sec-h">Verbunden</div><div class="chips"><a class="vp-xl blut" href="../canis-haematica/?breed='+b.id+'" target="_blank" rel="noopener">🩸 Blutwerte-Atlas (Rasse)</a><a class="vp-xl stoff" href="../canis-metabolica/?breed='+b.id+'" target="_blank" rel="noopener">🧬 Stoffwechsel</a>'+links.join('')+'</div>';
-  html+='<div class="src" style="margin-top:10px">Rassedaten: CliniPharm/CliniTox (vetpharm.uzh.ch) · WSU-VCPL · Plumb’s · WSAVA/ACVAA · UC Davis VGL · PennGen. Referenz/Lernhilfe – vor Gabe gegen Fachinfo &amp; Patient prüfen.</div>';
+  /* Die Schwestermodule (Blutwerte/Stoffwechsel) kennen nur Hund und Katze – fuer Kaninchen,
+   * Frettchen oder Reptilien fuehrten die Verweise in eine leere Seite. */
+  if(b.sp==='hund'||b.sp==='katze')
+    html+='<div class="sec-h">Verbunden</div><div class="chips"><a class="vp-xl blut" href="../canis-haematica/?breed='+b.id+'" target="_blank" rel="noopener">🩸 Blutwerte-Atlas (Rasse)</a><a class="vp-xl stoff" href="../canis-metabolica/?breed='+b.id+'" target="_blank" rel="noopener">🧬 Stoffwechsel</a>'+links.join('')+'</div>';
+  html+='<div class="src" style="margin-top:10px">Rassedaten: CliniPharm/CliniTox (vetpharm.uzh.ch) · Vetidata · WSU-VCPL · Plumb’s · WSAVA/ACVAA/AAHA · BSAVA · OMIA · UC Davis VGL · PennGen · Carpenter Exotic Animal Formulary. Referenz/Lernhilfe – vor Gabe gegen Fachinfo &amp; Patient prüfen.</div>';
   box.innerHTML=html;
 }
 
@@ -1937,7 +2090,10 @@ function renderInjection(){
   $$('#injektion [data-give]').forEach(function(b){ b.onclick=function(){ var id=b.dataset.give, kind=b.dataset.kind;
     var kombo=function(cid){ return (A.injection||[]).find(function(x){return x.id===cid;}); };
     var buche=function(cid, storno){ var c=kombo(cid); medBuchen({kind:'narkose', kindText:(c&&c.kind)||kind, id:cid,
-      name:(c&&c.name)||cid, dosis:c?medKomboText(c):'', route:(c&&c.route)||'', storno:!!storno}); };
+      name:(c&&c.name)||cid, dosis:c?medKomboText(c):'', route:(c&&c.route)||'', storno:!!storno,
+      /* Eine Kombination heisst z. B. „Ketamin-Medetomidin" – die Rasseregeln greifen aber je
+       * WIRKSTOFF. Ohne diese Liste bliebe eine Ketamin-Warnung bei der HCM-Katze stumm. */
+      wirkstoffe:((c&&c.comp)||[]).map(function(k){ return k.n; })}); };
     if(kind==='Nachdosierung'){ var ix=state.injTopups.indexOf(id); if(ix>=0) state.injTopups.splice(ix,1); else state.injTopups.push(id); buche(id, ix>=0); }
     else {
       /* Beim Wechsel der Einleitung fällt die vorherige stillschweigend weg — das muss im
@@ -2023,9 +2179,69 @@ function medRevText(r){
  * es keine Bridge, die Liste bliebe dann in diesem Browser. Ein Versprechen, das nicht gilt,
  * wäre bei einer Krankenakte schlimmer als gar keins. */
 function medAnStation(){ try{ return !!(window.parent && window.parent!==window); }catch(e){ return false; } }
+/* ---------------------------------------------------------------------------
+ * RASSEPRUEFUNG IM AUGENBLICK DER GABE
+ * Bis hierher warnte die App nur dort, wo eine Dosis ANGEZEIGT wurde. Der gefaehrliche Moment
+ * ist aber der Klick auf „○ als gegeben": ab da ist der Wirkstoff im Tier. Genau dann pruefen
+ * wir Rasse × Wirkstoff und zeigen nicht „nicht geben" (zu spaet), sondern was jetzt zu tun ist,
+ * damit der Patient stabil bleibt. Die Warnung wandert MIT in die Protokollzeile — sie steht
+ * damit im PDF und in der Fern-Ansicht, nicht nur kurz auf dem Bildschirm.
+ * Storno-Zeilen werden nicht geprueft: eine zurueckgenommene Gabe braucht keinen Rettungsweg.
+ * --------------------------------------------------------------------------- */
+function gabePruefen(rec){
+  if(!VB||!VB.checkGabe||rec.storno) return null;
+  var b=curBreed(); if(!b) return null;
+  var namen=[].concat(rec.wirkstoffe&&rec.wirkstoffe.length?rec.wirkstoffe:[], rec.id||[], rec.name||[]);
+  var alle=[], seen={}, rett=[], rSeen={}, schlimmst=null;
+  namen.forEach(function(n){
+    var c=VB.checkGabe(b, n); if(!c) return;
+    c.warnungen.forEach(function(w){ if(seen[w.id]) return; seen[w.id]=1; alle.push(w);
+      if(!schlimmst||(VB.SEV[w.level]||0)>(VB.SEV[schlimmst]||0)) schlimmst=w.level; });
+    c.rettung.forEach(function(r){ if(rSeen[r.key]) return; rSeen[r.key]=1; rett.push(r); });
+  });
+  if(!alle.length) return null;
+  /* Schwerste Warnung zuerst — sie steht sonst hinter einer harmloseren, und genau sie landet
+   * abgeschnitten in der Protokollzeile. Bei „Medetomidin + Ketamin" an der HCM-Katze muss
+   * MEIDEN (Ketamin) vor VORSICHT (α2) stehen. */
+  alle.sort(function(x,y){ return (VB.SEV[y.level]||0)-(VB.SEV[x.level]||0); });
+  return { breed:b, level:schlimmst||'caution', warnungen:alle, rettung:rett };
+}
+function gabeWarnZeigen(pr, rec){
+  var alt=$('#gabeWarn'); if(alt) alt.remove();
+  if(!pr) return;
+  var d=document.createElement('div');
+  d.id='gabeWarn'; d.className='gabe-warn lvl-'+pr.level;
+  d.setAttribute('role','alert');
+  d.innerHTML='<div class="gw-h"><span>🧬 '+warnLabel(pr.level)+' · '+escH(pr.breed.name)+'</span>'+
+      '<button class="gw-x" id="gabeWarnZu">schließen</button></div>'+
+    '<div class="gw-b"><b>'+escH(rec.name)+'</b> ist gebucht. Was das bei dieser Rasse bedeutet:</div>'+
+    pr.warnungen.map(function(w){
+      return '<div class="breed-warn lvl-'+w.level+'" style="margin-top:6px"><span class="bw-tag" style="background:'+warnDot(w.level)+'">'+warnLabel(w.level)+(w.factor?' · '+w.factor:'')+'</span> <span class="bw-tx">'+escH(w.text)+'</span>'+
+        (w.sources&&w.sources.length?'<span class="bw-src">'+escH(w.sources.join(' · '))+'</span>':'')+'</div>';
+    }).join('')+
+    (pr.rettung.length?('<div class="gw-s"><b>🆘 Jetzt stabilisieren</b>'+pr.rettung.map(function(r){
+      return '<div style="margin-top:6px"><b style="font-size:12px">'+escH(r.name||'')+'</b>'+
+        (r.schritte.length?'<ol>'+r.schritte.map(function(s){return '<li>'+escH(s)+'</li>';}).join('')+'</ol>':'')+
+        (r.nicht&&r.nicht.length?'<div style="color:#ffb3b3;font-size:12px;margin-top:3px"><b>NICHT:</b> '+escH(r.nicht.join(' · '))+'</div>':'')+
+        (r.sources&&r.sources.length?'<span class="gw-src">'+escH(r.sources.join(' · '))+'</span>':'')+'</div>';
+    }).join('')+'</div>'):'')+
+    '<div class="gw-s"><button class="gw-x" id="gabeWarnPlan" style="border-color:var(--brand)">→ ganzer Narkoseplan der Rasse</button></div>';
+  document.body.appendChild(d);
+  $('#gabeWarnZu').onclick=function(){ d.remove(); };
+  $('#gabeWarnPlan').onclick=function(){ d.remove(); switchTab('rasse'); window.scrollTo({top:0,behavior:'smooth'}); };
+}
 function medBuchen(rec){
   if(!rec||!rec.name) return;
   rec.ts=Date.now(); rec.sp=state.sp; rec.spName=sp().name; rec.kg=state.wt;
+  var b0=curBreed(); if(b0){ rec.breed=b0.id; rec.breedName=b0.name; }
+  var pr=gabePruefen(rec);
+  if(pr){
+    /* Nur der Kern wandert ins Protokoll (Stufe + Kurztext) – die Zeile muss lesbar bleiben und
+     * die Cloud-Regel begrenzt Zeichenketten auf 2000 Zeichen. */
+    rec.warnLevel=pr.level;
+    rec.warnText=pr.warnungen.map(function(w){ return warnLabel(w.level)+': '+w.text; }).join(' | ').slice(0,900);
+    gabeWarnZeigen(pr, rec);
+  }
   state.medGaben.push(rec);
   if(state.medGaben.length>400) state.medGaben.shift();
   /* An die Shell melden. '*' als Ziel ist hier richtig: die Shell liegt auf DEMSELBEN Ursprung
@@ -2040,9 +2256,10 @@ function medLogHtml(){
   return '<div class="med-log-box"><div class="med-log-h">📋 Verabreicht &amp; protokolliert · '+(L.length===1?'1 Eintrag':L.length+' Einträge')+'</div>'+
     L.slice().reverse().map(function(r){
       return '<div class="gabe-row'+(r.storno?' storno':'')+'"><span class="t">'+medZeit(r.ts)+'</span>'+
-        '<span class="n">'+(r.storno?'↩ ':'')+escH(r.name)+'</span>'+
+        '<span class="n">'+(r.storno?'↩ ':'')+(r.warnLevel?'<span title="rassespezifische Warnung">🧬</span> ':'')+escH(r.name)+'</span>'+
         '<span class="k">'+escH(r.storno?'zurückgenommen':(r.kindText||r.kind||''))+'</span>'+
-        '<span class="d">'+escH(r.dosis||'')+'</span></div>';
+        '<span class="d">'+escH(r.dosis||'')+'</span></div>'+
+        (r.warnText?'<div class="breed-warn lvl-'+r.warnLevel+'" style="margin:2px 0 6px">'+escH(r.warnText)+'</div>':'');
     }).join('')+
     '<div class="med-log-f">'+(medAnStation()
       ? 'Diese Zeilen stehen im Narkoseprotokoll — im PDF-Ausdruck und in der Fern-Ansicht. Nur Bestätigtes; eine übergangene Empfehlung erscheint dort nie.'
@@ -2133,7 +2350,25 @@ function boot(){
   navMerke();
   $('#wt').addEventListener('input',function(e){ var v=parseFloat(e.target.value); state.wt=(v>0?v:0); syncPatient(); rerender(); });
   $('#age').addEventListener('change',function(e){ state.age=e.target.value; renderSettings(); });
-  if($('#breedIn')) $('#breedIn').addEventListener('change',function(e){ commitBreed(e.target.value); });
+  if($('#breedIn')){
+    var bi=$('#breedIn');
+    bi.addEventListener('input',function(e){ breedPopAuf(e.target.value); });
+    bi.addEventListener('focus',function(e){ breedPopAuf(e.target.value); });
+    bi.addEventListener('blur',function(e){
+      /* Kurz warten: ein Klick in die Liste loest zuerst blur aus. mousedown waehlt schon aus,
+       * deshalb reicht hier das Aufraeumen + Uebernehmen des getippten Textes. */
+      setTimeout(function(){ breedPopZu(); commitBreed(bi.value); }, 120);
+    });
+    bi.addEventListener('keydown',function(e){
+      if(e.key==='ArrowDown'){ e.preventDefault(); if($('#breedPop').hidden) breedPopAuf(bi.value); breedPopMarkiere(1); }
+      else if(e.key==='ArrowUp'){ e.preventDefault(); breedPopMarkiere(-1); }
+      else if(e.key==='Enter'){
+        if(breedSel>=0 && breedTreffer[breedSel]){ e.preventDefault(); waehleBreed(breedTreffer[breedSel].breed.id); }
+        else if(breedTreffer.length){ e.preventDefault(); waehleBreed(breedTreffer[0].breed.id); }
+      }
+      else if(e.key==='Escape'){ if(!$('#breedPop').hidden){ e.stopPropagation(); breedPopZu(); } }
+    });
+  }
   if($('#breedClear')) $('#breedClear').addEventListener('click',function(){ var i=$('#breedIn'); if(i){ i.value=''; } commitBreed(''); });
   if($('#anMode')) $('#anMode').addEventListener('change',function(e){ state.anMode=e.target.value; if(state.anMode==='inj-only') state.dev.iso=0; renderMachine(); renderDevCtrl(); if(mon.running) renderMonValues(); else ventCoach(); });
   $('#dSearch').addEventListener('input',function(e){ state.q=e.target.value; renderDrugs(); });
@@ -2849,6 +3084,15 @@ html.dv-on,html.dv-on body{overflow:hidden}
 /* Gaben-Zeilen in der Bildschirmtabelle hervorheben */
 .fl-prot tr.medrow td{background:rgba(34,217,141,.16);text-align:left}
 .fl-prot tr.storno td{opacity:.6;text-decoration:line-through}
+/* Rassewarnung zur Gabe — eigene Zeile direkt darunter, damit sie im Ausdruck nicht
+   in einer Spalte verschwindet. Die Farbe folgt der Stufe aus der Station. */
+tr.warnrow td{text-align:left !important;font-size:11px;line-height:1.45;background:rgba(255,140,60,.10) !important}
+#druckvorschau .dv-blatt tr.warnrow td,#druckblatt tr.warnrow td{background:#fff4e6 !important;color:#000;font-size:9px}
+.medwarn{display:inline-block;border-radius:5px;padding:1px 6px;margin-right:5px;font-weight:800;font-size:10px;color:#08121a;background:#ffc23c}
+.medwarn.lvl-avoid{background:#ff4d4d;color:#fff}
+.medwarn.lvl-reduce{background:#ff8c3c}
+.medwarn.lvl-monitor{background:#7fd6ff}
+.medbreed{display:inline-block;border:1px solid rgba(139,124,246,.55);border-radius:999px;padding:0 7px;font-size:10.5px;margin-left:5px;white-space:nowrap}
 @media print{
   /* Feste Elemente und Navigation raus, nur das Protokollblatt drucken. */
   #druckvorschau{display:none !important}
@@ -3776,11 +4020,22 @@ function medSpaltenzahl(mitSaal){ return (mitSaal?1:0)+10; }
 function medZeile(e, mitSaal){
   var m=e.med||{};
   var txt=(m.storno?'zurückgenommen: ':'gegeben: ')+(m.name||'')+(m.dosis?' — '+m.dosis:'')+(m.route?' · '+m.route:'');
+  /* Die rassespezifische Warnung, die im Augenblick der Gabe galt, steht MIT in der Zeile.
+   * Sie gehoert ins Protokoll und nicht nur auf den Bildschirm der Station: aus der Ferne sieht
+   * man damit sofort, warum eine Gabe heikel war, und spaeter laesst sich belegen, dass die
+   * Warnung da war. Die Station schickt sie mit (registry.medikamentGabe -> med.warnText). */
+  var warn = (!m.storno && m.warnText)
+    ? '<tr class="medrow warnrow">'+(mitSaal?'<td></td>':'')+'<td></td>'+
+      '<td class="l" colspan="'+(medSpaltenzahl(mitSaal)-(mitSaal?2:1))+'">'+
+      '<span class="medwarn lvl-'+esc(m.warnLevel||'caution')+'">🧬 '+esc(m.breed||'Rasse')+'</span> '+
+      esc(m.warnText)+'</td></tr>'
+    : '';
   return '<tr class="medrow'+(m.storno?' storno':'')+'">'+
     (mitSaal?'<td class="l">'+esc(e.__saal||'')+'</td>':'')+
     '<td class="l">'+esc(zeitText(e.ts))+'</td>'+
     '<td class="l" colspan="'+(medSpaltenzahl(mitSaal)-(mitSaal?2:1))+'">'+
-      '<b>'+(m.storno?'↩':'💉')+' '+esc(m.kindText||m.kind||'Medikament')+'</b> · '+esc(txt)+'</td></tr>';
+      '<b>'+(m.storno?'↩':'💉')+' '+esc(m.kindText||m.kind||'Medikament')+'</b> · '+esc(txt)+
+      (m.breed&&!m.storno?' <span class="medbreed">🧬 '+esc(m.breed)+'</span>':'')+'</td></tr>'+warn;
 }
 /* Nur die Gaben aus einer Protokollliste — fuer die eigene Karte und den Ausdruck. */
 function nurGaben(zeilen){ return (zeilen||[]).filter(function(e){ return e && e.art==='med' && e.med; }); }
@@ -3792,7 +4047,10 @@ function gabenTabelle(gaben, cls){
       return '<tr'+(m.storno?' class="storno"':'')+'><td class="l">'+esc(zeitText(e.ts))+'</td>'+
         '<td class="l">'+esc(m.storno?'zurückgenommen':(m.kindText||m.kind||''))+'</td>'+
         '<td class="l">'+esc(m.name||'')+'</td>'+
-        '<td class="l">'+esc((m.dosis||'')+(m.route?'  '+m.route:''))+'</td></tr>';
+        '<td class="l">'+esc((m.dosis||'')+(m.route?'  '+m.route:''))+'</td></tr>'+
+        ((!m.storno&&m.warnText)
+          ? '<tr class="warnrow"><td></td><td class="l" colspan="3"><span class="medwarn lvl-'+esc(m.warnLevel||'caution')+
+            '">🧬 '+esc(m.breed||'Rasse')+'</span> '+esc(m.warnText)+'</td></tr>' : '');
     }).join('')+'</table></div>';
 }
 function protokollTabelle(zeilen, cls, mitSaal){

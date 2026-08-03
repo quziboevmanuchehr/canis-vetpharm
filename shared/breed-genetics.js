@@ -1,6 +1,6 @@
 /* ============================================================================
    shared/breed-genetics.js  ·  Canis VET-PHARM
-   Rassespezifische Genetik & Arzneimittel-/Narkose-Warnungen  ·  window.VETBREED
+   Rassespezifische Genetik & Arzneimittel-/Narkose-Warnungen  ·  root.VETBREED
    ----------------------------------------------------------------------------
    Von ALLEN Modulen genutzt (Anästhesie, Blutwerte, Stoffwechsel, Reise, Hub).
    Quellen: CliniPharm/CliniTox – vetpharm.uzh.ch (Pharmakogenetik MDR1/ABCB1),
@@ -8,7 +8,7 @@
    Drug Handbook, WSAVA/ACVAA/AAHA-Anästhesie-Leitlinien, BSAVA, UC Davis VGL,
    PennGen. ALLES Referenz-/Lernhilfe – kein Ersatz für klinisches Urteil.
    ============================================================================ */
-(function () {
+(function (root) {
   'use strict';
 
   /* ---- Pharmakologisch/klinisch sinnvolle Rassegruppen (steuern Regeln) ---- */
@@ -285,20 +285,135 @@
       sources:['ACVIM','cavalierhealth.org'] }
   ];
 
+  /* ------------------------- Erstwahl-Protokolle -------------------------
+     Bausteine einer Narkose fuer eine RISIKOLAGE (nicht fuer eine Rasse) — eine Rasse erbt sie
+     ueber ihre Erkrankungen. Wird vom Rassekatalog (breed-katalog.js) befuellt.
+     Aufbau je Eintrag: { name, praemed, einleitung, erhalt, analgesie, ziele, nicht[], sources[] } */
+  var PROTOCOLS = {};
+
+  /* --------------------------- Rettungswege ---------------------------
+     Was tun, wenn das FALSCHE Mittel schon im Tier ist. Schluessel = Lage (z. B. 'alpha2-ueberdosis')
+     oder Wirkstoff-Token. Aufbau: { name, zeichen, schritte[], nicht[], sources[] } */
+  var RESCUE = {};
+
   /* --------------------------- Engine / API --------------------------- */
   var SEV = { avoid: 3, reduce: 2, caution: 1, monitor: 0 };
+  var RISK = { hoch: 3, mittel: 2, niedrig: 1 };
   function norm(s) { return (s == null ? '' : String(s)).toLowerCase()
-      .replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/\s+/g,' ').trim(); }
+      .replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss')
+      .replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim(); }
+
+  /* ---------------------------------------------------------------------------
+     register(pack) — der Rassekatalog und spaetere Nachtraege haengen sich hier ein,
+     statt diese Datei aufzublaehen. Alles ADDITIV: ein vorhandener, handgepflegter
+     Eintrag wird NIE geloescht, nur um Felder ergaenzt, die er noch nicht hat.
+     Grund: die Texte hier sind einzeln gegen Quellen geprueft; ein generierter
+     Katalog darf sie ergaenzen, aber nicht ueberschreiben.
+     --------------------------------------------------------------------------- */
+  var _breedIx = null;                       /* id -> Rasse, wird bei Aenderung verworfen */
+  function _mergeObj(ziel, pack, hart) {
+    if (!pack) return;
+    Object.keys(pack).forEach(function (k) {
+      if (!ziel[k]) { ziel[k] = pack[k]; return; }
+      var alt = ziel[k], neu = pack[k], out = {};
+      Object.keys(neu).forEach(function (f) { out[f] = neu[f]; });
+      Object.keys(alt).forEach(function (f) {
+        var leer = out[f] == null || out[f] === '' || (Array.isArray(out[f]) && !out[f].length);
+        if (!hart || leer) out[f] = alt[f];                    /* Handgepflegtes gewinnt */
+      });
+      ziel[k] = out;
+    });
+  }
+  function register(pack) {
+    if (!pack) return root.VETBREED;
+    _mergeObj(GROUPS, pack.groups);
+    _mergeObj(CONDITIONS, pack.conditions);
+    _mergeObj(PROTOCOLS, pack.protocols);
+    _mergeObj(RESCUE, pack.rescue);
+    (pack.breeds || []).forEach(function (b) {
+      if (!b || !b.id) return;
+      var alt = byId(b.id);
+      if (!alt) { BREEDS.push(b); return; }
+      /* gleiche id: Mengen vereinen, Text der gepflegten Fassung behalten */
+      ['groups', 'conditions', 'aliases'].forEach(function (f) {
+        var m = (alt[f] || []).slice();
+        (b[f] || []).forEach(function (x) { if (m.indexOf(x) < 0) m.push(x); });
+        alt[f] = m;
+      });
+      ['freq', 'note', 'fci', 'size'].forEach(function (f) { if (!alt[f] && b[f]) alt[f] = b[f]; });
+      delete alt.__ct;                                  /* Suchtext neu bauen lassen */
+    });
+    (pack.rules || []).forEach(function (r) {
+      if (!r || !r.id) return;
+      for (var i = 0; i < DRUG_RULES.length; i++) if (DRUG_RULES[i].id === r.id) return;
+      DRUG_RULES.push(r);
+    });
+    _breedIx = null;
+    return root.VETBREED;
+  }
 
   function bySpecies(sp) { return BREEDS.filter(function (b) { return !sp || b.sp === sp; }); }
-  function byId(id) { for (var i = 0; i < BREEDS.length; i++) if (BREEDS[i].id === id) return BREEDS[i]; return null; }
+  function byId(id) {
+    if (!_breedIx) { _breedIx = {}; for (var i = 0; i < BREEDS.length; i++) _breedIx[BREEDS[i].id] = BREEDS[i]; }
+    return _breedIx[id] || null;
+  }
   function resolve(text, sp) {
-    if (!text) return null; var t = norm(text);
-    var pool = bySpecies(sp);
-    var exact = pool.filter(function (b) { return norm(b.name) === t || b.id === t || (b.aliases || []).some(function (a) { return norm(a) === t; }); });
-    if (exact.length) return exact[0];
-    var part = pool.filter(function (b) { return norm(b.name).indexOf(t) >= 0 || (b.aliases || []).some(function (a) { return norm(a).indexOf(t) >= 0; }); });
-    return part[0] || null;
+    if (!text) return null;
+    var tr = search(text, sp, 1);
+    return tr.length ? tr[0].breed : null;
+  }
+  /* ---------------------------------------------------------------------------
+     search(text, sp, limit) — Sofortsuche fuer das Rassefeld.
+     Rangfolge, damit beim Tippen das Erwartete OBEN steht und nicht irgendein
+     Zufallstreffer: exakt > Namensanfang > Anfang eines Wortes im Namen > Alias-Anfang
+     > irgendwo im Namen > irgendwo im Alias > Treffer ueber eine Erkrankung ("HCM", "MDR1").
+     Der Erkrankungstreffer ist bewusst der schwaechste: wer "Perser" tippt, will die Rasse,
+     nicht jede Katze mit PKD. Ohne Eingabe kommt die nach Namen sortierte Artenliste.
+     --------------------------------------------------------------------------- */
+  /* Bei jedem Tastendruck ueber mehrere hundert Rassen laufen — der Erkrankungstext wird deshalb
+   * einmal je Rasse gebaut und behalten. Ohne das entstuende er pro Buchstabe neu. */
+  function _condText(b) {
+    if (b.__ct != null) return b.__ct;
+    var t = '';
+    (b.conditions || []).forEach(function (k) { var c = CONDITIONS[k]; if (c) t += ' ' + k + ' ' + c.name + ' ' + (c.gene || ''); });
+    (b.groups || []).forEach(function (k) { var g = GROUPS[k]; if (g) t += ' ' + k + ' ' + g.name; });
+    b.__ct = norm(t);
+    return b.__ct;
+  }
+  function _wortAnfang(hay, nadel) {
+    var i = hay.indexOf(nadel);
+    while (i >= 0) { if (i === 0 || hay.charAt(i - 1) === ' ') return true; i = hay.indexOf(nadel, i + 1); }
+    return false;
+  }
+  function search(text, sp, limit) {
+    var pool = bySpecies(sp), t = norm(text || ''), max = limit || 40, out = [];
+    if (!t) {
+      out = pool.slice().sort(function (a, z) { return norm(a.name) < norm(z.name) ? -1 : 1; });
+      return out.slice(0, max).map(function (b) { return { breed: b, score: 0 }; });
+    }
+    pool.forEach(function (b) {
+      var n = norm(b.name), al = (b.aliases || []).map(norm), s = 0;
+      if (n === t || b.id === t || al.indexOf(t) >= 0) s = 100;
+      else if (n.indexOf(t) === 0) s = 80;
+      else if (al.some(function (a) { return a.indexOf(t) === 0; })) s = 70;
+      else if (_wortAnfang(n, t)) s = 60;
+      else if (al.some(function (a) { return _wortAnfang(a, t); })) s = 50;
+      else if (n.indexOf(t) >= 0) s = 40;
+      else if (al.some(function (a) { return a.indexOf(t) >= 0; })) s = 30;
+      else if (_condText(b).indexOf(t) >= 0) s = 12;
+      if (s) out.push({ breed: b, score: s });
+    });
+    out.sort(function (a, z) {
+      if (z.score !== a.score) return z.score - a.score;
+      var an = norm(a.breed.name), zn = norm(z.breed.name);
+      if (an.length !== zn.length) return an.length - zn.length;   /* kuerzerer Name zuerst */
+      return an < zn ? -1 : 1;
+    });
+    return out.slice(0, max);
+  }
+  /* Welche Tierarten haben ueberhaupt Rassen im Katalog? (steuert die Sichtbarkeit des Feldes) */
+  function speciesWithBreeds() {
+    var m = {}; BREEDS.forEach(function (b) { m[b.sp] = (m[b.sp] || 0) + 1; }); return m;
   }
   function conditionsOf(b) {
     if (!b) return [];
@@ -359,11 +474,130 @@
   }
   function hasAirwayRisk(breedRef) { var b = typeof breedRef === 'object' ? breedRef : byId(breedRef); return !!(b && (b.groups || []).indexOf('brachy') >= 0); }
 
-  window.VETBREED = {
-    version: 1, GROUPS: GROUPS, CONDITIONS: CONDITIONS, BREEDS: BREEDS, DRUG_RULES: DRUG_RULES,
-    SEV: SEV, norm: norm,
-    bySpecies: bySpecies, byId: byId, resolve: resolve,
+  /* Gesamtrisiko einer Rasse: die schwerste hinterlegte Erkrankung entscheidet. */
+  function riskOf(breedRef) {
+    var b = typeof breedRef === 'object' ? breedRef : byId(breedRef);
+    if (!b) return null;
+    var hoch = 0;
+    (b.conditions || []).forEach(function (k) { var c = CONDITIONS[k]; if (c) hoch = Math.max(hoch, RISK[c.risk] || 1); });
+    (b.groups || []).forEach(function (k) { if (k === 'brachy') hoch = Math.max(hoch, 3); if (k === 'sighthound' || k === 'toy' || k === 'giant') hoch = Math.max(hoch, 2); });
+    return hoch >= 3 ? 'hoch' : hoch === 2 ? 'mittel' : hoch === 1 ? 'niedrig' : null;
+  }
+
+  /* ---------------------------------------------------------------------------
+     plan(breedRef) — der NARKOSEPLAN dieser Rasse: was als erstes waehlen, was
+     weglassen, worauf schauen, und was tun, wenn es kippt. Er entsteht NICHT neu,
+     sondern setzt sich aus den Erkrankungen der Rasse und ihren Protokollen
+     zusammen — jede Zeile bleibt damit auf ihre Quelle rueckfuehrbar.
+     Doppelte Nennungen (zwei Erkrankungen mit demselben Protokoll) fallen weg.
+     --------------------------------------------------------------------------- */
+  function plan(breedRef) {
+    var b = typeof breedRef === 'object' ? breedRef : byId(breedRef);
+    if (!b) return null;
+    var erst = [], meiden = [], monitor = [], rettung = [], gesehen = {}, mGes = {}, rGes = {};
+    /* Ein Protokoll darf artgebunden sein (sp). Zeigt eine Erkrankung, die es bei mehreren Arten
+     * gibt (BOAS, MDR1), auf ein Hundeprotokoll, bekaeme ein Perser sonst die Hundeanleitung.
+     * Dann wird die Artfassung <schluessel>-<art> genommen — und wenn es die nicht gibt, gar
+     * nichts. Lieber keine Empfehlung als die einer anderen Tierart. */
+    function protoAdd(pk, quelleName) {
+      var p = PROTOCOLS[pk];
+      if (p && p.sp && p.sp !== b.sp) {
+        var alt = PROTOCOLS[pk + '-' + b.sp];
+        if (!alt) return;
+        pk = pk + '-' + b.sp; p = alt;
+      }
+      if (!p || gesehen[pk]) return; gesehen[pk] = 1;
+      erst.push({ key: pk, name: p.name || quelleName, praemed: p.praemed, einleitung: p.einleitung,
+        erhalt: p.erhalt, analgesie: p.analgesie, ziele: p.ziele, warum: p.warum, rang: p.rang || 0,
+        nicht: p.nicht || [], sources: p.sources || [] });
+      (p.nicht || []).forEach(function (x) { var k = norm(x); if (!mGes[k]) { mGes[k] = 1; meiden.push({ text: x, von: p.name || quelleName }); } });
+      if (p.ziele) { var zk = norm(p.ziele); if (!mGes['z' + zk]) { mGes['z' + zk] = 1; monitor.push({ text: p.ziele, von: p.name || quelleName }); } }
+    }
+    function rescueAdd(rk, quelleName) {
+      var r = RESCUE[rk]; if (!r || rGes[rk]) return; rGes[rk] = 1;
+      rettung.push({ key: rk, name: r.name || quelleName, zeichen: r.zeichen, schritte: r.schritte || [],
+        nicht: r.nicht || [], sources: r.sources || [] });
+    }
+    /* Schwerste Erkrankung zuerst: bei einer BKH mit PKD UND HCM muss die Herzempfehlung oben
+     * stehen, nicht die Niere — sonst liest der Tierarzt im Ernstfall die falsche Zeile zuerst. */
+    var conds = (b.conditions || []).slice().sort(function (a, z) {
+      return (RISK[(CONDITIONS[z] || {}).risk] || 0) - (RISK[(CONDITIONS[a] || {}).risk] || 0);
+    });
+    /* Erst die gepflegten Protokolle (Gruppe + Erkrankung), dann erst die Einzelhinweise aus
+     * den Erkrankungen selbst. Sonst steht bei einem Mops „Stenotische Nasenlöcher" ueber dem
+     * vollstaendigen BOAS-Protokoll — richtig, aber nicht das, was man zuerst lesen will. */
+    conds.forEach(function (k) {
+      var c = CONDITIONS[k]; if (!c) return;
+      if (c.protocol) [].concat(c.protocol).forEach(function (p) { protoAdd(p, c.name); });
+    });
+    /* Gruppenprotokolle NACH den Erkrankungen: eine Britisch Kurzhaar ist auch etwas
+     * kurzköpfig — aber wer sie vor sich hat, muss zuerst die HCM lesen und nicht den
+     * Atemwegshinweis. Ohne eingetragene Erkrankung bleibt die Gruppe die einzige Quelle. */
+    (b.groups || []).forEach(function (k) {
+      var g = GROUPS[k]; if (!g) return;
+      if (g.protocol) [].concat(g.protocol).forEach(function (p) { protoAdd(p, g.name); });
+      if (g.rescue) [].concat(g.rescue).forEach(function (r) { rescueAdd(r, g.name); });
+    });
+    conds.forEach(function (k) {
+      var c = CONDITIONS[k]; if (!c) return;
+      /* rescueOnly = Eintrag, der in Wahrheit ein Notfallablauf ist (kein Narkoseplan) —
+       * seine Schritte gehoeren unter „stabilisieren", nicht unter „erste Wahl". */
+      if (c.first && !c.rescueOnly) { var fk = 'c:' + k; if (!gesehen[fk]) { gesehen[fk] = 1;
+        erst.push({ key: fk, name: c.name, einleitung: c.first, warum: c.short, rang: 5, nicht: c.avoid || [], sources: c.sources || [] }); } }
+      (c.avoid || []).forEach(function (x) { var kk = norm(x); if (!mGes[kk]) { mGes[kk] = 1; meiden.push({ text: x, von: c.name }); } });
+      if (c.monitor) { var mk = norm(c.monitor); if (!mGes['m' + mk]) { mGes['m' + mk] = 1; monitor.push({ text: c.monitor, von: c.name }); } }
+      if (c.rescue) [].concat(c.rescue).forEach(function (r) { rescueAdd(r, c.name); });
+    });
+    /* Reihenfolge: erkrankungsspezifisches Protokoll → Einzelhinweis der Erkrankung →
+     * Artgrundsatz (rang 9). Die Artgrundsätze gelten immer, aber wer eine BKH mit HCM vor sich
+     * hat, will nicht zuerst „Katze — Narkosegrundsätze" lesen. Stabil sortiert (Index als
+     * Zweitschlüssel), damit die Reihenfolge innerhalb einer Stufe erhalten bleibt. */
+    erst.forEach(function (e, i) { e.__i = i; });
+    erst.sort(function (a, z) { return (a.rang || 0) - (z.rang || 0) || a.__i - z.__i; });
+    erst.forEach(function (e) { delete e.__i; });
+    return { breed: b, risk: riskOf(b),
+      erstwahl: erst.slice(0, 8), meiden: meiden.slice(0, 24),
+      monitoring: monitor.slice(0, 12), rettung: rettung.slice(0, 10) };
+  }
+
+  /* Rettungswege zu einem Schluessel oder zu einem Wirkstoff (fuer den Notfallknopf). */
+  function rescueFor(keys) {
+    var out = [], seen = {};
+    [].concat(keys || []).forEach(function (k) {
+      var r = RESCUE[k]; if (!r || seen[k]) return; seen[k] = 1;
+      out.push({ key: k, name: r.name, zeichen: r.zeichen, schritte: r.schritte || [], nicht: r.nicht || [], sources: r.sources || [] });
+    });
+    return out;
+  }
+
+  /* ---------------------------------------------------------------------------
+     checkGabe(breedRef, drugName) — die Pruefung im Augenblick der BESTAETIGTEN Gabe.
+     Liefert die schwerste Warnung dieser Rasse zu diesem Wirkstoff und gleich den
+     passenden Rettungsweg dazu. Genau das ist der Fall, den der Tierarzt braucht:
+     das Mittel ist schon drin, jetzt zaehlt nur noch, wie das Tier stabil wird.
+     --------------------------------------------------------------------------- */
+  function checkGabe(breedRef, drugName) {
+    var b = typeof breedRef === 'object' ? breedRef : byId(breedRef);
+    if (!b || !drugName) return null;
+    var ws = drugWarnings(b, drugName);
+    if (!ws.length) return null;
+    var top = ws[0], rk = [];
+    ws.forEach(function (w) {
+      var c = CONDITIONS[w.cond];
+      if (c && c.rescue) [].concat(c.rescue).forEach(function (x) { if (rk.indexOf(x) < 0) rk.push(x); });
+      if (w.rescue) [].concat(w.rescue).forEach(function (x) { if (rk.indexOf(x) < 0) rk.push(x); });
+    });
+    return { breed: b, drug: drugName, level: top.level, warnungen: ws, rettung: rescueFor(rk) };
+  }
+
+  root.VETBREED = {
+    version: 2, GROUPS: GROUPS, CONDITIONS: CONDITIONS, BREEDS: BREEDS, DRUG_RULES: DRUG_RULES,
+    PROTOCOLS: PROTOCOLS, RESCUE: RESCUE,
+    SEV: SEV, norm: norm, register: register,
+    bySpecies: bySpecies, byId: byId, resolve: resolve, search: search, speciesWithBreeds: speciesWithBreeds,
     conditionsOf: conditionsOf, groupsOf: groupsOf, profile: profile,
-    drugWarnings: drugWarnings, anyWarning: anyWarning, affectedDrugs: affectedDrugs, hasAirwayRisk: hasAirwayRisk
+    drugWarnings: drugWarnings, anyWarning: anyWarning, affectedDrugs: affectedDrugs, hasAirwayRisk: hasAirwayRisk,
+    riskOf: riskOf, plan: plan, rescueFor: rescueFor, checkGabe: checkGabe
   };
-})();
+  if (typeof module === 'object' && module.exports) module.exports = root.VETBREED;
+})(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));
