@@ -209,78 +209,78 @@
      scope  = {groups|conditions|breeds}. level: avoid|reduce|caution|monitor. */
   var DRUG_RULES = [
     /* MDR1 – Kat. 2 (Dosisreduktion + Überwachung; CliniPharm) */
-    { id:'mdr1-ace', drugs:['acepromazin'], scope:{conditions:['mdr1']}, level:'reduce', factor:'−25 % (heterozygot) bis −30–50 % (homozygot)', cond:'mdr1',
+    { id:'mdr1-ace', rescue: ['ace-hypotension', 'nicht-aufwachen'], drugs:['acepromazin'], scope:{conditions:['mdr1']}, level:'reduce', factor:'−25 % (heterozygot) bis −30–50 % (homozygot)', cond:'mdr1',
       text:'MDR1: Acepromazin dosisreduzieren + engmaschig überwachen – verstärkte/verlängerte Sedation (belegt v. a. homozygot mut/mut, Deshpande 2016). Keine Kontraindikation.',
       sources:['CliniPharm MDR1/ABCB1','WSU-VCPL','Deshpande 2016 (JVIM)'] },
-    { id:'mdr1-butor', drugs:['butorphanol'], scope:{conditions:['mdr1']}, level:'reduce', factor:'−25 % (het) bis −30–50 % (homozygot); homozygot möglichst ganz meiden', cond:'mdr1',
+    { id:'mdr1-butor', rescue: ['opioid-ueberhang', 'nicht-aufwachen'], drugs:['butorphanol'], scope:{conditions:['mdr1']}, level:'reduce', factor:'−25 % (het) bis −30–50 % (homozygot); homozygot möglichst ganz meiden', cond:'mdr1',
       text:'MDR1: Butorphanol reduzieren + überwachen. Fallbericht (homozygoter Collie): schwere Neurotoxikose nach 0,2 mg/kg (Sedation, Ataxie, Hypersalivation, Krampf) – bei homozygot besser meiden (BSAVA).',
       sources:['CliniPharm MDR1/ABCB1','WSU-VCPL','Fallbericht PMC12159028'] },
-    { id:'mdr1-opioid', drugs:['methadon','polamivet','morphin','fentanyl'], scope:{conditions:['mdr1']}, level:'caution', factor:'Dosisvorgaben strikt einhalten, titrieren, Naloxon bereit', cond:'mdr1',
+    { id:'mdr1-opioid', rescue: ['opioid-ueberhang', 'nicht-aufwachen'], drugs:['methadon','polamivet','morphin','fentanyl'], scope:{conditions:['mdr1']}, level:'caution', factor:'Dosisvorgaben strikt einhalten, titrieren, Naloxon bereit', cond:'mdr1',
       text:'MDR1: reine µ-Opioide (Methadon/Morphin/Fentanyl) sind P-gp-Substrate (CliniPharm Kat. 2) – mögliche verstärkte/verlängerte ZNS-/Atemdepression bei mut/mut. Nicht kontraindiziert: enge Dosis, titrieren, engmaschig überwachen.',
       sources:['CliniPharm MDR1/ABCB1'] },
-    { id:'mdr1-apomorphin', drugs:['apomorphin'], scope:{conditions:['mdr1']}, level:'avoid', cond:'mdr1',
+    { id:'mdr1-apomorphin', rescue: ['nicht-aufwachen'], drugs:['apomorphin'], scope:{conditions:['mdr1']}, level:'avoid', cond:'mdr1',
       text:'MDR1: Apomorphin ist Kat.-1-Wirkstoff (P-gp-Substrat) → verstärkte/verlängerte ZNS-Wirkung möglich. Zurückhaltend/meiden, Alternative erwägen, überwachen.',
       sources:['CliniPharm MDR1/ABCB1'] },
 
     /* Windhund-Typ */
-    { id:'sight-propofol', drugs:['propofol'], scope:{groups:['sighthound']}, level:'caution', factor:'Bolus −25–30 %, langsam titrieren, KEINE Propofol-CRI/TIVA', cond:'sighthound',
+    { id:'sight-propofol', rescue: ['propofol-apnoe', 'nicht-aufwachen', 'hypothermie'], drugs:['propofol'], scope:{groups:['sighthound']}, level:'caution', factor:'Bolus −25–30 %, langsam titrieren, KEINE Propofol-CRI/TIVA', cond:'sighthound',
       text:'Windhund: Propofol-Induktionsbolus ~25–30 % reduzieren, langsam titrieren – deutlich verlängerte Aufwachphase (~70 % geringere CYP2B11-Aktivität). KEINE Propofol-Dauertropfinfusion/TIVA; Alfaxalon oder Inhalationserhalt bevorzugen.',
       sources:['Court 2019 (PMC6952448)','ACVAA'] },
-    { id:'sight-alfax', drugs:['alfaxalon'], scope:{groups:['sighthound']}, level:'monitor', factor:'Induktion ~1–2 mg/kg i.v. langsam, titrieren', cond:'sighthound',
+    { id:'sight-alfax', rescue: ['hypothermie'], drugs:['alfaxalon'], scope:{groups:['sighthound']}, level:'monitor', factor:'Induktion ~1–2 mg/kg i.v. langsam, titrieren', cond:'sighthound',
       text:'Windhund: Alfaxalon ist eine gut geeignete, sichere Induktions-Alternative (Propofol bleibt ebenfalls sicher). Titrieren, aktiv wärmen (Hypothermie-Neigung).',
       sources:['ACVAA'] },
-    { id:'sight-ace', drugs:['acepromazin'], scope:{groups:['sighthound']}, level:'reduce', factor:'0,02–0,03 mg/kg (niedrig)', cond:'sighthound',
+    { id:'sight-ace', rescue: ['ace-hypotension', 'hypothermie'], drugs:['acepromazin'], scope:{groups:['sighthound']}, level:'reduce', factor:'0,02–0,03 mg/kg (niedrig)', cond:'sighthound',
       text:'Windhund: erhöhte Phenothiazin-Empfindlichkeit (klinische Beobachtung) + Hypotension/Hypothermie-Neigung → Acepromazin niedrig dosieren (0,02–0,03 mg/kg). Nicht generell absetzen (hebt Arrhythmie-Schwelle).',
       sources:['Court 1999','Clinician’s Brief'] },
-    { id:'sight-ketamin', drugs:['ketamin'], scope:{groups:['sighthound']}, level:'monitor', cond:'sighthound',
+    { id:'sight-ketamin', rescue: ['nicht-aufwachen', 'hypothermie'], drugs:['ketamin'], scope:{groups:['sighthound']}, level:'monitor', cond:'sighthound',
       text:'Windhund: verlängerte Ketamin-Aufwachphase möglich (Metabolismus) – niedrig halten, Aufwachen ruhig gestalten.',
       sources:['Plumb’s'] },
 
     /* Boxer – Acepromazin */
-    { id:'boxer-ace', drugs:['acepromazin'], scope:{conditions:['boxer-ace']}, level:'caution', cond:'boxer-ace',
+    { id:'boxer-ace', rescue: ['ace-hypotension'], drugs:['acepromazin'], scope:{conditions:['boxer-ace']}, level:'caution', cond:'boxer-ace',
       text:'Boxer: Acepromazin kann ausgeprägte Bradykardie/Hypotension/Synkope auslösen (Vagotonus) – niedrig dosieren oder meiden, Anticholinergikum bereit.',
       sources:['Plumb’s','ACVAA'] },
-    { id:'boxer-a2', drugs:['dexmedetomidin','medetomidin','xylazin'], scope:{conditions:['boxer-ace']}, level:'caution', cond:'boxer-ace',
+    { id:'boxer-a2', rescue: ['alpha2-ueberdosis'], drugs:['dexmedetomidin','medetomidin','xylazin'], scope:{conditions:['boxer-ace']}, level:'caution', cond:'boxer-ace',
       text:'Boxer: α2-Agonisten verstärken Vagotonus/Bradykardie (ARVC beachten) – niedrigste Dosis, HF/EKG überwachen; gegen Bradykardie bevorzugt Atipamezol statt Routine-Anticholinergikum.',
       sources:['ACVAA'] },
 
     /* MDR1-Katze */
-    { id:'mdr1cat-ivermectin', drugs:['ivermectin','eprinomectin'], scope:{conditions:['mdr1-cat']}, level:'avoid', cond:'mdr1-cat',
+    { id:'mdr1cat-ivermectin', rescue: ['ivermectin-mdr1'], drugs:['ivermectin','eprinomectin'], scope:{conditions:['mdr1-cat']}, level:'avoid', cond:'mdr1-cat',
       text:'ABCB1-Katze: makrozyklische Laktone neurotoxisch – Eprinomectin KONTRAINDIZIERT (schon in zugelassener Dosis), Ivermectin niedrige Label-Dosis meist sicher, hohe/extralabel meiden. CliniPharm Kat. 1.',
       sources:['CliniPharm ABCB1 Katze','WSU'] },
 
     /* HCM-Katze */
-    { id:'hcm-ketamin', drugs:['ketamin'], scope:{conditions:['hcm-cat']}, level:'avoid', cond:'hcm-cat',
+    { id:'hcm-ketamin', rescue: ['ketamin-hcm', 'cpr'], drugs:['ketamin'], scope:{conditions:['hcm-cat']}, level:'avoid', cond:'hcm-cat',
       text:'HCM-Katze: Ketamin steigert Herzfrequenz/Kontraktilität + myokardialen O₂-Bedarf → dynamische LVOT-Obstruktion (SAM) verschlimmern; besonders als alleiniges Anästhetikum meiden (fulminante Dekompensation beschrieben). Etomidat/Alfaxalon bevorzugen.',
       sources:['ACVAA','Martin-Flores'] },
-    { id:'hcm-a2', drugs:['dexmedetomidin','medetomidin','xylazin'], scope:{conditions:['hcm-cat']}, level:'caution', factor:'falls überhaupt nur niedrigste Dosis', cond:'hcm-cat',
+    { id:'hcm-a2', rescue: ['alpha2-ueberdosis', 'ketamin-hcm'], drugs:['dexmedetomidin','medetomidin','xylazin'], scope:{conditions:['hcm-cat']}, level:'caution', factor:'falls überhaupt nur niedrigste Dosis', cond:'hcm-cat',
       text:'HCM-Katze: α2-Agonisten kontrovers – periphere Vasokonstriktion erhöht Nachlast/SVR. Falls eingesetzt, nur niedrigste Dosis, Herz/Blutdruck überwachen, Atipamezol bereit.',
       sources:['ACVAA'] },
-    { id:'hcm-anticholinergic', drugs:['atropin','glyco'], scope:{conditions:['hcm-cat']}, level:'caution', cond:'hcm-cat',
+    { id:'hcm-anticholinergic', rescue: ['ketamin-hcm'], drugs:['atropin','glyco'], scope:{conditions:['hcm-cat']}, level:'caution', cond:'hcm-cat',
       text:'HCM-Katze: Anticholinergika (Frequenzanstieg) zurückhaltend – Tachykardie verkürzt die Füllung und verschlechtert die dynamische Obstruktion.',
       sources:['ACVAA'] },
 
     /* MH – volatile Trigger */
-    { id:'mh-volatile', drugs:['isofluran','sevofluran','vapor','succinylcholin'], scope:{conditions:['malignant-hyperthermia']}, level:'avoid', cond:'malignant-hyperthermia',
+    { id:'mh-volatile', rescue: ['mh-krise'], drugs:['isofluran','sevofluran','vapor','succinylcholin'], scope:{conditions:['malignant-hyperthermia']}, level:'avoid', cond:'malignant-hyperthermia',
       text:'MH-Risiko: ALLE volatilen Inhalationsanästhetika (Iso-/Sevofluran) und Succinylcholin sind Trigger – meiden. Sichere TIVA (Propofol/Ketamin/Alfaxalon/Opioide/Benzos), nicht-depol. Relaxanzien (Atracurium/Rocuronium) sicher. Dantrolen 1–3 mg/kg i.v. bereit. Frühzeichen: EtCO₂-Anstieg VOR Hyperthermie.',
       sources:['Merck Vet Manual','ACVAA'] },
 
     /* NSAID bei Niere/Gerinnung */
-    { id:'nsaid-pkd', drugs:['meloxicam','carprofen','robenacoxib'], scope:{conditions:['pkd-cat','pk-deficiency']}, level:'caution', cond:'pkd-cat',
+    { id:'nsaid-pkd', rescue: ['nsaid-ueberdosis', 'hyperkaliaemie'], drugs:['meloxicam','carprofen','robenacoxib'], scope:{conditions:['pkd-cat','pk-deficiency']}, level:'caution', cond:'pkd-cat',
       text:'Bei Nierenerkrankung/chronischer Anämie: NSAID nur bei normaler Nierenfunktion, Hydratation und Blutdruck – sonst meiden.',
       sources:['IRIS','WSAVA'] },
-    { id:'nsaid-vwd', drugs:['meloxicam','carprofen','robenacoxib'], scope:{conditions:['vwd']}, level:'avoid', cond:'vwd',
+    { id:'nsaid-vwd', rescue: ['blutung-vwd', 'nsaid-ueberdosis'], drugs:['meloxicam','carprofen','robenacoxib'], scope:{conditions:['vwd']}, level:'avoid', cond:'vwd',
       text:'von-Willebrand/Gerinnungsstörung: NSAID und v. a. ASS/Aspirin peri-operativ meiden (Thrombozytenfunktionshemmung zusätzlich zum vWF-Defekt). Analgesie: Opioide first-line. Prä-OP bukkale Blutungszeit/vWF, DDAVP (Typ 1) erwägen; keine i.m.-Injektionen.',
       sources:['Plumb’s','eClinPath'] },
 
     /* DCM – negativ inotrop / α2 */
-    { id:'cardiac-a2', drugs:['dexmedetomidin','medetomidin','xylazin'], scope:{conditions:['dcm-doberman','mmvd-cavalier']}, level:'avoid', factor:'meiden; falls unumgänglich Mikrodosis + Atipamezol bereit', cond:'dcm-doberman',
+    { id:'cardiac-a2', rescue: ['alpha2-ueberdosis', 'cpr'], drugs:['dexmedetomidin','medetomidin','xylazin'], scope:{conditions:['dcm-doberman','mmvd-cavalier']}, level:'avoid', factor:'meiden; falls unumgänglich Mikrodosis + Atipamezol bereit', cond:'dcm-doberman',
       text:'Herzerkrankung (DCM/MMVD): α2-Agonisten erhöhen die Nachlast, HZV kann 30–50 % fallen → meiden. WICHTIG: gegen α2-Bradykardie KEINE routinemäßigen Anticholinergika (Atropin/Glyco steigern bei fortbestehender α2-Vasokonstriktion die Nachlast, proarrhythmisch) – stattdessen mit Atipamezol antagonisieren.',
       sources:['ACVAA'] },
-    { id:'boas-induction', drugs:['propofol','alfaxalon','etomidat','ketamin'], scope:{conditions:['boas']}, level:'caution', factor:'präoxygenieren 3–5 min, langsam >60 s titrieren, sofort intubationsbereit', cond:'boas',
+    { id:'boas-induction', rescue: ['regurgitation', 'propofol-apnoe'], drugs:['propofol','alfaxalon','etomidat','ketamin'], scope:{conditions:['boas']}, level:'caution', factor:'präoxygenieren 3–5 min, langsam >60 s titrieren, sofort intubationsbereit', cond:'boas',
       text:'Brachyzephal (BOAS): Einleitungsboli → Apnoe (Propofol/Alfaxalon zusätzlich Hypotension). 3–5 min präoxygenieren, langsam auf Wirkung titrieren, sofort intubieren (mehrere Tubusgrößen + Absaugung). Etomidat kreislaufstabiler, braucht Benzodiazepin-Co-Induktion. Hohes Regurgitations-/Aspirationsrisiko (Propofol > Alfaxalon). Erst bei voll wachem Schluckreflex extubieren.',
       sources:['AAHA','Today’s Vet Practice'] },
-    { id:'mmvd-ace', drugs:['acepromazin'], scope:{conditions:['mmvd-cavalier']}, level:'caution', factor:'nur unteres Dosisende, nur bei kompensierter Erkrankung', cond:'mmvd-cavalier',
+    { id:'mmvd-ace', rescue: ['ace-hypotension'], drugs:['acepromazin'], scope:{conditions:['mmvd-cavalier']}, level:'caution', factor:'nur unteres Dosisende, nur bei kompensierter Erkrankung', cond:'mmvd-cavalier',
       text:'MMVD (Cavalier): niedrig dosiertes Acepromazin senkt günstig die Nachlast (weniger Regurgitation) bei kompensierter Erkrankung (B1/B2); hohe Dosen und dekompensierte Herzinsuffizienz (C/D) meiden (lang wirksam, nicht antagonisierbar).',
       sources:['ACVIM','cavalierhealth.org'] }
   ];
@@ -466,7 +466,10 @@
     DRUG_RULES.forEach(function (r) {
       if (!inScope(b, r.scope)) return;
       if (!drugMatch(r.drugs, drugId)) return;
-      out.push({ id: r.id, level: r.level, factor: r.factor, text: r.text, sources: r.sources, cond: r.cond });
+      /* rescue MUSS mit: checkGabe() entscheidet daran, WELCHER Notfallablauf zu DIESEM Wirkstoff
+       * gezeigt wird. Fehlte es hier, fiel checkGabe auf die Wege der Erkrankung zurueck — und
+       * unter „Butorphanol gebucht" stand der Ivermectin-Ablauf. */
+      out.push({ id: r.id, level: r.level, factor: r.factor, text: r.text, sources: r.sources, cond: r.cond, rescue: r.rescue });
     });
     out.sort(function (a, z) { return (SEV[z.level] || 0) - (SEV[a.level] || 0); });
     return out;
@@ -520,8 +523,20 @@
       (p.nicht || []).forEach(function (x) { var k = norm(x); if (!mGes[k]) { mGes[k] = 1; meiden.push({ text: x, von: p.name || quelleName }); } });
       if (p.ziele) { var zk = norm(p.ziele); if (!mGes['z' + zk]) { mGes['z' + zk] = 1; monitor.push({ text: p.ziele, von: p.name || quelleName }); } }
     }
+    /* Dieselbe Artbindung wie bei den Protokollen — und aus demselben Grund. Eine Maine Coon
+     * traegt die ABCB1-Variante der Katze und landete darueber in der Gruppe „MDR1"; von dort
+     * bekam sie den Rettungsweg „Makrozyklisches Lakton beim MDR1-HUND" angehaengt. Ein
+     * Notfallablauf der falschen Tierart ist schlimmer als keiner: er liest sich vollkommen
+     * plausibel. */
     function rescueAdd(rk, quelleName) {
-      var r = RESCUE[rk]; if (!r || rGes[rk]) return; rGes[rk] = 1;
+      var r = RESCUE[rk]; if (!r || rGes[rk]) return;
+      if (r.sp && r.sp !== b.sp) {
+        var alt = RESCUE[rk + '-' + b.sp];
+        if (!alt) return;
+        rk = rk + '-' + b.sp; r = alt;
+        if (rGes[rk]) return;
+      }
+      rGes[rk] = 1;
       rettung.push({ key: rk, name: r.name || quelleName, zeichen: r.zeichen, schritte: r.schritte || [],
         nicht: r.nicht || [], sources: r.sources || [] });
     }
@@ -543,7 +558,6 @@
     (b.groups || []).forEach(function (k) {
       var g = GROUPS[k]; if (!g) return;
       if (g.protocol) [].concat(g.protocol).forEach(function (p) { protoAdd(p, g.name); });
-      if (g.rescue) [].concat(g.rescue).forEach(function (r) { rescueAdd(r, g.name); });
     });
     conds.forEach(function (k) {
       var c = CONDITIONS[k]; if (!c) return;
@@ -554,6 +568,13 @@
       (c.avoid || []).forEach(function (x) { var kk = norm(x); if (!mGes[kk]) { mGes[kk] = 1; meiden.push({ text: x, von: c.name }); } });
       if (c.monitor) { var mk = norm(c.monitor); if (!mGes['m' + mk]) { mGes['m' + mk] = 1; monitor.push({ text: c.monitor, von: c.name }); } }
       if (c.rescue) [].concat(c.rescue).forEach(function (r) { rescueAdd(r, c.name); });
+    });
+    /* Gruppen-Rettungswege ZULETZT. Die der Art (Reanimation, Hypothermie, Unterzucker,
+     * Regurgitation, wacht nicht auf …) gelten fuer jedes Tier und duerfen deshalb nie die
+     * rassespezifischen aus der Liste draengen — die Liste ist gedeckelt. */
+    (b.groups || []).forEach(function (k) {
+      var g = GROUPS[k]; if (!g || !g.rescue) return;
+      [].concat(g.rescue).forEach(function (r) { rescueAdd(r, g.name); });
     });
     /* Reihenfolge: erkrankungsspezifisches Protokoll → Einzelhinweis der Erkrankung →
      * Artgrundsatz (rang 9). Die Artgrundsätze gelten immer, aber wer eine BKH mit HCM vor sich
@@ -568,10 +589,12 @@
   }
 
   /* Rettungswege zu einem Schluessel oder zu einem Wirkstoff (fuer den Notfallknopf). */
-  function rescueFor(keys) {
+  function rescueFor(keys, sp) {
     var out = [], seen = {};
     [].concat(keys || []).forEach(function (k) {
-      var r = RESCUE[k]; if (!r || seen[k]) return; seen[k] = 1;
+      var r = RESCUE[k]; if (!r) return;
+      if (sp && r.sp && r.sp !== sp) { var alt = RESCUE[k + '-' + sp]; if (!alt) return; k = k + '-' + sp; r = alt; }
+      if (seen[k]) return; seen[k] = 1;
       out.push({ key: k, name: r.name, zeichen: r.zeichen, schritte: r.schritte || [], nicht: r.nicht || [], sources: r.sources || [] });
     });
     return out;
@@ -588,13 +611,21 @@
     if (!b || !drugName) return null;
     var ws = drugWarnings(b, drugName);
     if (!ws.length) return null;
-    var top = ws[0], rk = [];
+    /* WELCHER Rettungsweg gezeigt wird, haengt am WIRKSTOFF, nicht an der Erkrankung.
+     * Die Erkrankung „MDR1" fuehrt drei Wege (Ivermectin-Toxikose, Opioid-Ueberhang, wacht nicht
+     * auf). Wer Butorphanol bucht, bekam bisher den Ivermectin-Ablauf zuerst — richtig zur Rasse,
+     * falsch zum Mittel. Traegt die Wirkstoffregel einen eigenen Weg, gilt nur dieser; erst wenn
+     * keine der Warnungen einen mitbringt, wird auf die Wege der Erkrankung zurueckgegriffen. */
+    var top = ws[0], rk = [], eigene = [];
     ws.forEach(function (w) {
+      if (w.rescue) [].concat(w.rescue).forEach(function (x) { if (eigene.indexOf(x) < 0) eigene.push(x); });
+    });
+    if (eigene.length) rk = eigene;
+    else ws.forEach(function (w) {
       var c = CONDITIONS[w.cond];
       if (c && c.rescue) [].concat(c.rescue).forEach(function (x) { if (rk.indexOf(x) < 0) rk.push(x); });
-      if (w.rescue) [].concat(w.rescue).forEach(function (x) { if (rk.indexOf(x) < 0) rk.push(x); });
     });
-    return { breed: b, drug: drugName, level: top.level, warnungen: ws, rettung: rescueFor(rk) };
+    return { breed: b, drug: drugName, level: top.level, warnungen: ws, rettung: rescueFor(rk, b.sp) };
   }
 
   root.VETBREED = {

@@ -30,7 +30,16 @@
      Verweis auf ihr Protokoll. Damit hat auch eine Rasse OHNE eingetragene Erbkrankheit einen
      Narkoseplan, sobald sie einer Gruppe angehoert (jeder Mops ist brachyzephal, jeder
      Chihuahua ist eine Zwergrasse — dafuer braucht es keinen Gentest). */
+  /* Was fuer JEDES Tier dieser Art gilt und deshalb an der Artgruppe haengt: die Rettungswege,
+     die nichts mit der Rasse zu tun haben. Ohne sie stuende bei 202 Hunderassen ohne eingetragene
+     Erbkrankheit unter „stabilisieren" gar nichts — ausgerechnet dort, wo im Ernstfall
+     nachgesehen wird. Sie werden ZULETZT eingehaengt (siehe plan()), damit sie die
+     rassespezifischen Wege nie aus der gedeckelten Liste draengen. */
+  var ART_RETTUNG = ['nicht-aufwachen', 'hypothermie', 'hypoglykaemie', 'regurgitation',
+    'alpha2-ueberdosis', 'opioid-ueberhang', 'ace-hypotension', 'anaphylaxie', 'cpr'];
   var GROUPS = {
+    'art-hund':  { rescue: ART_RETTUNG },
+    'art-katze': { rescue: ART_RETTUNG },
     mdr1:       { protocol: ['mdr1'],               rescue: ['ivermectin-mdr1', 'opioid-ueberhang'] },
     sighthound: { protocol: ['sighthound'],         rescue: ['hypothermie', 'nicht-aufwachen'] },
     brachy:     { protocol: ['boas'],               rescue: ['regurgitation'] },
@@ -536,7 +545,7 @@
       sources: [Q_PLUMB, Q_ACVAA, Q_BSAVA]
     },
     'ketamin-hcm': {
-      name: 'Ketamin bei HCM-Katze — Dekompensation / Lungenödem',
+      name: 'Ketamin bei HCM-Katze — Dekompensation / Lungenödem', sp: 'katze',
       zeichen: 'Herzfrequenz schießt hoch, Blutdruck fällt, Systolikum lauter, EtCO₂ fällt, feuchte Rasselgeräusche, schaumiger Auswurf am Tubus, SpO₂ sinkt.',
       schritte: [
         'Infusion SOFORT stoppen — jeder weitere Milliliter verschlechtert die Lage.',
@@ -590,7 +599,7 @@
       sources: ['ASRA LAST-Checkliste (auf die Tiermedizin übertragen)', Q_ACVAA, Q_PLUMB]
     },
     'ivermectin-mdr1': {
-      name: 'Makrozyklisches Lakton beim MDR1-Hund (Ivermectin/Moxidectin/Selamectin)',
+      name: 'Makrozyklisches Lakton beim MDR1-Hund (Ivermectin/Moxidectin/Selamectin)', sp: 'hund',
       zeichen: 'Ataxie, Mydriasis, Speicheln, Blindheit, Tremor, Koma, Atemdepression — Beginn oft erst Stunden nach der Gabe, Dauer Tage bis Wochen.',
       schritte: [
         'Bei kürzlich oraler Aufnahme: Aktivkohle 1–2 g/kg, ggf. wiederholt (enterohepatischer Kreislauf).',
@@ -601,6 +610,23 @@
       ],
       nicht: ['„Abwarten, es wird schon" — die Atemdepression kommt verzögert', 'Weitere ZNS-dämpfende Substanzen ohne Beatmungsmöglichkeit'],
       sources: [Q_CLINI, 'Washington State University VCPL', Q_PLUMB]
+    },
+    /* Artfassung: dieselbe Lage bei der Katze mit ABCB1-Variante. Ohne sie stuende bei
+       „Siamkatze + Ivermectin" die Stufe MEIDEN, aber KEIN Weg zurueck — der Hunde-Ablauf wird
+       fuer eine Katze bewusst herausgefiltert. */
+    'ivermectin-mdr1-katze': {
+      name: 'Makrozyklisches Lakton bei der Katze (Eprinomectin/Ivermectin/Selamectin)', sp: 'katze',
+      zeichen: 'Ataxie, Mydriasis, Speicheln, Blindheit, Tremor, Desorientierung bis Koma, Atemdepression — oft erst Stunden nach der Gabe, Dauer Tage.',
+      schritte: [
+        'Bei Auftrag auf die Haut (Spot-on): sofort gründlich abwaschen (mildes Spülmittel, lauwarm), Tier trocknen und warmhalten.',
+        'Bei oraler Aufnahme kurz zuvor: Aktivkohle 1–2 g/kg, ggf. wiederholt.',
+        'Lipidemulsion 20 %: Bolus 1,5 mL/kg i.v. über 1 min, dann 0,25 mL/kg/min über 30–60 min; bei Bedarf wiederholen.',
+        'Atemweg sichern und beatmen, wenn die Atmung nachlässt; Infusion, Wärme, Augensalbe, Umlagern.',
+        'Krampf/Erregung mit Midazolam 0,2–0,5 mg/kg i.v. behandeln.',
+        'Die Genesung dauert Tage — Pflegetherapie durchhalten, Ernährung über Sonde bedenken.'
+      ],
+      nicht: ['Eprinomectin bei bekannter ABCB1-Variante überhaupt geben (schon in zugelassener Dosis kontraindiziert)', 'Abwarten ohne Überwachung'],
+      sources: [Q_CLINI + ' – ABCB1 Katze', 'Mealey 2022', Q_PLUMB]
     },
     'anaphylaxie': {
       name: 'Anaphylaxie/Anaphylaktoide Reaktion in Narkose',
@@ -714,7 +740,7 @@
       sources: ['PennGen', Q_PLUMB, Q_ACVAA]
     },
     'kaninchen-notfall': {
-      name: 'Kaninchen: Apnoe, Bradykardie, Kreislaufstillstand',
+      name: 'Kaninchen: Apnoe, Bradykardie, Kreislaufstillstand', sp: 'kaninchen',
       zeichen: 'Kein Thoraxheben, EtCO₂ weg, Herzfrequenz unter 120/min, blasse Schleimhäute.',
       schritte: [
         'Narkosegas aus bzw. Injektionsanästhetika antagonisieren; 100 % Sauerstoff.',
@@ -744,7 +770,7 @@
       sources: [Q_BSAVA_EX, 'AEMV']
     },
     'reptil-notfall': {
-      name: 'Reptil: wacht nicht auf / Apnoe',
+      name: 'Reptil: wacht nicht auf / Apnoe', sp: 'reptil',
       zeichen: 'Keine Spontanatmung nach Stunden, kein Zungenspiel, Herzfrequenz per Doppler niedrig.',
       schritte: [
         'Temperatur prüfen: das Tier muss in seinem Vorzugsbereich liegen (POTZ). Ein kühles Reptil verstoffwechselt nichts — Wärmen ist die wichtigste Maßnahme.',
@@ -757,7 +783,7 @@
       sources: ['BSAVA Manual of Reptiles', Q_CARP, 'ARAV']
     },
     'frettchen-hypoglykaemie': {
-      name: 'Frettchen mit Insulinom: Hypoglykämie-Krise',
+      name: 'Frettchen mit Insulinom: Hypoglykämie-Krise', sp: 'frettchen',
       zeichen: 'Speicheln, Pfote am Maul, Hinterhandschwäche, Sternengucken, Krampf, wacht nach der Narkose nicht auf.',
       schritte: [
         'Blutzucker messen.',
@@ -813,6 +839,21 @@
   /* Ergaenzen die vorhandenen Regeln; jede traegt einen Rettungsweg mit, damit die
      Warnung beim Buchen nicht nur sagt „schlecht", sondern auch „und jetzt". */
   var RULES = [
+    /* DIE Regel, wegen der es den MDR1-Test überhaupt gibt — und sie fehlte: die makrozyklischen
+     * Laktone. Die Erkrankungsbeschreibung nannte sie zwar, aber die Prüfung beim Buchen
+     * (checkGabe) schaut nur in die Wirkstoffregeln und meldete für „Collie + Ivermectin"
+     * nichts. Aufgefallen erst bei der Abnahme quer durch die Arten. */
+    { id: 'mdr1-lakton', drugs: ['ivermectin', 'moxidectin', 'selamectin', 'doramectin', 'milbemycin',
+      'milbemycinoxim', 'eprinomectin', 'abamectin', 'emodepsid', 'loperamid'],
+      scope: { conditions: ['mdr1'] }, level: 'avoid', cond: 'mdr1', rescue: ['ivermectin-mdr1'],
+      factor: 'meiden; bei versehentlicher Gabe sofort behandeln',
+      text: 'MDR1: makrozyklische Laktone (Ivermectin, Moxidectin, Selamectin, Doramectin, hochdosiertes Milbemycinoxim), Loperamid und Emodepsid sind CliniPharm-Kategorie 1 — ohne P-Glykoprotein reichern sie sich bis zu 100-fach im Gehirn an. Zeichen (Ataxie, Mydriasis, Speicheln, Blindheit, Tremor, Koma, Atemdepression) kommen oft erst Stunden später und halten Tage bis Wochen an.',
+      sources: [Q_CLINI, 'Washington State University VCPL', 'Mealey et al.'] },
+    { id: 'mdr1-onko', rescue: ['nicht-aufwachen'], drugs: ['vincristin', 'vinblastin', 'doxorubicin', 'paclitaxel', 'ondansetron'],
+      scope: { conditions: ['mdr1'] }, level: 'reduce', cond: 'mdr1',
+      factor: 'Dosis reduzieren, engmaschig überwachen',
+      text: 'MDR1: Zytostatika (Vincristin, Vinblastin, Doxorubicin, Paclitaxel) und Ondansetron sind P-gp-Substrate — verstärkte Knochenmarkstoxizität bzw. verlängerte ZNS-Wirkung. Dosis anpassen und Blutbild engmaschig kontrollieren.',
+      sources: [Q_CLINI, 'Mealey/Fidel 2008'] },
     { id: 'brachy-ace-sed', drugs: ['acepromazin'], scope: { groups: ['brachy'] }, level: 'caution', cond: 'boas',
       factor: 'niedrig dosieren, NIE unbeaufsichtigt sedieren',
       text: 'Brachyzephal: Acepromazin löst zwar den Larynxkrampf und senkt Stress, ein sedierter Brachyzephaler verlegt seinen Atemweg aber selbst. Nur unter Sicht, Sauerstoff und Intubationsbereitschaft.',
@@ -824,7 +865,7 @@
     { id: 'kanin-atropin', drugs: ['atropin'], scope: { conditions: ['atropinesterase'] }, level: 'avoid', cond: 'atropinesterase',
       text: 'Kaninchen: ein erheblicher Teil der Tiere trägt Atropinesterase im Serum und baut Atropin binnen Minuten ab — die Bradykardie bleibt, und man hält sie fälschlich für therapieresistent. Glycopyrrolat 0,01–0,02 mg/kg ist die verlässliche Alternative.',
       sources: [Q_BSAVA_EX, Q_PLUMB, Q_CLINI], rescue: ['kaninchen-notfall'] },
-    { id: 'nager-antibiotika', drugs: ['penicillin', 'amoxicillin', 'ampicillin', 'clindamycin', 'lincomycin', 'erythromycin'],
+    { id: 'nager-antibiotika', rescue: ['kaninchen-ileus'], drugs: ['penicillin', 'amoxicillin', 'ampicillin', 'clindamycin', 'lincomycin', 'erythromycin'],
       scope: { conditions: ['nager-dysbiose'] }, level: 'avoid', cond: 'nager-dysbiose',
       text: 'Kaninchen/Meerschweinchen/Chinchilla/Degu: Penicilline, Lincosamide und Makrolide per os zerstören die Dickdarmflora — tödliche Enterotoxämie durch Clostridium spiridiforme/difficile. Auch die perioperative „Sicherheitsantibiose" fällt darunter.',
       sources: [Q_CLINI, Q_BSAVA_EX, Q_PLUMB] },
