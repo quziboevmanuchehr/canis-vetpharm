@@ -37,9 +37,23 @@
      rassespezifischen Wege nie aus der gedeckelten Liste draengen. */
   var ART_RETTUNG = ['nicht-aufwachen', 'hypothermie', 'hypoglykaemie', 'regurgitation',
     'alpha2-ueberdosis', 'opioid-ueberhang', 'ace-hypotension', 'anaphylaxie', 'cpr'];
+  /* Fuer die Kleinnager dieselbe Ueberlegung, nur ohne die Wege, die es dort nicht gibt
+     (Regurgitation kennt kein Nager - sie erbrechen nicht; Acepromazin wird nicht eingesetzt). */
+  var NAGER_RETTUNG = ['nicht-aufwachen', 'hypothermie', 'hypoglykaemie',
+    'alpha2-ueberdosis', 'opioid-ueberhang', 'cpr'];
   var GROUPS = {
     'art-hund':  { rescue: ART_RETTUNG },
     'art-katze': { rescue: ART_RETTUNG },
+    'art-ratte':    { rescue: NAGER_RETTUNG },
+    'art-maus':     { rescue: NAGER_RETTUNG },
+    'art-hamster':  { rescue: NAGER_RETTUNG },
+    'art-rennmaus': { rescue: NAGER_RETTUNG },
+    /* Getrennt gefuehrt, weil der entscheidende Satz genau hier steht: Goldhamsterdosen sind
+       nicht uebertragbar. Es ist keine Feinheit — es ist der Unterschied zwischen Narkose und
+       Sektion. */
+    zwerghamster: { name: 'Zwerghamster', icon: '🐹', color: '#e0a020',
+      desc: 'Campbell, Dsungarischer, Roborowski und Chinesischer Streifenhamster: 20–50 g statt 120 g. Eigene Anaesthesiedaten gibt es fuer diese Arten nicht — Goldhamsterdosen sind NICHT uebertragbar.',
+      protocol: ['hamster'] },
     mdr1:       { protocol: ['mdr1'],               rescue: ['ivermectin-mdr1', 'opioid-ueberhang'] },
     sighthound: { protocol: ['sighthound'],         rescue: ['hypothermie', 'nicht-aufwachen'] },
     brachy:     { protocol: ['boas'],               rescue: ['regurgitation'] },
@@ -436,6 +450,56 @@
       warum: 'Der Diabetes ist bei dieser Art rassetypisch häufig und unter Narkose nicht zu erkennen. Zusätzlich: Schwanzabwurf beim Festhalten am Schwanz.',
       nicht: ['Am Schwanz greifen', 'Zuckerreiche Infusion ohne Messung', 'Penicilline/Lincosamide'],
       sources: [Q_CARP, Q_BSAVA_EX, Q_CLINI]
+    },
+    /* ---------------- Kleinnager (ab 1.3.4) ----------------
+       Bei allen vieren gilt derselbe Grundsatz, und er wiegt schwerer als jede Zahl: die
+       Inhalationsnarkose ist das Verfahren der Wahl. Ein 25-g-Tier verzeiht keine Injektion,
+       die zu tief geraten ist — sie laesst sich nicht zurueckholen. Isofluran schon. */
+    'ratte': {
+      name: 'Ratte — Narkose erste Wahl', sp: 'ratte',
+      praemed: 'Nicht nüchtern setzen (Ratten erbrechen nicht). Analgesie VOR dem Schnitt: Meloxicam 1–2 mg/kg s.c. + Buprenorphin 0,05–0,1 mg/kg s.c. Vorher wiegen — auf das Gramm, nicht geschätzt.',
+      einleitung: 'Isofluran per Kammer 3–5 % in Sauerstoff, danach Maske. Injektion nur, wenn nötig: Ketamin 40–80 mg/kg + Xylazin 5–10 mg/kg i.p., oder vollständig antagonisierbar Medetomidin 0,15 + Midazolam 2,0 + Fentanyl 0,005 mg/kg s.c./i.p. (MMF).',
+      erhalt: 'Isofluran 1,5–2,5 % über Maske, Sauerstoff 0,3–1 L/min im Nicht-Rückatemsystem. Intubation ist bei dieser Größe nicht praktikabel.',
+      analgesie: 'Meloxicam 1–2 mg/kg alle 24 h + Buprenorphin 0,05–0,1 mg/kg alle 8–12 h. Lokalanästhesie großzügig.',
+      ziele: 'Temperatur ab der ersten Minute aktiv halten (Wärmematte, warme Infusion) — eine Ratte kühlt in Minuten aus. Atemzüge zählen; Kapnografie ist bei dieser Größe unzuverlässig. Antagonisieren: Atipamezol 0,5–1 mg/kg s.c.',
+      warum: 'Der eigentliche Narkosefaktor der Ratte ist die Lunge: Mycoplasma pulmonis trägt nahezu jedes ältere Tier, klinisch stumm — die Lungenreserve ist dadurch kleiner, als das Tier aussehen lässt.',
+      nicht: ['Lange Nüchternzeit', 'Passives Auskühlen', 'Injektionsnarkose ohne Waage', 'Xylazin nachdosieren'],
+      sources: ['GV-SOLAS/TVT Schmerztherapie bei Versuchstieren 2020', Q_CLINI, 'Albrecht et al., BMC Vet Res 2014', 'IACUC-Leitlinien Ohio State / Illinois / UW-Madison']
+    },
+    'maus': {
+      name: 'Maus — Narkose erste Wahl', sp: 'maus',
+      praemed: 'Nicht nüchtern setzen. Meloxicam 5 mg/kg s.c. — die Maus braucht deutlich mehr als Hund und Katze — plus Buprenorphin 0,05–0,1 mg/kg s.c. Wiegen ist Pflicht: bei 25 g entscheidet ein Hundertstel Milliliter.',
+      einleitung: 'Isofluran per Kammer 3–5 %, dann Maske. Injektion nur mit Not: Ketamin 80–110 + Xylazin 5–10 mg/kg i.p., oder antagonisierbar Medetomidin 0,5 + Midazolam 5,0 + Fentanyl 0,05 mg/kg i.p./s.c.',
+      erhalt: 'Isofluran 1,5–2 %, Sauerstoff 0,5–1 L/min, Nicht-Rückatemsystem.',
+      analgesie: 'Meloxicam 5 mg/kg alle 24 h + Buprenorphin 0,05–0,1 mg/kg alle 6–12 h.',
+      ziele: 'Wärme ist hier die halbe Narkose: das Verhältnis Oberfläche zu Masse ist extrem, die Temperatur fällt binnen Minuten. Alle Injektionslösungen verdünnen. Atipamezol 1–2,5 mg/kg s.c.',
+      warum: 'Die Maus ist der kleinste Patient des Moduls. Jede Rechnung, die bei größeren Tieren nur ungenau wäre, wird hier zur Überdosis — und eine gespritzte Überdosis lässt sich nicht zurücknehmen.',
+      nicht: ['Unverdünnte Injektionen', 'Nüchtern setzen', 'Passives Auskühlen', 'Streptomycin/Dihydrostreptomycin und procainhaltige Penicilline (bei der Maus tödlich)'],
+      sources: ['GV-SOLAS/TVT 2020', 'Fleischmann et al., Lab Anim 2016', Q_CLINI, 'IACUC-Leitlinien']
+    },
+    'hamster': {
+      name: 'Hamster — Narkose erste Wahl', sp: 'hamster',
+      praemed: 'Höchstens 1–2 h ohne Futter (Hamster erbrechen nicht, unterzuckern aber schnell). Backentaschen VOR der Einleitung kontrollieren und leeren — gefüllt verlegen sie den Atemweg. Meloxicam 1–2 mg/kg s.c. + Buprenorphin 0,05–0,1 mg/kg s.c.',
+      einleitung: 'Isofluran Kammer 4–5 %, dann Maske. Antagonisierbar: Medetomidin 0,15 + Midazolam 2,0 + Butorphanol 2,5 mg/kg i.m. (Anschlag unter 5 min, Dauer etwa 100 min, Umkehr mit Atipamezol 0,15 mg/kg). Ketamin 100–150 + Xylazin 5–10 mg/kg i.p. ist die klassische Alternative — aber nur beim GOLDhamster.',
+      erhalt: 'Isofluran: beim gesunden Goldhamster MAC 1,62 %, beim kardiomyopathischen nur 1,39 %. Ab etwa einem Jahr mit der NIEDRIGEREN Konzentration starten — bis zu drei Viertel der alternden Goldhamster sind betroffen, und man sieht es dem Tier nicht an.',
+      analgesie: 'Meloxicam 1–2 mg/kg alle 24 h + Buprenorphin 0,05–0,1 mg/kg alle 8–12 h.',
+      ziele: 'Temperatur aktiv halten, Blutzucker im Blick (Zwerghamster), Nicht-Rückatemsystem zwingend. Nach dem Aufwachen früh Futter anbieten.',
+      warum: 'Zwei Dinge machen den Hamster gefährlich: die häufige, stumme Kardiomyopathie des alten Goldhamsters — und dass Goldhamsterdosen nicht auf Zwerghamster übertragbar sind.',
+      nicht: ['Goldhamsterdosen auf Zwerghamster übertragen — 200 mg/kg Ketamin mit 10 mg/kg Xylazin töteten in einer Untersuchung 13 von 24 Dsungarischen Zwerghamstern',
+        'Penicilline, Cephalosporine, Lincomycin, Clindamycin, Erythromycin, Vancomycin, Bacitracin (auch topisch) — tödliche Enterotoxämie',
+        'Volle MAC beim alten Tier', 'Einleitung bei gefüllten Backentaschen'],
+      sources: ['Anesth Analg 1999 (MAC gesund vs. kardiomyopathisch)', 'J Vet Med Sci 2017 (MMB)', Q_BSAVA_EX, Q_CARP]
+    },
+    'rennmaus': {
+      name: 'Rennmaus (Gerbil) — Narkose erste Wahl', sp: 'rennmaus',
+      praemed: 'Nicht nüchtern setzen. Ruhig und leise arbeiten: bei krampfneigenden Zuchtlinien lösen Handling und Stress den Anfall aus, nicht die Narkose. Meloxicam 1–2 mg/kg s.c. + Buprenorphin 0,05–0,1 mg/kg s.c.',
+      einleitung: 'Isofluran Kammer 4–5 %, dann Maske (MAC 1,55 %). Injektion: Ketamin 60–75 + Medetomidin 0,3–0,5 mg/kg i.p., oder Ketamin 50–75 + Dexmedetomidin 0,25–0,5 mg/kg i.p.',
+      erhalt: 'Isofluran 1,2–2,5 %, Nicht-Rückatemsystem.',
+      analgesie: 'Meloxicam 1–2 mg/kg alle 24 h + Buprenorphin 0,05–0,1 mg/kg alle 8–12 h.',
+      ziele: 'Blutdruck NICHT nach Hunde-Grenzen beurteilen: unter 1 MAC Isofluran wurden HF 288 ± 29/min und MAP 68 ± 22 mmHg invasiv gemessen — 65 mmHg sind hier physiologisch. Wärme halten, Atipamezol 0,5–1 mg/kg s.c. Niemals am Schwanz greifen (Autotomie).',
+      warum: 'Die Rennmaus ist kreislaufseitig gut vermessen, aber stressempfindlich: die Krampfneigung ist bei mehreren Zuchtlinien erblich, und der Auslöser ist die Handhabung.',
+      nicht: ['Am Schwanz festhalten', 'Hektisches Handling bei Krampfneigung', 'Dihydrostreptomycin — 50 mg töteten 80–100 % der Tiere', 'Hunde-Blutdruckgrenzen anlegen'],
+      sources: ['Gómez de Segura et al., Lab Anim 2009 (MAC und Kreislauf invasiv gemessen)', Q_BSAVA_EX, Q_CARP]
     },
     'frettchen': {
       name: 'Frettchen — Narkose erste Wahl', sp: 'frettchen',
