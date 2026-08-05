@@ -498,8 +498,10 @@ html[data-theme="light"] .gw-v.unbestaetigt{background:rgba(200,50,50,.14);color
  * Jede Kachel traegt die Farbe ihres Kanals als Rand und als leichte Tönung. Das ist keine
  * Verzierung: am OP-Tisch wird nicht gelesen, sondern erkannt — die Temperatur ist orange,
  * das CO2 gelb, der Druck blau, und zwar hier genau wie in der Kurve daneben. */
+/* Schmalere Kacheln, gleiche Schriftgroesse: die Breite war fast nur Rand. Damit passen alle
+ * Werte in EINE Reihe statt in zwei — und die eingesparte Reihe ist Hoehe fuer die Regler. */
 .ck-links .mon-tiles{flex:0 0 auto;margin-top:0;display:grid;gap:5px;
-  grid-template-columns:repeat(auto-fit,minmax(100px,1fr));align-content:start}
+  grid-template-columns:repeat(auto-fit,minmax(86px,1fr));align-content:start}
 /* !important, und zwar mit Absicht: das Geraetebild ist in BEIDEN Farbschemata dunkel — ein
  * Patientenmonitor ist dunkel, und ein heller waere im OP nicht lesbar. Im hellen Schema kam
  * die Kachel sonst ganz ohne Hintergrund heraus (gemessen: backgroundColor transparent), und
@@ -547,14 +549,33 @@ html[data-theme="light"] .ck-schalter select{background:#fff;color:#15202e}
 .ck-links .dev-mach .dev-brand{margin-bottom:6px}
 .ck-links .dev-mach .dev-brand b{font-size:13px}
 .ck-links .dev-mach .dev-brand span{font-size:11px}
-.ck-links .machine{gap:14px;align-items:end;grid-template-columns:repeat(auto-fit,minmax(128px,1fr))}
+.ck-links .machine{gap:14px;align-items:center;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
 .ck-links .mc-item{gap:5px}
-.ck-links .mc-label{font-size:10.5px;letter-spacing:.5px}
-.ck-links .machine svg.flowmeter{height:96px;width:auto}
-.ck-links .machine svg.vaporizer{height:96px;width:96px}
-.ck-links .mc-val{font-size:14px;font-weight:800;min-width:74px}
-.ck-links .mc-fine{gap:7px}
-.ck-links .mc-step{width:30px;height:30px;font-size:16px}
+.ck-links .mc-label{font-size:11.5px;letter-spacing:.5px}
+/* ---- DIE BEIDEN REGLER QUER: Regler links, Beschriftung/Wert/Schritte rechts -------
+ * Sauerstofffluss und Verdampfer sind die einzigen Bedienelemente, die man ZIEHT und DREHT —
+ * und genau die waren zu klein dafuer (ein Flowmeter von 96 px Hoehe heisst rund 8 px je
+ * Liter pro Minute). Sie werden deshalb deutlich groesser. Bezahlt wird das aus der BREITE:
+ * die Geraeteleiste hat ueber 1200 px und nur vier Elemente, aber die Hoehe ist knapp. Quer
+ * gestellt waechst der Regler, ohne dass der Block hoeher wird. */
+.ck-links .mc-knob{display:grid;grid-template-columns:auto minmax(96px,1fr);
+  grid-template-areas:"regler beschriftung" "regler wert" "regler zusatz";
+  align-items:center;justify-items:start;column-gap:12px;row-gap:5px;text-align:left}
+.ck-links .mc-knob>.mc-label{grid-area:beschriftung;align-self:end}
+.ck-links .mc-knob>svg{grid-area:regler;align-self:center}
+.ck-links .mc-knob>.mc-fine{grid-area:wert}
+.ck-links .mc-knob>.gaswahl{grid-area:zusatz;justify-content:flex-start}
+.ck-links .machine svg.flowmeter{height:142px;width:auto;cursor:ns-resize}
+.ck-links .machine svg.vaporizer{height:142px;width:142px;cursor:grab}
+.ck-links .machine svg.vaporizer:active{cursor:grabbing}
+/* touch-action:none ist auf einem Kiosk mit Bildschirmberuehrung der Unterschied zwischen
+ * "der Regler bewegt sich" und "die Seite scrollt weg": ohne die Zeile faengt der Browser die
+ * Wischgeste ab, bevor der Regler sie sieht. user-select verhindert, dass beim Ziehen die
+ * Skalenbeschriftung blau markiert wird. */
+.machine svg.flowmeter,.machine svg.vaporizer{touch-action:none;-webkit-user-select:none;user-select:none}
+.ck-links .mc-val{font-size:17px;font-weight:800;min-width:86px}
+.ck-links .mc-fine{gap:8px}
+.ck-links .mc-step{width:34px;height:34px;font-size:19px}
 .ck-links .mc-modes{gap:5px}
 .ck-links .mc-modes button{padding:5px 11px;font-size:12px}
 .ck-links .mc-toggle button{height:30px;font-size:12.5px;padding:0 14px}
@@ -2707,12 +2728,27 @@ var O2MAX=5;
 /* Endwert des Flowmeters: Grosstier- und Humangeraete gehen bis 10–15 L/min, ein
  * Kleintiertisch bis 5. Kommt aus dem Geraeteprofil. */
 function o2Max(){ var g=curGeraet(); return (g&&g.o2Max)||O2MAX; }
+/*
+ * flowmeterSVG(o2) — der Sauerstoff-Schwimmer.
+ *
+ * NEU 05.08.2026: DEUTLICH BREITER. Die alte Zeichnung war 66 Einheiten breit bei 210 hoch;
+ * auf dem Bildschirm wurden daraus 30 x 96 Bildpunkte — eine 30 Punkte breite Saeule, die man
+ * mit der Maus kaum und mit dem Finger gar nicht trifft. Gemessen, nicht geschaetzt.
+ * Jetzt 96 Einheiten breit, das Rohr 41 statt 28, der Schwimmer r=15 statt 11, und die ganze
+ * Flaeche ist Greifflaeche. Die Hoehe bleibt 210 — daran haengt die Umrechnung in dragCtrl.
+ */
 function flowmeterSVG(o2){
   var MX=o2Max();
   var H=210, top=16, bot=H-16, frac=Math.max(0,Math.min(1,o2/MX)), fy=bot-(bot-top)*frac;
   var stufe=MX>10?5:(MX>6?2:1), marken=[]; for(var v=0;v<=MX;v+=stufe) marken.push(v);
-  var ticks=marken.map(function(v){var y=bot-(bot-top)*(v/MX);return '<line x1="32" y1="'+y+'" x2="46" y2="'+y+'" stroke="#7d93ad" stroke-width="1.3"/><text x="29" y="'+(y+3.8)+'" font-size="11" fill="#aebccc" text-anchor="end">'+v+'</text>';}).join('');
-  return '<svg class="flowmeter" viewBox="0 0 66 '+H+'" data-ctrl="o2"><rect x="18" y="'+top+'" width="28" height="'+(bot-top)+'" rx="14" fill="#0b1420" stroke="#39506a"/>'+ticks+'<circle cx="32" cy="'+fy.toFixed(1)+'" r="11" fill="#ff4d4d" stroke="#fff" stroke-width="1.8" class="knob-float"/></svg>';
+  var ticks=marken.map(function(v){var y=bot-(bot-top)*(v/MX);
+    return '<line x1="47" y1="'+y+'" x2="66" y2="'+y+'" stroke="#7d93ad" stroke-width="1.6"/>'+
+           '<text x="21" y="'+(y+4.6)+'" font-size="14" fill="#aebccc" text-anchor="end">'+v+'</text>';}).join('');
+  return '<svg class="flowmeter" viewBox="0 0 96 '+H+'" data-ctrl="o2" role="slider" aria-label="Sauerstofffluss" aria-valuenow="'+o2+'" aria-valuemin="0" aria-valuemax="'+MX+'">'+
+    '<rect x="0" y="0" width="96" height="'+H+'" fill="transparent"/>'+   /* ganze Flaeche greifbar */
+    '<rect x="26" y="'+top+'" width="41" height="'+(bot-top)+'" rx="20" fill="#0b1420" stroke="#39506a" stroke-width="1.5"/>'+
+    ticks+
+    '<circle cx="46.5" cy="'+fy.toFixed(1)+'" r="15" fill="#ff4d4d" stroke="#fff" stroke-width="2.2" class="knob-float"/></svg>';
 }
 /*
  * vaporizerSVG(vol) — der Verdampfer. Skala und Farbe richten sich nach dem GEWAEHLTEN GAS.
@@ -2725,13 +2761,53 @@ function vaporizerSVG(vol){
   var cx=68,cy=68,R=54,a0=140,sweep=260, ang=a0+(Math.max(0,Math.min(MX,vol))/MX)*sweep, rad=ang*Math.PI/180;
   var px=(cx+Math.cos(rad)*(R-14)).toFixed(1), py=(cy+Math.sin(rad)*(R-14)).toFixed(1), ticks='';
   var n=(MX>10?6:MX), stufe=MX/n;
-  for(var i=0;i<=n;i++){ var v=Math.round(i*stufe*10)/10; var ta=(a0+(i/n)*sweep)*Math.PI/180; ticks+='<line x1="'+(cx+Math.cos(ta)*R).toFixed(1)+'" y1="'+(cy+Math.sin(ta)*R).toFixed(1)+'" x2="'+(cx+Math.cos(ta)*(R-9)).toFixed(1)+'" y2="'+(cy+Math.sin(ta)*(R-9)).toFixed(1)+'" stroke="#aebccc" stroke-width="1.6"/><text x="'+(cx+Math.cos(ta)*(R+10)).toFixed(1)+'" y="'+(cy+Math.sin(ta)*(R+10)+3.5).toFixed(1)+'" font-size="10.5" fill="#cdd8e4" text-anchor="middle">'+v+'</text>'; }
-  return '<svg class="vaporizer" viewBox="0 0 136 136" data-ctrl="iso"><defs><radialGradient id="vgrad"><stop offset="0" stop-color="#f4f6f9"/><stop offset="1" stop-color="#cfd6de"/></radialGradient></defs><circle cx="68" cy="68" r="60" fill="#141b26" stroke="'+farbe+'" stroke-width="2"/>'+ticks+'<circle cx="68" cy="68" r="36" fill="url(#vgrad)" stroke="#c3ccd6" stroke-width="1.5"/><text x="68" y="52" font-size="10" fill="#5b6a7a" text-anchor="middle" font-weight="700">'+(G.kurz||'ISO')+'</text><line x1="68" y1="68" x2="'+px+'" y2="'+py+'" stroke="#e23b3b" stroke-width="4.5" stroke-linecap="round"/><circle cx="68" cy="68" r="7" fill="#2a2a2a"/></svg>';
+  for(var i=0;i<=n;i++){ var v=Math.round(i*stufe*10)/10; var ta=(a0+(i/n)*sweep)*Math.PI/180; ticks+='<line x1="'+(cx+Math.cos(ta)*R).toFixed(1)+'" y1="'+(cy+Math.sin(ta)*R).toFixed(1)+'" x2="'+(cx+Math.cos(ta)*(R-9)).toFixed(1)+'" y2="'+(cy+Math.sin(ta)*(R-9)).toFixed(1)+'" stroke="#aebccc" stroke-width="1.6"/><text x="'+(cx+Math.cos(ta)*(R+10)).toFixed(1)+'" y="'+(cy+Math.sin(ta)*(R+10)+3.5).toFixed(1)+'" font-size="13" fill="#dbe5f0" text-anchor="middle" font-weight="600">'+v+'</text>'; }
+  /* Die ganze Flaeche ist Greifflaeche, der Zeiger ist dicker und der Drehknopf groesser:
+   * an einem Verdampfer wird gedreht, oft mit Handschuh, und ein 4-Punkte-Zeiger auf einem
+   * 96-Punkte-Rad ist dafuer zu wenig. */
+  return '<svg class="vaporizer" viewBox="0 0 136 136" data-ctrl="iso" role="slider" aria-label="'+(G.name||'Verdampfer')+'" aria-valuenow="'+vol+'" aria-valuemin="0" aria-valuemax="'+MX+'">'+
+    '<defs><radialGradient id="vgrad"><stop offset="0" stop-color="#f4f6f9"/><stop offset="1" stop-color="#cfd6de"/></radialGradient></defs>'+
+    '<rect x="0" y="0" width="136" height="136" fill="transparent"/>'+
+    '<circle cx="68" cy="68" r="60" fill="#141b26" stroke="'+farbe+'" stroke-width="2.5"/>'+ticks+
+    '<circle cx="68" cy="68" r="36" fill="url(#vgrad)" stroke="#c3ccd6" stroke-width="1.5"/>'+
+    '<text x="68" y="50" font-size="11" fill="#5b6a7a" text-anchor="middle" font-weight="700">'+(G.kurz||'ISO')+'</text>'+
+    '<line x1="68" y1="68" x2="'+px+'" y2="'+py+'" stroke="#e23b3b" stroke-width="6" stroke-linecap="round"/>'+
+    '<circle cx="68" cy="68" r="9" fill="#2a2a2a" stroke="#8899aa" stroke-width="1.2"/></svg>';
 }
-function dragCtrl(el, onMove){
-  el.addEventListener('pointerdown',function(e){ e.preventDefault(); try{el.setPointerCapture(e.pointerId);}catch(x){} onMove(e);
-    function mv(ev){ onMove(ev); } function up(){ document.removeEventListener('pointermove',mv); document.removeEventListener('pointerup',up); }
-    document.addEventListener('pointermove',mv); document.addEventListener('pointerup',up); });
+/*
+ * dragCtrl(auswahl, onMove) — Ziehen am Flowmeter und Drehen am Verdampfer.
+ *
+ * >>> DER FEHLER, DER HIER JAHRELANG DRINSTECKTE (gemessen 05.08.2026) <<<
+ * Frueher bekam diese Funktion das ELEMENT und merkte es sich in der Closure. Beim Ziehen ruft
+ * onMove aber renderMachine() auf, und das baut die ganze Geraeteleiste per innerHTML neu — das
+ * gemerkte Element ist danach aus dem Baum entfernt. Der naechste pointermove rechnete folglich
+ * mit einem Rechteck von 0 x 0: sy=0, Division durch null, frac=-Infinity, gedeckelt auf 0.
+ * FOLGE: der erste Klick setzte noch einen richtigen Wert, jede weitere Bewegung riss den Regler
+ * auf 0 bzw. auf das Maximum. Nachgemessen: Ziehen ins obere Viertel ergab O2 = 0 statt 7,5;
+ * Drehen nach rechts UND nach links ergab beide Male 6,0. Das ist der Grund, aus dem sich
+ * Sauerstoff und Verdampfer "nicht drehen liessen" — nicht die Groesse allein.
+ *
+ * Jetzt haengt der Horcher an der Leiste (#machineControls), die NICHT ersetzt wird, und das
+ * Element wird bei jeder Bewegung NEU GESUCHT. Damit ueberlebt das Ziehen jeden Neuaufbau.
+ */
+function dragCtrl(auswahl, onMove){
+  var host=$('#machineControls'); if(!host) return;
+  host.__drag=host.__drag||{};
+  if(host.__drag[auswahl]) return;            // je Regler genau ein Horcher, auch nach Neuaufbau
+  host.__drag[auswahl]=1;
+  host.addEventListener('pointerdown',function(e){
+    var el=e.target.closest?e.target.closest(auswahl):null; if(!el) return;
+    e.preventDefault();
+    /* Auch beim ERSTEN Griff das Element frisch holen. Im Betrieb ist es dasselbe, aber damit
+     * gibt es nur EINEN Weg statt eines Sonderfalls — und Sonderfaelle sind genau die Stellen,
+     * an denen so ein Fehler wieder einzieht. */
+    onMove(e, host.querySelector(auswahl)||el);
+    function mv(ev){ var cur=host.querySelector(auswahl); if(cur) onMove(ev,cur); }
+    function up(){ document.removeEventListener('pointermove',mv); document.removeEventListener('pointerup',up); document.removeEventListener('pointercancel',up); }
+    document.addEventListener('pointermove',mv);
+    document.addEventListener('pointerup',up);
+    document.addEventListener('pointercancel',up);
+  });
 }
 function stepDev(field,delta){ state.dev.live=false; var max=(field==='o2'?o2Max():gasMax()); state.dev[field]=Math.max(0,Math.min(max,Math.round((state.dev[field]+delta)*10)/10)); renderMachine(); renderDevCtrl(); }
 /* Beatmungsmodi, die DIESES Geraet wirklich hat. Ein Modus, den das Geraet am Tisch nicht
@@ -2750,17 +2826,30 @@ function renderMachine(){
   if(g && !g.narkose){ box.innerHTML='<div class="muted" style="font-size:12.5px;padding:8px 2px">Für diesen Arbeitsplatz ist kein Narkosegerät gewählt – der virtuelle Monitor läuft alleine weiter. Modell oben auswählen, wenn eines dazugehört.</div>'; return; }
   var gasWahl=(g&&g.gase&&g.gase.length>1)?('<div class="gaswahl">'+g.gase.map(function(id){ var ga=VG.gas(id)||{}; return '<button data-gas="'+id+'" class="'+(id===state.dev.gas?'active':'')+'" style="'+(id===state.dev.gas?('background:'+(ga.flasche||'#a259c8')+';border-color:'+(ga.flasche||'#a259c8')):'')+'" data-vp-tip="'+(ga.name||id)+(ga.hinweis?' – '+ga.hinweis:'')+'">'+(ga.kurz||id)+'</button>'; }).join('')+'</div>'):'';
   box.innerHTML =
-    '<div class="mc-item" data-vp-tip="Frischgas-/Sauerstofffluss (L/min). Schieben, Mausrad oder −/+ (0,1). Bei Hypoxie/Notfall hoch + 100 % O₂."><div class="mc-label">O₂-Fluss (0–'+o2Max()+')</div>'+flowmeterSVG(state.dev.o2)+
+    '<div class="mc-item mc-knob" data-vp-tip="Frischgas-/Sauerstofffluss (L/min). Schieben, Mausrad oder −/+ (0,1). Bei Hypoxie/Notfall hoch + 100 % O₂."><div class="mc-label">O₂-Fluss (0–'+o2Max()+')</div>'+flowmeterSVG(state.dev.o2)+
       '<div class="mc-fine"><button class="mc-step" data-step="o2:-" aria-label="O₂ minus 0,1">−</button><div class="mc-val">'+state.dev.o2.toFixed(1)+' L/min</div><button class="mc-step" data-step="o2:+" aria-label="O₂ plus 0,1">+</button></div></div>'+
-    '<div class="mc-item" data-vp-tip="'+(G.name||'Isofluran')+'-Verdampfer (Vol%, Skala 0–'+G.max+'). Drehen, Mausrad oder −/+. Zu hoch = häufigste Hypotonie-/Bradykardie-Ursache → zuerst senken; bei CPR AUS."><div class="mc-label">'+(G.name||'Isofluran')+' · Verdampfer</div>'+vaporizerSVG(state.dev.iso)+
+    '<div class="mc-item mc-knob" data-vp-tip="'+(G.name||'Isofluran')+'-Verdampfer (Vol%, Skala 0–'+G.max+'). Drehen, Mausrad oder −/+. Zu hoch = häufigste Hypotonie-/Bradykardie-Ursache → zuerst senken; bei CPR AUS."><div class="mc-label">'+(G.name||'Isofluran')+' · Verdampfer</div>'+vaporizerSVG(state.dev.iso)+
       '<div class="mc-fine"><button class="mc-step" data-step="iso:-" aria-label="Verdampfer minus">−</button><div class="mc-val">'+state.dev.iso.toFixed(1)+' Vol%</div><button class="mc-step" data-step="iso:+" aria-label="Verdampfer plus">+</button></div>'+gasWahl+'</div>'+
     '<div class="mc-item" data-vp-tip="Beatmungsmodus. VCV/PCV = IPPV/CMV (kontrolliert); VS/VS+/PSV = spontan druckunterstützt; CPAP/PEEP = nur PEEP; SIMV = Weaning; Manuell = Beutel."><div class="mc-label">Beatmung</div><div class="mc-toggle" id="mcAuto"><button class="'+(!state.dev.auto?'active':'')+'" data-a="0">Manuell</button><button class="'+(state.dev.auto?'active':'')+'" data-a="1">Auto</button></div>'+
       '<div class="mc-modes" id="mcModes">'+modes.map(function(mo){return '<button data-m="'+mo.id+'"'+(state.dev.mode===mo.id?' class="active"':'')+' data-vp-tip="'+mo.name+(mo.full?' – '+mo.full:'')+'">'+mo.name+'</button>';}).join('')+'</div></div>'+
     '<div class="mc-item" data-vp-tip="O₂-Flush füllt schnell mit reinem O₂ (umgeht Verdampfer). APL offen halten (2–3) – NIE geschlossen lassen (Barotrauma). Atemkalk prüfen."><div class="mc-label">O₂-Flush / APL</div><button class="mc-flush" id="mcFlush">O₂+ Flush</button><div class="mc-hint">APL offen (2–3)<br>Absorber prüfen</div></div>';
-  var fm=box.querySelector('.flowmeter'); if(fm){ dragCtrl(fm,function(e){ var r=fm.getBoundingClientRect(); var sy=r.height/210; var frac=1-(e.clientY-r.top-16*sy)/(178*sy); frac=Math.max(0,Math.min(1,frac)); state.dev.live=false; state.dev.o2=Math.round(frac*o2Max()*10)/10; renderMachine(); renderDevCtrl(); });
-    fm.addEventListener('wheel',function(e){ e.preventDefault(); stepDev('o2', e.deltaY<0?0.1:-0.1); },{passive:false}); }
-  var vp=box.querySelector('.vaporizer'); if(vp){ dragCtrl(vp,function(e){ var r=vp.getBoundingClientRect(); var a=Math.atan2(e.clientY-(r.top+r.height/2), e.clientX-(r.left+r.width/2))*180/Math.PI; if(a<0)a+=360; if(a<140)a+=360; a=Math.max(140,Math.min(400,a)); state.dev.live=false; state.dev.iso=Math.round((a-140)/260*gasMax()*10)/10; renderMachine(); renderDevCtrl(); });
-    vp.addEventListener('wheel',function(e){ e.preventDefault(); stepDev('iso', e.deltaY<0?0.1:-0.1); },{passive:false}); }
+  /* Die Regler bekommen ihr Element bei JEDER Bewegung frisch (zweiter Parameter) — siehe die
+   * Begruendung an dragCtrl. Die Horcher haengen an der Leiste und werden nur EINMAL gesetzt,
+   * deshalb stehen sie hier ausserhalb jeder Element-Pruefung. */
+  dragCtrl('.flowmeter', function(e, el){
+    var r=el.getBoundingClientRect(); if(!r.height) return;
+    var sy=r.height/210, frac=1-(e.clientY-r.top-16*sy)/(178*sy);
+    frac=Math.max(0,Math.min(1,frac));
+    state.dev.live=false; state.dev.o2=Math.round(frac*o2Max()*10)/10; renderMachine(); renderDevCtrl();
+  });
+  dragCtrl('.vaporizer', function(e, el){
+    var r=el.getBoundingClientRect(); if(!r.height) return;
+    var a=Math.atan2(e.clientY-(r.top+r.height/2), e.clientX-(r.left+r.width/2))*180/Math.PI;
+    if(a<0)a+=360; if(a<140)a+=360; a=Math.max(140,Math.min(400,a));
+    state.dev.live=false; state.dev.iso=Math.round((a-140)/260*gasMax()*10)/10; renderMachine(); renderDevCtrl();
+  });
+  var fm=box.querySelector('.flowmeter'); if(fm) fm.addEventListener('wheel',function(e){ e.preventDefault(); stepDev('o2', e.deltaY<0?0.1:-0.1); },{passive:false});
+  var vp=box.querySelector('.vaporizer'); if(vp) vp.addEventListener('wheel',function(e){ e.preventDefault(); stepDev('iso', e.deltaY<0?0.1:-0.1); },{passive:false});
   $$('#machineControls .gaswahl button').forEach(function(b){ b.onclick=function(){ state.dev.gas=b.dataset.gas; state.dev.live=false; geraetWechsel(); }; });
   $$('#machineControls .mc-step').forEach(function(b){ b.onclick=function(){ var p=b.dataset.step.split(':'); stepDev(p[0], p[1]==='+'?0.1:-0.1); }; });
   $$('#mcAuto button').forEach(function(b){ b.onclick=function(){ state.dev.live=false; state.dev.auto=(b.dataset.a==='1'); renderMachine(); renderDevCtrl(); }; });
