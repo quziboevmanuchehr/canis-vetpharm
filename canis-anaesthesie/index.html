@@ -373,7 +373,9 @@ html[data-theme="light"] .gabe-row .d{color:#0b5c72}
 .mon-screen canvas{display:block;width:100%;height:300px}
 .ck-schirm .mon-screen{display:flex}
 .ck-schirm .mon-screen canvas{height:auto;flex:1 1 auto;min-height:0}
-.mon-alarm{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(255,45,45,.92);color:#fff;font-weight:800;font-size:13px;letter-spacing:.5px;padding:6px 14px;border-radius:8px;display:none;box-shadow:0 0 20px rgba(255,45,45,.6);animation:monblink 1s steps(1) infinite}
+/* Das Alarmband sitzt LINKS, nicht mittig: rechts stehen jetzt die Zahlen der Kurvenbahnen,
+   und ein Band quer darueber wuerde ausgerechnet die Werte verdecken, deretwegen es blinkt. */
+.mon-alarm{position:absolute;top:8px;left:12px;max-width:calc(100% - 230px);background:rgba(255,45,45,.92);color:#fff;font-weight:800;font-size:13px;letter-spacing:.5px;padding:6px 14px;border-radius:8px;display:none;box-shadow:0 0 20px rgba(255,45,45,.6);animation:monblink 1s steps(1) infinite}
 .mon-alarm.on{display:block}
 @keyframes monblink{50%{opacity:.35}}
 .dev-alarms{display:flex;flex-direction:column;gap:4px;margin-top:10px}
@@ -420,20 +422,47 @@ html[data-theme="light"] .gabe-row .d{color:#0b5c72}
 .ck-rechts{overflow-y:auto;min-height:0;padding:12px}
 /* min-height haelt die Kurvenflaeche offen: ohne sie schrumpft der Flex-Anteil bei engem
  * Fenster auf null, und das Cockpit zeigte alles ausser dem, wofuer es da ist. */
-.ck-schirm{display:flex;gap:10px;flex:1 1 auto;min-height:190px}
-.ck-schirm .mon-screen{flex:1 1 auto;min-width:0}
-.ck-schirm .mon-tiles{flex:0 0 auto;width:186px;margin-top:0;display:grid;grid-template-columns:1fr;gap:5px;align-content:start;overflow-y:auto;min-height:0}
-.ck-schirm .mon-tiles .mon-tile{padding:5px 8px}
-.ck-schirm .mon-tiles .mt-v{font-size:20px;margin-top:0}
-.ck-schirm .mon-tiles .mt-u{font-size:10.5px;line-height:1.2}
-.ck-schirm .mon-tiles .mt-lim{top:16px;font-size:9.5px}
-/* Ohne Kurvenbahn verschwindet die Leinwand ganz und die Zahlen nehmen die Breite ein. */
+/* Schirm oben (Kurven mit ihren Zahlen), Restwerte als Leiste darunter. Die Kurven bekommen
+   damit die VOLLE Breite — vorher nahm die Zahlenspalte daneben ein Fuenftel davon weg. */
+.ck-schirm{display:flex;flex-direction:column;gap:7px;flex:1 1 auto;min-height:190px}
+.ck-schirm .mon-screen{flex:1 1 auto;min-height:130px;position:relative}
+/* ---- Zahlen IM Kurvenlauf: je Bahn ein Block, rechts, in der Farbe der Kurve ---- */
+.mon-lanes{position:absolute;inset:0 0 0 auto;width:206px;display:flex;flex-direction:column;pointer-events:none}
+.mon-lane{position:relative;flex:1 1 0;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;
+  padding:2px 10px 2px 9px;border-left:3px solid var(--kc,rgba(120,150,180,.3));pointer-events:auto;cursor:pointer}
+.mon-lane:hover{background:rgba(255,255,255,.04)}
+.mon-lane .ml-kopf{display:flex;align-items:baseline;gap:6px;font:10.5px var(--mono);color:var(--lc,#9fb0c4);letter-spacing:.4px;white-space:nowrap}
+.mon-lane .ml-kopf b{font-size:11px;font-weight:800}
+/* Die Alarmgrenzen stehen ABSOLUT in der Ecke, nicht in der Kopfzeile: als Flussinhalt machten
+ * sie die Kopfzeile zweizeilig (zwei Zahlen mit <br>), und damit lief der ganze Block aus der
+ * Bahn — gemessen 05.08.2026, zwei von vier Bloecken mit Ueberlauf. */
+.mon-lane .ml-kopf i{position:absolute;right:7px;top:3px;font-style:normal;color:#6d8296;font-size:9px;text-align:right;line-height:1.05}
+.mon-lane .ml-v{font-size:var(--lane-fz,26px);font-weight:800;line-height:1;color:var(--lc,#fff);letter-spacing:-.5px;text-shadow:0 0 14px color-mix(in srgb,var(--lc,#fff) 35%,transparent)}
+.mon-lane .ml-v small{font-size:13px;font-weight:700;color:var(--muted)}
+.mon-lane .ml-zw{font:10.5px var(--mono);color:var(--lc,#9fb0c4);opacity:.85;margin-top:1px}
+.mon-lane.alarm .ml-v{color:#ff7a7a;animation:monblink 1s steps(1) infinite}
+.mon-lane.alarm{background:rgba(255,77,77,.1)}
+.mon-lane .ml-v u{font:10px var(--mono);text-decoration:none;color:var(--lc,#9fb0c4);vertical-align:middle;margin-right:3px}
+/* Ohne Kurvenbahn verschwindet die Leinwand ganz und die Zahlen nehmen die Flaeche ein. */
 .ck-schirm.ohne-kurven .mon-screen{display:none}
-.ck-schirm.ohne-kurven .mon-tiles{width:auto;flex:1 1 auto;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+.ck-schirm.ohne-kurven .mon-tiles{flex:1 1 auto;align-content:start}
 .ck-schalter{display:flex;gap:5px;align-items:center}
 .ck-schalter .mon-mode{flex:0 0 auto;height:36px;padding:0 10px;font-size:12px}
 .ck-schalter .dm-btn{width:36px;height:36px;border-radius:8px;border:1px solid #3a4a5e;background:#e0a020;color:#1a1400;cursor:pointer;font-size:14px}
 .ck-schalter .dm-btn.on{background:#39506a;color:#fff}
+/* ---- Restwerte-Leiste: dicht, FARBIG, ohne Rollweg -------------------------------
+ * Jede Kachel traegt die Farbe ihres Kanals als Rand und als leichte Tönung. Das ist keine
+ * Verzierung: am OP-Tisch wird nicht gelesen, sondern erkannt — die Temperatur ist orange,
+ * das CO2 gelb, der Druck blau, und zwar hier genau wie in der Kurve daneben. */
+.ck-links .mon-tiles{flex:0 0 auto;margin-top:0;display:grid;gap:5px;
+  grid-template-columns:repeat(auto-fit,minmax(104px,1fr));align-content:start}
+.ck-links .mon-tiles .mon-tile{padding:4px 8px;border-left:3px solid var(--mtc,#9fb0c4);
+  background:linear-gradient(90deg,color-mix(in srgb,var(--mtc,#9fb0c4) 13%,#0b1017),#0b1017)}
+.ck-links .mon-tiles .mt-ab{font-size:9.5px}
+.ck-links .mon-tiles .mt-ab span:first-child{color:var(--mtc,#9fb0c4);font-weight:700}
+.ck-links .mon-tiles .mt-v{font-size:19px;margin-top:0}
+.ck-links .mon-tiles .mt-u{display:none}
+.ck-links .mon-tiles .mt-lim{top:3px;right:6px;font-size:9px}
 .ck-links .mon-inputs{margin-bottom:0;flex:0 0 auto;max-height:76px;overflow-y:auto;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:4px}
 .ck-links .mon-in{padding:3px 6px;gap:1px}
 .ck-links .mon-in input{height:26px;font-size:13.5px}
@@ -445,15 +474,22 @@ html[data-theme="light"] .gabe-row .d{color:#0b5c72}
 .ck-links .dev-mach .dev-brand{margin-bottom:4px}
 .ck-links .dev-mach .dev-brand b{font-size:11.5px}
 .ck-links .dev-mach .dev-brand span{font-size:10px}
-.ck-links .machine{gap:8px;align-items:end;grid-template-columns:repeat(auto-fit,minmax(104px,1fr))}
-.ck-links .mc-item{gap:3px}
+.ck-links .machine{gap:8px;align-items:end;grid-template-columns:repeat(auto-fit,minmax(98px,1fr))}
+.ck-links .mc-item{gap:2px}
 .ck-links .mc-label{font-size:9px;letter-spacing:.4px}
-.ck-links .machine svg.flowmeter{height:84px;width:auto}
-.ck-links .machine svg.vaporizer{height:84px;width:84px}
+.ck-links .machine svg.flowmeter{height:58px;width:auto}
+.ck-links .machine svg.vaporizer{height:58px;width:58px}
 .ck-links .mc-val{font-size:11px}
-.ck-links .mc-modes button{padding:2px 6px;font-size:10.5px}
-.ck-links .mc-hint{font-size:9.5px;line-height:1.25}
-.ck-links .gaswahl button{height:22px;font-size:10px;padding:0 7px}
+.ck-links .mc-fine{gap:4px}
+.ck-links .mc-step{width:22px;height:22px}
+.ck-links .mc-modes{gap:3px}
+.ck-links .mc-modes button{padding:1px 5px;font-size:10px}
+.ck-links .mc-toggle button{height:22px;font-size:10.5px;padding:0 8px}
+.ck-links .mc-flush{height:26px;font-size:11px}
+/* Der Hinweiszettel am APL gehoert in die Bedienungs-Seite, nicht ins Cockpit: waehrend der
+   Narkose liest ihn niemand, und er kostet die Hoehe, die den Kurven fehlt. */
+.ck-links .mc-hint{display:none}
+.ck-links .gaswahl button{height:20px;font-size:9.5px;padding:0 6px}
 .ck-links .dev-alarms{max-height:52px;overflow-y:auto;margin-top:0;flex:0 0 auto}
 /* Rhythmus-Chips in EINE Zeile: sie gehoeren zum Handbetrieb, nicht zur laufenden Narkose. */
 .ck-links #rhythmChips{flex:0 0 auto;max-height:32px;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;margin-bottom:0}
@@ -474,7 +510,17 @@ html[data-theme="light"] .gabe-row .d{color:#0b5c72}
 .gwahl{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:0}
 .gwahl .gw{display:flex;flex-direction:column;gap:3px;min-width:170px;flex:1 1 190px}
 .gwahl label{font:10px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
-.gwahl select{height:36px;border-radius:8px;border:1px solid var(--line);background:#0d1219;color:var(--text);font-size:12.5px;padding:0 8px;width:100%}
+.gwahl select{height:36px;border-radius:8px;border:1px solid var(--line);background:#0d1219;color:#fff;font-size:12.5px;padding:0 8px;width:100%}
+/* Helles Thema: die Modellwahl und die Erlaeuterung gehoeren zur SEITE, nicht zum Geraetebild.
+ * Ohne diese Zeilen stand dunkler Text auf dunklem Grund — im Bildschirmfoto vom 05.08.2026
+ * waren die drei Auswahlfelder leere schwarze Kaesten. Das Geraetebild selbst (Kopfzeile,
+ * Kurvenflaeche, Zahlenbloecke, Wertekacheln) bleibt in BEIDEN Themen dunkel: ein
+ * Patientenmonitor ist dunkel, und ein heller Monitor waere im OP nicht lesbar. */
+html[data-theme="light"] .gwahl select{background:#fff;color:#15202e}
+html[data-theme="light"] .gw-note{color:#26333f;border-left-color:rgba(20,40,70,.2)}
+html[data-theme="light"] .gw-note b{color:#0b3b5c}
+html[data-theme="light"] .gw-note i{color:#5b6a7a}
+html[data-theme="light"] .ck-schalter .mon-mode{background:rgba(255,255,255,.7);color:#15202e}
 .gwahl select:focus{outline:none;border-color:var(--cyan)}
 .gw-note{font-size:11.5px;color:var(--muted);line-height:1.45;margin:-2px 0 10px;border-left:3px solid rgba(120,150,180,.3);padding-left:9px}
 .gw-note b{color:#cfe4ff}
@@ -714,8 +760,16 @@ html[data-theme="light"] .gabe-row .d{color:#0b5c72}
              etwas aussagen), rechts die Zahlenspalte. Ist keine einzige Bahn sinnvoll, wird die
              Leinwand ausgeblendet und die Zahlen nehmen die ganze Breite — eine grosse schwarze
              leere Flaeche waere verschenkter Platz auf genau dem Bildschirm, der zaehlt. -->
+        <!-- DER SCHIRM WIE AM ECHTEN MONITOR: jede Kurvenbahn traegt ihre Zahl direkt daneben,
+             in der Farbe der Kurve. Darunter die uebrigen Werte als dichte farbige Leiste. So
+             steht jeder Wert dort, wo auch seine Kurve laeuft — und alles zusammen auf einem
+             Bildschirm, ohne zu rollen. -->
         <div class="ck-schirm">
-          <div class="mon-screen" id="monScreen"><canvas id="monCanvas"></canvas><div class="mon-alarm" id="monAlarm"></div></div>
+          <div class="mon-screen" id="monScreen">
+            <canvas id="monCanvas"></canvas>
+            <div class="mon-lanes" id="monLanes"></div>
+            <div class="mon-alarm" id="monAlarm"></div>
+          </div>
           <div class="mon-tiles" id="monTiles"></div>
         </div>
         <div class="chips" id="rhythmChips"></div>
@@ -1577,7 +1631,8 @@ function renderMonScenarios(){
 function renderMonValues(){
   var r=monResolve(), al=monAlarms(r); var g=curGeraet(); var mm=$('#mSpecies'); if(mm) mm.textContent=sp().name+' '+fmt(state.wt)+' kg'; var dsp=$('#devSpecies'); if(dsp) dsp.textContent=sp().name+' '+fmt(state.wt)+' kg';
   var abgel=(r.__abgeleitet||{});
-  $('#monTiles').innerHTML=(MON().params||[]).map(function(p){
+  var inBahn=renderLaneWerte(r,al);          // Werte, die schon IM Kurvenlauf stehen
+  $('#monTiles').innerHTML=(MON().params||[]).filter(function(p){ return !inBahn[p.id]; }).map(function(p){
     var val=r[p.id]; var isAl=al[p.id]; var ab=p.abbr, nm=p.name.replace(/ \(.*/,'');
     var disp=(val===0||val==null||val==='')?'– –':fmt(val);
     if(p.id==='nibp'){ ab='NIBP'; nm='Blutdruck SYS/DIA (MAP)';
@@ -1618,6 +1673,82 @@ function renderMonValues(){
   renderAssess(); renderDevCtrl(); ventCoach();
   renderVentPanel(); /* Beatmungsmodus-Empfehlung/Glow an neue Monitorwerte anpassen */
   renderVentModes(); /* gleiche Live-Empfehlung im Einstellungen-Tab (Beatmungs-Modi Veta 5) */
+}
+/*
+ * DIE ZAHL GEHOERT ZU IHRER KURVE (Wunsch 05.08.2026: „alle Werte übersichtlicher im
+ * Kurvenlauf … alles farbig ohne zu scrollen").
+ *
+ * Ein echter Patientenmonitor stellt die Zahl NEBEN die Kurve, in derselben Farbe. Das ist
+ * keine Verzierung: am OP-Tisch wird nicht gelesen, sondern erkannt. Wer die gelbe Zahl sucht,
+ * findet die gelbe Kurve daneben — und umgekehrt. Eine Zahlenspalte weit weg von ihrer Kurve
+ * zwingt bei jedem Blick zum Zuordnen.
+ *
+ * Nebenbei gewinnen die Kurven die volle Breite zurueck: die frueher danebenstehende Spalte
+ * hat ein Fuenftel des Schirms belegt.
+ *
+ * Rueckgabe: die IDs, die hier schon gezeigt werden — sie fallen aus der Kachelleiste heraus.
+ * Eine Zahl zweimal im Bild ist schlimmer als eine Zahl weniger: man vergleicht sie
+ * unwillkuerlich und sucht einen Unterschied, den es nicht gibt.
+ */
+var LANE_WERTE={ ekg:['hr'], pleth:['spo2','pi'], capno:['etco2','fico2'], paw:['ppeak','peep'], flow:['mv','compl'], resp:['rr'] };
+function renderLaneWerte(r,al){
+  var host=$('#monLanes'); var benutzt={};
+  if(!host) return benutzt;
+  var bahnen=aktiveBahnen();
+  if(!bahnen.length){ host.innerHTML=''; host.style.display='none'; return benutzt; }
+  host.style.display='';
+  var params={}; (MON().params||[]).forEach(function(p){ params[p.id]=p; });
+  var g=curGeraet();
+  /*
+   * DIE ZAHL RICHTET SICH NACH DER BAHNHOEHE — nicht umgekehrt.
+   *
+   * Erste Fassung hatte eine feste Schriftgroesse (30 px). Bei vier Bahnen auf einem 180 px
+   * hohen Schirm sind das 45 px je Bahn, und Kopfzeile, Zahl und Zusatzzeile lagen sichtbar
+   * uebereinander — im Bildschirmfoto stand "MAX cmH₂O" quer durch die "7". Eine Zahl, die man
+   * entziffern muss, ist am OP-Tisch keine Zahl.
+   * Also: Hoehe messen, Schrift daraus rechnen, und die Zusatzzeile faellt weg, wenn es eng wird.
+   */
+  var schirm=$('#monScreen');
+  var laneH=(schirm?schirm.getBoundingClientRect().height:0)/Math.max(1,bahnen.length);
+  /* 0,40 x Bahnhoehe, gedeckelt: Kopfzeile (13) + Zahl + Zusatzzeile (11) + Innenabstand muessen
+   * in die Bahn passen. Die Schwellen sind an der gemessenen Zeilenhoehe ausgerechnet, nicht
+   * geschaetzt — bei 50 px ist es genau voll. */
+  var fz=Math.max(15,Math.min(34,Math.round(laneH*0.40)));
+  var zeigeZusatz=(laneH>=50), zeigeKopf=(laneH>=34);
+  host.style.setProperty('--lane-fz', fz+'px');
+  host.innerHTML=bahnen.map(function(bid){
+    var kd=(VG&&VG.kurve(bid))||{color:'#28e07a',name:bid};
+    var ids=(LANE_WERTE[bid]||[]).filter(function(i){ return params[i]; });
+    var haupt=ids[0]?params[ids[0]]:null;
+    if(!haupt) return '<div class="mon-lane" style="--lc:'+(kd.color||'#9fb0c4')+'"><div class="ml-kopf"><b>'+kd.name+'</b></div></div>';
+    benutzt[haupt.id]=1;
+    var x=r[haupt.id], alarm=al[haupt.id];
+    var wert=(x===0||x==null||x===''||isNaN(x))?'– –':fmt(x);
+    var gr=(g&&g.grenzen)?grenzeOf(haupt):null;
+    var lim=(gr&&(gr.hi!=null||gr.lo!=null))?('<i>'+(gr.hi!=null?fmt(gr.hi):'–')+'<br>'+(gr.lo!=null?fmt(gr.lo):'–')+'</i>'):'';
+    /* Zweitwerte NUR als benutzt melden, wenn sie hier auch wirklich stehen. Passen sie nicht
+     * (flache Bahn), fallen sie in die Kachelleiste — ein Wert, der in KEINER von beiden steht,
+     * waere lautlos verschwunden, und genau das darf einem Messwert nie passieren. */
+    var zw='';
+    if(zeigeZusatz) for(var i=1;i<ids.length;i++){
+      var q=params[ids[i]]; benutzt[q.id]=1;
+      var y=r[q.id]; var yv=(y==null||y===''||isNaN(y))?'– –':fmt(y);
+      zw+=(zw?' · ':'')+q.abbr+' '+yv+(al[q.id]?' ⚠':'');
+    }
+    /* Die AF-Quelle steht am Atemwert: Kapnograf schlaegt Impedanz, und der Tierarzt soll
+     * sehen, welche der beiden gerade zaehlt. */
+    if((haupt.id==='rr'||ids.indexOf('rr')>=0) && state._afSource) zw+=(zw?' · ':'')+(state._afSource==='kapnograph'?'⬤ Kapno':'⬤ Monitor');
+    /* ZWEI Farben, mit Absicht: die ZAHL traegt die Farbe ihres Parameters (EtCO2 ist ueberall
+     * in dieser App bernstein — in der Analyse, in den Kacheln, hier), der Balken links traegt
+     * die Farbe der KURVE daneben (das CO2-Kapnogramm zeichnet jedes Geraet hellblau, so steht
+     * es auch auf den Fotos). So bleibt beides eindeutig: welcher Wert, und zu welcher Kurve. */
+    return '<div class="mon-lane'+(alarm?' alarm':'')+'" data-p="'+haupt.id+'" style="--lc:'+(haupt.color||kd.color||'#9fb0c4')+';--kc:'+(kd.color||'#9fb0c4')+'" title="'+kd.name+' · '+haupt.name+' – klicken für Erklärung und Normbereich">'+
+      (zeigeKopf?('<div class="ml-kopf"><b>'+haupt.abbr+'</b><span>'+haupt.unit+'</span>'+lim+'</div>'):'')+
+      '<div class="ml-v">'+(zeigeKopf?'':('<u>'+haupt.abbr+'</u> '))+wert+'</div>'+
+      ((zw&&zeigeZusatz)?('<div class="ml-zw">'+zw+'</div>'):'')+'</div>';
+  }).join('');
+  $$('#monLanes .mon-lane').forEach(function(l){ if(l.dataset.p) l.onclick=function(){ showMonParam(l.dataset.p); }; });
+  return benutzt;
 }
 /* Wie schwer wiegt ein Kanal im Alarmband? Reihenfolge wie in der Analyse-Spalte. */
 var WGT_AL={ spo2:9, etco2:8, fico2:7, nibp:7, ibp:7, ppeak:6, hr:6, vte:5, mv:5, rr:4, peep:3, fio2:8, temp:2, temp2:1, etAgent:3, pi:1 };
@@ -1801,8 +1932,14 @@ function renderDevHead(bandTxt){
 function cockpitHoehe(){
   var el=document.querySelector('#geraet .cockpit'); if(!el) return;
   if(window.innerWidth<=1000){ el.style.height=''; return; }
-  var oben=el.getBoundingClientRect().top + (window.scrollY||0) - (document.documentElement.scrollTop||0);
-  var h=window.innerHeight-el.getBoundingClientRect().top-16;
+  /* Die Notfall-Leiste liegt FEST am unteren Rand ueber allem. Ohne sie abzuziehen endete das
+   * Cockpit dahinter — im Bildschirmfoto vom 05.08.2026 verdeckte sie die Modusknoepfe des
+   * Narkosegeraets. Sie wird gemessen und nicht geschaetzt: sie klappt zusammen. */
+  var dock=document.querySelector('.nf-dock');
+  var dockH=0;
+  if(dock && getComputedStyle(dock).position==='fixed'){ var dr=dock.getBoundingClientRect();
+    if(dr.height>0 && dr.top>window.innerHeight*0.55) dockH=dr.height+6; }
+  var h=window.innerHeight-el.getBoundingClientRect().top-14-dockH;
   el.style.height=Math.max(430,h)+'px';
 }
 /* Die Station meldet, dass ein Geraet gerade geliefert hat. Erster Ruf startet die Falluhr. */
@@ -2185,6 +2322,11 @@ function monStart(){
     mon.W=Math.max(2,Math.floor(rect.width*mon.dpr)); mon.H=Math.max(2,Math.floor(rect.height*mon.dpr));
     c.width=mon.W; c.height=mon.H; mon.buf=null;
   };
+  /* Die Zahlenbloecke der Bahnen haengen an der GEMESSENEN Schirmhoehe (Schriftgroesse, Zusatz-
+   * zeile). Nach jeder Groessenaenderung muessen sie deshalb neu gebaut werden — sonst behalten
+   * sie die Schrift der alten Hoehe und laufen wieder ineinander. */
+  mon._resize0=mon._resize;
+  mon._resize=function(){ mon._resize0(); try{ if(mon.running) renderLaneWerte(monResolve(), monAlarms(monResolve())); }catch(e){} };
   mon._resize(); addEventListener('resize',mon._resize);
   mon.running=true; mon.last=performance.now();
   // Perf (§2): Bildrate begrenzen — 25 fps reichen für die Kurven, sparen aber ~½ CPU/GPU je Fenster.
@@ -2281,15 +2423,14 @@ function monFrame(ts){
   ctx.clearRect(0,0,W,H); ctx.fillStyle='#05080d'; ctx.fillRect(0,0,W,H);
   var rk=mon.real||{};
   var laneH=H/nB;
+  /* Rechts sitzen jetzt die HTML-Zahlenbloecke (renderLaneWerte). Die Kurve endet davor —
+   * sonst laeuft die Linie unter die Zahl und beide sind schlechter zu lesen. */
+  var RESERVE=Math.round(206*mon.dpr), WZ=Math.max(60,W-RESERVE);
+  /* Auf der Bahn steht nur noch der NAME (und ob die Kurve echt vom Geraet kommt) — die Zahlen
+   * stehen daneben im farbigen Block und muessen nicht doppelt in die Leinwand gemalt werden. */
   function beschriftung(id){
     var kd=(VG&&VG.kurve(id))||{name:id,color:'#9fb0c4'};
-    var echt=rk[id]?' · ECHT':'';
-    if(id==='pleth') return 'Pleth · SpO₂ '+(r.spo2>0?r.spo2:'– –')+'%'+echt;
-    if(id==='capno') return 'CO₂ · EtCO₂ '+(r.etco2>0?r.etco2:'0')+(r.fico2>0?(' · FiCO₂ '+fmt(r.fico2)):'')+echt;
-    if(id==='paw')   return 'Paw · '+(r.ppeak>0?('Ppeak '+fmt(r.ppeak)):'cmH₂O')+(r.peep>0?(' · PEEP '+fmt(r.peep)):'')+echt;
-    if(id==='flow')  return 'Flow · L/min'+echt;
-    if(id==='resp')  return 'Resp · AF '+(r.rr>0?r.rr:'– –')+echt;
-    return kd.name+echt;
+    return kd.name+(rk[id]?' · ECHT':'');
   }
   for(var li=0;li<nB;li++){
     var top=li*laneH, key=bahnen[li];
@@ -2308,12 +2449,12 @@ function monFrame(ts){
         while(i1<b.length-1 && mon.buf.__pawM[i1+1]===mand) i1++;
         ctx.strokeStyle=mand? (kdef.color2||'#8b6cff') : (kdef.color||'#ffd166');
         ctx.beginPath();
-        for(var ii=i0;ii<=i1;ii++){ var xx=ii*(W/(b.length-1)); if(ii===i0)ctx.moveTo(xx,yv(ii)); else ctx.lineTo(xx,yv(ii)); }
+        for(var ii=i0;ii<=i1;ii++){ var xx=ii*(WZ/(b.length-1)); if(ii===i0)ctx.moveTo(xx,yv(ii)); else ctx.lineTo(xx,yv(ii)); }
         ctx.stroke(); i0=i1+1;
       }
     } else {
       ctx.strokeStyle=kdef.color||'#28e07a'; ctx.lineWidth=Math.max(1.2,1.5*mon.dpr); ctx.beginPath();
-      for(var i=0;i<b.length;i++){ var x=i*(W/(b.length-1)); if(i===0)ctx.moveTo(x,yv(i)); else ctx.lineTo(x,yv(i)); }
+      for(var i=0;i<b.length;i++){ var x=i*(WZ/(b.length-1)); if(i===0)ctx.moveTo(x,yv(i)); else ctx.lineTo(x,yv(i)); }
       ctx.stroke();
     }
     // Beschriftung
