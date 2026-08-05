@@ -426,12 +426,29 @@ html[data-view="geraet"] .pfield input,html[data-view="geraet"] .pfield select{h
 html[data-view="geraet"] .pfield label{font-size:9px}
 html[data-view="geraet"] .patbar,html[data-view="geraet"] .patchips{gap:8px}
 html[data-view="geraet"] .breed-in{height:32px}
+/* Auch Reiterleiste und Hinweiszeile geben auf diesem Reiter Hoehe ab — jeder Punkt hier ist
+ * ein Punkt mehr fuer Kurven und Bedienteil. Beide bleiben vollstaendig da, nur schmaler. */
+html[data-view="geraet"] .tab{height:30px;padding:0 11px;font-size:12px}
+html[data-view="geraet"] .navbar{padding:5px 14px}
+html[data-view="geraet"] .nh{height:30px;font-size:12px}
+html[data-view="geraet"] .disc{padding:3px 0}
+/* Hellmodus: zwei Stellen mit zu wenig Kontrast — beide gemessen, nicht geschaetzt.
+ * (Die Meldungen zu .mc-label und Co. waren Fehlalarme meiner Pruefung: das Narkosegeraet
+ *  traegt einen Farbverlauf als Hintergrund, den ein Blick auf backgroundColor nicht sieht.) */
+html[data-theme="light"] .assess-ok{color:#0a5c3a;background:rgba(0,180,100,.14);border-color:rgba(0,150,85,.45)}
+html[data-theme="light"] .gw-v.belegt{background:rgba(12,120,70,.16);color:#0a5c3a}
+html[data-theme="light"] .gw-v.wahrscheinlich{background:rgba(180,120,0,.16);color:#7a5200}
+html[data-theme="light"] .gw-v.unbestaetigt{background:rgba(200,50,50,.14);color:#8c1f1f}
 /* ---- COCKPIT: bildschirmhoch, kein Scrollen waehrend der Narkose ------------------
  * Die Hoehe setzt cockpitHoehe() zur Laufzeit (der Kopfbereich ist je nach Fenster und
  * Zoom unterschiedlich hoch — eine feste Zahl waere auf der Haelfte der Bildschirme
  * falsch). min-height:0 auf jeder Ebene ist Pflicht: ohne das waechst ein Flex-Kind
  * ueber seinen Container hinaus und die Leiste unten rutscht aus dem Bild. */
-.cockpit{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(290px,.62fr);gap:12px;min-height:0}
+/* Die Geraetespalte bekommt deutlich mehr Breite als die Analyse: dort wird BEDIENT
+ * (Verdampfer drehen, Modus waehlen, Werte lesen), hier wird gelesen. Eine breite
+ * Geraetespalte heisst ausserdem, dass die Wertekacheln in weniger Reihen passen — und jede
+ * eingesparte Reihe ist Hoehe fuer die Kurven und fuer das Narkosegeraet. */
+.cockpit{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(258px,.46fr);gap:11px;min-height:0}
 .cockpit>.card{min-height:0;margin-bottom:0}
 /* overflow-y:auto statt hidden: auf einem kleinen Fenster passt es beim besten Willen nicht
  * vollstaendig — dann lieber ein kurzer Rollweg als ein Narkosegeraet, das unsichtbar
@@ -442,15 +459,19 @@ html[data-view="geraet"] .breed-in{height:32px}
  * Fenster auf null, und das Cockpit zeigte alles ausser dem, wofuer es da ist. */
 /* Schirm oben (Kurven mit ihren Zahlen), Restwerte als Leiste darunter. Die Kurven bekommen
    damit die VOLLE Breite — vorher nahm die Zahlenspalte daneben ein Fuenftel davon weg. */
-.ck-schirm{display:flex;flex-direction:column;gap:7px;flex:1 1 auto;min-height:190px}
-.ck-schirm .mon-screen{flex:1 1 auto;min-height:130px;position:relative}
+/* Die Kurvenflaeche darf FLACHER werden, dafuer ist sie voll breit — eine Kurve liest man in
+ * der Waagerechten (Form, Anstieg, Plateau), nicht in der Hoehe. Die gewonnene Hoehe geht an
+ * das Narkosegeraet: dort wird gedreht, geschoben und geschaltet, und dafuer braucht es
+ * Flaeche, die man auch mit Handschuhen trifft. */
+.ck-schirm{display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-height:140px}
+.ck-schirm .mon-screen{flex:1 1 auto;min-height:110px;position:relative}
 /* ---- Zahlen IM Kurvenlauf: je Bahn ein Block, rechts, in der Farbe der Kurve ---- */
 /* DECKEND, nicht durchsichtig: die Zahlenspalte liegt ueber der Leinwand, und eine Kurve, die
  * unter einer Zahl durchlaeuft, macht beides unlesbar. Zusaetzlich endet die Kurve schon vor der
  * Spalte (mon.reservePx) — der deckende Grund ist der Guertel zum Hosentraeger: die Spaltenbreite
  * kann sich mit der Schriftgroesse aendern, die Reserve wird deshalb GEMESSEN und nicht geraten. */
 .mon-lanes{position:absolute;inset:0 0 0 auto;width:206px;display:flex;flex-direction:column;
-  background:#05080d;box-shadow:-8px 0 14px -6px rgba(0,0,0,.85)}
+  background:#05080d !important;box-shadow:-8px 0 14px -6px rgba(0,0,0,.85)}
 .mon-lane{position:relative;flex:1 1 0;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;
   padding:2px 10px 2px 9px;border-left:3px solid var(--kc,rgba(120,150,180,.3));cursor:pointer;background:#05080d}
 .mon-lane:hover{background:rgba(255,255,255,.04)}
@@ -477,13 +498,20 @@ html[data-view="geraet"] .breed-in{height:32px}
  * Jede Kachel traegt die Farbe ihres Kanals als Rand und als leichte Tönung. Das ist keine
  * Verzierung: am OP-Tisch wird nicht gelesen, sondern erkannt — die Temperatur ist orange,
  * das CO2 gelb, der Druck blau, und zwar hier genau wie in der Kurve daneben. */
-.ck-links .mon-tiles{flex:0 0 auto;margin-top:0;display:grid;gap:4px;
-  grid-template-columns:repeat(auto-fit,minmax(92px,1fr));align-content:start}
-.ck-links .mon-tiles .mon-tile{padding:2px 7px;border-left:3px solid var(--mtc,#9fb0c4);
-  background:linear-gradient(90deg,color-mix(in srgb,var(--mtc,#9fb0c4) 13%,#0b1017),#0b1017)}
-.ck-links .mon-tiles .mt-ab{font-size:9.5px}
+.ck-links .mon-tiles{flex:0 0 auto;margin-top:0;display:grid;gap:5px;
+  grid-template-columns:repeat(auto-fit,minmax(100px,1fr));align-content:start}
+/* !important, und zwar mit Absicht: das Geraetebild ist in BEIDEN Farbschemata dunkel — ein
+ * Patientenmonitor ist dunkel, und ein heller waere im OP nicht lesbar. Im hellen Schema kam
+ * die Kachel sonst ganz ohne Hintergrund heraus (gemessen: backgroundColor transparent), und
+ * dann stand bernsteinfarbene Schrift auf weissem Grund: Kontrast 1,3 statt 10. Welche fremde
+ * Regel den Grund wegnimmt, ist dabei gleichgueltig — diese hier gilt so oder so. */
+.ck-links .mon-tiles .mon-tile{padding:3px 8px;border-left:3px solid var(--mtc,#9fb0c4);
+  background:linear-gradient(90deg,color-mix(in srgb,var(--mtc,#9fb0c4) 14%,#0b1017),#0b1017) !important;
+  border-color:rgba(120,150,180,.22)}
+.ck-links .mon-tiles .mon-tile.alarm{background:rgba(255,77,77,.16) !important;border-color:var(--red)}
+.ck-links .mon-tiles .mt-ab{font-size:10px}
 .ck-links .mon-tiles .mt-ab span:first-child{color:var(--mtc,#9fb0c4);font-weight:700}
-.ck-links .mon-tiles .mt-v{font-size:19px;margin-top:0}
+.ck-links .mon-tiles .mt-v{font-size:22px;margin-top:0}
 .ck-links .mon-tiles .mt-u{display:none}
 .ck-links .mon-tiles .mt-lim{top:3px;right:6px;font-size:9px}
 /* ---- KEINE ROLLBALKEN IM GERAETEFELD (1.4.3) --------------------------------------
@@ -511,26 +539,28 @@ html[data-theme="light"] .ck-schalter select{background:#fff;color:#15202e}
 /* Das Narkosegeraet als kompakte Leiste statt als Schaubild: Flowmeter und Verdampfer sind
  * hier Bedienelemente, keine Illustration. In voller Groesse (210 px Flowmeter) haetten sie
  * allein die halbe Cockpithoehe belegt — und die Leiste waere unten aus dem Bild gerutscht. */
-.ck-links .dev-mach{padding:7px 9px;flex:0 0 auto}
-.ck-links .dev-mach .dev-brand{margin-bottom:4px}
-.ck-links .dev-mach .dev-brand b{font-size:11.5px}
-.ck-links .dev-mach .dev-brand span{font-size:10px}
-.ck-links .machine{gap:8px;align-items:end;grid-template-columns:repeat(auto-fit,minmax(98px,1fr))}
-.ck-links .mc-item{gap:2px}
-.ck-links .mc-label{font-size:9px;letter-spacing:.4px}
-.ck-links .machine svg.flowmeter{height:46px;width:auto}
-.ck-links .machine svg.vaporizer{height:46px;width:46px}
-.ck-links .mc-val{font-size:11px}
-.ck-links .mc-fine{gap:4px}
-.ck-links .mc-step{width:22px;height:22px}
-.ck-links .mc-modes{gap:3px}
-.ck-links .mc-modes button{padding:1px 5px;font-size:10px}
-.ck-links .mc-toggle button{height:22px;font-size:10.5px;padding:0 8px}
-.ck-links .mc-flush{height:26px;font-size:11px}
-/* Der Hinweiszettel am APL gehoert in die Bedienungs-Seite, nicht ins Cockpit: waehrend der
-   Narkose liest ihn niemand, und er kostet die Hoehe, die den Kurven fehlt. */
-.ck-links .mc-hint{display:none}
-.ck-links .gaswahl button{height:20px;font-size:9.5px;padding:0 6px}
+/* ---- DAS NARKOSEGERAET IST DAS BEDIENTEIL — es bekommt Flaeche -------------------
+ * Es war auf Briefmarkengroesse geschrumpft, weil darueber jeder Wert dreimal stand. Seit
+ * das aufgeraeumt ist, gehoert die Hoehe hierher: Verdampfer und Flowmeter sind Drehregler,
+ * die Modusknoepfe werden mitten in der Narkose getroffen — beides braucht Groesse. */
+.ck-links .dev-mach{padding:10px 12px;flex:0 0 auto}
+.ck-links .dev-mach .dev-brand{margin-bottom:6px}
+.ck-links .dev-mach .dev-brand b{font-size:13px}
+.ck-links .dev-mach .dev-brand span{font-size:11px}
+.ck-links .machine{gap:14px;align-items:end;grid-template-columns:repeat(auto-fit,minmax(128px,1fr))}
+.ck-links .mc-item{gap:5px}
+.ck-links .mc-label{font-size:10.5px;letter-spacing:.5px}
+.ck-links .machine svg.flowmeter{height:96px;width:auto}
+.ck-links .machine svg.vaporizer{height:96px;width:96px}
+.ck-links .mc-val{font-size:14px;font-weight:800;min-width:74px}
+.ck-links .mc-fine{gap:7px}
+.ck-links .mc-step{width:30px;height:30px;font-size:16px}
+.ck-links .mc-modes{gap:5px}
+.ck-links .mc-modes button{padding:5px 11px;font-size:12px}
+.ck-links .mc-toggle button{height:30px;font-size:12.5px;padding:0 14px}
+.ck-links .mc-flush{height:34px;font-size:13px;padding:0 14px}
+.ck-links .mc-hint{font-size:10px;line-height:1.3;color:#8fa2b8}
+.ck-links .gaswahl button{height:26px;font-size:11.5px;padding:0 10px}
 .ck-links .dev-alarms{max-height:52px;overflow-y:auto;margin-top:0;flex:0 0 auto}
 /* Rhythmus-Chips in EINE Zeile: sie gehoeren zum Handbetrieb, nicht zur laufenden Narkose. */
 .ck-links #rhythmChips{flex:0 0 auto;max-height:32px;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;margin-bottom:0}
