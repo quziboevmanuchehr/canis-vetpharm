@@ -408,6 +408,24 @@ html[data-theme="light"] .gabe-row .d{color:#0b5c72}
  * Falluhr und Alarmband, Zahlenspalte MIT den Alarmgrenzen daneben, Modusleiste und
  * Einstellzeile darunter.
  * =================================================================================== */
+/* ---- KOPFBEREICH SCHRUMPFT AUF DEM GERAET-REITER ---------------------------------
+ * Gemessen: die Kopfleisten (Titel, Hinweis, Patientenzeile, Reiter) belegen 379 von 1000 px —
+ * 38 % des Bildschirms, bevor eine einzige Kurve gezeichnet ist. Auf dem Geraet-Reiter blieben
+ * damit fuenf Bahnen mit je 34 px uebrig, und darauf ist eine Kurve nicht mehr zu beurteilen.
+ * Deshalb wird der Kopf DORT kompakt: kleinere Tiersymbole, schmalerer Hinweis, die
+ * Normwertzeile faellt weg (jeder dieser Werte steht im Cockpit mit seiner Grenze daneben).
+ * Nichts wird entfernt — alles bleibt bedienbar, nur kleiner. Auf allen anderen Reitern
+ * bleibt der Kopf wie er war. */
+html[data-view="geraet"] .disc-in{padding:6px 12px;font-size:11px;line-height:1.35}
+html[data-view="geraet"] .sp-chip{min-width:50px;padding:3px 7px;gap:0}
+html[data-view="geraet"] .sp-chip .ic{font-size:15px}
+html[data-view="geraet"] .sp-chip .nm{font-size:9.5px}
+html[data-view="geraet"] .sp-chips{gap:5px}
+html[data-view="geraet"] .pchip-note{display:none}
+html[data-view="geraet"] .pfield input,html[data-view="geraet"] .pfield select{height:32px}
+html[data-view="geraet"] .pfield label{font-size:9px}
+html[data-view="geraet"] .patbar,html[data-view="geraet"] .patchips{gap:8px}
+html[data-view="geraet"] .breed-in{height:32px}
 /* ---- COCKPIT: bildschirmhoch, kein Scrollen waehrend der Narkose ------------------
  * Die Hoehe setzt cockpitHoehe() zur Laufzeit (der Kopfbereich ist je nach Fenster und
  * Zoom unterschiedlich hoch — eine feste Zahl waere auf der Haelfte der Bildschirme
@@ -427,9 +445,14 @@ html[data-theme="light"] .gabe-row .d{color:#0b5c72}
 .ck-schirm{display:flex;flex-direction:column;gap:7px;flex:1 1 auto;min-height:190px}
 .ck-schirm .mon-screen{flex:1 1 auto;min-height:130px;position:relative}
 /* ---- Zahlen IM Kurvenlauf: je Bahn ein Block, rechts, in der Farbe der Kurve ---- */
-.mon-lanes{position:absolute;inset:0 0 0 auto;width:206px;display:flex;flex-direction:column;pointer-events:none}
+/* DECKEND, nicht durchsichtig: die Zahlenspalte liegt ueber der Leinwand, und eine Kurve, die
+ * unter einer Zahl durchlaeuft, macht beides unlesbar. Zusaetzlich endet die Kurve schon vor der
+ * Spalte (mon.reservePx) — der deckende Grund ist der Guertel zum Hosentraeger: die Spaltenbreite
+ * kann sich mit der Schriftgroesse aendern, die Reserve wird deshalb GEMESSEN und nicht geraten. */
+.mon-lanes{position:absolute;inset:0 0 0 auto;width:206px;display:flex;flex-direction:column;
+  background:#05080d;box-shadow:-8px 0 14px -6px rgba(0,0,0,.85)}
 .mon-lane{position:relative;flex:1 1 0;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;
-  padding:2px 10px 2px 9px;border-left:3px solid var(--kc,rgba(120,150,180,.3));pointer-events:auto;cursor:pointer}
+  padding:2px 10px 2px 9px;border-left:3px solid var(--kc,rgba(120,150,180,.3));cursor:pointer;background:#05080d}
 .mon-lane:hover{background:rgba(255,255,255,.04)}
 .mon-lane .ml-kopf{display:flex;align-items:baseline;gap:6px;font:10.5px var(--mono);color:var(--lc,#9fb0c4);letter-spacing:.4px;white-space:nowrap}
 .mon-lane .ml-kopf b{font-size:11px;font-weight:800}
@@ -454,19 +477,37 @@ html[data-theme="light"] .gabe-row .d{color:#0b5c72}
  * Jede Kachel traegt die Farbe ihres Kanals als Rand und als leichte Tönung. Das ist keine
  * Verzierung: am OP-Tisch wird nicht gelesen, sondern erkannt — die Temperatur ist orange,
  * das CO2 gelb, der Druck blau, und zwar hier genau wie in der Kurve daneben. */
-.ck-links .mon-tiles{flex:0 0 auto;margin-top:0;display:grid;gap:5px;
-  grid-template-columns:repeat(auto-fit,minmax(104px,1fr));align-content:start}
-.ck-links .mon-tiles .mon-tile{padding:4px 8px;border-left:3px solid var(--mtc,#9fb0c4);
+.ck-links .mon-tiles{flex:0 0 auto;margin-top:0;display:grid;gap:4px;
+  grid-template-columns:repeat(auto-fit,minmax(92px,1fr));align-content:start}
+.ck-links .mon-tiles .mon-tile{padding:2px 7px;border-left:3px solid var(--mtc,#9fb0c4);
   background:linear-gradient(90deg,color-mix(in srgb,var(--mtc,#9fb0c4) 13%,#0b1017),#0b1017)}
 .ck-links .mon-tiles .mt-ab{font-size:9.5px}
 .ck-links .mon-tiles .mt-ab span:first-child{color:var(--mtc,#9fb0c4);font-weight:700}
 .ck-links .mon-tiles .mt-v{font-size:19px;margin-top:0}
 .ck-links .mon-tiles .mt-u{display:none}
 .ck-links .mon-tiles .mt-lim{top:3px;right:6px;font-size:9px}
-.ck-links .mon-inputs{margin-bottom:0;flex:0 0 auto;max-height:76px;overflow-y:auto;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:4px}
-.ck-links .mon-in{padding:3px 6px;gap:1px}
-.ck-links .mon-in input{height:26px;font-size:13.5px}
-.ck-links .mon-in span{font-size:9px}
+/* ---- KEINE ROLLBALKEN IM GERAETEFELD (1.4.3) --------------------------------------
+ * Die alte Eingabezeile zeigte JEDEN Wert ein zweites Mal — im Bildschirmfoto stand die
+ * Herzfrequenz dreimal: als Zahl an der Kurve, als Kachel und als Eingabefeld. Sie kostete
+ * dabei so viel Hoehe, dass fuenf Kurvenbahnen auf 26 px zusammenschrumpften, und sie brauchte
+ * einen eigenen Rollbalken. Getippt wird jetzt direkt in die Kachel bzw. in die Zahl an der
+ * Kurve. Die Felder bleiben im Baum — vetstation-live.js schreibt die Geraetewerte dort hinein,
+ * und dieser Weg ist erprobt; sichtbar sind sie nicht mehr. */
+.ck-links .mon-inputs{display:none !important}
+.ck-links #rhythmChips{display:none !important}
+.ck-schalter select{height:36px;max-width:190px;border-radius:8px;border:1px solid var(--line);background:#0d1219;color:#fff;font-size:12px;padding:0 6px}
+html[data-theme="light"] .ck-schalter select{background:#fff;color:#15202e}
+/* Eingabe DIREKT im Wert: gleiche Groesse, gleiche Farbe, nur mit Schreibmarke. */
+.mt-in,.ml-in{width:100%;border:0;background:transparent;color:inherit;font:inherit;padding:0;outline:none;
+  -moz-appearance:textfield;border-bottom:1px dashed rgba(120,150,180,.45)}
+.mt-in::-webkit-outer-spin-button,.mt-in::-webkit-inner-spin-button,
+.ml-in::-webkit-outer-spin-button,.ml-in::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.mt-in:focus,.ml-in:focus{border-bottom-color:var(--cyan)}
+.mt-paar{display:flex;align-items:baseline;gap:2px}
+.mt-paar .mt-in{width:44%}
+.mt-paar span{color:var(--muted);font-size:.6em}
+/* Zweitwert in der Zusatzzeile: schmales Feld, damit zwei davon nebeneinander passen. */
+.ml-zwin{width:38px;display:inline-block;vertical-align:baseline;text-align:left}
 /* Das Narkosegeraet als kompakte Leiste statt als Schaubild: Flowmeter und Verdampfer sind
  * hier Bedienelemente, keine Illustration. In voller Groesse (210 px Flowmeter) haetten sie
  * allein die halbe Cockpithoehe belegt — und die Leiste waere unten aus dem Bild gerutscht. */
@@ -477,8 +518,8 @@ html[data-theme="light"] .gabe-row .d{color:#0b5c72}
 .ck-links .machine{gap:8px;align-items:end;grid-template-columns:repeat(auto-fit,minmax(98px,1fr))}
 .ck-links .mc-item{gap:2px}
 .ck-links .mc-label{font-size:9px;letter-spacing:.4px}
-.ck-links .machine svg.flowmeter{height:58px;width:auto}
-.ck-links .machine svg.vaporizer{height:58px;width:58px}
+.ck-links .machine svg.flowmeter{height:46px;width:auto}
+.ck-links .machine svg.vaporizer{height:46px;width:46px}
 .ck-links .mc-val{font-size:11px}
 .ck-links .mc-fine{gap:4px}
 .ck-links .mc-step{width:22px;height:22px}
@@ -752,6 +793,10 @@ html[data-theme="light"] .ck-schalter .mon-mode{background:rgba(255,255,255,.7);
             <div class="ck-schalter">
               <button class="mon-mode active" data-m="ist" title="Werte von Hand eintragen">✍️ Ist</button>
               <button class="mon-mode" data-m="sim" title="Zwischenfall simulieren (Training)">🎬 Szenario</button>
+              <!-- Rhythmuswahl als EIN Feld statt als Chipleiste: die Leiste brauchte einen
+                   waagerechten Rollbalken quer durch das Geraetefeld. Die Chips bleiben verborgen
+                   im Baum, weil die Station sie anklickt, wenn ein Geraet den Rhythmus meldet. -->
+              <select id="rhySel" title="Welcher Rhythmus ist am EKG zu sehen?"></select>
               <button class="dm-btn" id="dmSilence" title="Alarmton dieses Bildes stummschalten">🔕</button>
             </div></div>
         </div>
@@ -1602,15 +1647,24 @@ function monResolve(){
  *   SpO2 / MAP     -> nur die UNTERE Grenze alarmiert (hoher Wert ist kein Notfall)
  *   FiCO2          -> nur die OBERE Grenze (0 ist der Normalfall, nicht der Alarm)
  */
+/*
+ * OPTIONALE SENSOREN: Kanaele, bei denen 0 "kein Sensor angelegt" heisst und NICHT "Wert null".
+ *
+ * Ein Dauer-Alarm fuer einen nie gelegten Arterienkatheter ist der sicherste Weg, dass
+ * irgendwann auch die echten Alarme ueberlesen werden. Gemessen am 05.08.2026 im Bild: das
+ * Universalgeraet zeigte "ART ↓ 0 mmHg — Hypotension" samt Ephedrin-Dosis fuer ein Tier, an dem
+ * gar kein invasiver Druck gemessen wurde. Die Liste steht EINMAL hier und gilt fuer den Alarm
+ * UND fuer die Analyse — zwei getrennte Listen waeren genau der Fehler, der das erzeugt hat.
+ * HF, EtCO2 und der Manschettendruck stehen bewusst NICHT darin: dort ist die Null ein Befund
+ * (Kreislaufstillstand, Diskonnektion) und muss alarmieren.
+ */
+var OPT_SENSOR=['ibp','temp2','pi','fiAgent','etAgent','etn2o','fio2','vte','ppeak','pmean','mv','compl','peep'];
 function monAlarms(r){
   var out={};
   (MON().params||[]).forEach(function(p){
     var x=r[p.id]; var g=grenzeOf(p);
     if(x==null||x===''||isNaN(x)){ out[p.id]=false; return; }
-    /* Bei OPTIONALEN Sensoren heisst 0 "kein Sensor angelegt", nicht "Wert null". Ein
-     * Dauer-Alarm fuer einen nie angeschlossenen Arterienkatheter ist der sicherste Weg,
-     * dass irgendwann auch die echten Alarme ueberlesen werden (Alarmmuedigkeit). */
-    if(['ibp','temp2','pi','fiAgent','etn2o','etAgent','fio2','vte','ppeak','mv','compl','pmean'].indexOf(p.id)>=0 && (x===0||x==null)){ out[p.id]=false; return; }
+    if(OPT_SENSOR.indexOf(p.id)>=0 && (x===0||x==null)){ out[p.id]=false; return; }
     if((p.id==='hr'||p.id==='nibp') && x===0){ out[p.id]=true; return; }
     if(p.id==='spo2'||p.id==='nibp'||p.id==='ibp'||p.id==='fio2'||p.id==='pi'){ out[p.id]=(g.lo!=null&&x<g.lo); return; }
     if(p.id==='fico2'||p.id==='ppeak'){ out[p.id]=(g.hi!=null&&x>g.hi); return; }
@@ -1631,12 +1685,15 @@ function renderMonScenarios(){
 function renderMonValues(){
   var r=monResolve(), al=monAlarms(r); var g=curGeraet(); var mm=$('#mSpecies'); if(mm) mm.textContent=sp().name+' '+fmt(state.wt)+' kg'; var dsp=$('#devSpecies'); if(dsp) dsp.textContent=sp().name+' '+fmt(state.wt)+' kg';
   var abgel=(r.__abgeleitet||{});
+  var fok=fokusMerken();
   var inBahn=renderLaneWerte(r,al);          // Werte, die schon IM Kurvenlauf stehen
   $('#monTiles').innerHTML=(MON().params||[]).filter(function(p){ return !inBahn[p.id]; }).map(function(p){
     var val=r[p.id]; var isAl=al[p.id]; var ab=p.abbr, nm=p.name.replace(/ \(.*/,'');
     var disp=(val===0||val==null||val==='')?'– –':fmt(val);
     if(p.id==='nibp'){ ab='NIBP'; nm='Blutdruck SYS/DIA (MAP)';
       disp=(r.sys>0&&r.dia>0)?(fmt(r.sys)+'/'+fmt(r.dia)+' <small style="font-size:14px;color:var(--muted)">('+fmt(r.nibp)+')</small>'):'– –'; }
+    /* Im Handbetrieb IST die Kachel das Eingabefeld — es gibt kein zweites Feld weiter unten. */
+    if(istEingabe(p)) disp=(p.id==='nibp')?wertFeldPaar(state.istVals):wertFeld(p, state.istVals[p.id], 'mt-in');
     // AF-Quelle anzeigen: Kapnograph (genauer, aus CO₂-Kurve) hat Vorrang vor dem Monitor.
     var srcTag='';
     if(p.id==='rr' && state._afSource){ srcTag=' <span class="af-src af-'+state._afSource+'" title="'+(state._afSource==='kapnograph'?'Atemfrequenz vom Kapnograph/Narkosegerät – aus der CO₂-Kurve gezählt (genauer, sicherer)':'Atemfrequenz vom Monitor (Impedanz) – Kapnograph hat Vorrang, sobald verfügbar')+'">'+(state._afSource==='kapnograph'?'⬤ Kapno':'⬤ Monitor')+'</span>'; }
@@ -1655,6 +1712,7 @@ function renderMonValues(){
     return '<div class="mon-tile'+(isAl?' alarm':'')+abg+'" data-p="'+p.id+'" style="--mtc:'+(isAl?'#ff7a7a':p.color)+'"><div class="mt-ab"><span>'+ab+'</span><span>'+p.unit+'</span></div>'+lim+'<div class="mt-v">'+disp+'</div><div class="mt-u">'+nm+srcTag+'</div></div>';
   }).join('');
   $$('#monTiles .mon-tile').forEach(function(t){ t.onclick=function(){ showMonParam(t.dataset.p); }; });
+  wertFelderVerdrahten(); fokusZurueck(fok); renderRhySel();
   // sync ist-input alarm outline
   if(state.monMode==='ist'){ $$('#monInputs .mon-in').forEach(function(l){ l.classList.toggle('alarm', !!al[l.dataset.w]); }); }
   /* Alarmband im Geraetekopf: der TEXT, der am echten Geraet oben steht ("EtCO2 zu hoch").
@@ -1709,6 +1767,10 @@ function renderLaneWerte(r,al){
    * Also: Hoehe messen, Schrift daraus rechnen, und die Zusatzzeile faellt weg, wenn es eng wird.
    */
   var schirm=$('#monScreen');
+  /* Die Leinwand muss GENAU so viel frei lassen, wie die Spalte wirklich breit ist. Eine feste
+   * Zahl im Zeichencode und eine Breite im Stylesheet laufen frueher oder spaeter auseinander —
+   * dann laeuft die Kurve wieder unter die Zahlen. Deshalb gemessen. */
+  mon.reservePx=host.getBoundingClientRect().width||206;
   var laneH=(schirm?schirm.getBoundingClientRect().height:0)/Math.max(1,bahnen.length);
   /* 0,40 x Bahnhoehe, gedeckelt: Kopfzeile (13) + Zahl + Zusatzzeile (11) + Innenabstand muessen
    * in die Bahn passen. Die Schwellen sind an der gemessenen Zeilenhoehe ausgerechnet, nicht
@@ -1724,6 +1786,7 @@ function renderLaneWerte(r,al){
     benutzt[haupt.id]=1;
     var x=r[haupt.id], alarm=al[haupt.id];
     var wert=(x===0||x==null||x===''||isNaN(x))?'– –':fmt(x);
+    if(istEingabe(haupt)) wert=(haupt.id==='nibp')?wertFeldPaar(state.istVals):wertFeld(haupt, state.istVals[haupt.id], 'ml-in');
     var gr=(g&&g.grenzen)?grenzeOf(haupt):null;
     var lim=(gr&&(gr.hi!=null||gr.lo!=null))?('<i>'+(gr.hi!=null?fmt(gr.hi):'–')+'<br>'+(gr.lo!=null?fmt(gr.lo):'–')+'</i>'):'';
     /* Zweitwerte NUR als benutzt melden, wenn sie hier auch wirklich stehen. Passen sie nicht
@@ -1732,7 +1795,14 @@ function renderLaneWerte(r,al){
     var zw='';
     if(zeigeZusatz) for(var i=1;i<ids.length;i++){
       var q=params[ids[i]]; benutzt[q.id]=1;
-      var y=r[q.id]; var yv=(y==null||y===''||isNaN(y))?'– –':fmt(y);
+      var y=r[q.id];
+      /* AUCH der Zweitwert muss eintippbar sein. Erste Fassung zeigte ihn nur an — damit gab es
+       * fuer FiCO2 und PEEP im Handbetrieb NIRGENDS mehr ein Eingabefeld, seit die alte
+       * Eingabezeile weg ist. Ein Kanal, den man nicht eingeben kann, ist im Handbetrieb so gut
+       * wie nicht vorhanden (gemessen 05.08.2026). */
+      var yv=istEingabe(q)
+        ? wertFeld(q, state.istVals[q.id], 'ml-in ml-zwin')
+        : ((y==null||y===''||isNaN(y))?'– –':fmt(y));
       zw+=(zw?' · ':'')+q.abbr+' '+yv+(al[q.id]?' ⚠':'');
     }
     /* Die AF-Quelle steht am Atemwert: Kapnograf schlaegt Impedanz, und der Tierarzt soll
@@ -1749,6 +1819,80 @@ function renderLaneWerte(r,al){
   }).join('');
   $$('#monLanes .mon-lane').forEach(function(l){ if(l.dataset.p) l.onclick=function(){ showMonParam(l.dataset.p); }; });
   return benutzt;
+}
+/* =====================================================================================
+ * EINGEBEN, WO DER WERT STEHT (1.4.3)
+ *
+ * Bis hierher gab es eine eigene Eingabezeile unter dem Schirm. Sie zeigte JEDEN Wert ein
+ * zweites Mal — im Bildschirmfoto stand die Herzfrequenz dreimal: als Zahl an der Kurve, als
+ * Kachel und als Eingabefeld. Sie kostete dabei so viel Hoehe, dass fuenf Kurvenbahnen auf
+ * 26 px zusammenschrumpften, und sie brauchte einen eigenen Rollbalken mitten im Geraetefeld.
+ *
+ * Jetzt wird dort getippt, wo die Zahl steht. Die alten Felder bleiben unsichtbar im Baum:
+ * vetstation-live.js schreibt die Geraetewerte dorthin, und dieser Weg ist erprobt — ihn fuer
+ * eine Anzeigefrage umzubauen waere das Risiko nicht wert. Was hier getippt wird, wird
+ * zusaetzlich dorthin gespiegelt, damit beide Seiten dieselbe Zahl sehen.
+ * ===================================================================================== */
+function istEingabe(p){ return state.monMode==='ist' && !liveDaten() && p.eingabe; }
+function wertFeld(p, wert, klasse){
+  var st=(p.dez>=2?0.01:(p.dez===1?0.1:1));
+  var v=(wert==null||wert===''||isNaN(wert))?'':wert;
+  return '<input class="'+klasse+'" type="number" inputmode="decimal" step="'+st+'" data-p="'+p.id+'" value="'+v+'" aria-label="'+p.abbr+' '+p.unit+'">';
+}
+/* Blutdruck braucht ZWEI Zahlen — der Mitteldruck folgt daraus und wird nicht getippt. */
+function wertFeldPaar(iv){
+  return '<span class="mt-paar">'+
+    '<input class="mt-in" type="number" inputmode="decimal" step="1" data-p="sys" value="'+(iv.sys||'')+'" aria-label="systolisch">'+
+    '<span>/</span>'+
+    '<input class="mt-in" type="number" inputmode="decimal" step="1" data-p="dia" value="'+(iv.dia||'')+'" aria-label="diastolisch">'+
+    '</span>';
+}
+/*
+ * Beim Tippen baut renderMonValues() das Feld neu auf — die Schreibmarke waere sonst nach dem
+ * ersten Zeichen weg. Deshalb wird sie vorher gemerkt und danach zurueckgesetzt.
+ */
+function fokusMerken(){
+  var a=document.activeElement;
+  if(!a||!a.classList||!(a.classList.contains('mt-in')||a.classList.contains('ml-in'))) return null;
+  return { p:a.dataset.p, k:a.classList.contains('ml-in')?'ml-in':'mt-in', pos:(function(){ try{ return a.selectionStart; }catch(e){ return null; } })() };
+}
+function fokusZurueck(f){
+  if(!f) return;
+  var n=document.querySelector('#monTiles .'+f.k+'[data-p="'+f.p+'"]')||document.querySelector('#monLanes .'+f.k+'[data-p="'+f.p+'"]')
+      ||document.querySelector('.'+f.k+'[data-p="'+f.p+'"]');
+  if(!n) return;
+  n.focus(); if(f.pos!=null){ try{ n.setSelectionRange(f.pos,f.pos); }catch(e){} }
+}
+function wertFelderVerdrahten(){
+  $$('#monTiles .mt-in, #monLanes .ml-in').forEach(function(inp){
+    if(inp.__hooked) return; inp.__hooked=1;
+    inp.addEventListener('input',function(){
+      var k=inp.dataset.p, roh=inp.value, val=parseFloat(roh);
+      state.istVals[k]=(roh===''?null:(isNaN(val)?0:val));
+      state.istHand=state.istHand||{}; state.istHand[k]=1;
+      if(k==='sys'||k==='dia'){ var s=state.istVals.sys||0,d=state.istVals.dia||0;
+        state.istVals.nibp=(s>0&&d>0)?Math.round(d+(s-d)/3):0; }
+      /* In das verborgene Feld spiegeln (OHNE dessen Ereignis auszuloesen — sonst liefe die
+       * Arbeit zweimal). vetstation-live.js vergleicht dort gegen den Geraetewert. */
+      var h=document.querySelector('#monInputs input[data-p="'+k+'"]'); if(h) h.value=roh;
+      renderMonValues();
+    });
+    inp.addEventListener('click',function(e){ e.stopPropagation(); });
+  });
+}
+/* Rhythmuswahl als EIN Feld. Die verborgenen Chips bleiben die Wahrheit: die Station klickt sie
+ * an, wenn ein Geraet den Rhythmus meldet — dieser Weg bleibt unangetastet. */
+function renderRhySel(){
+  var sel=$('#rhySel'); if(!sel) return;
+  var zeigen=(state.monMode==='ist' && !liveDaten());
+  sel.style.display=zeigen?'':'none'; if(!zeigen) return;
+  var liste=(A.ekg||[]);
+  if(sel.__n!==liste.length){ sel.__n=liste.length;
+    sel.innerHTML=liste.map(function(r){ return '<option value="'+r.id+'">'+(r.emergency?'⚠ ':'')+r.name+'</option>'; }).join(''); }
+  if(sel.value!==state.rhythm) sel.value=state.rhythm;
+  if(!sel.__hooked){ sel.__hooked=1;
+    sel.onchange=function(){ var c=document.querySelector('#rhythmChips .chip[data-r="'+sel.value+'"]');
+      if(c) c.click(); else { state.rhythm=sel.value; if(mon.running) renderMonValues(); } }; }
 }
 /* Wie schwer wiegt ein Kanal im Alarmband? Reihenfolge wie in der Analyse-Spalte. */
 var WGT_AL={ spo2:9, etco2:8, fico2:7, nibp:7, ibp:7, ppeak:6, hr:6, vte:5, mv:5, rr:4, peep:3, fio2:8, temp:2, temp2:1, etAgent:3, pi:1 };
@@ -1986,6 +2130,11 @@ function renderAssess(){
      * ohne Band bekommt hier NICHTS — lieber keine Bewertung als eine gegen eine erfundene Norm. */
     var band=bandOf(p); if(!band) return;
     var x=(r0[p.id]!=null?r0[p.id]:iv[p.id]); if(x==null||x===''||isNaN(x)) return;
+    /* Dieselbe Regel wie beim Alarm: an einem optionalen Sensor heisst 0 "nicht angelegt".
+     * Ohne diese Zeile stand im Bild "ART ↓ 0 mmHg — Hypotension" mit Ephedrin-Dosis fuer ein
+     * Tier ohne Arterienkatheter (gemessen 05.08.2026). Eine Dosisempfehlung auf einen Wert,
+     * den niemand gemessen hat, ist der schlimmste Fehler, den diese Seite machen kann. */
+    if(OPT_SENSOR.indexOf(p.id)>=0 && x===0) return;
     var dir=null, inc=null;
     if((p.id==='hr'||p.id==='nibp'||p.id==='ibp') && x<=0){ dir='crit'; inc=(p.id==='hr'?'asystolie':p.lowInc); }
     else if(x<band[0]){ dir='low'; inc=p.lowInc; }
@@ -2425,7 +2574,7 @@ function monFrame(ts){
   var laneH=H/nB;
   /* Rechts sitzen jetzt die HTML-Zahlenbloecke (renderLaneWerte). Die Kurve endet davor —
    * sonst laeuft die Linie unter die Zahl und beide sind schlechter zu lesen. */
-  var RESERVE=Math.round(206*mon.dpr), WZ=Math.max(60,W-RESERVE);
+  var RESERVE=Math.round((mon.reservePx||206)*mon.dpr), WZ=Math.max(60,W-RESERVE);
   /* Auf der Bahn steht nur noch der NAME (und ob die Kurve echt vom Geraet kommt) — die Zahlen
    * stehen daneben im farbigen Block und muessen nicht doppelt in die Leinwand gemalt werden. */
   function beschriftung(id){
@@ -3324,7 +3473,13 @@ function navKnoepfe(){
   if(f){ var k2=navPos<navHist.length-1; f.disabled=!k2; f.title=k2?('Weiter zu: '+navName(navHist[navPos+1])+'   (Alt+→)'):'Keine nächste Ansicht'; }
 }
 
+/* Der aktive Reiter steht am Wurzelelement (data-view) — daran haengt der kompakte Kopfbereich
+ * des Geraete-Reiters (siehe CSS). Ein Attribut statt einer Klasse, damit es neben dem
+ * Farbschema (data-theme) steht und nicht wie eine vergessene Zustandsklasse aussieht.
+ * Die Zeile steht bewusst GANZ OBEN und kurz: tools/gaben-protokoll-test.js prueft, dass
+ * navMerke() innerhalb der ersten 1400 Zeichen dieser Funktion erreicht wird. */
 function switchTab(v){
+  try{ document.documentElement.setAttribute('data-view', v); }catch(e){}
   $$('#tabs .tab').forEach(function(t){ t.classList.toggle('active',t.dataset.view===v); });
   $$('.view').forEach(function(x){ x.classList.toggle('active',x.id===v); });
   if(v==='geraet'){ monStart(); renderMachine(); renderDevCtrl(); renderVentPanel();
