@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Canis Anæsthesia · Narkose & Notfall (Kleintier)</title>
-<meta name="description" content="Interaktiver Anästhesie- und Narkose-Notfall-Assistent für die Kleintierpraxis: Zwischenfall-Logik, gewichtsbasierte Dosierung, uMEC12-Monitor mit EKG-Rhythmen &amp; Kapnografie – ein interaktives Geräte-Cockpit (Mindray Veta 5 Plus).">
+<meta name="description" content="Interaktiver Anästhesie- und Narkose-Notfall-Assistent für die Kleintierpraxis: Zwischenfall-Logik, gewichtsbasierte Dosierung, universelles virtuelles Geräte-Cockpit (Monitor, Kapnograf und Narkosegerät jedes Herstellers) mit EKG-Rhythmen, Kapnografie und Beatmungskurven.">
 <meta name="theme-color" content="#e9eef7">
 <link rel="icon" href="../canis-haematica/icon.svg" type="image/svg+xml">
 <style>
@@ -396,6 +396,57 @@ html[data-theme="light"] .gabe-row .d{color:#0b5c72}
   .dev-mon .mon-tiles .mon-tile{padding:7px 9px}
   .dev-mon .mon-tiles .mt-v{font-size:21px}
 }
+/* ===================================================================================
+ * UNIVERSELLES VIRTUELLES GERAET (05.08.2026)
+ * Das Bild ist jetzt profilgesteuert (ui/shared/geraete-profile.js): Kacheln, Kurven-
+ * bahnen, Beatmungsmodi und Verdampfer richten sich nach dem gewaehlten Modell.
+ * Vorbild fuer die Anordnung sind die Fotos des Praxis-Veta-5-Plus: Kopfzeile mit
+ * Falluhr und Alarmband, Zahlenspalte MIT den Alarmgrenzen daneben, Modusleiste und
+ * Einstellzeile darunter.
+ * =================================================================================== */
+.gwahl{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:10px}
+.gwahl .gw{display:flex;flex-direction:column;gap:3px;min-width:170px;flex:1 1 190px}
+.gwahl label{font:10px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.gwahl select{height:36px;border-radius:8px;border:1px solid var(--line);background:#0d1219;color:var(--text);font-size:12.5px;padding:0 8px;width:100%}
+.gwahl select:focus{outline:none;border-color:var(--cyan)}
+.gw-note{font-size:11.5px;color:var(--muted);line-height:1.45;margin:-2px 0 10px;border-left:3px solid rgba(120,150,180,.3);padding-left:9px}
+.gw-note b{color:#cfe4ff}
+.gw-note .gw-v{font:10px var(--mono);border-radius:4px;padding:1px 5px;margin-right:5px;vertical-align:middle}
+.gw-note .gw-v.belegt{background:rgba(18,184,102,.2);color:#7ff0b5}
+.gw-note .gw-v.wahrscheinlich{background:rgba(255,194,60,.18);color:#ffd27a}
+.gw-note .gw-v.unbestaetigt{background:rgba(255,77,77,.18);color:#ff9a9a}
+/* Geraetekopf wie am Veta 5: Tiersymbol · Falluhr · Modus · Alarmband · Uhrzeit */
+.dev-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:#0a121c;border:1px solid rgba(120,150,180,.22);border-radius:10px 10px 0 0;padding:6px 10px;font:11.5px var(--mono);color:#9fb0c4}
+.dev-head .dh-sp{font-size:15px}
+.dev-head .dh-clock{color:#eaf1fb;font-weight:700;letter-spacing:.5px}
+.dev-head .dh-mode{color:#7fe3ff;font-weight:700}
+.dev-head .dh-band{flex:1 1 160px;min-width:120px;text-align:center;border-radius:6px;padding:3px 8px;font-weight:800;letter-spacing:.3px;background:transparent;color:transparent}
+.dev-head .dh-band.on{background:#c8e63c;color:#101a04;animation:monblink 1.2s steps(1) infinite}
+.dev-head .dh-band.tech{background:#ffc23c;color:#241a00}
+.dev-head .dh-now{margin-left:auto;color:#7d93ad}
+.dev-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.dev-btns button{height:30px;border-radius:7px;border:1px solid #3a4a5e;background:#16202c;color:#cfe0f2;cursor:pointer;font-size:11.5px;padding:0 10px}
+.dev-btns button:hover{border-color:var(--cyan)}
+.dev-btns button.on{background:#12b866;border-color:#12b866;color:#04121a;font-weight:700}
+.dev-btns button.stop{background:#1e63c8;border-color:#1e63c8;color:#fff;font-weight:700}
+/* Alarmgrenzen rechts neben der Zahl — genau die kleine Doppelzahl vom Veta-5-Bildschirm */
+.mon-tile{position:relative}
+.mon-tile .mt-lim{position:absolute;right:8px;top:20px;font:10px var(--mono);color:#6d8296;text-align:right;line-height:1.25;pointer-events:none}
+.mon-tile .mt-lim i{display:block;font-style:normal}
+.mon-tile.abgeleitet .mt-v::after{content:"∗";font-size:.55em;vertical-align:super;color:var(--muted)}
+.mon-tile .mt-src{font:9.5px var(--mono);color:#6d8296;letter-spacing:.3px}
+.mon-tile.aus{opacity:.45}
+/* Alarmgrenzen einstellen */
+.alim{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin-top:8px}
+.alim-row{display:flex;align-items:center;gap:6px;background:#0b1017;border:1px solid rgba(120,150,180,.22);border-radius:9px;padding:6px 9px}
+.alim-row b{font:11px var(--mono);min-width:52px;color:#cfe4ff}
+.alim-row input{width:60px;height:30px;border-radius:6px;border:1px solid var(--line);background:#0d1219;color:#fff;font-size:13px;font-weight:700;text-align:center}
+.alim-row span{font:10px var(--mono);color:var(--muted)}
+.alim-row .alim-off{margin-left:auto;font:10px var(--mono);color:var(--muted);cursor:pointer;border:1px solid var(--line);border-radius:5px;padding:2px 6px;background:transparent}
+/* Gaswahl (Verdampfer) */
+.gaswahl{display:flex;gap:5px;flex-wrap:wrap;justify-content:center}
+.gaswahl button{height:26px;border-radius:6px;border:1px solid #3a4a5e;background:#16202c;color:#cfe0f2;cursor:pointer;font-size:11px;padding:0 9px;font-weight:600}
+.gaswahl button.active{color:#04121a;font-weight:800}
 .capno-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
 .capno-card{border:1px solid var(--line);background:rgba(255,255,255,.03);border-radius:10px;padding:10px;cursor:pointer}
 .capno-card:hover{border-color:var(--amber)}
@@ -496,7 +547,7 @@ html[data-theme="light"] .gabe-row .d{color:#0b5c72}
 <header>
   <div class="brand">
     <div class="logo">℞</div>
-    <div class="title"><h1>Canis Anæsthesia</h1><p>Narkose · Notfall · Dosierung · Veta 5</p></div>
+    <div class="title"><h1>Canis Anæsthesia</h1><p>Narkose · Notfall · Dosierung · universelles Gerät</p></div>
   </div>
   <div class="actions">
     <a class="btn" href="../"><span>←</span> Start</a>
@@ -580,6 +631,16 @@ html[data-theme="light"] .gabe-row .d{color:#0b5c72}
     <div class="grid-2" style="grid-template-columns:minmax(0,1.3fr) minmax(300px,.75fr)">
       <div class="card">
         <h3>Virtuelles Gerät · Monitor + Kapnograf + Narkosegerät</h3>
+        <!-- MODELLWAHL: das virtuelle Geraet bildet ab JETZT jedes Modell nach, nicht mehr fest
+             uMEC12+Veta 5. Die Wahl steuert Kacheln, Kurvenbahnen, Beatmungsmodi und Verdampfer.
+             Sie wird pro Praxis gemerkt (localStorage) und von der Station automatisch gesetzt,
+             sobald ein echtes Geraet sein Modell meldet. -->
+        <div class="gwahl">
+          <div class="gw"><label for="gwMon">Monitor / Kapnograf</label><select id="gwMon" data-vp-tip="Welcher Monitor steht am Tisch? Das virtuelle Gerät zeigt dann genau dessen Kanäle und Kurven."></select></div>
+          <div class="gw"><label for="gwNark">Narkosegerät / Beatmung</label><select id="gwNark" data-vp-tip="Welches Narkose-/Beatmungsgerät? Steuert Beatmungsmodi, Verdampfer-Skala und die Beatmungswerte."></select></div>
+          <div class="gw" style="flex:0 0 auto;min-width:120px"><label for="gwGas">Narkosegas</label><select id="gwGas" data-vp-tip="Welches Volatil ist im Verdampfer? Ändert Skala und den artspezifischen MAC-Bezug."></select></div>
+        </div>
+        <div class="gw-note" id="gwNote"></div>
         <div class="mon-modes">
           <button class="mon-mode active" data-m="ist">✍️ Ist-Zustand eingeben</button>
           <button class="mon-mode" data-m="sim">🎬 Szenario simulieren</button>
@@ -589,13 +650,20 @@ html[data-theme="light"] .gabe-row .d{color:#0b5c72}
         <div class="mon-scenarios" id="monScenarios" style="display:none"></div>
         <div class="device">
           <div class="dev-unit dev-mon">
-            <div class="dev-brand"><b>mindray</b><span>uMEC12 Vet</span><button class="dm-btn" id="dmSilence" title="Alarm stummschalten">🔕</button></div>
+            <div class="dev-brand"><b id="devMonMarke">VetStation</b><span id="devMonTyp">Universal-Monitor</span><button class="dm-btn" id="dmSilence" title="Alarm stummschalten">🔕</button></div>
+            <div class="dev-head" id="devHead"></div>
             <div class="mon-screen"><canvas id="monCanvas"></canvas><div class="mon-alarm" id="monAlarm"></div></div>
             <div class="mon-tiles" id="monTiles"></div>
+            <div class="dev-btns" id="devBtns"></div>
             <div class="dev-alarms" id="devAlarms" title="Alle aktiven Alarme des Monitors"></div>
+            <div id="alimBox" hidden>
+              <div class="sec-h" style="margin-top:10px">Alarmgrenzen · <span id="alimSp">…</span></div>
+              <p class="muted" style="font-size:11.5px;margin:-4px 0 6px">Leer lassen = Grenze aus dem Normband der Tierart. Eine von Hand gesetzte Grenze bleibt stehen, bis sie zurückgesetzt wird.</p>
+              <div class="alim" id="alimGrid"></div>
+            </div>
           </div>
-          <div class="dev-unit dev-mach">
-            <div class="dev-brand"><b>mindray</b><span>Veta 5 Plus</span></div>
+          <div class="dev-unit dev-mach" id="devMachUnit">
+            <div class="dev-brand"><b id="devMachMarke">VetStation</b><span id="devMachTyp">Universal-Narkosegerät</span></div>
             <div class="machine" id="machineControls"></div>
           </div>
         </div>
@@ -658,7 +726,7 @@ html[data-theme="light"] .gabe-row .d{color:#0b5c72}
     <div class="card"><h3>Geräte-Einstellung für den Patienten</h3>
       <p class="muted" id="setIntro"></p>
       <div class="set-grid" id="setGrid"></div>
-      <div class="sec-h">Beatmungs-Modi (Veta 5)</div>
+      <div class="sec-h">Beatmungs-Modi <span id="vmGeraet"></span></div>
       <div id="ventModes"></div>
     </div>
   </section>
@@ -679,6 +747,7 @@ html[data-theme="light"] .gabe-row .d{color:#0b5c72}
 </main>
 
 <script src="anaes-data.js?v=11"></script>
+<script src="../shared/geraete-profile.js?v=1"></script>
 <script src="../shared/breed-genetics.js?v=2"></script>
 <script src="../shared/narkose-risiko.js?v=1"></script>
 <script src="../shared/breed-katalog.js?v=1"></script>
@@ -689,7 +758,17 @@ html[data-theme="light"] .gabe-row .d{color:#0b5c72}
 var A = window.ANAES || {drugs:[],incidents:[],machine:{controls:[],ventModes:[]},fluids:[],species:[],vitals:{},info:"",sources:[]};
 var $ = function(s,r){return (r||document).querySelector(s);};
 var $$ = function(s,r){return Array.from((r||document).querySelectorAll(s));};
-var state = { sp: (A.species[0]&&A.species[0].id)||'hund', wt: 10, age:'adult', breed:null, incident:null, dfilter:'Alle', q:'', monMode:'ist', istVals:null, rhythm:'sinus', adrHigh:false, anMode:'gas', injInduction:null, injTopups:[], givenDrugs:[], medGaben:[], dev:{o2:1, iso:2, mode:'vcv', auto:false, vp:{}}, ventSit:null };
+var state = { sp: (A.species[0]&&A.species[0].id)||'hund', wt: 10, age:'adult', breed:null, incident:null, dfilter:'Alle', q:'', monMode:'ist', istVals:null, rhythm:'sinus', adrHigh:false, anMode:'gas', injInduction:null, injTopups:[], givenDrugs:[], medGaben:[], dev:{o2:1, iso:2, mode:'vcv', auto:false, vp:{}, gas:'iso'}, ventSit:null,
+  /* ===== UNIVERSELLES VIRTUELLES GERAET (05.08.2026) =====
+   * geraet.mon / geraet.nark = gewaehlte Modellprofile (ui/shared/geraete-profile.js).
+   * Vorgabe sind die UNIVERSAL-Profile: sie zeigen jeden Kanal, den irgendein Geraet
+   * liefern kann. Erst wenn ein Modell gewaehlt (oder von der Station gemeldet) wird,
+   * schrumpft das Bild auf genau das, was dieses Geraet wirklich kann — ein Kanal, den
+   * ein Geraet NICHT hat, darf gar nicht erst erscheinen (LifeVet M ohne CO2-Modul).
+   * alarmGrenzen: von Hand gesetzte Alarmgrenzen je Kanal ({hi,lo}); leer = Normband.
+   * fall: Falluhr des Narkosegeraets ("Fall starten/beenden" am Veta 5). */
+  geraet:{ mon:'universal-monitor', nark:'universal-narkose', autoErkannt:null },
+  alarmGrenzen:{}, alarmStumm:0, fall:{ start:null, ende:null }, mess:{} };
 
 /* ---------- helpers: dose math ---------- */
 function parseConc(s){ if(!s) return null; var m = String(s).replace(',','.').match(/([0-9]*\.?[0-9]+)\s*(mg|mcg|µg|g|iu|u|units?)\s*\/\s*ml/i); if(!m) return null; var v=parseFloat(m[1]); var u=m[2].toLowerCase(); if(u==='g') v=v*1000; if(u==='mcg'||u==='µg') v=v/1000; return v; /* mg per mL, bzw. U/mL für Einheiten-Präparate (vasopressin/insulin) */ }
@@ -722,7 +801,39 @@ function syncPatient(){
   $('#patNote').innerHTML = v? ('Normwerte Narkose · HF '+v.hr[0]+'–'+v.hr[1]+' · AF '+v.rr[0]+'–'+v.rr[1]+' · SpO₂ '+v.spo2[0]+'–'+v.spo2[1]+'% · EtCO₂ '+v.etco2[0]+'–'+v.etco2[1]+' · MAP '+v.map[0]+'–'+v.map[1]) : '';
   if(!breedSupported()) state.breed=null;
   renderBreedField(); updateBreedBanner();
+  istNachziehen();
   propagateLinks();
+}
+/*
+ * istNachziehen() — VORBELEGTE Werte an Tierart und Gewicht anpassen.
+ *
+ * Warum es das braucht (gefunden im Browser, 05.08.2026): Vt, MV, Compliance und Spitzendruck
+ * haengen am GEWICHT. Beim Start stand das virtuelle Geraet auf 10 kg und belegte Vt mit 125 ml
+ * vor; nach dem Eintragen von 4,3 kg blieb die 125 stehen und loeste sofort "Vt zu hoch" aus —
+ * ein Alarm fuer einen Wert, den nie jemand eingegeben hat.
+ *
+ * Nachgezogen wird deshalb NUR, was noch nie von Hand oder von einem Geraet gesetzt wurde
+ * (state.istHand). Eine echte Eingabe und ein echter Messwert bleiben unangetastet — sonst
+ * wuerde ein Gewichtstippfehler eine laufende Messung ueberschreiben.
+ */
+function istNachziehen(){
+  if(!state.istVals) return;
+  state.istHand=state.istHand||{};
+  var v=monVitals(), mapMid=midR(v.map), iv=state.istVals;
+  function setz(k,val){ if(!state.istHand[k]) iv[k]=val; }
+  setz('hr',midR(v.hr)); setz('spo2',Math.min(99,v.spo2[1])); setz('etco2',midR(v.etco2));
+  setz('rr',midR(v.rr)); setz('temp',midR(v.temp)); setz('temp2',midR(v.temp));
+  if(!state.istHand.sys&&!state.istHand.dia){
+    iv.sys=midR(v.nibp||[Math.round(mapMid*1.35),Math.round(mapMid*1.35)]);
+    iv.dia=midR(v.dia||[Math.round(mapMid*0.8),Math.round(mapMid*0.8)]);
+    iv.nibp=mapMid;
+  }
+  (MON().params||[]).forEach(function(p){
+    if(['hr','spo2','etco2','rr','temp','temp2','nibp'].indexOf(p.id)>=0) return;
+    if(p.start!=null){ setz(p.id,p.start); return; }
+    var b=bandOf(p); if(b) setz(p.id, Math.round(((b[0]+b[1])/2)*100)/100);
+  });
+  if(mon.running){ try{ renderMonInputs(); }catch(e){} }
 }
 /* §7 Gewicht/Spezies an verlinkte Module weitergeben */
 function propagateLinks(){
@@ -1089,12 +1200,13 @@ function renderVentModes(){
      Öffnen auf (dann aktiv); der Live-Takt (renderMonValues) läuft auf dem Gerät-Tab und würde
      sonst diesen unsichtbaren Abschnitt 2×/s neu bauen. */
   var sv=document.getElementById('settings'); if(sv && !sv.classList.contains('active')) return;
-  var modes=(A.machine.ventModes||[]);
+  var vmg=$('#vmGeraet'); if(vmg) vmg.textContent='· '+geraetName();
+  var modes=ventModiVerfuegbar();
   var adv=ventAdvice(), r=monResolve();
   var sit=activeVentSit(), sc=(ventScenarioList())[sit]||{};
   var pm=ventModeById(adv.primary)||{name:'—'};
   /* Live-Kopf: Kapnograf/EtCO₂ + SpO₂ + MAP + aktueller Fall + empfohlener Modus */
-  var live=state.dev.live?'<span class="vm-live" title="Zeigt die am echten Veta 5 eingestellten Werte">🔗 live vom Veta 5 gespiegelt</span>':'';
+  var live=state.dev.live?('<span class="vm-live" title="Zeigt die am echten Geraet eingestellten Werte">🔗 live von '+geraetName()+' gespiegelt</span>'):'';
   var vals='EtCO₂ '+(r.etco2>0?fmt(r.etco2)+' mmHg':'–')+' · SpO₂ '+(r.spo2>0?fmt(r.spo2)+' %':'–')+' · MAP '+(r.nibp>0?fmt(r.nibp):'–')+(r.capno&&r.capno!=='normal'?' · Kapno '+r.capno:'');
   var head='<div class="vm-head">'+live+
     '<div class="vm-sit">Fall: <b>'+(sc.title||sit)+'</b> <span class="muted">('+vals+')</span></div>'+
@@ -1148,27 +1260,133 @@ function renderInfo(){
 
 /* ---------- MONITOR + KAPNOGRAF ---------- */
 var mon = { scen:'normal', raf:null, running:false, last:0, W:0, H:0, dpr:1, acc:0, phE:0, phR:0, buf:null, beatN:0, rrJit:1 };
-function MON(){ return A.monitor||{params:[],scenarios:[]}; }
+
+/* =====================================================================================
+ * DAS UNIVERSELLE VIRTUELLE GERAET (05.08.2026)
+ *
+ * Bis hierher war dieses Bild FEST verdrahtet: sechs Kacheln, drei Kurvenbahnen, Aufdruck
+ * "uMEC12 Vet" und "Veta 5 Plus". Wer ein anderes Geraet vor sich hat, sah trotzdem ein
+ * Mindray — und wer ein Veta 5 Plus vor sich hat, sah nur die Haelfte davon: FiCO2,
+ * Paw-Kurve, Ppeak, PEEP, gemessenes Vt und MV standen auf dem echten Bildschirm und
+ * nirgends hier.
+ *
+ * Ab jetzt kommt ALLES aus ui/shared/geraete-profile.js — derselben Datei, die auch die
+ * Bridge und die Fern-Web-App laden. Genau deshalb sind Kurven, Werte und Einstellungen
+ * ueberall gleich: es gibt EINE Beschreibung, nicht drei.
+ *
+ * Faellt das Modul aus (aeltere Auslieferung, Datei nicht geladen), faellt die Ansicht auf
+ * das bisherige Verhalten zurueck (A.monitor.params, drei Bahnen) — sie geht NIE leer aus.
+ * ===================================================================================== */
+var VG = (typeof window!=='undefined' && window.VETGERAET) ? window.VETGERAET : null;
+function profilMon(){ return VG ? (VG.nachId(state.geraet.mon)||VG.standard('monitor')) : null; }
+function profilNark(){ if(!VG) return null; if(state.geraet.nark==='keins') return null; return VG.nachId(state.geraet.nark)||VG.standard('narkose'); }
+var _gerCache=null,_gerKey=null;
+function curGeraet(){ if(!VG) return null;
+  var key=state.geraet.mon+'|'+state.geraet.nark;
+  if(_gerKey!==key){ _gerKey=key; _gerCache=VG.zusammen(profilMon(), profilNark()); }
+  return _gerCache; }
+function gerNeu(){ _gerKey=null; _monKey=null; }
+/* Name des Geraets, das gerade nachgebildet wird — steht in jeder Beschriftung, damit nie
+ * "Veta 5" dort steht, wo ein Draeger angeschlossen ist. */
+function geraetName(){ var g=curGeraet(); return g? (g.narkName||g.monName||'Gerät') : 'Gerät'; }
+/* Rechenkontext fuer die Normbaender: Tierart, Gewicht, Geraeteeinstellungen, gewaehltes Gas.
+ * Vt/MV/Compliance haengen am GEWICHT, nicht an einer Tabelle — deshalb geht es hier mit rein. */
+function bandCtx(){ return { sp:state.sp, wt:state.wt, vitals:monVitals(), spSet:spSet(), gas:(state.dev&&state.dev.gas)||'iso', ie:ventVal('ie') }; }
+function bandOf(p){
+  if(VG){ var b=VG.bandFuer(p.id, bandCtx()); if(b) return b; }
+  var v=monVitals(); return (p.vital && v[p.vital]) ? v[p.vital] : null;
+}
+/*
+ * ALARMGRENZEN — am Veta 5 stehen sie als kleine Doppelzahl NEBEN jedem Wert (Foto: EtCO2
+ * 75 mit "55 / 35" daneben). Vorgabe ist das Normband der Tierart; eine von Hand gesetzte
+ * Grenze schlaegt es und bleibt stehen, bis sie zurueckgesetzt wird. Bewusst KEINE
+ * Automatik, die eine Grenze im Hintergrund verschiebt: eine Alarmgrenze, die sich von
+ * selbst aendert, ist am narkotisierten Tier nicht zu verantworten.
+ */
+function grenzeOf(p){
+  var b=bandOf(p), h=state.alarmGrenzen[p.id]||{};
+  var lo=(h.lo!=null&&h.lo!=='')?parseFloat(h.lo):(b?b[0]:null);
+  var hi=(h.hi!=null&&h.hi!=='')?parseFloat(h.hi):(b?b[1]:null);
+  return { lo:(isNaN(lo)?null:lo), hi:(isNaN(hi)?null:hi), hand:(h.lo!=null&&h.lo!=='')||(h.hi!=null&&h.hi!=='') };
+}
+var _monParams=null,_monKey=null;
+function MON(){
+  var base=A.monitor||{params:[],scenarios:[]};
+  var g=curGeraet(); if(!g||!g.kanaele.length) return base;
+  var key=g.kanaele.join(',');
+  if(_monKey!==key){
+    _monKey=key;
+    /* Die langen Erklaertexte der sechs Grundkanaele werden in anaes-data.js gepflegt.
+     * Sie werden hier UEBERNOMMEN statt kopiert — sonst gaebe es sie zweimal, und die
+     * zweite Fassung veraltet still (genau der Fehler, der 2026 die Bridge eine andere
+     * Datei lesen liess als den Browser). */
+    var alt={}; (base.params||[]).forEach(function(p){ alt[p.id]=p; });
+    _monParams=g.kanaele.map(function(id){
+      var k=VG.kanal(id)||{}, o=alt[id]||{};
+      return { id:id, abbr:VG.abbrFuer(g,id), name:o.name||k.name||id, unit:k.unit||'', color:k.color||'#9fb0c4',
+        vital:k.vital||o.vital||null, art:k.art||'kreislauf', dez:k.dez||0, eingabe:k.eingabe!==false,
+        explain:o.explain||k.explain||'', lowInc:k.lowInc||o.lowInc||null, highInc:k.highInc||o.highInc||null,
+        text:!!k.text, start:k.start };
+    });
+  }
+  return { params:_monParams, scenarios:base.scenarios||[] };
+}
 function ekgDef(id){ return (A.ekg||[]).find(function(r){return r.id===id;}) || (A.ekg||[])[0] || {w:{}}; }
 function monVitals(){ return (A.vitals||{})[state.sp] || (A.vitals||{}).hund || {hr:[60,140],rr:[8,20],spo2:[95,100],etco2:[35,45],map:[70,120],temp:[37,39]}; }
 function midR(a){ return Math.round((a[0]+a[1])/2); }
 function monScen(){ return (MON().scenarios||[]).find(function(s){return s.id===mon.scen;}) || (MON().scenarios||[])[0] || {}; }
 function istInit(){ var v=monVitals(); var mapMid=midR(v.map);
-  state.istVals={ hr:midR(v.hr), spo2:Math.min(99,v.spo2[1]), etco2:midR(v.etco2),
+  var iv={ hr:midR(v.hr), spo2:Math.min(99,v.spo2[1]), etco2:midR(v.etco2),
     sys:midR(v.nibp||[Math.round(mapMid*1.35),Math.round(mapMid*1.35)]),
     dia:midR(v.dia||[Math.round(mapMid*0.8),Math.round(mapMid*0.8)]),
-    nibp:mapMid, rr:midR(v.rr), temp:midR(v.temp) }; }
+    nibp:mapMid, rr:midR(v.rr), temp:midR(v.temp) };
+  /* Alle uebrigen Profilkanaele vorbelegen: Startwert des Kanals, sonst Mitte des
+   * Normbandes. Vorbelegen ist im HANDbetrieb richtig (der Tierarzt korrigiert von einem
+   * plausiblen Wert aus); im LIVE-Betrieb leert vetstation-live.js jedes Feld, das kein
+   * Geraet liefert — sonst waere ein Normwert von einer echten Messung nicht zu
+   * unterscheiden (Befund 22.07.2026). */
+  (MON().params||[]).forEach(function(p){
+    if(iv[p.id]!=null) return;
+    if(p.start!=null){ iv[p.id]=p.start; return; }
+    var b=bandOf(p); iv[p.id]= b? Math.round(((b[0]+b[1])/2)*100)/100 : 0;
+  });
+  state.istVals=iv; }
+/* Was sich aus anderen Werten RECHNEN laesst (MV, Cdyn, Pmean, MAC) — im Profilmodul, damit
+ * Bridge, Station und Web-App dieselbe Rechnung machen. Nie schaetzen: fehlt ein Eingangswert,
+ * bleibt der abgeleitete Wert weg. */
+function monAbleiten(r){
+  if(!VG) return r;
+  var d=VG.ableiten(r, bandCtx()), hand=state.istHand||{}, genutzt={};
+  Object.keys(d).forEach(function(k){
+    if(k==='nibp') return;
+    /* GEMESSEN SCHLAEGT GERECHNET. Liefert das Geraet den Wert selbst (istHand gesetzt durch
+     * __setMesswerte oder eine Eingabe), bleibt er stehen. Sonst zeigte das Bild fern eine
+     * andere Zahl als der Bildschirm daneben — gemessen 05.08.2026: das Geraet meldete MV 0,9,
+     * die Anzeige rechnete 0,85 und ueberschrieb es. Wer zwei Zahlen fuer dieselbe Groesse
+     * sieht, glaubt keiner mehr. */
+    if(hand[k] && r[k]!=null && r[k]!=='' ) return;
+    r[k]=d[k]; genutzt[k]=d[k];
+  });
+  r.__abgeleitet=genutzt; return r;
+}
 function monResolve(){
   var v=monVitals();
   if(state.monMode==='ist'){
     if(!state.istVals) istInit(); var iv=state.istVals;
     var sys=iv.sys||0, dia=iv.dia||0, map=(sys>0&&dia>0)?Math.round(dia+(sys-dia)/3):(iv.nibp||0);
     var Wr=ekgDef(state.rhythm).w||{}, arrest=(Wr.flat||Wr.chaos);
-    return { mode:'ist', v:v, hr:iv.hr, rr:iv.rr, spo2:iv.spo2, etco2:iv.etco2, nibp:map, sys:sys, dia:dia, temp:iv.temp,
+    var r={ mode:'ist', v:v, hr:iv.hr, rr:iv.rr, spo2:iv.spo2, etco2:iv.etco2, nibp:map, sys:sys, dia:dia, temp:iv.temp,
       ekg:(state.rhythm||'sinus'),
       pleth:((arrest||iv.spo2<=50||iv.hr<=0)?'flat':(iv.spo2<90?'weak':'normal')),
-      capno:((iv.etco2<=0||iv.rr<=0)?'flat':(iv.etco2>50?'high':(iv.etco2<30?'low':'normal'))),
+      /* Kapno-Form: RUECKATMUNG hat Vorrang vor allem anderen. Ein FiCO2 ueber ~3 mmHg
+       * hebt die Grundlinie an — genau das Bild vom Veta-5-Foto (FiCO2 8, EtCO2 51,
+       * Alarm "FiCO2 zu hoch"). Wer das als blosse Hyperkapnie liest, beatmet staerker
+       * und wechselt den erschoepften Atemkalk nicht. */
+      capno:((iv.etco2<=0||iv.rr<=0)?'flat':((iv.fico2>3)?'baseline':(iv.etco2>50?'high':(iv.etco2<30?'low':'normal')))),
       alarm:'', incident:null };
+    /* alle uebrigen Profilkanaele durchreichen (FiCO2, Ppeak, PEEP, Vt, FiO2, EtAA ...) */
+    (MON().params||[]).forEach(function(p){ if(r[p.id]===undefined) r[p.id]=iv[p.id]; });
+    return monAbleiten(r);
   }
   var sc=monScen();
   var hr = sc.hr==='brady'?Math.round(v.hr[0]*0.55):sc.hr==='tachy'?Math.round(v.hr[1]*1.3):sc.hr==='asys'?0:(sc.hr==='normal'?midR(v.hr):(sc.hr==null?midR(v.hr):sc.hr));
@@ -1176,12 +1394,51 @@ function monResolve(){
   var spo2 = sc.spo2==='normal'?Math.min(99,v.spo2[1]):(sc.spo2==null?Math.min(99,v.spo2[1]):sc.spo2);
   var etco2 = sc.etco2==='normal'?midR(v.etco2):(sc.etco2==null?midR(v.etco2):sc.etco2);
   var nibp = sc.nibp==='normal'?midR(v.map):(sc.nibp==null?midR(v.map):sc.nibp);
-  return { mode:'sim', sc:sc, v:v, hr:hr, rr:rr, spo2:spo2, etco2:etco2, nibp:nibp,
+  var rs={ mode:'sim', sc:sc, v:v, hr:hr, rr:rr, spo2:spo2, etco2:etco2, nibp:nibp,
+    /* Das Szenario "CO2-Rueckatmung" setzt capno:'baseline' — dann gehoert dazu auch ein
+     * FiCO2 ueber der Grenze, sonst zeigt der Kapnograf eine angehobene Grundlinie und die
+     * FiCO2-Kachel behauptet gleichzeitig, es sei alles in Ordnung. */
+    fico2:(sc.capno==='baseline'?8:0),
     sys:(nibp>0?Math.round(nibp*1.35):0), dia:(nibp>0?Math.round(nibp*0.82):0), temp:midR(v.temp),
     ekg:sc.ekg||'normal', pleth:sc.pleth||'normal', capno:sc.capno||'normal', alarm:sc.alarm||'', incident:sc.incident||null };
+  /* Beatmungs-/Gaskanaele im Szenariomodus aus der GERAETEEINSTELLUNG ableiten: was am
+   * virtuellen Narkosegeraet eingestellt ist, muss auf dessen Anzeige auch ankommen. */
+  var w=state.wt||0, vt=vnum(ventVal('vt'))||Math.round((spSet().tvMlKg||[10,15])[0]*w);
+  var pip=vnum(ventVal('pinsp'))||Math.round((spSet().pip||15)*0.66), pe=vnum(ventVal('peep'))||0;
+  rs.vte=Math.max(1,Math.round(vt*0.94)); rs.ppeak=Math.max(pe+1,Math.round(state.dev.mode==='pcv'?pip:pip+2)); rs.peep=pe;
+  rs.fio2=(state.dev.o2>=1?95:80); rs.etAgent=Math.round(state.dev.iso*0.85*100)/100;
+  (MON().params||[]).forEach(function(p){ if(rs[p.id]===undefined) rs[p.id]=0; });
+  return monAbleiten(rs);
 }
-function monAlarms(r){ var v=r.v; function o(x,b){return x<b[0]||x>b[1];}
-  return { hr:(r.hr===0||o(r.hr,v.hr)), spo2:r.spo2<v.spo2[0], etco2:(r.etco2===0||r.etco2<v.etco2[0]||r.etco2>v.etco2[1]), nibp:(r.nibp===0||r.nibp<v.map[0]), rr:(r.rr===0||r.rr<v.rr[0]||r.rr>v.rr[1]), temp:o(r.temp,v.temp) }; }
+/*
+ * monAlarms(r) — je Kanal: Wert ausserhalb SEINER Alarmgrenze?
+ *
+ * Frueher waren hier genau sechs Kanaele fest verdrahtet, jeder mit eigener Sonderregel.
+ * Jetzt laeuft es ueber die Profil-Kanaele und deren Grenzen (grenzeOf), damit ein neuer
+ * Kanal nicht an drei Stellen nachgetragen werden muss — genau daran ist im Juli 2026 der
+ * Port 5510 fast gescheitert: eine vergessene Stelle heisst, dass etwas da ist und niemand
+ * es merkt. Die drei klinischen Sonderfaelle bleiben ausdruecklich erhalten:
+ *   HF/MAP = 0     -> Kreislaufstillstand, immer Alarm
+ *   SpO2 / MAP     -> nur die UNTERE Grenze alarmiert (hoher Wert ist kein Notfall)
+ *   FiCO2          -> nur die OBERE Grenze (0 ist der Normalfall, nicht der Alarm)
+ */
+function monAlarms(r){
+  var out={};
+  (MON().params||[]).forEach(function(p){
+    var x=r[p.id]; var g=grenzeOf(p);
+    if(x==null||x===''||isNaN(x)){ out[p.id]=false; return; }
+    /* Bei OPTIONALEN Sensoren heisst 0 "kein Sensor angelegt", nicht "Wert null". Ein
+     * Dauer-Alarm fuer einen nie angeschlossenen Arterienkatheter ist der sicherste Weg,
+     * dass irgendwann auch die echten Alarme ueberlesen werden (Alarmmuedigkeit). */
+    if(['ibp','temp2','pi','fiAgent','etn2o','etAgent','fio2','vte','ppeak','mv','compl','pmean'].indexOf(p.id)>=0 && (x===0||x==null)){ out[p.id]=false; return; }
+    if((p.id==='hr'||p.id==='nibp') && x===0){ out[p.id]=true; return; }
+    if(p.id==='spo2'||p.id==='nibp'||p.id==='ibp'||p.id==='fio2'||p.id==='pi'){ out[p.id]=(g.lo!=null&&x<g.lo); return; }
+    if(p.id==='fico2'||p.id==='ppeak'){ out[p.id]=(g.hi!=null&&x>g.hi); return; }
+    if(p.id==='etco2'&&x===0){ out[p.id]=true; return; }
+    out[p.id]=((g.lo!=null&&x<g.lo)||(g.hi!=null&&x>g.hi));
+  });
+  return out;
+}
 function incName(id){ var i=(A.incidents||[]).find(function(x){return x.id===id;}); return i?i.name:id; }
 function gotoIncident(id){ if(!id)return; navBuendel(function(){ state.incident=id; switchTab('notfall'); renderIncidents(); renderProto(); }); window.scrollTo({top:0,behavior:'smooth'}); }
 
@@ -1192,38 +1449,66 @@ function renderMonScenarios(){
   $$('#monScenarios .mon-sc').forEach(function(b){ b.onclick=function(){ mon.scen=b.dataset.s; renderMonScenarios(); renderMonValues(); }; });
 }
 function renderMonValues(){
-  var r=monResolve(), al=monAlarms(r); var mm=$('#mSpecies'); if(mm) mm.textContent=sp().name+' '+fmt(state.wt)+' kg'; var dsp=$('#devSpecies'); if(dsp) dsp.textContent=sp().name+' '+fmt(state.wt)+' kg';
+  var r=monResolve(), al=monAlarms(r); var g=curGeraet(); var mm=$('#mSpecies'); if(mm) mm.textContent=sp().name+' '+fmt(state.wt)+' kg'; var dsp=$('#devSpecies'); if(dsp) dsp.textContent=sp().name+' '+fmt(state.wt)+' kg';
+  var abgel=(r.__abgeleitet||{});
   $('#monTiles').innerHTML=(MON().params||[]).map(function(p){
     var val=r[p.id]; var isAl=al[p.id]; var ab=p.abbr, nm=p.name.replace(/ \(.*/,'');
-    var disp=(val===0)?'– –':fmt(val);
+    var disp=(val===0||val==null||val==='')?'– –':fmt(val);
     if(p.id==='nibp'){ ab='NIBP'; nm='Blutdruck SYS/DIA (MAP)';
       disp=(r.sys>0&&r.dia>0)?(fmt(r.sys)+'/'+fmt(r.dia)+' <small style="font-size:14px;color:var(--muted)">('+fmt(r.nibp)+')</small>'):'– –'; }
     // AF-Quelle anzeigen: Kapnograph (genauer, aus CO₂-Kurve) hat Vorrang vor dem Monitor.
     var srcTag='';
     if(p.id==='rr' && state._afSource){ srcTag=' <span class="af-src af-'+state._afSource+'" title="'+(state._afSource==='kapnograph'?'Atemfrequenz vom Kapnograph/Narkosegerät – aus der CO₂-Kurve gezählt (genauer, sicherer)':'Atemfrequenz vom Monitor (Impedanz) – Kapnograph hat Vorrang, sobald verfügbar')+'">'+(state._afSource==='kapnograph'?'⬤ Kapno':'⬤ Monitor')+'</span>'; }
-    return '<div class="mon-tile'+(isAl?' alarm':'')+'" data-p="'+p.id+'" style="--mtc:'+(isAl?'#ff7a7a':p.color)+'"><div class="mt-ab"><span>'+ab+'</span><span>'+p.unit+'</span></div><div class="mt-v">'+disp+'</div><div class="mt-u">'+nm+srcTag+'</div></div>';
+    /* Alarmgrenzen als kleine Doppelzahl rechts — genau die Darstellung des Veta 5
+     * ("EtCO2 75" mit "55 / 35" daneben). Nur wenn das gewaehlte Geraet sie auch zeigt. */
+    var lim='';
+    if(g&&g.grenzen&&p.id!=='nibp'){ var gr=grenzeOf(p);
+      if(gr.hi!=null||gr.lo!=null) lim='<div class="mt-lim" title="Alarmgrenzen'+(gr.hand?' (von Hand gesetzt)':' (Normband '+sp().name+')')+'">'+
+        '<i>'+(gr.hi!=null?fmt(gr.hi):'–')+'</i><i>'+(gr.lo!=null?fmt(gr.lo):'–')+'</i></div>'; }
+    /* Gerechnet statt gemessen wird gekennzeichnet (∗). Am narkotisierten Tier muss
+     * erkennbar bleiben, welche Zahl aus einem Sensor kommt und welche aus einer Formel. */
+    var abg=(abgel[p.id]!=null)?' abgeleitet':'';
+    return '<div class="mon-tile'+(isAl?' alarm':'')+abg+'" data-p="'+p.id+'" style="--mtc:'+(isAl?'#ff7a7a':p.color)+'"><div class="mt-ab"><span>'+ab+'</span><span>'+p.unit+'</span></div>'+lim+'<div class="mt-v">'+disp+'</div><div class="mt-u">'+nm+srcTag+'</div></div>';
   }).join('');
   $$('#monTiles .mon-tile').forEach(function(t){ t.onclick=function(){ showMonParam(t.dataset.p); }; });
   // sync ist-input alarm outline
   if(state.monMode==='ist'){ $$('#monInputs .mon-in').forEach(function(l){ l.classList.toggle('alarm', !!al[l.dataset.w]); }); }
+  /* Alarmband im Geraetekopf: der TEXT, der am echten Geraet oben steht ("EtCO2 zu hoch").
+   * Er nennt den schwersten Kanal beim Namen, statt nur "3 Werte außerhalb" zu melden —
+   * die Fotos zeigen genau diesen Satz, und er ist im OP aus zwei Metern lesbar. */
   var alv=$('#monAlarm'); var txt=r.alarm, inc=r.incident;
-  if(state.monMode==='ist'){ var n=(MON().params||[]).filter(function(p){return al[p.id];}).length; txt=n>0?(n+' Wert(e) außerhalb – Analyse unten'):''; inc=null; }
+  var band=[];
+  (MON().params||[]).forEach(function(p){ if(!al[p.id]) return; var gr=grenzeOf(p), x=r[p.id];
+    var hoch=(gr.hi!=null&&x>gr.hi);
+    band.push({p:p, txt:(x===0? (p.abbr+' – – kein Wert') : (p.abbr+' zu '+(hoch?'hoch':'tief'))), w:(WGT_AL[p.id]||1)}); });
+  band.sort(function(a,b){ return b.w-a.w; });
+  if(state.monMode==='ist'){ txt=band.length?(band[0].txt+(band.length>1?'  (+'+(band.length-1)+')':'')):''; inc=null; }
   if(alv){ if(txt){ alv.textContent='⚠ '+txt+(inc?'  ▸ Protokoll':''); alv.classList.add('on'); alv.onclick=function(){ if(inc) gotoIncident(inc); }; } else { alv.classList.remove('on'); alv.onclick=null; } }
+  mon._band=band.length?band[0].txt:'';
+  renderDevHead(mon._band);
   renderAssess(); renderDevCtrl(); ventCoach();
   renderVentPanel(); /* Beatmungsmodus-Empfehlung/Glow an neue Monitorwerte anpassen */
   renderVentModes(); /* gleiche Live-Empfehlung im Einstellungen-Tab (Beatmungs-Modi Veta 5) */
 }
+/* Wie schwer wiegt ein Kanal im Alarmband? Reihenfolge wie in der Analyse-Spalte. */
+var WGT_AL={ spo2:9, etco2:8, fico2:7, nibp:7, ibp:7, ppeak:6, hr:6, vte:5, mv:5, rr:4, peep:3, fio2:8, temp:2, temp2:1, etAgent:3, pi:1 };
 function renderMonInputs(){
   if(!state.istVals) istInit();
-  $('#monInputs').innerHTML=(MON().params||[]).map(function(p){
+  $('#monInputs').innerHTML=(MON().params||[]).filter(function(p){ return p.eingabe; }).map(function(p){
     if(p.id==='nibp'){ // §2: SYS + DIA eingeben, MAP automatisch
       return '<label class="mon-in" data-w="nibp"><span>SYS <small>mmHg</small></span><input type="number" inputmode="decimal" data-p="sys" step="1" value="'+state.istVals.sys+'"></label>'+
              '<label class="mon-in" data-w="nibp"><span>DIA <small>mmHg</small></span><input type="number" inputmode="decimal" data-p="dia" step="1" value="'+state.istVals.dia+'"></label>';
     }
-    return '<label class="mon-in" data-w="'+p.id+'"><span>'+p.abbr+' <small>'+p.unit+'</small></span><input type="number" inputmode="decimal" data-p="'+p.id+'" step="'+(p.id==='temp'?0.1:1)+'" value="'+state.istVals[p.id]+'"></label>';
+    var st=(p.dez>=2?0.01:(p.dez===1?0.1:1));
+    var val=state.istVals[p.id]; if(val==null) val='';
+    return '<label class="mon-in" data-w="'+p.id+'"><span>'+p.abbr+' <small>'+p.unit+'</small></span><input type="number" inputmode="decimal" data-p="'+p.id+'" step="'+st+'" value="'+val+'"></label>';
   }).join('');
-  $$('#monInputs input').forEach(function(inp){ inp.addEventListener('input',function(){ var val=parseFloat(inp.value); state.istVals[inp.dataset.p]=isNaN(val)?0:val;
-    if(inp.dataset.p==='sys'||inp.dataset.p==='dia'){ var s=state.istVals.sys||0,d=state.istVals.dia||0; state.istVals.nibp=(s>0&&d>0)?Math.round(d+(s-d)/3):0; }
+  $$('#monInputs input').forEach(function(inp){ inp.addEventListener('input',function(){ var val=parseFloat(inp.value); var k=inp.dataset.p;
+    state.istVals[k]=isNaN(val)?0:val;
+    /* Ab jetzt gilt dieser Kanal als von Hand/vom Geraet gesetzt und wird beim Aendern von
+     * Gewicht oder Tierart NICHT mehr ueberschrieben (siehe istNachziehen). */
+    state.istHand=state.istHand||{}; state.istHand[k]=1;
+    if(k==='sys'||k==='dia'){ var s=state.istVals.sys||0,d=state.istVals.dia||0; state.istVals.nibp=(s>0&&d>0)?Math.round(d+(s-d)/3):0; }
     renderMonValues(); }); });
 }
 function setMonMode(m){
@@ -1233,6 +1518,144 @@ function setMonMode(m){
   renderRhythmChips();
   renderMonValues();
 }
+
+/* =====================================================================================
+ * MODELLWAHL, GERAETEKOPF, GERAETEKNOEPFE, ALARMGRENZEN
+ * Alles, was das virtuelle Geraet von "ein Bild" zu "DIESEM Geraet" macht.
+ * ===================================================================================== */
+var GER_SPEICHER='vetstation.geraet.v1';
+function geraetLaden(){
+  try{ var o=JSON.parse(localStorage.getItem(GER_SPEICHER)||'null'); if(!o) return;
+    if(o.mon&&VG&&VG.nachId(o.mon)) state.geraet.mon=o.mon;
+    if(o.nark&&(o.nark==='keins'||(VG&&VG.nachId(o.nark)))) state.geraet.nark=o.nark;
+    if(o.gas&&VG&&VG.gas(o.gas)) state.dev.gas=o.gas;
+    if(o.grenzen&&typeof o.grenzen==='object') state.alarmGrenzen=o.grenzen;
+    gerNeu();
+  }catch(e){}
+}
+function geraetSpeichern(){
+  try{ localStorage.setItem(GER_SPEICHER, JSON.stringify({ mon:state.geraet.mon, nark:state.geraet.nark, gas:state.dev.gas, grenzen:state.alarmGrenzen })); }catch(e){}
+}
+function renderGeraetWahl(){
+  if(!VG) { var gw=document.querySelector('.gwahl'); if(gw) gw.style.display='none'; return; }
+  var sm=$('#gwMon'), sn=$('#gwNark'), sg=$('#gwGas'); if(!sm||!sn||!sg) return;
+  function opts(list, cur){ return list.map(function(p){ return '<option value="'+p.id+'"'+(p.id===cur?' selected':'')+'>'+(p.marke?p.marke+' ':'')+p.typ+'</option>'; }).join(''); }
+  sm.innerHTML=opts(VG.alle('monitor'), state.geraet.mon);
+  sn.innerHTML=opts(VG.alle('narkose'), state.geraet.nark)+'<option value="keins"'+(state.geraet.nark==='keins'?' selected':'')+'>— kein Narkosegerät —</option>';
+  var g=curGeraet();
+  sg.innerHTML=(g.gase||['iso']).map(function(id){ var ga=VG.gas(id)||{}; return '<option value="'+id+'"'+(id===state.dev.gas?' selected':'')+'>'+(ga.name||id)+'</option>'; }).join('');
+  if((g.gase||[]).indexOf(state.dev.gas)<0){ state.dev.gas=(g.gase||['iso'])[0]; sg.value=state.dev.gas; }
+  var note=$('#gwNote');
+  if(note){
+    var v=g.vertrauen||'belegt';
+    var mac=VG.macInfo(state.dev.gas, state.sp, spSet());
+    var macTxt=mac? ('MAC '+sp().name+' ≈ <b>'+fmt(mac.wert)+' Vol%</b>'+(mac.abgeleitet?' <i style="color:var(--muted)">(aus dem Isofluran-MAC dieser Tierart abgeleitet – nicht artspezifisch belegt)</i>':'')) : 'MAC für diese Tierart nicht hinterlegt';
+    note.innerHTML='<span class="gw-v '+v+'">'+({belegt:'belegt',wahrscheinlich:'wahrscheinlich',unbestaetigt:'unbestätigt'}[v])+'</span>'+
+      '<b>'+g.monName+(g.narkName?' + '+g.narkName:'')+'</b> · '+g.kanaele.length+' Kanäle · '+g.kurven.length+' Kurven · '+macTxt+
+      (g.hinweise.length?('<br>'+g.hinweise.map(function(h){return '• '+h;}).join('<br>')):'');
+  }
+  var mm=$('#devMonMarke'), mt=$('#devMonTyp'), km=$('#devMachMarke'), kt=$('#devMachTyp'), mu=$('#devMachUnit');
+  if(mm) mm.textContent=g.monitor.marke||''; if(mt) mt.textContent=g.monitor.typ||'';
+  if(mu) mu.hidden=!g.narkose;
+  if(g.narkose){ if(km) km.textContent=g.narkose.marke||''; if(kt) kt.textContent=g.narkose.typ||''; }
+  /* autoErkannt[slot]=false merkt sich: HIER hat ein Mensch gewaehlt. Danach darf die
+   * automatische Erkennung nicht mehr hineinregieren (siehe __setGeraetProfil). */
+  sm.onchange=function(){ state.geraet.mon=sm.value; state.geraet.autoErkannt=state.geraet.autoErkannt||{}; state.geraet.autoErkannt.mon=false; geraetWechsel(); };
+  sn.onchange=function(){ state.geraet.nark=sn.value; state.geraet.autoErkannt=state.geraet.autoErkannt||{}; state.geraet.autoErkannt.nark=false; geraetWechsel(); };
+  sg.onchange=function(){ state.dev.gas=sg.value; state.dev.live=false; geraetWechsel(); };
+}
+function geraetWechsel(){
+  gerNeu(); geraetSpeichern();
+  /* Der Verdampfer eines anderen Gases hat eine ANDERE Skala (Sevo bis 8, Des bis 18).
+   * Eine 2,0 aus dem Iso-Verdampfer ist bei Desfluran ein Drittel MAC — deshalb wird der
+   * eingestellte Wert beim Gaswechsel auf die neue Skala gedeckelt und der Soll-Abgleich
+   * neu gerechnet, statt die Zahl unveraendert stehenzulassen. */
+  var mx=gasMax(); if(state.dev.iso>mx) state.dev.iso=mx;
+  var g=curGeraet();
+  if(g&&g.ventModi.length&&g.ventModi.indexOf(state.dev.mode)<0) state.dev.mode=g.ventModi[0];
+  /* GEMESSENE WERTE UEBERLEBEN DEN MODELLWECHSEL.
+   * Erste Fassung setzte hier state.istVals=null und baute alles neu auf. Im Fern-Test (05.08.2026)
+   * kam damit ein vollstaendiges Datenpaket an — EtCO2 75, Vt 36 — und war eine Zeile spaeter weg:
+   * die Modellerkennung feuerte NACH dem Einspielen der Werte und loeschte sie. Auf dem Bildschirm
+   * standen wieder die Bandmitten, also unauffaellige Normwerte fuer ein Tier mit EtCO2 75.
+   * Jetzt werden nur die Kanaele ERGAENZT, die das neue Modell zusaetzlich hat. */
+  if(!state.istVals) istInit(); else istNachziehen();
+  // Zuletzt vom Geraet gelieferte Messwerte auf die NEUEN Kanaele anwenden (siehe __setMesswerte).
+  if(state.mess && window.__setMesswerte) { try{ window.__setMesswerte(state.mess); }catch(e){} }
+  mon.buf=null;
+  if(mon._resize) mon._resize();   // andere Bahnenzahl -> andere Leinwandhoehe
+  renderGeraetWahl(); renderDevBtns(); renderMonInputs(); renderMonValues(); renderMachine(); renderDevCtrl(); renderVentPanel(); renderVentModes(); renderAlim();
+}
+function gasDef(){ return (VG&&VG.gas(state.dev.gas))||{ id:'iso', name:'Isofluran', kurz:'ISO', max:6, schritt:0.1, farbe:'#8f4fbf' }; }
+function gasMax(){ return gasDef().max||6; }
+/* Geraetekopf: Tiersymbol · Falluhr · Modus · Alarmband · Uhrzeit — die Kopfzeile des Veta 5. */
+function renderDevHead(bandTxt){
+  var host=$('#devHead'); if(!host) return; var g=curGeraet();
+  var uhr='—';
+  if(state.fall.start){ var s=Math.floor(((state.fall.ende||Date.now())-state.fall.start)/1000);
+    uhr=('0'+Math.floor(s/3600)).slice(-2)+':'+('0'+Math.floor(s/60)%60).slice(-2)+':'+('0'+(s%60)).slice(-2); }
+  var jetzt=new Date(), zz=function(n){return ('0'+n).slice(-2);};
+  var tech=/kabel|sensor|modul|artefakt|kein wert/i.test(bandTxt||'');
+  host.innerHTML='<span class="dh-sp">'+(sp().icon||'🐾')+'</span>'+
+    '<span class="dh-clock" title="Falluhr – läuft ab „Fall starten"">'+uhr+'</span>'+
+    '<span class="dh-mode">'+((g&&g.ventModi.length)?(ventModeById(state.dev.mode)||{name:'—'}).name:'MONITOR')+'</span>'+
+    '<span class="dh-band'+(bandTxt?' on':'')+(tech?' tech':'')+'">'+(bandTxt?('⚠!! '+bandTxt):'')+'</span>'+
+    '<span class="dh-now">'+jetzt.getFullYear()+'-'+zz(jetzt.getMonth()+1)+'-'+zz(jetzt.getDate())+' '+zz(jetzt.getHours())+':'+zz(jetzt.getMinutes())+':'+zz(jetzt.getSeconds())+'</span>';
+}
+/* Geraeteknoepfe. Sie tun genau das, was sie am echten Geraet tun — und NICHTS am Patienten:
+ * Audio-Pause stellt nur den Ton dieses Bildes stumm, Insp. Hold ist eine Anzeige-Pause. */
+function renderDevBtns(){
+  var host=$('#devBtns'); if(!host) return; var g=curGeraet(); if(!g){ host.innerHTML=''; return; }
+  var stumm=state.alarmStumm>Date.now();
+  var h='<button id="dbAudio" class="'+(stumm?'on':'')+'" data-vp-tip="Alarmton dieses Bildes für 2 Minuten stumm – die Alarme selbst bleiben sichtbar">'+(stumm?'🔕 stumm ('+Math.ceil((state.alarmStumm-Date.now())/1000)+' s)':'🔔 Audio-Pause')+'</button>'+
+    '<button id="dbAlim" data-vp-tip="Alarmgrenzen je Kanal setzen – leer = Normband der Tierart">⚙ Alarm-Setup</button>';
+  if(g.inspHold) h+='<button id="dbHold" data-vp-tip="Inspirations-Halt: friert das Bild kurz ein, um Plateaudruck und Kurvenform in Ruhe abzulesen">⏸ Insp. Hold</button>';
+  if(g.fallTimer) h+='<button id="dbFall" class="'+(state.fall.start&&!state.fall.ende?'stop':'')+'" data-vp-tip="Falluhr und Narkoseprotokoll dieses Falls">'+(state.fall.start&&!state.fall.ende?'■ Fall beenden':'▶ Fall starten')+'</button>';
+  host.innerHTML=h;
+  var a=$('#dbAudio'); if(a) a.onclick=function(){ state.alarmStumm=(state.alarmStumm>Date.now())?0:(Date.now()+120000); renderDevBtns(); };
+  var al=$('#dbAlim'); if(al) al.onclick=function(){ var b=$('#alimBox'); if(b){ b.hidden=!b.hidden; if(!b.hidden) renderAlim(); } };
+  var ho=$('#dbHold'); if(ho) ho.onclick=function(){ if(mon.running){ mon._hold=!mon._hold; ho.classList.toggle('on',mon._hold); } };
+  var fa=$('#dbFall'); if(fa) fa.onclick=function(){
+    if(state.fall.start&&!state.fall.ende) state.fall.ende=Date.now();
+    else { state.fall.start=Date.now(); state.fall.ende=null; }
+    renderDevBtns(); renderDevHead(''); };
+}
+function renderAlim(){
+  var box=$('#alimGrid'); if(!box) return; var s=$('#alimSp'); if(s) s.textContent=sp().name+' '+fmt(state.wt)+' kg';
+  box.innerHTML=(MON().params||[]).map(function(p){
+    var gr=grenzeOf(p), h=state.alarmGrenzen[p.id]||{};
+    return '<div class="alim-row"><b>'+p.abbr+'</b>'+
+      '<span>unt.</span><input type="number" data-a="lo" data-p="'+p.id+'" placeholder="'+(gr.lo!=null?fmt(gr.lo):'–')+'" value="'+(h.lo!=null?h.lo:'')+'">'+
+      '<span>ob.</span><input type="number" data-a="hi" data-p="'+p.id+'" placeholder="'+(gr.hi!=null?fmt(gr.hi):'–')+'" value="'+(h.hi!=null?h.hi:'')+'">'+
+      '<span>'+p.unit+'</span>'+(gr.hand?'<button class="alim-off" data-r="'+p.id+'">↺</button>':'')+'</div>';
+  }).join('');
+  $$('#alimGrid input').forEach(function(i){ i.addEventListener('input',function(){
+    var id=i.dataset.p, k=i.dataset.a; state.alarmGrenzen[id]=state.alarmGrenzen[id]||{};
+    if(i.value==='') delete state.alarmGrenzen[id][k]; else state.alarmGrenzen[id][k]=parseFloat(i.value);
+    if(!Object.keys(state.alarmGrenzen[id]).length) delete state.alarmGrenzen[id];
+    geraetSpeichern(); renderMonValues(); }); });
+  $$('#alimGrid .alim-off').forEach(function(b){ b.onclick=function(){ delete state.alarmGrenzen[b.dataset.r]; geraetSpeichern(); renderAlim(); renderMonValues(); }; });
+}
+/*
+ * __setGeraetProfil — die Station meldet das ERKANNTE Modell.
+ *
+ * Der Tierarzt soll das Modell nicht suchen muessen, wenn das Geraet es selbst sagt
+ * (HL7 MSH-3/OBR-4, Katalogeintrag aus devices.json). Eine HANDwahl wird dabei NIE
+ * ueberschrieben: wer das Modell selbst gesetzt hat, hat das letzte Wort — sonst dreht die
+ * Station die Auswahl im Sekundentakt zurueck (derselbe Fehler wie einst bei der Tierart).
+ */
+window.__setGeraetProfil=function(o){
+  if(!VG||!o) return; var geaendert=false;
+  ['mon','nark'].forEach(function(slot){
+    var txt=o[slot]; if(!txt) return;
+    var p=VG.nachId(txt)||VG.nachKatalogId(txt, slot==='mon'?'monitor':'narkose')||VG.erkenne(txt, slot==='mon'?'monitor':'narkose');
+    if(!p) return;
+    if(state.geraet[slot]===p.id) return;
+    if(state.geraet.autoErkannt && state.geraet.autoErkannt[slot]===false) return;  // Handwahl gewinnt
+    state.geraet[slot]=p.id; state.geraet.autoErkannt=state.geraet.autoErkannt||{}; state.geraet.autoErkannt[slot]=true; geaendert=true;
+  });
+  if(geaendert) geraetWechsel();
+};
 function doseLineCompact(ref){
   var d=drugById(ref.id); var name=d?d.name:(ref.id||''); var spd=d&&d.species&&d.species[state.sp];
   var dd={low:ref.low,high:ref.high,unit:ref.unit,conc:ref.conc||(spd&&spd.conc)};
@@ -1245,10 +1668,14 @@ function renderAssess(){
   var box=$('#monAssess'); if(!box) return;
   if(state.monMode!=='ist'){ box.innerHTML=''; return; }
   if(!state.istVals) istInit();
-  var v=monVitals(), iv=state.istVals, items=[];
+  var v=monVitals(), iv=state.istVals, items=[], r0=monResolve();
   (MON().params||[]).forEach(function(p){
-    var band=v[p.vital], x=iv[p.id], dir=null, inc=null;
-    if((p.id==='hr'||p.id==='nibp') && x<=0){ dir='crit'; inc=(p.id==='hr'?'asystolie':p.lowInc); }
+    /* Band aus dem Profilmodul (artspezifisch ODER gewichtsabgeleitet wie Vt/MV). Ein Kanal
+     * ohne Band bekommt hier NICHTS — lieber keine Bewertung als eine gegen eine erfundene Norm. */
+    var band=bandOf(p); if(!band) return;
+    var x=(r0[p.id]!=null?r0[p.id]:iv[p.id]); if(x==null||x===''||isNaN(x)) return;
+    var dir=null, inc=null;
+    if((p.id==='hr'||p.id==='nibp'||p.id==='ibp') && x<=0){ dir='crit'; inc=(p.id==='hr'?'asystolie':p.lowInc); }
     else if(x<band[0]){ dir='low'; inc=p.lowInc; }
     else if(x>band[1]){ dir='high'; inc=p.highInc; }
     if(inc){ var far=(x<band[0])?(band[0]-x)/Math.max(1,band[0]):(x-band[1])/Math.max(1,band[1]); items.push({p:p,x:x,band:band,dir:dir,inc:inc,far:far}); }
@@ -1257,7 +1684,12 @@ function renderAssess(){
   var r=monResolve(), iso=state.dev.iso, cross=[], W=ekgDef(r.ekg).w||{};
   var isoTgt=devTarget(), isoSoll=String(isoTgt.iso).split('–').map(parseFloat);
   var isoHigh=(!isNaN(isoSoll[1])?iso>isoSoll[1]+0.6:(!isNaN(isoSoll[0])?iso>isoSoll[0]+0.8:false));
-  function xc(sev,color,title,tag,cause,fix,inc){ cross.push({sev:sev,color:color,title:title,tag:tag,cause:cause,fix:fix,inc:inc}); }
+  /* crossKanaele: welche Einzelkanaele hat die Kreuz-Analyse bereits erklaert? Diese bekommen
+   * darunter KEINE zweite, allgemeinere Karte mehr. Ohne das stand unter der Rueckatmungs-Karte
+   * noch "FiCO₂ ↑ → Narkosetiefe pruefen" — ein Rat, der mit dem Befund nichts zu tun hat und
+   * dem eigentlichen (Atemkalk) widerspricht. */
+  var crossKanaele={};
+  function xc(sev,color,title,tag,cause,fix,inc,kanal){ cross.push({sev:sev,color:color,title:title,tag:tag,cause:cause,fix:fix,inc:inc}); if(kanal) crossKanaele[kanal]=1; }
   if(W.flat||W.chaos){ xc(5,'#ff2d2d',W.chaos?'Kammerflimmern – Kreislaufstillstand':'Asystolie – Kreislaufstillstand','CPR','Nulllinie/chaotisches EKG mit flacher Kapno- & Pleth-Kurve → kein Kreislauf.','Verdampfer AUF NULL · 100 % O₂/Flush · Kompressionen 100–120/min'+(W.chaos?' · DEFIBRILLIEREN':'')+'.','asystolie'); }
   else {
     if(r.ekg==='ves'||r.ekg==='vtach'){ var driven=(r.spo2<v.spo2[0])||(r.etco2>v.etco2[1]);
@@ -1267,8 +1699,27 @@ function renderAssess(){
     if(brady&&isoHigh&&r.nibp>0&&r.nibp<v.map[0]+8) xc(4,'#66a6ff','Bradykardie bei zu tiefer Narkose','Iso zuerst senken','Niedrige HF + niedriger MAP bei hohem Verdampfer ('+iso.toFixed(1)+' Vol%) → Narkose zu tief.','ZUERST Verdampfer senken Richtung Soll ('+isoTgt.iso+' Vol%) – kein sofortiges Atropin.','bradykardie');
     else if(r.nibp>0&&r.nibp<v.map[0]&&isoHigh) xc(3,'#ff4d4d','Hypotonie bei tiefer Narkose','MAP ↓','MAP '+r.nibp+' mmHg bei Verdampfer '+iso.toFixed(1)+' Vol% → häufigste Ursache: Narkose zu tief.','ZUERST Verdampfer senken ('+isoTgt.iso+' Vol%), dann Volumenbolus, dann Ephedrin.','hypotension');
     if(r.capno==='shark') xc(3,'#a3e635','Bronchospasmus / Obstruktion','Atemweg','Kapno-Haifischflosse bei erhaltenem EKG → Problem ist der Atemweg, nicht das Herz.','Tubus prüfen (Knick/Sekret), ggf. vertiefen; β2-Bronchodilatator; O₂ 100 %.','hypoxaemie');
+    /* RUECKATMUNG — neu mit dem FiCO2-Kanal (05.08.2026). Genau das Bild vom Veta-5-Foto:
+     * FiCO2 8, EtCO2 51, Alarmband "FiCO2 zu hoch". Ohne diesen Kanal sah man nur ein hohes
+     * EtCO2 und haette staerker beatmet — der erschoepfte Atemkalk waere drin geblieben. */
+    if(r.fico2>3){
+      var eth=(r.etco2>v.etco2[1]);
+      xc(eth?4:3,'#ffb020','Rückatmung – eingeatmetes CO₂ '+fmt(r.fico2)+' mmHg','FiCO₂ ↑',
+        'Am Ende der EINatmung ist noch CO₂ im Gas (Kapno-Grundlinie geht nicht auf 0 zurück)'+(eth?' und das EtCO₂ liegt bereits über der Norm':'')+'. Das Tier atmet sein eigenes CO₂ wieder ein – die Beatmung ist NICHT die Ursache.',
+        'Atemkalk prüfen/wechseln (Farbumschlag, Wärme, Verhärtung) · Ein-/Ausatemventil auf Klemmen prüfen · Frischgasfluss erhöhen · bei Nicht-Rückatemsystem Fluss auf 200–300 ml/kg/min · Totraum/Y-Stück am Kleintier verkleinern. Erst danach die Ventilation nachstellen.',
+        'hypoventilation','fico2');
+    }
+    /* HOHER SPITZENDRUCK — mit dem Paw-Kanal messbar geworden. */
+    var pipSoll=(spSet().pip||15);
+    if(r.ppeak>0 && r.ppeak>pipSoll+3){
+      xc(4,'#ff9f43','Spitzendruck zu hoch – '+fmt(r.ppeak)+' cmH₂O','Paw ↑',
+        'Der Atemwegsdruck übersteigt den für '+sp().name+' vorgesehenen Grenzwert ('+pipSoll+' cmH₂O). Ursachen: Tubus geknickt/verlegt, Bronchospasmus, Kapnoperitoneum, Lagerung, zu großes Vt, einseitige Intubation.',
+        'Tubus und Schläuche freimachen · Vt senken (Ziel 6–8 ml/kg) bzw. in PCV wechseln und den Druck begrenzen · I:E verlängern · Plateaudruck ≤ 15–20 halten. Ein Barotrauma ist in Sekunden gemacht und nicht rückgängig.',
+        'hypoxaemie','ppeak');
+    }
   }
   cross.sort(function(a,b){return b.sev-a.sev;});
+  items=items.filter(function(it){ return !crossKanaele[it.p.id]; });
   var crossHtml=cross.map(function(cc){ return '<div class="assess-card" style="border-left-color:'+cc.color+';border-color:'+cc.color+'55" data-inc="'+cc.inc+'"><div class="assess-h"><b>'+cc.title+'</b><span class="assess-inc" style="background:'+cc.color+'">'+cc.tag+'</span></div><div class="assess-s">🔧 <b>Gerät:</b> '+cc.fix+'</div><div class="assess-m">'+cc.cause+'</div><div class="assess-go">→ Volles Protokoll, Dosen &amp; Schritte</div></div>'; }).join('');
   if(!items.length && !cross.length){ box.innerHTML='<div class="assess-ok">✓ Alle Kanäle im Normbereich für '+sp().name+' – Patient stabil.</div>'; return; }
   var wgt={spo2:6,etco2:5,nibp:5,hr:4,rr:3,temp:2};
@@ -1296,7 +1747,21 @@ function devTarget(){
   var m=(A.machine.settingsBySpecies&&A.machine.settingsBySpecies[state.sp])||{}, w=state.wt;
   var o2lo=(m.o2&&m.o2.mlkg)?Math.max(m.o2.min||0.2, m.o2.mlkg[0]*w/1000):0.5;
   var o2hi=(m.o2&&m.o2.mlkg)?Math.max((m.o2.min||0.2)+0.2, m.o2.mlkg[1]*w/1000):1;
-  return { o2:[o2lo,o2hi], iso:(m.iso&&m.iso.maint)||'1.5–2.5', isoMac:(m.iso&&m.iso.mac)||'—', mode:(w<(m.rebreatheMin||7)?'Nicht-Rückatmung':'Kreissystem'), apl:(m.apl||'offen (2–3)') };
+  var t={ o2:[o2lo,o2hi], iso:(m.iso&&m.iso.maint)||'1.5–2.5', isoMac:(m.iso&&m.iso.mac)||'—',
+    gasName:'Isofluran', gasAbgeleitet:false,
+    mode:(w<(m.rebreatheMin||7)?'Nicht-Rückatmung':'Kreissystem'), apl:(m.apl||'offen (2–3)') };
+  /* GASABHAENGIGES SOLL. Die gepflegte Erhaltungsspanne in anaes-data.js gilt fuer ISOFLURAN.
+   * Bei einem anderen Verdampfer wird sie aus dem MAC DIESES Gases neu gerechnet (0,9–1,4 MAC,
+   * dieselbe Lage relativ zum MAC wie die Iso-Spanne). Die Iso-Zahlen einfach stehenzulassen
+   * waere der gefaehrlichere Weg: 2,0 Vol% sind bei Iso eine Erhaltungsdosis und bei Desfluran
+   * ein Viertel davon. */
+  var G=(typeof gasDef==='function')?gasDef():null;
+  if(G && G.id!=='iso' && VG){
+    var mi=VG.macInfo(G.id, state.sp, m);
+    if(mi){ t.iso=fmt(Math.round(mi.wert*0.9*10)/10)+'–'+fmt(Math.round(mi.wert*1.4*10)/10); t.isoMac=mi.wert; t.gasAbgeleitet=mi.abgeleitet; }
+    t.gasName=G.name||G.id;
+  }
+  return t;
 }
 /* §5 Geschlossene Regelschleife: Vorschau-Wirkung der Einstellung (kein Auto-Regler) */
 function loopPreview(){
@@ -1317,21 +1782,38 @@ function renderDevCtrl(){
   var modes=A.machine.ventModes||[]; var mn=modes.find(function(x){return x.id===state.dev.mode;})||modes[0]||{name:''};
   var rebMin=(((A.machine.settingsBySpecies||{})[state.sp])||{}).rebreatheMin||7;
   function row(name,val,tgt,off){ return '<div class="devr'+(off?' off':'')+'"><span class="dn">'+name+'</span><span class="dv">'+val+'</span><span class="dt">Soll: '+tgt+' '+(off?'⚠':'✓')+'</span></div>'; }
+  var r0=monResolve(), zus='';
+  /* Der GEMESSENE Beatmungsteil des Soll-Abgleichs — erst mit den neuen Kanaelen moeglich.
+   * Nur Zeilen, die das gewaehlte Geraet auch liefert: eine leere Soll-Zeile fuer einen Kanal,
+   * den es gar nicht gibt, laesst den Tierarzt nach einem Wert suchen, den niemand misst. */
+  if(VG){
+    var gg=curGeraet();
+    if(VG.hatKanal(gg,'ppeak')&&r0.ppeak>0){ var pipS=(spSet().pip||15); zus+=row('📈 Spitzendruck', fmt(r0.ppeak)+' cmH₂O', '≤ '+pipS+' cmH₂O', r0.ppeak>pipS+3); }
+    if(VG.hatKanal(gg,'vte')&&r0.vte>0){ var bv=VG.bandFuer('vte',bandCtx()); zus+=row('🫁 Vt (gemessen)', fmt(r0.vte)+' ml', bv?(fmtRange(bv[0],bv[1])+' ml'):'—', !!(bv&&(r0.vte<bv[0]*0.8||r0.vte>bv[1]*1.2))); }
+    if(VG.hatKanal(gg,'fico2')){ zus+=row('♻️ FiCO₂ (Rückatmung)', fmt(r0.fico2||0)+' mmHg', '< 3 mmHg', (r0.fico2||0)>3); }
+    if(VG.hatKanal(gg,'etAgent')&&r0.etAgent>0&&r0.mac!=null){ zus+=row('💨 '+t.gasName+' exspir.', fmt(r0.etAgent)+' Vol% · '+fmt(r0.mac)+' MAC'+(t.gasAbgeleitet?'*':''), '0,8–1,3 MAC', (r0.mac<0.7||r0.mac>1.5)); }
+  }
   box.innerHTML =
     row('🟦 O₂-Fluss', state.dev.o2.toFixed(1)+' L/min', fmtRange(t.o2[0],t.o2[1])+' L/min', o2off)+
-    row('⚪ Isofluran', state.dev.iso.toFixed(1)+' Vol%', (t.iso||'—')+' Vol% (MAC '+t.isoMac+')', isoOff)+
+    row('⚪ '+t.gasName, state.dev.iso.toFixed(1)+' Vol%', (t.iso||'—')+' Vol% (MAC '+t.isoMac+(t.gasAbgeleitet?'*':'')+')', isoOff)+
     row('🔀 Beatmung', (state.dev.auto?'Auto':'Manuell')+' · '+mn.name.split(' ')[0], (state.wt<7?'PCV/Manuell schonend':'VCV Standard'), false)+
     row('🫁 Atemsystem', t.mode, (state.wt<rebMin?'Nicht-Rückatmung':'Kreissystem'), false)+
     row('🔵 APL-Ventil', t.apl, 'offen bei Spontanatmung', false)+
+    zus+
+    (t.gasAbgeleitet?'<div class="muted" style="font-size:11px;margin-top:6px">* MAC für '+sp().name+' bei '+t.gasName+' ist nicht artspezifisch publiziert – hier aus dem Isofluran-MAC dieser Tierart abgeleitet. Größenordnung, kein Beleg.</div>':'')+
     '<div class="sec-h" style="margin-top:12px">Regelschleife · Ist → erwartet <span style="font:10px var(--mono);color:#04121a;background:var(--amber);border-radius:4px;padding:1px 6px;vertical-align:middle">SIM</span></div>'+
     loopPreview();
 }
 function showMonParam(id){
-  var p=(MON().params||[]).find(function(x){return x.id===id;}); if(!p)return; var v=monVitals(); var band=v[p.vital];
+  var p=(MON().params||[]).find(function(x){return x.id===id;}); if(!p)return;
+  var band=bandOf(p), gr=grenzeOf(p);
   var links=[];
   if(p.lowInc) links.push('<a class="chip" style="cursor:pointer" data-inc="'+p.lowInc+'">↓ '+incName(p.lowInc)+'</a>');
   if(p.highInc) links.push('<a class="chip" style="cursor:pointer" data-inc="'+p.highInc+'">↑ '+incName(p.highInc)+'</a>');
-  $('#monDetail').innerHTML='<div class="mset" style="margin-top:12px"><b>'+p.name+'</b> · Normbereich '+sp().name+': <b>'+band[0]+'–'+band[1]+' '+p.unit+'</b><br>'+p.explain+
+  var normTxt = band ? ('Normbereich '+sp().name+(p.art==='beatmung'?(' · '+fmt(state.wt)+' kg'):'')+': <b>'+fmt(band[0])+'–'+fmt(band[1])+' '+p.unit+'</b>')
+                     : '<i style="color:var(--muted)">Für diesen Kanal ist kein Normband hinterlegt – er wird angezeigt, aber nicht bewertet.</i>';
+  var grTxt = (gr.hand&&band) ? ('<br><span style="color:var(--amber)">Alarmgrenzen von Hand: '+(gr.lo!=null?fmt(gr.lo):'–')+' / '+(gr.hi!=null?fmt(gr.hi):'–')+' '+p.unit+'</span>') : '';
+  $('#monDetail').innerHTML='<div class="mset" style="margin-top:12px"><b>'+p.name+'</b> · '+normTxt+grTxt+'<br>'+p.explain+
     (links.length?'<div class="chips" style="margin-top:9px">'+links.join('')+'</div>':'')+'</div>';
   $$('#monDetail .chip').forEach(function(c){ c.onclick=function(){ gotoIncident(c.dataset.inc); }; });
 }
@@ -1365,22 +1847,83 @@ function wPleth(ph,type){
   pulse=Math.max(0,Math.min(1.15,pulse));
   return 0.22 + amp*pulse;
 }
-function wCapno(ph,type,etco2){
-  if(type==='flat') return 0.12;
-  var amp=Math.max(0.12,Math.min(0.86,(etco2/50)*0.8));
-  if(type==='low') amp=0.14;
-  if(type==='high') amp=Math.max(amp,0.82);
-  var base=(type==='baseline')?0.34:0.12;
-  if(type==='shark'){ // upsloping, no flat plateau
+/*
+ * wCapno(ph, type, etco2, fico2) — Kapnogramm.
+ *
+ * NEU 05.08.2026: die Grundlinie richtet sich nach dem GEMESSENEN FiCO2, nicht mehr nach
+ * einem festen Wert fuer die Form "baseline". Auf dem Veta-5-Foto steht FiCO2 = 8 mmHg, und
+ * die Kurve geht sichtbar nicht auf Null zurueck — dieselbe Skala wie EtCO2 (0–60 mmHg auf
+ * die Bahnhoehe). Wer die Grundlinie pauschal auf ein Drittel setzt, zeigt bei FiCO2 1 und
+ * bei FiCO2 12 dasselbe Bild; genau die Unterscheidung ist aber die Diagnose.
+ */
+function wCapno(ph,type,etco2,fico2){
+  var SKALA=60;                                    // mmHg auf volle Bahnhoehe (wie am Geraet)
+  var boden=0.12, hoehe=0.86;                      // Nulllinie und nutzbare Hoehe der Bahn
+  var base=boden + Math.max(0,Math.min(30,fico2||0))/SKALA*hoehe;
+  if(type==='flat') return base;
+  var top=boden + Math.max(0,Math.min(SKALA,etco2||0))/SKALA*hoehe;
+  if(type==='low')  top=Math.min(top, boden+0.20);
+  if(type==='high') top=Math.max(top, boden+0.72);
+  if(type==='baseline'&&base<=boden+0.02) base=boden+0.20;   // Rueckatmung ohne FiCO2-Messwert
+  var amp=Math.max(0.06, top-base);
+  if(type==='shark'){ // aufsteigend, kein flaches Plateau
     if(ph<0.12) return base;
     if(ph>0.94) return base + amp*(1-(ph-0.94)/0.06);
     return base + amp*((ph-0.12)/0.82);
   }
-  if(ph<0.30) return base;                              // baseline (inspiration)
-  if(ph<0.37) return base + amp*((ph-0.30)/0.07);       // expiratory upstroke
-  if(ph<0.92) return base + amp;                         // alveolar plateau
-  return base + amp*(1-(ph-0.92)/0.08);                 // inspiratory downstroke
+  if(ph<0.30) return base;                              // Grundlinie (Einatmung)
+  if(ph<0.37) return base + amp*((ph-0.30)/0.07);       // exspiratorischer Anstieg
+  if(ph<0.92) return base + amp;                         // alveolares Plateau
+  return base + amp*(1-(ph-0.92)/0.08);                 // inspiratorischer Abfall
 }
+/*
+ * wPaw(ph) — ATEMWEGSDRUCK ueber die Zeit. Die zweite Kurve auf dem Veta-5-Bildschirm.
+ *
+ * Die Form haengt am Beatmungsmodus, und genau darin liegt der klinische Wert:
+ *   VCV     Rampe (konstanter Fluss laesst den Druck steigen) -> Spitze am Ende der Inspiration
+ *   PCV/PSV Rechteck (Druck wird geregelt, Volumen ergibt sich)
+ *   spontan Unterdruck-Delle vor dem Hub (das Tier zieht selbst)
+ *   manuell unregelmaessige Beutelhuebe
+ * Bezugsgroesse ist die Bahnskala −3 … 15 cmH2O, wie sie auf den Fotos beschriftet ist.
+ */
+function wPaw(ph,r){
+  var LO=-3, HI=18, boden=0.10, hoehe=0.84;
+  function y(p){ return boden + (Math.max(LO,Math.min(HI,p))-LO)/(HI-LO)*hoehe; }
+  var peep=(r.peep!=null&&!isNaN(r.peep))?r.peep:(vnum(ventVal('peep'))||0);
+  var spitze=(r.ppeak!=null&&r.ppeak>0)?r.ppeak:Math.max(peep+3,vnum(ventVal('pinsp'))||10);
+  var m=state.dev.mode, spont=(m==='vs'||m==='vsplus'||m==='psv'||m==='cpap');
+  var ieTxt=String(ventVal('ie')||'1:2').split(':'), iA=parseFloat(ieTxt[0])||1, eA=parseFloat(ieTxt[1])||2;
+  var ti=Math.max(0.08,Math.min(0.6, iA/(iA+eA)));
+  if(m==='cpap') return y(peep + (ph<0.5?0.4:0)*Math.sin(ph*20)*0.6);
+  if(m==='manual'){ var j=(mon.beatN||0)%3; var t2=ti*(1+j*0.15);
+    if(ph<0.03) return y(peep-1.2);
+    if(ph<t2) return y(peep+(spitze-peep)*Math.sin(Math.PI*(ph-0.03)/Math.max(0.05,(t2-0.03)))); return y(peep); }
+  if(spont && ph<0.04) return y(peep-1.5);            // Eigenatemzug: Sog vor dem Hub
+  if(ph<0.02) return y(peep);
+  if(ph<ti){
+    var f=(ph-0.02)/Math.max(0.02,(ti-0.02));
+    if(m==='vcv') return y(peep+(spitze-peep)*f);                      // Rampe
+    return y(peep+(spitze-peep)*Math.min(1,f*6));                      // Rechteck (PCV/PSV/SIMV)
+  }
+  if(ph<ti+0.05) return y(peep+(spitze-peep)*(1-(ph-ti)/0.05));        // Abfall
+  return y(peep);
+}
+/*
+ * wFlow(ph) — ATEMFLUSS. Positiv = Einatmung, negativ = Ausatmung.
+ * Der eigentliche Grund fuer diese Bahn: erreicht der exspiratorische Fluss vor dem naechsten
+ * Hub die Nulllinie NICHT, liegt Air-Trapping/Auto-PEEP vor — man sieht es hier, bevor der
+ * Blutdruck faellt.
+ */
+function wFlow(ph,r){
+  var mitte=0.5, amp=0.34;
+  var ieTxt=String(ventVal('ie')||'1:2').split(':'), iA=parseFloat(ieTxt[0])||1, eA=parseFloat(ieTxt[1])||2;
+  var ti=Math.max(0.08,Math.min(0.6, iA/(iA+eA)));
+  if(ph<ti) return mitte + amp*(state.dev.mode==='vcv'?1:(1-ph/ti*0.6));   // VCV: Rechteckfluss, PCV: abfallend
+  var d=(ph-ti)/Math.max(0.05,(1-ti));
+  return mitte - amp*Math.exp(-d*(r&&r.capno==='shark'?1.1:3.4));          // Obstruktion: kehrt nicht zur Null zurueck
+}
+/* wResp(ph) — Thorax-Impedanz. Weiche, fast sinusfoermige Atembewegung. */
+function wResp(ph){ return 0.5 + 0.26*Math.sin(2*Math.PI*(ph-0.15)) - 0.05*Math.sin(4*Math.PI*ph); }
 /* ---------- ECHTE Gerätekurve statt Nachbildung ----------
  * Die VetStation-Shell schiebt die realen Abtastwerte eines Streifens (EKG 256 Hz, CO2 40 Hz …) über
  * window.__setRealWave herein. Der Monitor spielt sie in Echtzeit ab und wiederholt den letzten
@@ -1398,7 +1941,10 @@ function __normReal(samples){
 window.__setRealWave=function(map){
   if(!map){ mon.real=null; return; }
   var out={};
-  ['ekg','pleth','capno'].forEach(function(key){
+  /* Seit 05.08.2026 auch Paw/Flow/Resp: Narkosegeraete mit offenem Ausgang (WATO, Draeger,
+   * Datex) senden diese Kurven mit — dann wird die ECHTE Druckkurve gezeigt statt der
+   * aus dem Modus errechneten Form. */
+  ['ekg','pleth','capno','paw','flow','resp'].forEach(function(key){
     var ch=map[key]; if(!ch||!ch.samples) return;
     var norm=__normReal(ch.samples); if(!norm) return;
     out[key]={ norm:norm, hz:(ch.hz&&ch.hz>0?ch.hz:256), pos:0 };
@@ -1429,23 +1975,48 @@ function realVal(key,colT,synth){
 }
 function monStart(){
   var c=$('#monCanvas'); if(!c) return;
+  renderGeraetWahl(); renderDevBtns();
   renderMonScenarios(); renderMonInputs();
   $$('.mon-mode').forEach(function(b){ b.onclick=function(){ setMonMode(b.dataset.m); }; });
   setMonMode(state.monMode);
   mon.dpr=Math.min(2,devicePixelRatio||1);
-  mon._resize=function(){ var rect=c.getBoundingClientRect(); mon.W=Math.max(2,Math.floor(rect.width*mon.dpr)); mon.H=Math.max(2,Math.floor(rect.height*mon.dpr)); c.width=mon.W; c.height=mon.H; mon.buf=null; };
+  /* Kurvenbahnen sind jetzt 1 bis 6 — die Leinwand waechst mit, sonst quetschen sich sechs
+   * Bahnen in die Hoehe, die frueher fuer drei gedacht war, und keine ist mehr lesbar. */
+  mon._resize=function(){ var nB=aktiveBahnen().length||3; c.style.height=Math.max(180,Math.min(560, nB*100))+'px';
+    var rect=c.getBoundingClientRect(); mon.W=Math.max(2,Math.floor(rect.width*mon.dpr)); mon.H=Math.max(2,Math.floor(rect.height*mon.dpr)); c.width=mon.W; c.height=mon.H; mon.buf=null; };
   mon._resize(); addEventListener('resize',mon._resize);
   mon.running=true; mon.last=performance.now();
   // Perf (§2): Bildrate begrenzen — 25 fps reichen für die Kurven, sparen aber ~½ CPU/GPU je Fenster.
   if(mon.fpsCap==null) mon.fpsCap=40; // ms/Frame (0 = ungedrosselt)
   if(!mon.raf) mon.raf=requestAnimationFrame(monFrame);
+  /* Falluhr und Geraeteuhr laufen im Sekundentakt weiter, auch wenn sich sonst nichts aendert.
+   * Bewusst 1 s und nicht der 40-ms-Kurventakt: eine Uhr, die 25x pro Sekunde neu gebaut wird,
+   * kostet Rechenzeit ohne einen einzigen sichtbaren Unterschied. */
+  if(!mon._uhr) mon._uhr=setInterval(function(){ if(mon.running){ renderDevHead(mon._band||''); if(state.alarmStumm) renderDevBtns(); } },1000);
 }
-function monStop(){ mon.running=false; if(mon.raf){cancelAnimationFrame(mon.raf); mon.raf=null;} if(mon._resize){removeEventListener('resize',mon._resize); mon._resize=null;} }
+function monStop(){ mon.running=false; if(mon.raf){cancelAnimationFrame(mon.raf); mon.raf=null;} if(mon._resize){removeEventListener('resize',mon._resize); mon._resize=null;} if(mon._uhr){ clearInterval(mon._uhr); mon._uhr=null; } }
 // Perf (§2): die VetStation-Shell kann ein nicht sichtbares Fenster per postMessage pausieren (rAF stoppt).
 try{ addEventListener('message',function(e){ var d=e&&e.data; if(!d||typeof d!=='object')return;
   if(d.vsMon==='pause'){ if(mon.running){ mon._wasRunning=true; monStop(); } }
   else if(d.vsMon==='resume'){ if(mon._wasRunning){ mon._wasRunning=false; if(document.querySelector('.tab.active')&&document.querySelector('.tab.active').dataset.view==='geraet') monStart(); } }
 }); }catch(_){ }
+/*
+ * aktiveBahnen() — welche Kurvenbahnen zeigt das GEWAEHLTE Geraet?
+ * Ohne Profilmodul bleibt es bei den bisherigen drei — die Ansicht geht nie leer aus.
+ */
+function aktiveBahnen(){
+  var g=curGeraet();
+  var ids=(g&&g.kurven&&g.kurven.length)?g.kurven:['ekg','pleth','capno'];
+  return ids.slice(0,6);
+}
+/* Ist der aktuelle Atemzug ein MASCHINELLER Pflichthub (violett) oder ein eigener/
+ * getriggerter (gelb)? Genau diese Zweifarbigkeit steht auf den Veta-5-Fotos. */
+function pawMandatorisch(){
+  var m=state.dev.mode;
+  if(m==='vs'||m==='vsplus'||m==='psv'||m==='cpap') return false;
+  if(m==='simv'){ return ((mon.breathN||0)%3)===0; }     // Pflichthub, dazwischen unterstuetzt
+  return true;                                           // VCV/PCV/Manuell = jeder Hub maschinell
+}
 function monFrame(ts){
   if(!mon.running){ mon.raf=null; return; }
   mon.raf=requestAnimationFrame(monFrame);
@@ -1454,39 +2025,83 @@ function monFrame(ts){
   var c=$('#monCanvas'); if(!c){return;} var ctx=c.getContext('2d');
   var W=mon.W,H=mon.H; if(!W||!H){return;}
   var cols=Math.max(60,Math.floor(W));
-  if(!mon.buf||mon.buf.ekg.length!==cols){ mon.buf={ekg:new Array(cols).fill(0.5),pleth:new Array(cols).fill(0.22),capno:new Array(cols).fill(0.12)}; }
+  var bahnen=aktiveBahnen(), nB=bahnen.length||1;
+  if(!mon.buf||mon.buf.__cols!==cols||mon.buf.__sig!==bahnen.join(',')){
+    mon.buf={__cols:cols,__sig:bahnen.join(',')};
+    bahnen.forEach(function(id){ mon.buf[id]=new Array(cols).fill(id==='capno'?0.12:(id==='paw'?0.14:0.5)); });
+    mon.buf.__pawM=new Array(cols).fill(1);
+  }
   var dt=(ts-mon.last)/1000; mon.last=ts; if(dt>0.08)dt=0.033; if(dt<0)dt=0;
+  /* Insp. Hold: das Bild steht still, damit Plateaudruck und Kurvenform in Ruhe abgelesen
+   * werden koennen — genau wie der Knopf am echten Geraet. Es wird NICHTS eingefroren, was
+   * am Patienten passiert; nur der Vorschub dieser Anzeige. */
+  if(mon._hold) dt=0;
   var r=monResolve();
   var sweep=6.0; var pxPerSec=cols/sweep; mon.acc+=pxPerSec*dt; var k=Math.floor(mon.acc); if(k>60)k=60; mon.acc-=k;
   var colT=1/pxPerSec;
   var perE=r.hr>0?60/r.hr:9999, perR=r.rr>0?60/r.rr:9999;
   var Wr=ekgDef(r.ekg||'normal').w||{};
   for(var j=0;j<k;j++){
-    var prevE=mon.phE;
+    var prevE=mon.phE, prevR=mon.phR;
     mon.phE=(mon.phE+colT/(perE*(mon.rrJit||1)))%1;
     if(mon.phE<prevE){ mon.beatN=(mon.beatN||0)+1; mon.rrJit=Wr.irregular?(0.55+Math.random()*0.95):1; }
     mon.phR=(mon.phR+colT/perR)%1;
-    mon.buf.ekg.push(realVal('ekg',colT,wEkg(mon.phE,r.ekg||'normal'))); mon.buf.ekg.shift();
-    mon.buf.pleth.push(realVal('pleth',colT,wPleth(mon.phE,r.pleth||'normal'))); mon.buf.pleth.shift();
-    mon.buf.capno.push(realVal('capno',colT,wCapno(mon.phR,r.capno||'normal',r.etco2))); mon.buf.capno.shift();
+    if(mon.phR<prevR){ mon.breathN=(mon.breathN||0)+1; mon.pawM=pawMandatorisch(); }
+    for(var bi=0;bi<nB;bi++){
+      var id=bahnen[bi], val;
+      if(id==='ekg')        val=realVal('ekg',colT,wEkg(mon.phE,r.ekg||'normal'));
+      else if(id==='pleth') val=realVal('pleth',colT,wPleth(mon.phE,r.pleth||'normal'));
+      else if(id==='capno') val=realVal('capno',colT,wCapno(mon.phR,r.capno||'normal',r.etco2,r.fico2));
+      else if(id==='paw')   val=realVal('paw',colT,wPaw(mon.phR,r));
+      else if(id==='flow')  val=realVal('flow',colT,wFlow(mon.phR,r));
+      else                  val=realVal('resp',colT,wResp(mon.phR));
+      mon.buf[id].push(val); mon.buf[id].shift();
+    }
+    mon.buf.__pawM.push(mon.pawM===false?0:1); mon.buf.__pawM.shift();
   }
   // draw
   ctx.clearRect(0,0,W,H); ctx.fillStyle='#05080d'; ctx.fillRect(0,0,W,H);
   var rk=mon.real||{};
-  var laneH=H/3; var lanes=[['ekg','#28e07a','EKG II'+(rk.ekg?' · ECHT':'')],['pleth','#00d8ff','Pleth · SpO₂ '+(r.spo2)+'%'+(rk.pleth?' · ECHT':'')],['capno','#ffd166','Kapno · EtCO₂ '+(r.etco2===0?'0':r.etco2)+(rk.capno?' · ECHT':'')]];
-  ctx.lineWidth=Math.max(1,1.4*mon.dpr);
-  for(var li=0;li<3;li++){
-    var top=li*laneH; var key=lanes[li][0];
-    // grid
-    ctx.strokeStyle='rgba(120,150,180,.10)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(0,top+laneH-0.5); ctx.lineTo(W,top+laneH-0.5); ctx.stroke();
-    // trace
-    ctx.strokeStyle=lanes[li][1]; ctx.lineWidth=Math.max(1.2,1.5*mon.dpr); ctx.beginPath();
-    var b=mon.buf[key];
-    for(var i=0;i<b.length;i++){ var x=i*(W/(b.length-1)); var y=top+(1-b[i])*laneH*0.82+laneH*0.09; if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y); }
-    ctx.stroke();
-    // label
-    ctx.fillStyle=lanes[li][1]; ctx.font=(11*mon.dpr)+'px Consolas,monospace'; ctx.fillText(lanes[li][2], 8*mon.dpr, top+14*mon.dpr);
+  var laneH=H/nB;
+  function beschriftung(id){
+    var kd=(VG&&VG.kurve(id))||{name:id,color:'#9fb0c4'};
+    var echt=rk[id]?' · ECHT':'';
+    if(id==='pleth') return 'Pleth · SpO₂ '+(r.spo2>0?r.spo2:'– –')+'%'+echt;
+    if(id==='capno') return 'CO₂ · EtCO₂ '+(r.etco2>0?r.etco2:'0')+(r.fico2>0?(' · FiCO₂ '+fmt(r.fico2)):'')+echt;
+    if(id==='paw')   return 'Paw · '+(r.ppeak>0?('Ppeak '+fmt(r.ppeak)):'cmH₂O')+(r.peep>0?(' · PEEP '+fmt(r.peep)):'')+echt;
+    if(id==='flow')  return 'Flow · L/min'+echt;
+    if(id==='resp')  return 'Resp · AF '+(r.rr>0?r.rr:'– –')+echt;
+    return kd.name+echt;
   }
+  for(var li=0;li<nB;li++){
+    var top=li*laneH, key=bahnen[li];
+    var kdef=(VG&&VG.kurve(key))||{color:'#28e07a'};
+    // Trennlinie
+    ctx.strokeStyle='rgba(120,150,180,.10)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(0,top+laneH-0.5); ctx.lineTo(W,top+laneH-0.5); ctx.stroke();
+    var b=mon.buf[key]; if(!b) continue;
+    var yv=(function(bb,tt){ return function(i){ return tt+(1-bb[i])*laneH*0.82+laneH*0.09; }; })(b,top);
+    if(key==='paw'){
+      /* Zweifarbig: der Farbwechsel sitzt AN der Atemzuggrenze, deshalb wird die Bahn in
+       * Abschnitte zerlegt statt in einem Zug gezeichnet. */
+      ctx.lineWidth=Math.max(1.2,1.5*mon.dpr);
+      var i0=0;
+      while(i0<b.length-1){
+        var mand=mon.buf.__pawM[i0], i1=i0;
+        while(i1<b.length-1 && mon.buf.__pawM[i1+1]===mand) i1++;
+        ctx.strokeStyle=mand? (kdef.color2||'#8b6cff') : (kdef.color||'#ffd166');
+        ctx.beginPath();
+        for(var ii=i0;ii<=i1;ii++){ var xx=ii*(W/(b.length-1)); if(ii===i0)ctx.moveTo(xx,yv(ii)); else ctx.lineTo(xx,yv(ii)); }
+        ctx.stroke(); i0=i1+1;
+      }
+    } else {
+      ctx.strokeStyle=kdef.color||'#28e07a'; ctx.lineWidth=Math.max(1.2,1.5*mon.dpr); ctx.beginPath();
+      for(var i=0;i<b.length;i++){ var x=i*(W/(b.length-1)); if(i===0)ctx.moveTo(x,yv(i)); else ctx.lineTo(x,yv(i)); }
+      ctx.stroke();
+    }
+    // Beschriftung
+    ctx.fillStyle=kdef.color||'#28e07a'; ctx.font=(11*mon.dpr)+'px Consolas,monospace'; ctx.fillText(beschriftung(key), 8*mon.dpr, top+14*mon.dpr);
+  }
+  if(mon._hold){ ctx.fillStyle='rgba(255,209,102,.9)'; ctx.font=('bold '+(12*mon.dpr))+'px Consolas,monospace'; ctx.fillText('⏸ INSP. HOLD', W-118*mon.dpr, 16*mon.dpr); }
 }
 function capnoSVG(shape,etco2){
   var W=200,H=64,base=54,top=8,N=210,breaths=2.6,e=parseFloat(etco2)||40, pts=[];
@@ -1549,39 +2164,64 @@ function renderOperating(){
 
 /* ---------- interaktives Gerät (Verdampfer drehen, Flowmeter schieben) ---------- */
 var O2MAX=5;
+/* Endwert des Flowmeters: Grosstier- und Humangeraete gehen bis 10–15 L/min, ein
+ * Kleintiertisch bis 5. Kommt aus dem Geraeteprofil. */
+function o2Max(){ var g=curGeraet(); return (g&&g.o2Max)||O2MAX; }
 function flowmeterSVG(o2){
-  var H=210, top=16, bot=H-16, frac=Math.max(0,Math.min(1,o2/O2MAX)), fy=bot-(bot-top)*frac;
-  var ticks=[0,1,2,3,4,5].map(function(v){var y=bot-(bot-top)*(v/O2MAX);return '<line x1="32" y1="'+y+'" x2="46" y2="'+y+'" stroke="#7d93ad" stroke-width="1.3"/><text x="29" y="'+(y+3.8)+'" font-size="11" fill="#aebccc" text-anchor="end">'+v+'</text>';}).join('');
+  var MX=o2Max();
+  var H=210, top=16, bot=H-16, frac=Math.max(0,Math.min(1,o2/MX)), fy=bot-(bot-top)*frac;
+  var stufe=MX>10?5:(MX>6?2:1), marken=[]; for(var v=0;v<=MX;v+=stufe) marken.push(v);
+  var ticks=marken.map(function(v){var y=bot-(bot-top)*(v/MX);return '<line x1="32" y1="'+y+'" x2="46" y2="'+y+'" stroke="#7d93ad" stroke-width="1.3"/><text x="29" y="'+(y+3.8)+'" font-size="11" fill="#aebccc" text-anchor="end">'+v+'</text>';}).join('');
   return '<svg class="flowmeter" viewBox="0 0 66 '+H+'" data-ctrl="o2"><rect x="18" y="'+top+'" width="28" height="'+(bot-top)+'" rx="14" fill="#0b1420" stroke="#39506a"/>'+ticks+'<circle cx="32" cy="'+fy.toFixed(1)+'" r="11" fill="#ff4d4d" stroke="#fff" stroke-width="1.8" class="knob-float"/></svg>';
 }
-function vaporizerSVG(iso){
-  var cx=68,cy=68,R=54,a0=140,sweep=260, ang=a0+(Math.max(0,Math.min(6,iso))/6)*sweep, rad=ang*Math.PI/180;
+/*
+ * vaporizerSVG(vol) — der Verdampfer. Skala und Farbe richten sich nach dem GEWAEHLTEN GAS.
+ * Das ist keine Kosmetik: Sevofluran geht bis 8 Vol%, Desfluran bis 18. Eine "2,0" ist bei
+ * Isofluran rund 1,5 MAC und bei Desfluran ein Viertel MAC — dieselbe Zahl, gegenteilige
+ * Narkosetiefe. Ein Verdampferbild mit fester Iso-Skala waere hier gefaehrlich.
+ */
+function vaporizerSVG(vol){
+  var G=gasDef(), MX=G.max||6, farbe=G.flasche||'#a259c8';
+  var cx=68,cy=68,R=54,a0=140,sweep=260, ang=a0+(Math.max(0,Math.min(MX,vol))/MX)*sweep, rad=ang*Math.PI/180;
   var px=(cx+Math.cos(rad)*(R-14)).toFixed(1), py=(cy+Math.sin(rad)*(R-14)).toFixed(1), ticks='';
-  for(var v=0;v<=6;v++){ var ta=(a0+(v/6)*sweep)*Math.PI/180; ticks+='<line x1="'+(cx+Math.cos(ta)*R).toFixed(1)+'" y1="'+(cy+Math.sin(ta)*R).toFixed(1)+'" x2="'+(cx+Math.cos(ta)*(R-9)).toFixed(1)+'" y2="'+(cy+Math.sin(ta)*(R-9)).toFixed(1)+'" stroke="#aebccc" stroke-width="1.6"/><text x="'+(cx+Math.cos(ta)*(R+10)).toFixed(1)+'" y="'+(cy+Math.sin(ta)*(R+10)+3.5).toFixed(1)+'" font-size="11" fill="#cdd8e4" text-anchor="middle">'+v+'</text>'; }
-  return '<svg class="vaporizer" viewBox="0 0 136 136" data-ctrl="iso"><defs><radialGradient id="vgrad"><stop offset="0" stop-color="#f4f6f9"/><stop offset="1" stop-color="#cfd6de"/></radialGradient></defs><circle cx="68" cy="68" r="60" fill="#141b26" stroke="#39506a"/>'+ticks+'<circle cx="68" cy="68" r="36" fill="url(#vgrad)" stroke="#c3ccd6" stroke-width="1.5"/><line x1="68" y1="68" x2="'+px+'" y2="'+py+'" stroke="#e23b3b" stroke-width="4.5" stroke-linecap="round"/><circle cx="68" cy="68" r="7" fill="#2a2a2a"/></svg>';
+  var n=(MX>10?6:MX), stufe=MX/n;
+  for(var i=0;i<=n;i++){ var v=Math.round(i*stufe*10)/10; var ta=(a0+(i/n)*sweep)*Math.PI/180; ticks+='<line x1="'+(cx+Math.cos(ta)*R).toFixed(1)+'" y1="'+(cy+Math.sin(ta)*R).toFixed(1)+'" x2="'+(cx+Math.cos(ta)*(R-9)).toFixed(1)+'" y2="'+(cy+Math.sin(ta)*(R-9)).toFixed(1)+'" stroke="#aebccc" stroke-width="1.6"/><text x="'+(cx+Math.cos(ta)*(R+10)).toFixed(1)+'" y="'+(cy+Math.sin(ta)*(R+10)+3.5).toFixed(1)+'" font-size="10.5" fill="#cdd8e4" text-anchor="middle">'+v+'</text>'; }
+  return '<svg class="vaporizer" viewBox="0 0 136 136" data-ctrl="iso"><defs><radialGradient id="vgrad"><stop offset="0" stop-color="#f4f6f9"/><stop offset="1" stop-color="#cfd6de"/></radialGradient></defs><circle cx="68" cy="68" r="60" fill="#141b26" stroke="'+farbe+'" stroke-width="2"/>'+ticks+'<circle cx="68" cy="68" r="36" fill="url(#vgrad)" stroke="#c3ccd6" stroke-width="1.5"/><text x="68" y="52" font-size="10" fill="#5b6a7a" text-anchor="middle" font-weight="700">'+(G.kurz||'ISO')+'</text><line x1="68" y1="68" x2="'+px+'" y2="'+py+'" stroke="#e23b3b" stroke-width="4.5" stroke-linecap="round"/><circle cx="68" cy="68" r="7" fill="#2a2a2a"/></svg>';
 }
 function dragCtrl(el, onMove){
   el.addEventListener('pointerdown',function(e){ e.preventDefault(); try{el.setPointerCapture(e.pointerId);}catch(x){} onMove(e);
     function mv(ev){ onMove(ev); } function up(){ document.removeEventListener('pointermove',mv); document.removeEventListener('pointerup',up); }
     document.addEventListener('pointermove',mv); document.addEventListener('pointerup',up); });
 }
-function stepDev(field,delta){ state.dev.live=false; var max=(field==='o2'?O2MAX:6); state.dev[field]=Math.max(0,Math.min(max,Math.round((state.dev[field]+delta)*10)/10)); renderMachine(); renderDevCtrl(); }
+function stepDev(field,delta){ state.dev.live=false; var max=(field==='o2'?o2Max():gasMax()); state.dev[field]=Math.max(0,Math.min(max,Math.round((state.dev[field]+delta)*10)/10)); renderMachine(); renderDevCtrl(); }
+/* Beatmungsmodi, die DIESES Geraet wirklich hat. Ein Modus, den das Geraet am Tisch nicht
+ * kennt, gehoert nicht auf den Bildschirm — sonst empfiehlt die Analyse gleich etwas, das
+ * niemand einstellen kann. */
+function ventModiVerfuegbar(){
+  var alle=A.machine.ventModes||[], g=curGeraet();
+  if(!g||!g.ventModi||!g.ventModi.length) return alle;
+  var erlaubt=g.ventModi;
+  return alle.filter(function(m){ return erlaubt.indexOf(m.id)>=0; });
+}
 function renderMachine(){
   var box=$('#machineControls'); if(!box) return;
   if(state.dev.auto==null) state.dev.auto=false;
-  var modes=A.machine.ventModes||[];
+  var modes=ventModiVerfuegbar(), G=gasDef(), g=curGeraet();
+  if(g && !g.narkose){ box.innerHTML='<div class="muted" style="font-size:12.5px;padding:8px 2px">Für diesen Arbeitsplatz ist kein Narkosegerät gewählt – der virtuelle Monitor läuft alleine weiter. Modell oben auswählen, wenn eines dazugehört.</div>'; return; }
+  var gasWahl=(g&&g.gase&&g.gase.length>1)?('<div class="gaswahl">'+g.gase.map(function(id){ var ga=VG.gas(id)||{}; return '<button data-gas="'+id+'" class="'+(id===state.dev.gas?'active':'')+'" style="'+(id===state.dev.gas?('background:'+(ga.flasche||'#a259c8')+';border-color:'+(ga.flasche||'#a259c8')):'')+'" data-vp-tip="'+(ga.name||id)+(ga.hinweis?' – '+ga.hinweis:'')+'">'+(ga.kurz||id)+'</button>'; }).join('')+'</div>'):'';
   box.innerHTML =
-    '<div class="mc-item" data-vp-tip="Frischgas-/Sauerstofffluss (L/min). Schieben, Mausrad oder −/+ (0,1). Bei Hypoxie/Notfall hoch + 100 % O₂."><div class="mc-label">O₂-Fluss (0–5)</div>'+flowmeterSVG(state.dev.o2)+
+    '<div class="mc-item" data-vp-tip="Frischgas-/Sauerstofffluss (L/min). Schieben, Mausrad oder −/+ (0,1). Bei Hypoxie/Notfall hoch + 100 % O₂."><div class="mc-label">O₂-Fluss (0–'+o2Max()+')</div>'+flowmeterSVG(state.dev.o2)+
       '<div class="mc-fine"><button class="mc-step" data-step="o2:-" aria-label="O₂ minus 0,1">−</button><div class="mc-val">'+state.dev.o2.toFixed(1)+' L/min</div><button class="mc-step" data-step="o2:+" aria-label="O₂ plus 0,1">+</button></div></div>'+
-    '<div class="mc-item" data-vp-tip="Isofluran-Verdampfer (Vol%). Drehen, Mausrad oder −/+ (0,1). Zu hoch = häufigste Hypotonie-/Bradykardie-Ursache → zuerst senken; bei CPR AUS."><div class="mc-label">Isofluran V60</div>'+vaporizerSVG(state.dev.iso)+
-      '<div class="mc-fine"><button class="mc-step" data-step="iso:-" aria-label="Iso minus 0,1">−</button><div class="mc-val">'+state.dev.iso.toFixed(1)+' Vol%</div><button class="mc-step" data-step="iso:+" aria-label="Iso plus 0,1">+</button></div></div>'+
+    '<div class="mc-item" data-vp-tip="'+(G.name||'Isofluran')+'-Verdampfer (Vol%, Skala 0–'+G.max+'). Drehen, Mausrad oder −/+. Zu hoch = häufigste Hypotonie-/Bradykardie-Ursache → zuerst senken; bei CPR AUS."><div class="mc-label">'+(G.name||'Isofluran')+' · Verdampfer</div>'+vaporizerSVG(state.dev.iso)+
+      '<div class="mc-fine"><button class="mc-step" data-step="iso:-" aria-label="Verdampfer minus">−</button><div class="mc-val">'+state.dev.iso.toFixed(1)+' Vol%</div><button class="mc-step" data-step="iso:+" aria-label="Verdampfer plus">+</button></div>'+gasWahl+'</div>'+
     '<div class="mc-item" data-vp-tip="Beatmungsmodus. VCV/PCV = IPPV/CMV (kontrolliert); VS/VS+/PSV = spontan druckunterstützt; CPAP/PEEP = nur PEEP; SIMV = Weaning; Manuell = Beutel."><div class="mc-label">Beatmung</div><div class="mc-toggle" id="mcAuto"><button class="'+(!state.dev.auto?'active':'')+'" data-a="0">Manuell</button><button class="'+(state.dev.auto?'active':'')+'" data-a="1">Auto</button></div>'+
       '<div class="mc-modes" id="mcModes">'+modes.map(function(mo){return '<button data-m="'+mo.id+'"'+(state.dev.mode===mo.id?' class="active"':'')+' data-vp-tip="'+mo.name+(mo.full?' – '+mo.full:'')+'">'+mo.name+'</button>';}).join('')+'</div></div>'+
     '<div class="mc-item" data-vp-tip="O₂-Flush füllt schnell mit reinem O₂ (umgeht Verdampfer). APL offen halten (2–3) – NIE geschlossen lassen (Barotrauma). Atemkalk prüfen."><div class="mc-label">O₂-Flush / APL</div><button class="mc-flush" id="mcFlush">O₂+ Flush</button><div class="mc-hint">APL offen (2–3)<br>Absorber prüfen</div></div>';
-  var fm=box.querySelector('.flowmeter'); if(fm){ dragCtrl(fm,function(e){ var r=fm.getBoundingClientRect(); var sy=r.height/210; var frac=1-(e.clientY-r.top-16*sy)/(178*sy); frac=Math.max(0,Math.min(1,frac)); state.dev.o2=Math.round(frac*O2MAX*10)/10; renderMachine(); renderDevCtrl(); });
+  var fm=box.querySelector('.flowmeter'); if(fm){ dragCtrl(fm,function(e){ var r=fm.getBoundingClientRect(); var sy=r.height/210; var frac=1-(e.clientY-r.top-16*sy)/(178*sy); frac=Math.max(0,Math.min(1,frac)); state.dev.live=false; state.dev.o2=Math.round(frac*o2Max()*10)/10; renderMachine(); renderDevCtrl(); });
     fm.addEventListener('wheel',function(e){ e.preventDefault(); stepDev('o2', e.deltaY<0?0.1:-0.1); },{passive:false}); }
-  var vp=box.querySelector('.vaporizer'); if(vp){ dragCtrl(vp,function(e){ var r=vp.getBoundingClientRect(); var a=Math.atan2(e.clientY-(r.top+r.height/2), e.clientX-(r.left+r.width/2))*180/Math.PI; if(a<0)a+=360; if(a<140)a+=360; a=Math.max(140,Math.min(400,a)); state.dev.iso=Math.round((a-140)/260*60)/10; renderMachine(); renderDevCtrl(); });
+  var vp=box.querySelector('.vaporizer'); if(vp){ dragCtrl(vp,function(e){ var r=vp.getBoundingClientRect(); var a=Math.atan2(e.clientY-(r.top+r.height/2), e.clientX-(r.left+r.width/2))*180/Math.PI; if(a<0)a+=360; if(a<140)a+=360; a=Math.max(140,Math.min(400,a)); state.dev.live=false; state.dev.iso=Math.round((a-140)/260*gasMax()*10)/10; renderMachine(); renderDevCtrl(); });
     vp.addEventListener('wheel',function(e){ e.preventDefault(); stepDev('iso', e.deltaY<0?0.1:-0.1); },{passive:false}); }
+  $$('#machineControls .gaswahl button').forEach(function(b){ b.onclick=function(){ state.dev.gas=b.dataset.gas; state.dev.live=false; geraetWechsel(); }; });
   $$('#machineControls .mc-step').forEach(function(b){ b.onclick=function(){ var p=b.dataset.step.split(':'); stepDev(p[0], p[1]==='+'?0.1:-0.1); }; });
   $$('#mcAuto button').forEach(function(b){ b.onclick=function(){ state.dev.live=false; state.dev.auto=(b.dataset.a==='1'); renderMachine(); renderDevCtrl(); }; });
   $$('#mcModes button').forEach(function(b){ b.onclick=function(){ state.dev.live=false; state.dev.mode=b.dataset.m; state.dev.auto=(state.dev.mode!=='manual'&&state.dev.mode!=='cpap'); renderMachine(); renderDevCtrl(); if(typeof renderVentPanel==='function') renderVentPanel(); if(typeof renderVentModes==='function') renderVentModes(); }; });
@@ -1641,7 +2281,9 @@ function activeVentSit(){ var sc=ventScenarioList();
   return 'routine'; }
 /* ---------- Beatmungsmodus-Berater: bewertet JEDEN Modus live ---------- */
 function ventAdvice(){
-  var modes=(A.machine.ventModes||[]);
+  /* Nur Modi, die das GEWAEHLTE Geraet hat — ein empfohlener Modus, den niemand einstellen
+   * kann, ist schlimmer als keine Empfehlung. */
+  var modes=ventModiVerfuegbar();
   var out={ level:{}, why:{}, primary:null, signals:[] };
   if(!modes.length) return out;
   var r=monResolve(), v=monVitals(), w=state.wt||0;
@@ -1873,11 +2515,11 @@ function renderVentReco(){
 }
 function renderVentPanel(){
   var card=$('#ventCard'); if(!card) return; state.dev.vp=state.dev.vp||{};
-  var lbl=$('#ventPatLbl'); if(lbl) lbl.innerHTML=sp().name+' '+fmt(state.wt)+' kg'+(state.dev.live?' <span class="vm-live" title="Zeigt exakt die am echten Veta 5 eingestellten Werte – Handänderung übernimmt wieder die manuelle Steuerung">🔗 live vom Veta 5 gespiegelt</span>':'');
+  var lbl=$('#ventPatLbl'); if(lbl) lbl.innerHTML=sp().name+' '+fmt(state.wt)+' kg'+(state.dev.live?(' <span class="vm-live" title="Zeigt exakt die am echten Gerät eingestellten Werte – Handänderung übernimmt wieder die manuelle Steuerung">🔗 live von '+geraetName()+' gespiegelt</span>'):'');
   var m=curVentMode();
   var adv=ventAdvice();
   var bar=$('#ventModeBar');
-  if(bar){ bar.innerHTML=(A.machine.ventModes||[]).map(function(mo){
+  if(bar){ bar.innerHTML=ventModiVerfuegbar().map(function(mo){
       var lvl=adv.level[mo.id], why=adv.why[mo.id]||'';
       var glow=lvl?(' vm-'+lvl):'';
       var badge= lvl==='rec'?'<span class="vm-badge b-rec">✓</span>': lvl==='avoid'?'<span class="vm-badge b-avoid">✕</span>': lvl==='caution'?'<span class="vm-badge b-caution">!</span>':'';
@@ -2336,6 +2978,10 @@ function switchTab(v){
 }
 function rerender(){ renderProto(); renderLaCalc(); renderDrugs(); renderSettings(); renderMachine(); renderDevCtrl(); renderVentPanel(); renderInjection(); renderBreedProfile(); updateBreedBanner(); renderMedLog(); if(mon.running) renderMonValues(); }
 function boot(){
+  /* Zuerst das Geraet: Kacheln, Kurvenbahnen und Beatmungsmodi haengen daran, und die
+   * gemerkte Modellwahl der Praxis soll schon beim ersten Aufbau stehen — sonst baut sich
+   * das ganze Bild eine Zehntelsekunde spaeter sichtbar um. */
+  geraetLaden(); renderGeraetWahl();
   syncPatient(); renderIncidents(); renderFilters(); renderLaCalc(); renderDrugs(); renderInfo(); renderCapno(); renderEkgGallery(); renderInjection(); renderBreedProfile(); renderVentPanel(); renderMedLog();
   $$('#tabs .tab').forEach(function(t){ t.onclick=function(){ switchTab(t.dataset.view); }; });
   /* Ansichts-Verlauf: Knöpfe + Tastatur. Die erste Ansicht wird als Anfang des Verlaufs gemerkt,
@@ -2395,7 +3041,45 @@ try{ window.state=state;
   window.navZurueck=navZurueck; window.navVor=navVor; window.navBuendel=navBuendel;
   /* AF-Quelle vom Bridge (Kapnograph vor Monitor). Wird am AF-Feld angezeigt. */
   window.__setAfSource=function(src){ state._afSource=(src==='kapnograph'||src==='monitor')?src:null; try{ if(mon.running) renderMonValues(); }catch(e){} };
+  /* ===== UNIVERSELLES GERAET: Bruecken fuer Station und Fern-Web-App (05.08.2026) =====
+   * __setMesswerte(o)  Beatmungs-/Gaswerte, die es als Eingabefeld gibt, aber NICHT im
+   *                    klassischen Monitor-Rundruf standen (Ppeak, PEEP, Vt, FiO2, EtAA, FiCO2).
+   *                    null/undefined = "kein Geraet liefert das" -> Feld wird GELEERT, damit ein
+   *                    vorbelegter Normwert nicht wie eine Messung aussieht (Befund 22.07.2026).
+   * __setGeraetProfil  weiter oben: das erkannte Modell.
+   * Alles rein lesend — es geht nichts an ein Geraet zurueck. */
+  window.__setMesswerte=function(o){
+    if(!o||typeof o!=='object') return;
+    if(!state.istVals) istInit();
+    /* Das letzte Paket merken. Ein Kanal, den das GERADE gewaehlte Modell nicht hat, wird unten
+     * uebersprungen — waehlt der Tierarzt danach ein Modell, das ihn hat, muss der Wert trotzdem
+     * ankommen. Ohne diesen Speicher waere er fuer immer weg, weil die Station nur bei ECHTER
+     * Aenderung neu sendet (gemessen 05.08.2026: EtAA 1,7 lag an, das Bild zeigte die Bandmitte). */
+    state.mess=Object.assign({}, state.mess||{}, o);
+    var kanaele=(MON().params||[]).map(function(p){ return p.id; });
+    var geaendert=false;
+    state.istHand=state.istHand||{};
+    ['fico2','ppeak','pmean','peep','vte','mv','compl','fio2','etAgent','fiAgent','etn2o','temp2','ibp','pi'].forEach(function(k){
+      if(kanaele.indexOf(k)<0) return;
+      if(!(k in o)) return;
+      var val=o[k];
+      var neu=(val==null||val==='')?null:parseFloat(val);
+      if(neu!=null && isNaN(neu)) return;
+      /* AUCH null wird als "vom Geraet bestimmt" vermerkt. Der Grund ist der wichtigere Fall:
+       * liefert KEIN angeschlossenes Geraet einen Spitzendruck, muss die Kachel leer bleiben —
+       * eine aus dem Gewicht gerechnete Bandmitte waere im Livebetrieb von einer Messung nicht
+       * zu unterscheiden. Ohne diese Marke hat istNachziehen die gerade eingespielten Messwerte
+       * beim naechsten Modellwechsel wieder durch Bandmitten ersetzt (gemessen 05.08.2026 fern:
+       * Vt 36 kam an und stand eine Zeile spaeter auf 43). */
+      state.istHand[k]=1;
+      if(state.istVals[k]!==neu){ state.istVals[k]=neu; geaendert=true; }
+    });
+    if(geaendert){ try{ renderMonInputs(); if(mon.running) renderMonValues(); }catch(e){} }
+  };
+  window.curGeraet=curGeraet; window.geraetName=geraetName;
+  window.renderGeraetWahl=renderGeraetWahl; window.renderDevBtns=renderDevBtns; window.renderAlim=renderAlim;
 }catch(e){}
+
 
 /* ===== FERN-LIVE Seam: Werte vom Praxis-PC (VetStation) in die echte App einspeisen =====
  * Wird vom additiven Fern-Ansicht-Modul (unten) aufgerufen. Es ist DIESELBE Einspeisung, die die
@@ -2423,7 +3107,7 @@ function ventModeIdFromName(name){
   if(/(vs|volumesupport|volumensupport)/.test(s)) return 'vs';
   return null;
 }
-var __liveSig=null, __liveAlarmSig=null;
+var __liveSig=null, __liveAlarmSig=null, __liveMessSig=null, __liveGeraetSig=null;
 function applyLive(p){
   if(!p) return;
   var schwer=false;   // erzwingt den teuren Vollaufbau
@@ -2433,11 +3117,39 @@ function applyLive(p){
   state.monMode='ist';
   if(!state.istVals) istInit();
   var v=p.vitals||{}, iv=state.istVals;
-  function sv(k,val){ if(val!=null && !isNaN(val)) iv[k]=val; }
+  /* Ein vom Geraet gelieferter Wert gilt als GESETZT: er darf beim naechsten Gewichts- oder
+   * Tierartwechsel nicht von einer Bandmitte ueberschrieben werden (istNachziehen). */
+  state.istHand=state.istHand||{};
+  function sv(k,val){ if(val!=null && !isNaN(val)){ iv[k]=val; state.istHand[k]=1; } }
   sv('hr',v.hr); sv('spo2',v.spo2); sv('etco2',v.etco2); sv('rr',(v.af!=null?v.af:v.rr)); sv('temp',v.temp); sv('sys',v.sys); sv('dia',v.dia);
   var s=iv.sys||0, d=iv.dia||0;
   iv.nibp=(s>0&&d>0)?Math.round(d+(s-d)/3):(v.map!=null?v.map:(iv.nibp||0));
   if(v.ekgRhythm && v.ekgRhythm!==state.rhythm && (A.ekg||[]).some(function(r){return r.id===v.ekgRhythm;})){ state.rhythm=v.ekgRhythm; schwer=true; }
+
+  /* ===== UNIVERSELLES VIRTUELLES GERAET, FERN (05.08.2026) =====
+   * Beatmungs- und Gaskanaele gehen ueber DIESELBE Bruecke wie am Praxis-PC (__setMesswerte),
+   * und das erkannte Modell ueber dieselbe Bruecke wie dort (__setGeraetProfil). Genau das ist
+   * der Grund, warum fern und lokal dasselbe Bild entsteht: es ist derselbe Aufruf, nicht eine
+   * zweite Umsetzung. Waere es hier nachgebaut, waere es beim naechsten neuen Kanal wieder
+   * auseinandergelaufen — so wie einst der Veta-5-Spiegel, der lokal lief und fern still tot war. */
+  try{
+    if(window.__setMesswerte){
+      var mw={};
+      ['fico2','ppeak','pmean','peep','vte','mv','compl','fio2','etAgent','fiAgent','etn2o','pi','temp2','ibp']
+        .forEach(function(k){ mw[k]=(v[k]==null?null:v[k]); });
+      var msig=JSON.stringify(mw);
+      if(msig!==__liveMessSig){ __liveMessSig=msig; window.__setMesswerte(mw); }
+    }
+  }catch(e){}
+  try{
+    if(window.__setGeraetProfil){
+      var gm=null, gn=null;
+      (p.devices||[]).forEach(function(d){ if(!d||!d.model) return;
+        if(d.role==='anesthesia'||d.role==='capno'){ if(!gn) gn=d.model; } else if(!gm) gm=d.model; });
+      var gsig=(gm||'')+'|'+(gn||'');
+      if(gsig!=='|' && gsig!==__liveGeraetSig){ __liveGeraetSig=gsig; window.__setGeraetProfil({mon:gm,nark:gn}); schwer=true; }
+    }
+  }catch(e){}
 
   /* Narkosegeraet spiegeln — genau wie lokal: Verdampfer, Frischgas, Beatmungsmodus, Parameter.
    * Damit gluehen die Beatmungsmodus-Karten fern mit derselben Empfehlung wie am Praxis-PC. */
@@ -2495,6 +3207,13 @@ function applyLive(p){
  * Zusaetzlich geraeumt wird alles, was applyLive nur BEDINGT zuweist und deshalb aus dem vorigen
  * Saal stehenbliebe: der EKG-Rhythmus (ein 'flat' von dort ergibt "Asystolie - CPR" fuer ein
  * gesundes Tier) und die Geraeteeinstellungen samt Spiegelmarken.
+ *
+ * (4) state.istHand / state.mess — NEU 05.08.2026 mit dem universellen virtuellen Geraet.
+ * istHand merkt sich, welche Kanaele von Hand oder von einem Geraet gesetzt wurden; sie werden
+ * danach nicht mehr an Tierart und Gewicht angepasst. Bleibt die Marke beim Saalwechsel stehen,
+ * gelten die Messkanaele des VORIGEN Saals weiterhin als gesetzt — fremde Zahlen unter neuem
+ * Namen, und istNachziehen kommt nie wieder an sie heran. state.mess ist das zuletzt vom Geraet
+ * gelieferte Messpaket und gehoert aus demselben Grund dem Saal, nicht dem Zuschauer.
  * --------------------------------------------------------------------------- */
 function neuerPatient(p){
   var art=(p&&p.species)||null;
@@ -2503,9 +3222,16 @@ function neuerPatient(p){
   state.breed=(p&&p.breed&&VB&&VB.byId&&VB.byId(p.breed))?p.breed:null;
   state.rhythm='sinus';
   var wtEl=$('#wt'); if(wtEl) wtEl.value=state.wt;
+  state.istHand={}; state.mess=null;   // siehe (4) im Kopf dieses Blocks
   istInit();
   var dv=state.dev; if(dv){ dv.mirror={}; dv.vp={}; dv.live=false; dv.o2=1; dv.iso=2; dv.mode='vcv'; dv.auto=false; }
-  __liveSig=null; __liveAlarmSig=null;
+  /* Auch die Modellerkennung gehoert zum Saal, nicht zum Zuschauer: der naechste Saal darf ein
+   * anderes Geraet haben. Eine HANDwahl des Zuschauers bleibt erhalten (autoErkannt=false). */
+  if(state.geraet && state.geraet.autoErkannt){
+    if(state.geraet.autoErkannt.mon!==false) state.geraet.autoErkannt.mon=null;
+    if(state.geraet.autoErkannt.nark!==false) state.geraet.autoErkannt.nark=null;
+  }
+  __liveSig=null; __liveAlarmSig=null; __liveMessSig=null; __liveGeraetSig=null;
 }
 try{
   window.__anaesLive={ apply:applyLive, tab:switchTab, monResolve:monResolve, neuerPatient:neuerPatient,
@@ -2940,6 +3666,8 @@ dock.addEventListener('click',function(e){
 fab.addEventListener('click',function(){ dock.classList.remove('collapsed'); fab.classList.remove('show'); });
 })();
 </script>
+</body>
+</html>
 
 <!-- ================= FERN-LIVE Ansicht (Werte vom Praxis-PC über Firebase) ================= -->
 <style>
