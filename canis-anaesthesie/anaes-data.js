@@ -51,8 +51,8 @@ window.ANAES = {
         ratte:{low:0.05,high:0.1,unit:'mg/kg',route:'SC/IM/IP',conc:'0,05 mg/mL (aus 0.5 mg/mL verduennt)',indication:'Bradykardie, Speichel-/Bronchialsekretion vor Maskennarkose',notes:'Quelle: dvm360 Small Mammal Anesthesia Proceedings (0,05 mg/kg SC); Illinois ACS fuehrt Atropin im Ketamin-Xylazin-Gemisch mit 0,005-0,02 mg/kg. Ratten haben - anders als Kaninchen - keine relevante Atropinesterase.',caution:'Nicht routinemaessig geben: verdickt Sekret und kann winzige Atemwege verlegen. Volumen unbedingt verduennen.'},
         rennmaus:{low:0.05,high:0.2,unit:'mg/kg',route:'SC/IM/IP',conc:'0,05 mg/mL (aus 0,5 mg/mL verduennt)',indication:'Bradykardie, Sekretkontrolle',notes:'Quelle: Kleinnager-Formularien (Carpenter-Linie, Veterian Key Rodents 0,1-0,4 mg/kg SC/IM). Keine rennmausspezifische Studie.',caution:'Verduennt spritzen. Handling zum Injizieren ist bei der Rennmaus selbst ein Krampfausloeser - moeglichst am bereits sedierten Tier geben.'},
         hamster:{low:0.05,high:0.2,unit:'mg/kg',route:'SC/IM/IP',conc:'0,05 mg/mL (aus 0,5 mg/mL verduennt)',indication:'Bradykardie unter Alpha-2-Agonisten, Salivation/Bronchialsekret vor Maskennarkose',notes:'Quelle: Exotic-Formulary-Werte fuer Kleinnager 0,05 mg/kg SC (Carpenter-Linie); Laborformularien nennen bis 0,1-0,4 mg/kg SC/IM. Wirkdauer beim Nager kurz (20-30 min), ggf. wiederholen.',caution:'Nur verduennt spritzen - unverduennt sind 0,01 mL kaum dosierbar. Erhoeht die Herzarbeit; beim alten Goldhamster mit Kardiomyopathie/Vorhofthrombose Nutzen gegen Sauerstoffverbrauch abwaegen. Sekret wird zaeher, nicht weniger.'},
-        hund:{low:0.02,high:0.04,unit:'mg/kg',route:'IV/IM/SC',conc:'0.5 mg/mL',indication:'Vagale Bradykardie / Asystolie',notes:'IV wirkt in <1 min. Transiente Tachykardie möglich. Organophosphat-/Carbamat-Vergiftung: 0,2 mg/kg (¼ IV, ¾ IM/SC), alle 10 min wiederholen bis Speichelfluss sistiert.',caution:'Nicht bei Sinustachykardie; kann AV-Block paradox verschlechtern.'},
-        katze:{low:0.02,high:0.04,unit:'mg/kg',route:'IV/IM/SC',conc:'0.5 mg/mL',indication:'Vagale Bradykardie',notes:'',caution:''},
+        hund:{low:0.02,high:0.04,unit:'mg/kg',route:'IV/IM/SC',conc:'0.5 mg/mL',indication:'Vagale Bradykardie / Asystolie',notes:'IV wirkt in <1 min. Transiente Tachykardie möglich. Organophosphat-/Carbamat-Vergiftung: 0,2 mg/kg (¼ IV, ¾ IM/SC), alle 10 min wiederholen bis Speichelfluss sistiert.',caution:'Nicht bei Sinustachykardie; kann AV-Block paradox verschlechtern. NICHT gegen eine α2-bedingte Bradykardie bei normalem oder hohem Blutdruck — dort ist die niedrige Frequenz die Antwort auf den hohen Gefäßwiderstand, und ein Anticholinergikum treibt Druck und Sauerstoffbedarf hoch und erzeugt Extrasystolen. Stattdessen abwarten oder Atipamezol. Bei infranodalem AV-Block II° Mobitz II und III° kaum wirksam: einmalig als Test, bei Nichtansprechen nicht nachdosieren.'},
+        katze:{low:0.02,high:0.04,unit:'mg/kg',route:'IV/IM/SC',conc:'0.5 mg/mL',indication:'Vagale Bradykardie',notes:'',caution:'Nicht bei Sinustachykardie. NICHT gegen eine α2-bedingte Bradykardie bei normalem oder hohem Blutdruck — dort ist die niedrige Frequenz die Antwort auf den hohen Gefaesswiderstand; ein Anticholinergikum treibt Druck, Sauerstoffbedarf und Extrasystolen hoch. Stattdessen abwarten oder Atipamezol. Bei infranodalem AV-Block II° Mobitz II und III° kaum wirksam.'},
         kaninchen:{low:0.1,high:0.5,unit:'mg/kg',route:'SC/IM/IV',conc:'0.5 mg/mL',indication:'Bradykardie',notes:'Höhere Dosis nötig – bis 60 % haben Atropinesterase.',caution:'Glycopyrrolat oft zuverlässiger.'},
         meerschwein:{low:0.05,high:0.2,unit:'mg/kg',route:'SC/IM',conc:'0.5 mg/mL',indication:'Bradykardie/Speichel',notes:'',caution:''},
         reptil:{low:0.01,high:0.04,unit:'mg/kg',route:'IM/IV/IO',conc:'0.5 mg/mL',indication:'Bradykardie',notes:'',caution:'Temperaturabhängige Wirkung.'}
@@ -64,8 +64,8 @@ window.ANAES = {
         ratte:{low:0.01,high:0.02,unit:'mg/kg',route:'SC/IM',conc:'0.2 mg/mL',indication:'Bradykardie, Antisialogogum; passiert die Blut-Hirn-Schranke nicht',notes:'Quelle: dvm360 Small Mammal Anesthesia Proceedings (0,01-0,02 mg/kg SC/IM fuer Kleinsaeuger inkl. Nager).',caution:'Langsamerer Wirkeintritt als Atropin - im akuten Bradykardie-Notfall Atropin bevorzugen.'},
         rennmaus:{low:0.01,high:0.02,unit:'mg/kg',route:'SC/IM',conc:'0,2 mg/mL',indication:'Antisialagogum, Bradykardieprophylaxe',notes:'Quelle: Exotic-Anaesthesie-Kapitel (Veterian Key), Kleinnager-Sammeldosis.',caution:'Verduennen. Keine rennmausspezifischen Daten.'},
         hamster:{low:0.01,high:0.02,unit:'mg/kg',route:'SC/IM',conc:'0,2 mg/mL',indication:'Antisialagogum, Bradykardieprophylaxe; passiert die Blut-Hirn-Schranke nicht',notes:'Quelle: Exotic-Anaesthesie-Kapitel (Veterian Key) 0,01-0,02 mg/kg SC fuer Kleinnager.',caution:'Bei 40 g Koerpergewicht sind das 0,4-0,8 µg absolut - ohne Verduennung auf 0,02 mg/mL nicht dosierbar. Langsamerer Wirkeintritt als Atropin.'},
-        hund:{low:0.005,high:0.01,unit:'mg/kg',route:'IV/IM',conc:'0.2 mg/mL',indication:'Bradykardie',notes:'Langsamerer Anschlag, längere Wirkung als Atropin; kein ZNS-Übertritt.',caution:''},
-        katze:{low:0.005,high:0.01,unit:'mg/kg',route:'IV/IM',conc:'0.2 mg/mL',indication:'Bradykardie',notes:'',caution:''},
+        hund:{low:0.005,high:0.01,unit:'mg/kg',route:'IV/IM',conc:'0.2 mg/mL',indication:'Bradykardie',notes:'Langsamerer Anschlag, längere Wirkung als Atropin; kein ZNS-Übertritt.',caution:'Wie Atropin: nicht gegen eine α2-bedingte Bradykardie bei erhaltenem Blutdruck, nicht bei Tachykardie. Langsamerer Wirkungseintritt als Atropin — im akuten Notfall Atropin.'},
+        katze:{low:0.005,high:0.01,unit:'mg/kg',route:'IV/IM',conc:'0.2 mg/mL',indication:'Bradykardie',notes:'',caution:'Wie Atropin: nicht gegen eine α2-bedingte Bradykardie bei erhaltenem Blutdruck (AAFP/ISFM 2018), nicht bei Tachykardie. Langsamerer Wirkungseintritt — im akuten Notfall Atropin.'},
         kaninchen:{low:0.01,high:0.02,unit:'mg/kg',route:'SC/IM/IV',conc:'0.2 mg/mL',indication:'Bradykardie',notes:'Bevorzugt (kein Atropinesterase-Problem).',caution:''},
         meerschwein:{low:0.01,high:0.02,unit:'mg/kg',route:'SC/IM',conc:'0.2 mg/mL',indication:'Bradykardie',notes:'',caution:''},
         reptil:{low:0.01,high:0.02,unit:'mg/kg',route:'IM/IV',conc:'0.2 mg/mL',indication:'Bradykardie',notes:'',caution:''}
@@ -88,30 +88,30 @@ window.ANAES = {
       sources:['RECOVER 2024','Plumb’s'],
       species:{
         hund:{low:0.8,high:0.8,unit:'U/kg',route:'IV/IO',conc:'20 U/mL',indication:'CPR (Alternative zu Adrenalin)',notes:'Alle 3–5 min (jeder 2. Zyklus); bei refraktärem Kammerflimmern bevorzugt (RECOVER 2024). Konzentration je Präparat prüfen.',caution:'Nur im Kreislaufstillstand/schweren Schock.'},
-        katze:{low:0.8,high:0.8,unit:'U/kg',route:'IV/IO',conc:'20 U/mL',indication:'CPR',notes:'Wie Hund.',caution:''}
+        katze:{low:0.8,high:0.8,unit:'U/kg',route:'IV/IO',conc:'20 U/mL',indication:'CPR',notes:'Wie Hund.',caution:'Bei katecholaminrefraktaerer Hypotonie als Dauertropf 0,5–2 mU/kg/min; kein Erstlinienmittel bei der Hypotonie unter Inhalationsnarkose. Austritt aus der Vene fuehrt zur Nekrose.'}
       }},
     { id:'noradrenalin', name:'Noradrenalin', icon:'⚡', cls:'Vasopressor', aliases:['norepinephrin'],
       sources:['ACVAA'],
       species:{
-        hund:{low:0.05,high:1,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'Vasodilatatorische Hypotension',notes:'CRI, nach MAP titrieren. Zentraler/gut laufender Zugang.',caution:'Extravasation → Nekrose.'},
-        katze:{low:0.05,high:1,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'Hypotension',notes:'CRI titrieren.',caution:''}
+        hund:{low:0.05,high:2,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'Vasodilatatorische Hypotension',notes:'CRI, nach MAP titrieren. Zentraler/gut laufender Zugang.',caution:'Extravasation → Nekrose.'},
+        katze:{low:0.05,high:2,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'Hypotension',notes:'CRI titrieren.',caution:'Austritt aus der Vene fuehrt zur Nekrose — sicherer Zugang, moeglichst zentral. Kein Ersatz fuer Volumen bei Hypovolaemie.'}
       }},
     { id:'ephedrin', name:'Ephedrin', icon:'⚡', cls:'Vasopressor',
       sources:['Plumb’s'],
       species:{
-        hund:{low:0.05,high:0.25,unit:'mg/kg',route:'IV Bolus',conc:'50 mg/mL',indication:'Anästhesie-Hypotension',notes:'Bolus (0,1–0,25 typisch), wiederholbar; hebt HZV + Gefäßtonus. Wirkt ~10–15 min.',caution:''},
-        katze:{low:0.05,high:0.25,unit:'mg/kg',route:'IV Bolus',conc:'50 mg/mL',indication:'Hypotension',notes:'',caution:''}
+        hund:{low:0.05,high:0.25,unit:'mg/kg',route:'IV Bolus',conc:'50 mg/mL',indication:'Anästhesie-Hypotension',notes:'Bolus (0,06–0,2 typisch), hebt Herzzeitvolumen und Gefäßtonus. Der Blutdruckeffekt hält beim Hund oft unter 5 Minuten; eine Wiederholung nach 10 Minuten wirkt wegen Tachyphylaxie meist nicht mehr — dann auf einen Dauertropf wechseln.',caution:'Der Blutdruckeffekt haelt oft unter 5 Minuten; eine zweite Gabe nach 10 Minuten wirkt wegen Tachyphylaxie meist nicht mehr. Nicht bei Tachyarrhythmie. Bei Blutung ist Volumen und Blutstillung die Antwort, nicht der Vasopressor.'},
+        katze:{low:0.05,high:0.25,unit:'mg/kg',route:'IV Bolus',conc:'50 mg/mL',indication:'Hypotension',notes:'',caution:'Wie beim Hund: kurze Wirkung, Tachyphylaxie bei Wiederholung. Nicht bei Tachyarrhythmie oder HCM mit Ausflusstraktobstruktion.'}
       }},
     { id:'dopamin', name:'Dopamin', icon:'⚡', cls:'Vasopressor/Inotropikum',
       sources:['ACVAA'],
       species:{
         hund:{low:2,high:20,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'Hypotension / niedriges HZV',notes:'~2–3 dopaminerg, 3–10 β1-inotrop, 10–20 α1-vasopressorisch. Start 5, alle 15–30 min um ~2,5 titrieren (Praxis 5–15). Nur CRI, kein Bolus.',caution:'Tachyarrhythmien.'},
-        katze:{low:2,high:5,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'Hypotension',notes:'Niedriger Bereich (2–5), Start ~5, vorsichtig titrieren.',caution:'Arrhythmie-/Krampfrisiko höher.'}
+        katze:{low:2,high:5,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'Hypotension',notes:'Niedriger Bereich (2–5), Start ~5, vorsichtig titrieren.',caution:'Arrhythmie- und Krampfrisiko höher, deshalb höchstens 5 µg/kg/min. VAA 2021: Dopamin verhindert die Isofluran-Hypotonie der Katze NICHT — Noradrenalin oder Phenylephrin bevorzugen.'}
       }},
     { id:'dobutamin', name:'Dobutamin', icon:'⚡', cls:'Inotropikum',
       sources:['ACVAA'],
       species:{
-        hund:{low:2,high:10,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'Myokard-Depression / niedriges HZV',notes:'CRI titrieren.',caution:''},
+        hund:{low:2,high:10,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'Myokard-Depression / niedriges HZV',notes:'CRI titrieren.',caution:'Kann ventrikulaere Extrasystolen verstaerken (β1) — bei bestehender Ektopie nur unter EKG und erst nach Behebung der Ursache. Bei Hypovolaemie wirkungslos: zuerst Volumen.'},
         katze:{low:1,high:5,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'niedriges HZV',notes:'Niedriger dosieren.',caution:'Katze: Krampf-/Erregungsrisiko höher.'}
       }},
     { id:'lidocain_iv', name:'Lidocain (i.v. Antiarrhythmikum)', icon:'💓', cls:'Antiarrhythmikum',
@@ -124,7 +124,49 @@ window.ANAES = {
       sources:['RECOVER 2024','Hoehne et al. 2020 (SAT)'],
       species:{
         hund:{low:2.5,high:5,unit:'mg/kg',route:'IV/IO',conc:'50 mg/mL',indication:'Defibrillations-resistentes Kammerflimmern / pulslose VT (CPR)',notes:'Mittel der 1. Wahl bei >3–5 erfolglosen Defibrillationen (vor Lidocain).',caution:'Anaphylaxie durch Polysorbat-Trägerlösung möglich (Hund) – nach ROSC beobachten. Hypotension bei schneller Gabe.'},
-        katze:{low:2.5,high:5,unit:'mg/kg',route:'IV/IO',conc:'50 mg/mL',indication:'Defibrillations-resistente VF/VT',notes:'Wenig Katzendaten – zurückhaltend.',caution:''}
+        katze:{low:5,high:5,unit:'mg/kg',route:'IV/IO',conc:'50 mg/mL',indication:'Defibrillations-resistente VF/VT',notes:'Wenig Katzendaten – zurückhaltend.',caution:'Bei der Katze laut RECOVER 2024 das Mittel der Wahl bei defibrillationsresistentem Kammerflimmern oder pulsloser Kammertachykardie (5 mg/kg IV/IO) — Lidocain ist hier die falsche Wahl. Langsam geben, ausserhalb der Reanimation ueber 30–60 min: als Schnellbolus faellt der Blutdruck.'}
+      }},
+    /* ---- Sechs Mittel, die der Katalog bis 1.4.6 nicht kannte (Arzneimittel-Durchgang 06.08.2026)
+     * Zwei davon waren nicht nur eine Luecke, sondern eine Sackgasse:
+     *  - ohne MAGNESIUMSULFAT endet die Kammertachykardie nach 8 mg/kg Lidocain im Nichts;
+     *  - ohne TERBUTALIN verwies die Bronchospasmus-Karte auf einen "β2-Bronchodilatator",
+     *    den dieses Programm gar nicht fuehrte. Ein Rat auf ein Mittel, das im Katalog fehlt,
+     *    ist am OP-Tisch kein Rat. */
+    { id:'magnesiumsulfat', name:'Magnesiumsulfat', icon:'🧂', cls:'Antiarrhythmikum / Elektrolyt', aliases:['mgso4','magnesium'],
+      sources:['Schoeller JVECC 2020','Ranninger Vet Rec Case Rep 2019','Humphrey JVECC 2015'],
+      species:{
+        hund:{low:0.15,high:0.3,unit:'mEq/kg',route:'langsam IV über 5–15 min',conc:'500 mg/mL (50 %) = 4 mEq/mL — VERDÜNNEN',indication:'Lidocain-refraktäre ventrikuläre Arrhythmie, Torsade, Magnesiummangel',notes:'In NaCl 0,9 % oder Glukose 5 % verdünnen. Schoeller 2020 (16 Hunde) 0,2 mEq/kg über 5 min; Ranninger 2019 beschreibt die Konversion 20 min nach Magnesium, nachdem Lidocain-Boli und Dauertropf versagt hatten. Bei bekanntem Calciummangel Magnesiumchlorid statt -sulfat.',caution:'Zu schnell gegeben: Blutdruckabfall, AV-Block, Atemdepression. Nicht bei Anurie oder schwerer Niereninsuffizienz. Nicht mit Calcium in derselben Leitung.'},
+        katze:{low:0.15,high:0.3,unit:'mEq/kg',route:'langsam IV über 5–15 min',conc:'500 mg/mL (50 %) — VERDÜNNEN',indication:'wie Hund',notes:'Kaum Katzendaten — vom Hund übertragen.',caution:'Wie Hund, noch langsamer geben.'}
+      }},
+    { id:'procainamid', name:'Procainamid', icon:'💓', cls:'Antiarrhythmikum (Klasse Ia)',
+      sources:['Merck Veterinary Manual 2024'],
+      species:{
+        hund:{low:2,high:2,unit:'mg/kg',route:'langsam IV Bolus',conc:'100 mg/mL',indication:'Ventrikuläre Tachykardie, wenn Lidocain versagt',notes:'2 mg/kg als langsame Boli bis kumulativ höchstens 25 mg/kg über 10–15 min, danach Dauertropf 25–40 µg/kg/min. Alternativ 10–20 mg/kg IM/SC alle 6–8 h.',caution:'Negativ inotrop, Blutdruckabfall bei schneller Gabe — Blutdruck durchgehend messen. QT-Verlängerung. NICHT bei AV-Block oder ventrikulärem Ersatzrhythmus. Nicht mit einem zweiten Klasse-I-Mittel stapeln.'},
+        katze:{low:null,high:null,unit:'mg/kg',route:'',conc:'',indication:'',notes:'',caution:'Für die Katze gibt es keine belegte Antiarrhythmika-Dosis — nicht verwenden. Bei der Katze Amiodaron 5 mg/kg IV/IO (RECOVER 2024).'}
+      }},
+    { id:'esmolol', name:'Esmolol', icon:'💓', cls:'Antiarrhythmikum (β1-Blocker, ultrakurz)',
+      sources:['RECOVER 2024','JVECC 2021','Plumbs Veterinary Drug Handbook'],
+      species:{
+        hund:{low:0.1,high:0.5,unit:'mg/kg',route:'langsam IV über 1–5 min',conc:'10 mg/mL',indication:'Supraventrikuläre oder Sinustachykardie mit Kreislaufwirkung; in der Reanimation bei defibrillationsresistentem Rhythmus (RECOVER 2024: 0,5 mg/kg über 3–5 min, dann 50 µg/kg/min)',notes:'Dauertropf 25–200 µg/kg/min, in Schritten von 50 steigern. Halbwertszeit rund 9 min — die Wirkung ist wieder weg, bevor ein Schaden bleibt.',caution:'Negativ inotrop: bei Hypotonie, Herzinsuffizienz, AV-Block und Bradykardie KONTRAINDIZIERT. Nicht bei ventrikulärem Ersatzrhythmus. Nicht mit einem α2-Agonisten stapeln.'},
+        katze:{low:0.05,high:0.5,unit:'mg/kg',route:'langsam IV über 1 min',conc:'10 mg/mL',indication:'Supraventrikuläre Tachykardie bei normalem Blutdruck',notes:'50–500 µg/kg über 1 min, Dauertropf 50–200 µg/kg/min. Wegen der kurzen Wirkdauer bei eingeschränkter Pumpfunktion bevorzugt.',caution:'Bei Hypotonie kontraindiziert. Bei HCM mit Ausflusstraktobstruktion nur unter Blutdruckkontrolle.'}
+      }},
+    { id:'kaliumchlorid', name:'Kaliumchlorid', icon:'🧂', cls:'Elektrolyt',
+      sources:['AAHA Fluid Therapy Guidelines 2024','Plumbs Veterinary Drug Handbook'],
+      species:{
+        hund:{low:0.25,high:0.5,unit:'mmol/kg/h',route:'Dauertropf IV, nur verdünnt in der Trägerinfusion',conc:'2 mmol/mL (7,45 %) — NIE unverdünnt',indication:'Kaliummangel, besonders bei Ektopie, die auf Klasse-I-Antiarrhythmika nicht anspricht',notes:'Nach Serumkalium ersetzen. Ein Kaliummangel macht das Herz unempfindlich gegen Lidocain und Procainamid — ohne Kaliumausgleich wirkt kein Klasse-I-Mittel.',caution:'ABSOLUTE Obergrenze 0,5 mmol/kg/h — darüber Bradykardie, AV-Block, Asystolie. Niemals als Bolus, niemals unverdünnt, immer über Spritzenpumpe und mit EKG.'},
+        katze:{low:0.25,high:0.5,unit:'mmol/kg/h',route:'Dauertropf IV, nur verdünnt',conc:'2 mmol/mL — NIE unverdünnt',indication:'Kaliummangel',notes:'Wie Hund.',caution:'Wie Hund; bei Harnröhrenverschluss vorher eine Hyperkaliämie ausschließen.'}
+      }},
+    { id:'phenylephrin', name:'Phenylephrin', icon:'⚡', cls:'Vasopressor (reiner α1)',
+      sources:['AJVR 2023','VAA 2021 (Katze)'],
+      species:{
+        hund:{low:0.5,high:3,unit:'mcg/kg/min',route:'Dauertropf IV',conc:'10 mg/mL — verdünnen',indication:'Hypotonie durch Gefäßerweiterung, besonders nach Acepromazin',notes:'Bolus 1–3 µg/kg IV zur Überbrückung. Steht Acepromazin im Protokoll, wirkt ein reiner α1-Stoff besser als Mittel mit β2-Anteil.',caution:'Reflexbradykardie und Abfall des Herzzeitvolumens — kein Mittel bei geschwächtem Herzmuskel oder niedrigem Auswurf. Austritt aus der Vene führt zur Nekrose.'},
+        katze:{low:0.5,high:3,unit:'mcg/kg/min',route:'Dauertropf IV',conc:'10 mg/mL — verdünnen',indication:'Hypotonie unter Isofluran',notes:'Bei der Katze wirksam, Dopamin dagegen nicht (VAA 2021).',caution:'Reflexbradykardie.'}
+      }},
+    { id:'terbutalin', name:'Terbutalin', icon:'🫁', cls:'β2-Bronchodilatator', aliases:['bricanyl'],
+      sources:['Plumbs Veterinary Drug Handbook','VIN/WSAVA 2006'],
+      species:{
+        hund:{low:0.01,high:0.01,unit:'mg/kg',route:'SC/IM/langsam IV',conc:'0.5 mg/mL — für IV verdünnen',indication:'Akuter Bronchospasmus unter Narkose (Kapno-Haifischflosse)',notes:'Alle 4–6 h wiederholbar. Alternativ Salbutamol 4 µg/kg IV, bis 8 µg/kg; bei liegendem Tubus ist die Inhalation über Tubus und Spacer vorzuziehen.',caution:'Tachykardie, Muskelzittern, Kaliumabfall. Bei bestehender Tachyarrhythmie oder ventrikulärer Ektopie zurückhaltend — β2 verstärkt beides. Zuerst die mechanischen Ursachen ausschließen: Tubus, Sekret, Lagerung.'},
+        katze:{low:0.01,high:0.01,unit:'mg/kg',route:'SC/IM/langsam IV',conc:'0.5 mg/mL — verdünnen',indication:'Bronchospasmus / Asthmakrise',notes:'Bei der Katze das Standard-Notfall-β2; 0,01 mg/kg SC, Wirkung in 5–15 min.',caution:'Tachykardie; bei HCM Blutdruck und Frequenz überwachen.'}
       }},
     { id:'calcium', name:'Calciumgluconat 10 %', icon:'🧂', cls:'Notfall/Elektrolyt', aliases:['calciumgluconat','ca'],
       sources:['Plumb’s','Praxis'],
@@ -348,7 +390,7 @@ window.ANAES = {
         maus:{low:25,high:50,unit:'mcg/kg',route:'SC/IP (als Teil der MMF-Kombination)',conc:'0.05 mg/mL (50 mcg/mL), fuer die Maus 1:',indication:'Analgetische Komponente der vollstaendig antagonisierbaren Injektionsnarkose',notes:'Quelle: MMF-Maus 0,05 mg/kg = 50 mcg/kg (Fleischmann, Lab Anim 2016); niedriger dosiertes Schema 25 mcg/kg IP.',caution:'Starke Atemdepression, bei der Maus regelmaessig Hypoxie ohne Sauerstoffvorlage. Bei maennlichen C57BL/6 ist nach Fentanyl-Midazolam-Medetomidin eine akute obstruktive Uropathie beschrieben - Blase nach der Narkose kontrollieren. Antagonist'},
         ratte:{low:5,high:10,unit:'mcg/kg',route:'SC/IP (als Teil der MMF-Kombination)',conc:'0.05 mg/mL (50 mcg/mL), fuer die Ratte 1',indication:'Analgetische Komponente der vollstaendig antagonisierbaren Injektionsnarkose',notes:'Quelle: MMF-Protokoll Ratte 0,005 mg/kg = 5 mcg/kg (Albrecht BMC Vet Res 2014; GV-SOLAS-Schema).',caution:'Starke Atemdepression - nur mit Sauerstoffvorlage. Antagonist Naloxon 0,12 mg/kg SC; damit faellt aber auch die Analgesie weg, deshalb vorher ein NSAID oder Buprenorphin geben.'},
         hund:{low:2,high:5,unit:'mcg/kg',route:'IV Bolus',conc:'0.05 mg/mL (50 µg/mL)',indication:'Intraop. Analgesie',notes:'Danach CRI: intraop ~10–40 µg/kg/h (MAC-sparend; 0,17–0,7 µg/kg/min), postop/leicht 3–10 µg/kg/h. ~20–45 min vor Extubation reduzieren (Dysphorie/Bradykardie). Sehr kurz als Bolus.',caution:'Atemdepression/Bradykardie – Beatmung bereithalten.'},
-        katze:{low:1,high:3,unit:'mcg/kg',route:'IV Bolus',conc:'0.05 mg/mL',indication:'Analgesie',notes:'CRI 2–5 µg/kg/h.',caution:''}
+        katze:{low:1,high:3,unit:'mcg/kg',route:'IV Bolus',conc:'0.05 mg/mL',indication:'Analgesie',notes:'CRI 2–5 µg/kg/h.',caution:'Bei der Katze niedriger dosieren als beim Hund (1–3 µg/kg). Atemdepression und Bradykardie — Beatmung und Anticholinergikum bereithalten. Nicht mit einem zweiten µ-Agonisten stapeln.'}
       }},
     { id:'morphin', name:'Morphin', icon:'💊', cls:'Opioid (µ-Agonist)',
       sources:['Plumb’s'],
@@ -377,7 +419,7 @@ window.ANAES = {
         rennmaus:{low:0.5,high:1,unit:'mg/kg',route:'SC/IM',conc:'5 mg/mL (verduennen)',indication:'Antagonisierung von Medetomidin/Dexmedetomidin/Xylazin',notes:'Quelle: universitaere Versuchstier-Formularien fuer die Rennmaus - Atipamezol 0,5 mg/kg SC zur Umkehr von Dexmedetomidin; allgemein 5-fache Dexmedetomidin-Menge.',caution:'Analgesieverlust - Schmerz kann bei dieser Art einen Anfall triggern. Erst Analgesie sichern, dann antagonisieren. Waermezufuhr weiterlaufen lassen.'},
         hamster:{low:0.15,high:1,unit:'mg/kg',route:'SC/IM (IV nur im Notfall, langsam)',conc:'0,5 mg/mL (aus 5 mg/mL verduennt)',indication:'Antagonisierung von Medetomidin/Dexmedetomidin/Xylazin; Notfallmassnahme bei Alpha-2-bedin',notes:'Quelle: Nakamura et al., J Vet Med Sci 2017 - 0,15 mg/kg Atipamezol (dieselbe mg-Menge wie Medetomidin) liess Hamster rasch aufwachen und normalisierte auch die anaesthesiebedingte Hyperglykaemie/Insulinstoerung innerhalb von ~10 min. Faustregel sonst: 5-fache mg-Menge des gegebe',caution:'Zu schnelle IV-Gabe verursacht Tachykardie, Erregung und Blutdruckabfall - SC/IM bevorzugen. Hebt auch die Analgesie des Alpha-2 auf: vorher Buprenorphin/Meloxicam geben. Waermezufuhr nach Antagonisierung fortsetzen, sonst kuehlt das erwach'},
         hund:{low:0.05,high:0.2,unit:'mg/kg',route:'IM',conc:'5 mg/mL',indication:'Umkehr Medetomidin/Dexmed.',notes:'Faustregel: gleiches Volumen wie das gegebene Domitor/Dexdomitor (Antisedan 5 mg/mL) = 5× Medetomidin-µg = 10× Dexmedetomidin-µg. Katze: HALBES Volumen. IM, nicht IV (außer Notfall langsam).',caution:'Nicht < 30–40 min nach Ketamin (Exzitation/Krämpfe). Rasche Erweckung; Vasodilatation/Hypotension bei IV.'},
-        katze:{low:0.05,high:0.2,unit:'mg/kg',route:'IM',conc:'5 mg/mL',indication:'Umkehr α2',notes:'',caution:''},
+        katze:{low:0.025,high:0.1,unit:'mg/kg',route:'IM',conc:'5 mg/mL',indication:'Umkehr α2',notes:'',caution:'Bei der Katze etwa halbes Volumen. Nach der Umkehr faellt der Blutdruck ab und die Analgesie des α2 endet — Schmerzmittel bereithalten. Nicht bei Hypovolaemie ohne Volumenersatz.'},
         kaninchen:{low:0.1,high:1,unit:'mg/kg',route:'IM/SC',conc:'5 mg/mL',indication:'Umkehr α2',notes:'',caution:''}
       }},
     { id:'flumazenil', name:'Flumazenil', icon:'🔄', cls:'Benzodiazepin-Antagonist',
@@ -435,17 +477,17 @@ window.ANAES = {
       drugs:[ {id:'atropin',low:0.02,high:0.04,unit:'mg/kg',route:'IV',note:'Erste Wahl bei vagaler Bradykardie.'},
               {id:'glyco',low:0.005,high:0.01,unit:'mg/kg',route:'IV',note:'Alternative, längere Wirkung.'} ],
       speciesNotes:{ kaninchen:'Glycopyrrolat bevorzugen (Atropinesterase). Stress minimieren.', reptil:'Zuerst Körpertemperatur/POTZ prüfen – „Bradykardie" oft temperaturbedingt.' },
-      red:['Bradykardie + Hypotension ist ein Warnsignal – rasch handeln','HF-Abfall spät bei Hypoxie = präterminal → CPR-Bereitschaft'] },
+      red:['Bradykardie + Hypotension ist ein Warnsignal – rasch handeln','HF-Abfall spät bei Hypoxie = präterminal → CPR-Bereitschaft','AV-Block II° Mobitz II und III° sind infranodal — Atropin einmalig als Test, bei Nichtansprechen NICHT nachdosieren; Dopamin 5–10 µg/kg/min als Dauertropf und Bereitschaft zum Pacing'] },
 
     { id:'tachykardie', name:'Tachykardie', icon:'💓', cls:'Kreislauf', color:'#ff8c6b', tag:'HF ↑', short:'Herzfrequenz zu hoch',
       thresholds:{ hund:'HF > 160–180/min', katze:'HF > 200/min', kaninchen:'HF > 300/min', all:'anhaltend über arttypischem Bereich' },
       causes:['Zu flache Narkose / Schmerz','Hypovolämie / Blutverlust','Hyperkapnie / Hypoxie','Hyperthermie','Anticholinergika, Katecholamine, Ketamin','ventrikuläre Arrhythmie'],
       steps:['Narkosetiefe + Analgesie prüfen – bei Schmerz Opioid geben.','Volumenstatus prüfen: Blutverlust? → Kristalloid-Bolus.','Kapnografie/SpO₂ prüfen (Hyperkapnie/Hypoxie).','Temperatur prüfen (Hyperthermie).','EKG: Sinustachykardie vs. ventrikuläre Tachykardie unterscheiden.','Bei anhaltender VT mit Auswirkung: Lidocain (Hund).'],
       machine:'Bei Hyperkapnie Ventilation erhöhen (AF/AZV, IPPV); Iso ggf. anpassen; O₂ 100 %.',
-      drugs:[ {id:'fentanyl',low:2,high:5,unit:'mcg/kg',route:'IV',note:'Wenn Ursache Schmerz/zu flach.'},
+      drugs:[ {id:'fentanyl',low:null,high:null,unit:'mcg/kg',route:'IV',note:'Wenn Ursache Schmerz oder zu flache Narkose. Katze niedriger als Hund.'},
               {id:'methadon',low:0.1,high:0.3,unit:'mg/kg',route:'IV',note:'Analgesie-Alternative.'},
-              {id:'lidocain_iv',low:2,high:2,unit:'mg/kg',route:'langsam IV',note:'NUR bei ventrikulärer Tachykardie (Hund). Katze extrem vorsichtig.'} ],
-      speciesNotes:{ katze:'Lidocain nur im äußersten Fall, sehr niedrig/langsam.', all:'Immer erst Ursache (Schmerz/Volumen/CO₂) – nicht „blind" β-Blocker.' },
+              {id:'lidocain_iv',low:null,high:null,unit:'mg/kg',route:'langsam IV',note:'HUND: 2 mg/kg über 1–2 min, alle 5–10 min bis kumulativ höchstens 8 mg/kg, dann Dauertropf 25–75 µg/kg/min. KATZE: RECOVER 2024 rät ab — stattdessen Amiodaron 5 mg/kg IV/IO. VERBOTEN bei ventrikulärem Ersatzrhythmus (HF < 45/min) und bei AV-Block II°/III°.'} ],
+      speciesNotes:{ katze:'Bei der Katze KEIN Standard-Lidocain (RECOVER 2024). Zuerst die Ursachenkette: Oxygenierung, EtCO₂, Narkosetiefe, Analgesie, Volumen, Temperatur, Kalium und Magnesium. Bleibt eine kreislaufwirksame Kammertachykardie: Amiodaron 5 mg/kg IV/IO.', all:'Immer erst Ursache (Schmerz/Volumen/CO₂) – nicht „blind" β-Blocker.' },
       red:['Sinustachykardie ist meist Symptom – Ursache suchen, nicht nur Frequenz senken'] },
 
     { id:'tachypnoe', name:'Tachypnoe / hohe Atemfrequenz', icon:'🌬️', cls:'Atmung', color:'#ffd166', tag:'AF ↑', short:'Atemfrequenz zu hoch',
@@ -460,9 +502,9 @@ window.ANAES = {
     { id:'hypoxaemie', name:'Hypoxämie (niedrige SpO₂)', icon:'🫁', cls:'Atmung', color:'#ff4d4d', tag:'SpO₂ ↓', short:'Sauerstoffsättigung niedrig',
       thresholds:{ all:'SpO₂ < 95 % → handeln; < 90 % = kritisch (PaO₂ stark erniedrigt)' },
       causes:['Diskonnektion / leere O₂-Quelle','Ösophageale/einseitige Intubation, Tubus verlegt','Hypoventilation / Apnoe','Atelektase','Bronchospasmus / Lungenödem','Sensorartefakt (Perfusion/kalt)'],
-      steps:['O₂ auf 100 %, Frischgasfluss hoch – O₂-Quelle & Vapor prüfen.','Tubuslage & Kreissystem prüfen (Kapnografie bestätigt Intubation).','Manuell/IPPV beatmen (2–3 Blähmanöver, PIP ≤ Grenze).','SpO₂-Sensor umplatzieren (Zunge), Puls/Perfusion prüfen.','Auskultation: einseitig? Bronchospasmus? Sekret absaugen.','Ursache behandeln; wenn keine Besserung → Narkose beenden/CPR-Bereitschaft.'],
+      steps:['O₂ auf 100 %, Frischgasfluss hoch – O₂-Quelle & Vapor prüfen.','Tubuslage & Kreissystem prüfen (Kapnografie bestätigt Intubation).','Manuell/IPPV beatmen. Rekrutierung 15 cmH₂O über 30 s — nicht höher, 25 und 35 blähen über; danach PEEP 3–5 cmH₂O stehen lassen, sonst fällt die Lunge in Minuten wieder zusammen.','SpO₂-Sensor umplatzieren (Zunge), Puls/Perfusion prüfen.','Auskultation: einseitig? Bronchospasmus? Sekret absaugen.','Ursache behandeln; wenn keine Besserung → Narkose beenden/CPR-Bereitschaft.'],
       machine:'O₂-Fluss maximal, FiO₂ 100 %; Vapor kurz reduzieren; O₂-Flush nutzen; auf Manual/IPPV. PIP kontrolliert (Hund/Katze ≤ 15–20, Exoten niedriger).',
-      drugs:[ {id:'adrenalin',low:0.01,high:0.01,unit:'mg/kg',route:'IV',note:'Nur bei Kreislaufstillstand (siehe CPR).'} ],
+      drugs:[],   /* Adrenalin steht in der CPR-Karte. Hier stand es als erste Dosis des Zwischenfalls "Hypoxaemie" — ein Tier mit SpO2 94 und tastbarem Puls bekam damit eine ausgerechnete Adrenalin-Milliliterzahl. Am schlagenden, hypoxischen Herzen ist das der Weg ins Kammerflimmern. */
       speciesNotes:{ reptil:'Pulsoxymetrie oft unzuverlässig – klinisch (Farbe, Doppler) beurteilen; bei O₂-Beatmung Atemantrieb sinkt.', kaninchen:'Immer präoxygenieren; Intubation schwierig → Larynxmaske/Maske.' },
       red:['SpO₂ < 90 % ist ein Notfall – zuerst Gerät/Tubus, dann Patient','Erst nach Beatmung an Medikamente denken'] },
 
@@ -481,11 +523,11 @@ window.ANAES = {
       steps:['Isofluran reduzieren (häufigste Ursache!).','Volumenstatus: Kristalloid-Bolus geben.','Bradykardie? → Anticholinergikum (siehe Bradykardie).','Wenn trotz Volumen + weniger Iso: Vasopressor/Inotropikum.','Blutverlust kontrollieren; Wärme halten; MAP-Ziel > 60–70.'],
       machine:'Isofluran senken; O₂ 100 %; ggf. IPPV mit niedrigem Mitteldruck (hoher PIP senkt Vorlast).',
       drugs:[ {id:'ephedrin',low:0.05,high:0.2,unit:'mg/kg',route:'IV Bolus',note:'Schneller Bolus bei Anästhesie-Hypotension.'},
-              {id:'noradrenalin',low:0.05,high:1,unit:'mcg/kg/min',route:'CRI',note:'Bei vasodilatatorischer Hypotension, titrieren.'},
-              {id:'dopamin',low:5,high:10,unit:'mcg/kg/min',route:'CRI',note:'Inotrop + vasopressorisch.'},
-              {id:'dobutamin',low:2,high:10,unit:'mcg/kg/min',route:'CRI',note:'Bei Myokard-Depression / niedrigem HZV.'} ],
+              {id:'noradrenalin',low:null,high:null,unit:'mcg/kg/min',route:'CRI',note:'Bei vasodilatatorischer Hypotension, titrieren.'},
+              {id:'dopamin',low:null,high:null,unit:'mcg/kg/min',route:'CRI',note:'Inotrop und gefäßverengend. Katze höchstens 5 µg/kg/min; bei der Katze verhindert Dopamin die Isofluran-Hypotonie nicht (VAA 2021) — dort Noradrenalin oder Phenylephrin.'},
+              {id:'dobutamin',low:null,high:null,unit:'mcg/kg/min',route:'CRI',note:'Bei Myokarddepression oder niedrigem Herzzeitvolumen. Kann ventrikuläre Extrasystolen verstärken — bei bestehender Ektopie nur unter EKG.'} ],
       speciesNotes:{ all:'Kristalloid-Bolus Hund 10–20 mL/kg / Katze 5–10 mL/kg über 10–15 min, dann re-evaluieren (siehe Einstellungen/Infusion).' },
-      red:['Iso zu hoch ist die häufigste Narkose-Hypotension – zuerst Verdampfer runter'] },
+      red:['Iso zu hoch ist die häufigste Narkose-Hypotension – zuerst Verdampfer runter','Niemals einen Vasopressor auf einen unbestätigten Manschettenwert — am kalten oder engstellten Tier zuerst Manschettengröße, Sitz und Doppler prüfen'] },
 
     { id:'apnoe', name:'Apnoe / Atemstillstand', icon:'⛔', cls:'Atmung', color:'#ff4d4d', tag:'AF 0', short:'keine Spontanatmung',
       thresholds:{ all:'keine Atembewegung / EtCO₂-Kurve flach' },
@@ -493,7 +535,7 @@ window.ANAES = {
       steps:['Sofort 100 % O₂ + manuell/IPPV beatmen (10–15/min).','Narkose reduzieren (Vapor aus/niedrig).','Tubuslage & Kreislauf prüfen (Puls/EKG) – Stillstand? → CPR.','Antagonisieren wenn passend (Opioid→Naloxon, α2→Atipamezol, Benzo→Flumazenil).','Bis Spontanatmung zurückkehrt kontrolliert beatmen.'],
       machine:'Manual/IPPV, AF 10–15/min (Exoten 2–6), AZV 10–15 mL/kg, PIP-Grenze; Vapor reduzieren.',
       drugs:[ {id:'naloxon',low:0.01,high:0.04,unit:'mg/kg',route:'IV',note:'Opioid-Überhang.'},
-              {id:'atipamezol',low:0.05,high:0.2,unit:'mg/kg',route:'IM',note:'α2-Überhang.'},
+              {id:'atipamezol',low:null,high:null,unit:'mg/kg',route:'IM',note:'α2-Überhang. Katze etwa halbes Volumen.'},
               {id:'flumazenil',low:0.01,high:0.01,unit:'mg/kg',route:'IV',note:'Benzodiazepin-Überhang.'} ],
       speciesNotes:{ reptil:'Apnoe/„Breath-Hold" häufig – IPPV 2–4/min, Raumluft kann Atemantrieb fördern als 100 % O₂.' },
       red:['Kein Puls → sofort CPR (siehe 🚨)'] },
@@ -501,7 +543,7 @@ window.ANAES = {
     { id:'asystolie', name:'Herzstillstand / CPR (RECOVER)', icon:'🚨', cls:'Reanimation', color:'#ff2d2d', tag:'CPR', short:'Asystolie / PEA / Kammerflimmern',
       thresholds:{ all:'kein Puls / keine Herzaktion / EtCO₂-Abfall + flache Kurve' },
       causes:['Schwere Hypoxie/Hypoventilation','Überdosis Anästhetikum','Hypovolämie/Blutverlust','Elektrolyt (K⁺)','Vagal/Reflex'],
-      steps:['Hilfe rufen, Zeit notieren. Vapor AUS, 100 % O₂.','Thoraxkompressionen 100–120/min, 2 min ununterbrochen, dann Kompressor wechseln; Seitenlage, Herzhöhe.','Beatmung 10/min (nicht hyperventilieren).','Zugang legen; Adrenalin 0,01 mg/kg IV/IO jeden 2. Zyklus (alle 3–5 min) – die ganze CPR über. Alternative: Vasopressin 0,8 U/kg. KEINE Hochdosis (RECOVER 2024).','Bei nicht-defibrillierbarem Rhythmus (Asystolie/PEA), v.a. hoher Vagotonus: Atropin 0,04 mg/kg IV/IO EINMALIG (nicht wiederholen).','EKG alle 2 min prüfen; Kammerflimmern/pulslose VT → Defibrillation biphasisch 2–4 J/kg (monophasisch 4–6 J/kg), danach sofort 2 min CPR; nach >3–5 erfolglosen Schocks Amiodaron 2,5–5 mg/kg IV/IO (dann Lidocain 2 mg/kg); reversible Ursachen (Hypovolämie/Hypoxie/K⁺/Azidose) behandeln.'],
+      steps:['Hilfe rufen, Zeit notieren. Vapor AUS, 100 % O₂.','Thoraxkompressionen 100–120/min, 2 min ununterbrochen, dann Kompressor wechseln; Seitenlage, Herzhöhe.','Beatmung 10/min (nicht hyperventilieren).','Zugang legen; Adrenalin 0,01 mg/kg IV/IO jeden 2. Zyklus (alle 3–5 min) – die ganze CPR über. Alternative: Vasopressin 0,8 U/kg. KEINE Hochdosis (RECOVER 2024).','Bei nicht-defibrillierbarem Rhythmus (Asystolie/PEA), v.a. hoher Vagotonus: Atropin 0,04 mg/kg IV/IO EINMALIG (nicht wiederholen).','EKG alle 2 min prüfen; Kammerflimmern/pulslose VT → Defibrillation biphasisch 2–4 J/kg (monophasisch 4–6 J/kg), danach sofort 2 min CPR; nach >3–5 erfolglosen Schocks: HUND Lidocain 2 mg/kg IV/IO, KATZE Amiodaron 5 mg/kg IV/IO über 2–4 min; zusätzlich Esmolol 0,5 mg/kg über 3–5 min, dann 50 µg/kg/min (RECOVER 2024); reversible Ursachen (Hypovolämie/Hypoxie/K⁺/Azidose) behandeln.'],
       machine:'Verdampfer AUS. O₂ 100 %, Manual-Beatmung 10/min. Kapnografie als CPR-Qualität (EtCO₂ ≥ 18 mmHg anstreben [RECOVER 2024]; <12 → Tubuslage prüfen; plötzlicher Anstieg = ROSC).',
       drugs:[ {id:'adrenalin',low:0.01,high:0.01,unit:'mg/kg',route:'IV/IO',note:'Standarddosis 0,01 mg/kg jeden 2. Zyklus (alle 3–5 min) die ganze CPR über. Hochdosis 0,1 mg/kg NICHT mehr empfohlen (RECOVER 2024).'},
               {id:'vasopressin',low:0.8,high:0.8,unit:'U/kg',route:'IV/IO',note:'Alternative/Ergänzung zu Adrenalin, alle 3–5 min. Bei refraktärem Kammerflimmern (RECOVER 2024) bevorzugt.'},
@@ -534,7 +576,7 @@ window.ANAES = {
       causes:['Zu flache Narkose / Schmerz (Nozizeption)','α2-Agonist (Xylazin/Medetomidin) Frühphase – meist transient','Ketamin (sympathomimetisch)','Hyperkapnie / Hypoxämie (Sympathikus ↑)','Hypervolämie (Infusion zu schnell)','selten Phäochromozytom / Hyperthyreose'],
       steps:['ZUERST Ursache klären – nicht blind vasodilatieren.','Zu flach/Schmerz → Analgesie + Narkosetiefe anpassen (Opioidbolus, ggf. vertiefen).','Hyperkapnie → beatmen/IPPV, EtCO₂ Richtung 35–45 senken.','Hypervolämie → Infusionsrate reduzieren.','α2-bedingt → meist selbstlimitierend, abwarten; KEIN Atropin (verstärkt Hypertonie + O₂-Bedarf); bei Bedarf Atipamezol.','Nur bei schwerer/persistierender Hypertonie gezielte Vasodilatation (titriert, unter Blutdruckmonitoring).'],
       machine:'Bei Hyperkapnie beatmen (IPPV), EtCO₂ senken. Verdampfer/Analgesie an Ursache anpassen. Kein Atropin in der α2-Hypertonie-Phase.',
-      drugs:[ {id:'fentanyl',low:2,high:5,unit:'mcg/kg',route:'IV',note:'Bei Schmerz/zu flacher Narkose – behebt die häufigste Ursache.'},
+      drugs:[ {id:'fentanyl',low:null,high:null,unit:'mcg/kg',route:'IV',note:'Bei Schmerz oder zu flacher Narkose – behebt die häufigste Ursache. Katze niedriger als Hund.'},
               {id:'acepromazin',low:0.005,high:0.01,unit:'mg/kg',route:'IV',note:'Niedrig, titriert; senkt Druck (nicht antagonisierbar, Vorsicht Spät-Hypotonie).'} ],
       speciesNotes:{ all:'Vasodilatatoren nur titriert unter Blutdruckmonitoring – können in Hypotonie umschlagen. Bei α2-Hypertonie zuerst Zeit/Antagonist statt Atropin. Refraktär: Labetalol (α/β) oder Na-Nitroprussid 0,5–5 µg/kg/min CRI durch Anästhesist.' },
       red:['NICHT blind senken – erst Ursache (zu flach/Schmerz, Hyperkapnie, α2) klären.','Kein Anticholinergikum bei α2-bedingter Hypertonie.'] }
@@ -670,6 +712,18 @@ window.ANAES = {
 
   info: 'Canis Anæsthesia ist ein multifunktioneller Notfall- und Dosierungs-Assistent für die Kleintier-Anästhesie (Hund, Katze, Kaninchen, Meerschweinchen, Reptil). Gib Tierart, Gewicht und Alter oben ein – alle Zwischenfall-Protokolle, Geräte-Einstellungen und Medikamenten-Dosen (mg und mL) werden für den Patienten berechnet. Das Modul bildet das Praxis-Gerät (Mindray Veta 5 Plus + uMEC12 Vet) als 3D-Scan ab und erklärt jedes Bedienelement. Es ist mit dem Blutwerte-Atlas, den Reiseerkrankungen und dem Stoffwechsel-Modul verknüpft.',
   sources: [
+    { title:'ACVAA Small Animal Anesthesia and Sedation Monitoring Guidelines (2025), Veterinary Anaesthesia and Analgesia' },
+    { title:'RECOVER 2024 — CPR-Leitlinien Kleintier, J Vet Emerg Crit Care (Burkitt-Creedon 10.1111/vec.13391; Wolf 10.1111/vec.13389)', url:'https://recoverinitiative.org/2024-guidelines/' },
+    { title:'AAFP/ISFM Feline Anaesthesia Guidelines (2018), J Feline Med Surg' },
+    { title:'Lumb & Jones Veterinary Anesthesia and Analgesia, 6. Auflage 2024' },
+    { title:'Merck Veterinary Manual (2024) — Antiarrhythmics' },
+    { title:'Côté E. — This Dog Has Ventricular Arrhythmias, WSAVA/VIN 2009 (AIVR: Frequenz entscheidet, nicht die Form)' },
+    { title:'Piemontese u. a., The Veterinary Journal 2024 — 654 Hunde: SpO₂ < 95 % entspricht PaO₂ < 80 mmHg' },
+    { title:'Rivas u. a., JVECC 2025 — SpO₂/FiO₂ beim beatmeten Hund; Calabro JVECC 2013 — oberhalb FiO₂ 0,3 sagt die SpO₂ wenig über den PaO₂' },
+    { title:'JAVMA 2023;261(12) — 514 Splenektomien, 28 % ventrikuläre Arrhythmien' },
+    { title:'Schoeller JVECC 2020 / Ranninger Vet Rec Case Rep 2019 — Magnesium bei Lidocain-refraktärer Ektopie' },
+    { title:'Vet Anaesth Analg 2022 — Rekrutierung 15 cmH₂O über 30 s ebenso wirksam wie 25/35' },
+
     { title:'CliniPharm/CliniTox – vetpharm.uzh.ch (Universität Zürich)', url:'https://www.vetpharm.uzh.ch/' },
     { title:'Plumb’s Veterinary Drug Handbook' },
     { title:'BSAVA Small Animal Formulary / BSAVA Exotic Pets' },

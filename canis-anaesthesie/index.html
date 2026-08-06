@@ -733,6 +733,10 @@ html[data-theme="light"] .ck-schalter .mon-mode{background:rgba(255,255,255,.7);
 .assess-m{margin-top:6px;font-size:12.5px;color:#bff0ff;line-height:1.45}
 .assess-s{margin-top:4px;font-size:12.5px;line-height:1.45}
 .assess-d{margin-top:5px;font-size:12.5px;color:#baffe0;background:rgba(0,255,135,.08);border:1px solid rgba(0,255,135,.25);border-radius:7px;padding:5px 8px}
+/* Verlaufszeile: bewusst anders als die Dosiszeile. Was hier steht, ist eine Beobachtung ueber
+ * Zeit und keine Handlungsanweisung — und die Schwelle dafuer ist nicht publiziert. */
+.assess-tr{margin-top:5px;font-size:12.5px;color:#ffe0a8;background:rgba(255,180,60,.09);border:1px dashed rgba(255,180,60,.4);border-radius:7px;padding:5px 8px;line-height:1.45}
+html[data-theme="light"] .assess-tr{color:#5a3c00;background:rgba(255,180,60,.16);border-color:rgba(160,110,10,.45)}
 .assess-go{margin-top:7px;font:11px var(--mono);color:var(--amber)}
 /* Geräte-Steuerung */
 .dev-ctrl{display:grid;gap:12px;margin-top:6px}
@@ -1712,7 +1716,20 @@ function monResolve(){
     var Wr=ekgDef(state.rhythm).w||{}, arrest=(Wr.flat||Wr.chaos);
     var r={ mode:'ist', v:v, hr:iv.hr, rr:iv.rr, spo2:iv.spo2, etco2:iv.etco2, nibp:map, sys:sys, dia:dia, temp:iv.temp,
       ekg:(state.rhythm||'sinus'),
-      pleth:((arrest||iv.spo2<=50||iv.hr<=0)?'flat':(iv.spo2<90?'weak':'normal')),
+      /* Die Pleth-Amplitude bildet die DURCHBLUTUNG ab, nicht die Sättigung. Sie vorher an
+       * iv.spo2<90 zu hängen, machte genau die Unterscheidung unmöglich, um die es am Tisch
+       * geht: ist die niedrige Sättigung echt, oder misst der Sensor schlecht? Eine flache
+       * Kurve bei guter Sättigung heißt "Sensor umsetzen oder Kreislauf stützen", eine kräftige
+       * Kurve bei niedriger Sättigung heißt "der Wert stimmt". Jetzt entscheiden darüber der
+       * Perfusionsindex, der Druck und die Temperatur — die Größen, die Perfusion wirklich
+       * beschreiben. Fehlen sie alle, bleibt es beim alten Verhalten. */
+      pleth:((arrest||iv.hr<=0)?'flat':(function(){
+        if(iv.pi!=null&&iv.pi>0) return iv.pi<0.7?'flat':(iv.pi<1.4?'weak':'normal');
+        var m=(iv.ibp>0?iv.ibp:(iv.nibp>0?iv.nibp:0));
+        if(m>0) return m<40?'flat':(m<55?'weak':'normal');
+        if(iv.temp>0&&iv.temp<34) return 'weak';
+        return (iv.spo2<=50)?'flat':(iv.spo2<90?'weak':'normal');
+      })()),
       /* Kapno-Form: RUECKATMUNG hat Vorrang vor allem anderen. Ein FiCO2 ueber ~3 mmHg
        * hebt die Grundlinie an — genau das Bild vom Veta-5-Foto (FiCO2 8, EtCO2 51,
        * Alarm "FiCO2 zu hoch"). Wer das als blosse Hyperkapnie liest, beatmet staerker
@@ -2270,11 +2287,100 @@ function doseLineCompact(ref){
   var ml=(c.mlLo!=null)?(' ≈ '+fmtRange(c.mlLo,c.mlHi)+' mL'):'';
   return name+' '+fmtRange(c.amtLo,c.amtHi)+' '+c.amtUnit+ml+(ref.route?' '+ref.route:'');
 }
+/* ================= VERLAUFSGEDAECHTNIS =========================================
+ *
+ * WARUM ES DAS GEBEN MUSS (Praxisprotokoll vom 06.08.2026):
+ * Eine Stunde lang steht in jeder Zeile "Ventrikulaere Extrasystolen". Die Herzfrequenz faellt
+ * dabei ganz langsam von 123 auf 113, die Saettigung steht bei 97. Kein einziger dieser Werte
+ * verlaesst sein Normband — die Analyse hatte also in jedem einzelnen Augenblick recht, wenn sie
+ * schwieg. Um 09:24 bricht die SpO2 auf 90 ein, und ab da heisst der Befund
+ * "VES - hypoxie-/hyperkapniegetrieben". Der Zusammenbruch war eine Stunde lang im ANSTIEG
+ * sichtbar und im MOMENTANWERT nie.
+ *
+ * Deshalb schreibt die Station jetzt mit: ein Ringspeicher ueber die letzten 30 Minuten, aus dem
+ * sich Richtung und Steigung eines Kanals ablesen lassen, und eine Uhr fuer "wie lange steht
+ * dieser Befund schon an". Das ist der Unterschied zwischen einem Grenzwertwaechter und einer
+ * Beobachtung.
+ *
+ * Bewusst schlicht gehalten: kein gleitender Mittelwert ueber Sekunden (Messrauschen), sondern
+ * ein Vergleich des juengsten Werts mit dem aeltesten innerhalb des Fensters, und beides nur,
+ * wenn ueberhaupt genug Zeit vergangen ist. Ein Trend aus zwei Messungen ist kein Trend.
+ */
+var VERLAUF_MAX_MS=30*60*1000, VERLAUF_MIN_ABSTAND_MS=4000, VERLAUF_LUECKE_MS=45000;
+function verlaufMerken(r){
+  if(!r||state.monMode!=='ist') return;
+  var jetzt=Date.now();
+  state.verlauf=state.verlauf||[];
+  var letzte=state.verlauf[state.verlauf.length-1];
+  if(letzte && (jetzt-letzte.t)<VERLAUF_MIN_ABSTAND_MS) return;   // nicht jede Bildwiederholung
+  var punkt={t:jetzt, ekg:r.ekg, capno:r.capno};
+  /* LUECKENMARKE. Wer im Uebungs-Szenario war, den Reiter gewechselt hat oder dessen Geraet
+   * eine Minute lang nichts geliefert hat, hat in dieser Zeit NICHTS beobachtet. Ohne diese
+   * Marke spannt haeltAn() ueber das Loch hinweg und behauptet eine Dauer, die niemand gesehen
+   * hat — "die Ektopie steht seit 40 Minuten an", obwohl die Station 20 davon weggeschaut hat.
+   * Die Marke bricht nur die DAUER; der Trend bleibt gueltig, denn er vergleicht zwei wirklich
+   * gemessene Punkte mit ihrem echten Zeitabstand. */
+  if(letzte && (jetzt-letzte.t)>VERLAUF_LUECKE_MS) punkt.luecke=true;
+  ['hr','spo2','etco2','nibp','ibp','rr','temp','fico2','ppeak','peep','vte','mv','compl','fio2','pi','mac'].forEach(function(k){
+    var x=r[k]; if(typeof x==='number' && !isNaN(x)) punkt[k]=x;
+  });
+  state.verlauf.push(punkt);
+  while(state.verlauf.length && (jetzt-state.verlauf[0].t)>VERLAUF_MAX_MS) state.verlauf.shift();
+}
+/* Aenderung eines Kanals ueber die letzten <minuten>. null, wenn die Aufzeichnung dafuer noch
+ * zu kurz ist — lieber keine Aussage als eine aus zwei Messpunkten.
+ *
+ * Math.MAX, nicht Math.min: die erste Fassung verlangte Math.min(120, minuten*30) Sekunden, und
+ * das sind fuer JEDES Fenster ab 4 Minuten genau 120 Sekunden. Eine Zwei-Minuten-Stichprobe
+ * waere damit als "Trend ueber 30 Minuten" herausgekommen — eine Zahl, die nach Beobachtung
+ * aussieht und keine ist. Jetzt gilt: mindestens zwei Minuten UND mindestens ein Drittel des
+ * angefragten Fensters. */
+function trend(feld, minuten){
+  var V=state.verlauf||[]; if(V.length<3) return null;
+  var jetzt=V[V.length-1], fenster=minuten*60*1000;
+  var alt=null;
+  for(var i=0;i<V.length;i++){ if((jetzt.t-V[i].t)<=fenster){ alt=V[i]; break; } }
+  if(!alt||alt===jetzt) return null;
+  var spanne=(jetzt.t-alt.t)/1000;
+  if(spanne<Math.max(120, minuten*20)) return null;
+  var a=alt[feld], b=jetzt[feld];
+  if(typeof a!=='number'||typeof b!=='number') return null;
+  return {von:a, bis:b, delta:Math.round((b-a)*10)/10, sekunden:Math.round(spanne),
+          proMinute:Math.round(((b-a)/(spanne/60))*100)/100};
+}
+/* Wie lange steht dieser Zustand schon UNUNTERBROCHEN und BEOBACHTET an? Sekunden, 0 wenn
+ * gerade nicht. Eine Luecke in der Aufzeichnung beendet den Lauf genauso wie ein Wechsel des
+ * Zustands — beobachtet ist nur, was auch gemessen wurde. */
+function haeltAn(pruef){
+  var V=state.verlauf||[]; if(!V.length) return 0;
+  var n=V.length-1; if(!pruef(V[n])) return 0;
+  var i=n;
+  while(i>0 && !V[i].luecke && pruef(V[i-1])) i--;
+  return Math.round((V[n].t-V[i].t)/1000);
+}
+/* gabeMin(id) — Minuten seit der letzten Gabe dieses Mittels; null, wenn nie gegeben oder
+ * wenn die Markierung zurückgenommen wurde. Die LETZTE Handlung entscheidet: wer „gegeben"
+ * wieder abwählt, hat es nicht gegeben. state.medGaben wurde von der Analyse bisher nie
+ * gelesen — genau deshalb konnte die App Naloxon bei einem Tier vorschlagen, das nie ein
+ * Opioid bekommen hat. */
+function gabeMin(id){
+  var L=state.medGaben||[];
+  for(var i=L.length-1;i>=0;i--){
+    if(L[i].id!==id) continue;
+    return L[i].storno ? null : Math.round((Date.now()-L[i].ts)/60000);
+  }
+  return null;
+}
+function gabeMinAny(ids){
+  var b=null; (ids||[]).forEach(function(x){ var m=gabeMin(x); if(m!=null&&(b==null||m<b)) b=m; });
+  return b;
+}
 function renderAssess(){
   var box=$('#monAssess'); if(!box) return;
   if(state.monMode!=='ist'){ box.innerHTML=''; return; }
   if(!state.istVals) istInit();
   var v=monVitals(), iv=state.istVals, items=[], r0=monResolve();
+  verlaufMerken(r0);
   (MON().params||[]).forEach(function(p){
     /* Band aus dem Profilmodul (artspezifisch ODER gewichtsabgeleitet wie Vt/MV). Ein Kanal
      * ohne Band bekommt hier NICHTS — lieber keine Bewertung als eine gegen eine erfundene Norm. */
@@ -2295,21 +2401,151 @@ function renderAssess(){
   var r=monResolve(), iso=state.dev.iso, cross=[], W=ekgDef(r.ekg).w||{};
   var isoTgt=devTarget(), isoSoll=String(isoTgt.iso).split('–').map(parseFloat);
   var isoHigh=(!isNaN(isoSoll[1])?iso>isoSoll[1]+0.6:(!isNaN(isoSoll[0])?iso>isoSoll[0]+0.8:false));
+  /* ---- Groessen, die mehrere Regeln gemeinsam brauchen (Fachrecherche 06.08.2026) ----------
+   * Jede einzeln begruendet, damit sie nicht als Zahlenreihe dasteht:
+   *  fio2Bek  Der FiO2-Kanal traegt im Profil einen Startwert von 95. Ohne die Pruefung auf
+   *           istHand haette JEDE Handnarkose "FiO2 95" und jede FiO2-Regel waere in
+   *           Wirklichkeit eine SpO2-Regel.
+   *  spo2Lo   95 % ist eine RAUMLUFT-Zahl. Unter Narkose mit FiO2 >= 0,8 gehoeren 99–100 % hin;
+   *           96 % entsprechen dort einem PaO2 um 80–90 statt ueber 400 mmHg. Ohne diesen Bezug
+   *           schrieb die App bei FiO2 95 und SpO2 96 woertlich "Alle Kanaele im Normbereich".
+   *           Die Stufen 97/98 sind eine begruendete Setzung, kein publizierter Trennwert.
+   *  hypo60   AAHA 2020: unter Inhalationsnarkose ist MAP 60–69 Alltag, nicht Befund. Das
+   *           Normband v.map[0]=70 bleibt fuer die Kachel richtig — fuer eine Massnahme ist 60
+   *           die Grenze.
+   *  etco2Arr Nur IM ARRHYTHMIE-ZUSAMMENHANG gilt 45 statt des Bandes. Das Band selbst bleibt:
+   *           50 mmHg sind beim gesunden Hund tolerierte permissive Hyperkapnie, und [35,45]
+   *           faerbte jede zweite Narkose rot.
+   *  tiefe/flach  EINE Grenze fuer die Narkosetiefe statt bisher dreier (Band 1,3 · Regler 1,5).
+   *           Ohne Gasanalysator faellt sie auf die Verdampferstellung zurueck.
+   *  ersatzHF Unterhalb dieser Frequenz ist ein Kammerrhythmus KEINE Rhythmusstoerung, sondern
+   *           der letzte verbliebene Schrittmacher. Dort ist Lidocain toedlich. */
+  var vent=(r.ekg==='ves'||r.ekg==='vtach');
+  var fio2Bek=(state.istHand && state.istHand.fio2 && r.fio2>0) ? r.fio2 : null;
+  var spo2Lo=(fio2Bek==null) ? v.spo2[0]
+            : (fio2Bek>=80 ? Math.max(v.spo2[0],98) : (fio2Bek>=50 ? Math.max(v.spo2[0],97) : v.spo2[0]));
+  var etco2Arr=Math.min(45, v.etco2[1]);
+  var mapM=(r.ibp>0 ? r.ibp : r.nibp);
+  var hypo60=(mapM>0 && mapM<60);
+  var isoLow=(!isNaN(isoSoll[0]) ? iso<isoSoll[0]-0.4 : false);
+  var tiefe=(r.mac>0 ? r.mac>1.3 : isoHigh);
+  var flach=(r.mac>0 ? r.mac<0.8 : isoLow);
+  var tempLo=(v.temp && v.temp.length===2) ? (v.temp[0]-1.5) : null;
+  var ersatzHF=(state.sp==='hund'||state.sp==='katze') ? 45 : (v.hr?Math.round(v.hr[0]*0.6):null);
+  var ektSek=vent ? haeltAn(function(p){ return p.ekg==='ves'||p.ekg==='vtach'; }) : 0;
   /* crossKanaele: welche Einzelkanaele hat die Kreuz-Analyse bereits erklaert? Diese bekommen
    * darunter KEINE zweite, allgemeinere Karte mehr. Ohne das stand unter der Rueckatmungs-Karte
    * noch "FiCO₂ ↑ → Narkosetiefe pruefen" — ein Rat, der mit dem Befund nichts zu tun hat und
    * dem eigentlichen (Atemkalk) widerspricht. */
   var crossKanaele={};
-  function xc(sev,color,title,tag,cause,fix,inc,kanal){ cross.push({sev:sev,color:color,title:title,tag:tag,cause:cause,fix:fix,inc:inc}); if(kanal) crossKanaele[kanal]=1; }
+  /* kanal darf eine Id ODER eine Liste sein: eine Karte kann mehrere Einzelwerte erklaeren.
+   * Beispiel: "Ventrikulaere Ektopie mit Hypotonie" erklaert Druck UND Frequenz — stuende
+   * darunter noch "HF ↑ 220 → Fentanyl", waere das genau der Widerspruch, den die Leiter
+   * vermeidet (im Browser am 06.08.2026 gemessen). */
+  function xc(sev,color,title,tag,cause,fix,inc,kanal){ cross.push({sev:sev,color:color,title:title,tag:tag,cause:cause,fix:fix,inc:inc});
+    if(kanal) [].concat(kanal).forEach(function(k){ crossKanaele[k]=1; }); }
   if(W.flat||W.chaos){ xc(5,'#ff2d2d',W.chaos?'Kammerflimmern – Kreislaufstillstand':'Asystolie – Kreislaufstillstand','CPR','Nulllinie/chaotisches EKG mit flacher Kapno- & Pleth-Kurve → kein Kreislauf.','Verdampfer AUF NULL · 100 % O₂/Flush · Kompressionen 100–120/min'+(W.chaos?' · DEFIBRILLIEREN':'')+'.','asystolie'); }
   else {
-    if(r.ekg==='ves'||r.ekg==='vtach'){ var driven=(r.spo2<v.spo2[0])||(r.etco2>v.etco2[1]);
-      driven ? xc(4,'#ff7b7b',(r.ekg==='vtach'?'VT':'VES')+' – hypoxie-/hyperkapniegetrieben','Erst O₂/Beatmung','Breite Kammerkomplexe mit '+(r.spo2<v.spo2[0]?'niedriger SpO₂ ':'')+(r.etco2>v.etco2[1]?((r.spo2<v.spo2[0]?'+ ':'')+'hohem EtCO₂ '):'')+'→ zuerst Ventilation/O₂, Lidocain nur wenn danach weiter VES.','IPPV/Auto ein, O₂-Fluss ↑ bzw. O₂-Flush; erst danach Lidocain (Hund) langsam IV.','tachykardie')
-             : xc(4,'#ff7b7b',(r.ekg==='vtach'?'Ventrikuläre Tachykardie':'Ventrikuläre Extrasystolen'),'VES/VT','Breite, vorzeitige QRS ohne P. Zuerst Hypoxie/Hyperkapnie/Narkosetiefe/Elektrolyte ausschließen.','Oxygenierung & Narkosetiefe sichern, dann Lidocain (Hund) langsam IV; Katze extrem vorsichtig.','tachykardie'); }
+    /* ======= VENTRIKULÄRE EKTOPIE: EINE Karte, ausschließende Leiter, erster Treffer gewinnt ===
+     *
+     * WAS HIER VORHER STAND UND WARUM ES GEFÄHRLICH WAR (Fachrecherche 06.08.2026):
+     * zwei Zeilen, die bei JEDER Form ventrikulärer Ektopie feuerten und beide mit
+     * "dann Lidocain (Hund) langsam IV" endeten — ohne Frequenz, ohne Blutdruck, ohne
+     * Tierartunterschied. Damit stand die Lidocain-Empfehlung auch
+     *   · beim ventrikulären ERSATZrhythmus (HF 35): dort ist der Kammerrhythmus der letzte
+     *     verbliebene Schrittmacher. Wer ihn unterdrückt, erzeugt eine Asystolie.
+     *   · bei der Katze, für die RECOVER 2024 ausdrücklich abrät — und die Dosiszeile im
+     *     Katalog stand speziesblind auf 2 mg/kg statt 0,25–0,5 (das Vier- bis Achtfache).
+     *   · beim beschleunigten idioventrikulären Rhythmus, der häufigsten Überbehandlung der
+     *     Kleintiermedizin: stabiler Rhythmus, ausreichender Druck, extrakardiale Ursache.
+     *
+     * WARUM EINE LEITER UND NICHT MEHRERE KARTEN: die Kreuz-Analyse hat keinen Weg, eine Karte
+     * durch eine andere stumm zu schalten (crossKanaele wirkt nur auf die Einzelwerte darunter).
+     * Nebeneinander gestellte Rhythmus-Karten könnten sich also widersprechen — "kein Lidocain"
+     * über "dann Lidocain". Mit einer if/else-Leiter ist der Widerspruch strukturell unmöglich
+     * statt nur durch Sorgfalt vermieden. Die Ursachen werden nicht zu eigenen Karten, sondern
+     * zu geordneten Sätzen IN der Maßnahmenzeile — so steht oben, was zuerst zu tun ist.
+     */
+    if(vent){
+      var ur=[];
+      if(r.fico2>3)                 ur.push('① Atemkalk/Ventile — FiCO₂ '+fmt(r.fico2)+' mmHg (siehe Rückatmungs-Karte)');
+      if(r.spo2>0&&r.spo2<spo2Lo)   ur.push('② O₂ 100 % + IPPV — SpO₂ '+fmt(r.spo2)+(fio2Bek!=null?(' bei FiO₂ '+fmt(fio2Bek)+' %'):''));
+      if(r.etco2>etco2Arr)          ur.push('③ Ventilation: ZUERST AF ↑, dann Vt — EtCO₂ '+fmt(r.etco2)+' (bei Ektopie gilt '+etco2Arr+', nicht '+v.etco2[1]+')');
+      if(tiefe&&hypo60)             ur.push('④ Verdampfer senken Richtung '+isoTgt.iso+' Vol% — Koronarminderperfusion');
+      if(flach&&r.hr>v.hr[1])       ur.push('⑤ Analgesie nachlegen, nicht nur den Verdampfer aufdrehen');
+      if(tempLo!=null&&r.temp>0&&r.temp<tempLo) ur.push('⑥ Aktiv wärmen, Ziel '+v.temp[0]+'–'+v.temp[1]+' °C — jetzt '+fmt(r.temp)+' °C');
+      if(ektSek>=600)               ur.push('⑦ Steht seit '+Math.round(ektSek/60)+' min: Operateur fragen, was gerade manipuliert wird · Blut abnehmen (K⁺, Mg²⁺, Laktat, Hkt, BGA)');
+      var urT=ur.length?(ur.join(' · ')+' · '):'';
+      /* Sprosse 1 — ERSATZRHYTHMUS. Schlägt alles. */
+      if(ersatzHF!=null && r.hr>0 && r.hr<ersatzHF){
+        xc(5,'#ff2d2d','Ventrikulärer Ersatzrhythmus — KEIN Antiarrhythmikum','Lidocain verboten',
+          'Breite Kammerkomplexe bei HF '+fmt(r.hr)+'/min: das ist der letzte verbliebene Schrittmacher, nicht die Rhythmusstörung. Sinusknoten oder AV-Überleitung sind ausgefallen. Wer ihn unterdrückt, erzeugt eine Asystolie.',
+          'KEIN Lidocain, kein Procainamid, kein Betablocker · Verdampfer aus bzw. senken, 100 % O₂ · '+urT+'Atropin 0,02–0,04 mg/kg IV bei Vagotonus · α2-Antagonist, wenn Dexmedetomidin/Medetomidin gegeben wurde · Kalium prüfen · CPR-Bereitschaft, Adrenalin 0,01 mg/kg aufziehen.',
+          'bradykardie','hr');
+      }
+      /* Sprosse 2 — KATZE. RECOVER 2024 rät von Lidocain ab. */
+      else if(state.sp==='katze'){
+        xc(4,'#ff7b7b','Katze mit ventrikulärer Ektopie — Lidocain-Sperre','Kein Standard-Lidocain',
+          'Kammerkomplexe bei HF '+fmt(r.hr)+'/min. Die Katze reagiert auf Lidocain deutlich empfindlicher als der Hund — am Kreislauf und am Nervensystem — bei zugleich geringerer Ausscheidung. RECOVER 2024 rät deshalb ab. Eine ventrikuläre Arrhythmie der Katze ist fast immer Ausdruck einer Grunderkrankung (HCM, Hyperthyreose, Schmerz, Kaliummangel).',
+          urT+'Ursachenkette abarbeiten · KEIN Standard-Lidocain · bleibt eine kreislaufwirksame Kammertachykardie: Amiodaron 5 mg/kg IV/IO langsam.',
+          'tachykardie','hr');
+      }
+      /* Sprosse 3 — behandlungspflichtige VT beim Hund. 30 s Bestand, damit ein einzelner
+       * Manschettenausreißer keine Antiarrhythmikum-Empfehlung auslöst. */
+      else if(state.sp==='hund' && r.ekg==='vtach'
+              && haeltAn(function(p){ return p.ekg==='vtach'; })>=30
+              && (r.hr>=180 || (hypo60 && haeltAn(function(p){ return p.nibp>0&&p.nibp<60; })>=60))){
+        var lidoMin=gabeMin('lidocain_iv');
+        xc(5,'#ff2d2d','Behandlungspflichtige ventrikuläre Tachykardie','Jetzt behandeln',
+          'HF '+fmt(r.hr)+'/min'+(hypo60?(' · MAP '+fmt(mapM)+' mmHg'):'')+'. Die verkürzte Diastole senkt Füllung und Auswurf; ein Kippen in Kammerflimmern ist möglich. Ab hier überwiegt der Nutzen des Antiarrhythmikums seine Gefahr.',
+          urT+(lidoMin!=null&&lidoMin>=10&&lidoMin<=60
+            ? 'Lidocain steht seit '+lidoMin+' min und die Ektopie besteht weiter: NICHT nachdosieren — Kumulativdosis nachrechnen (max. 8 mg/kg), K⁺/Mg²⁺/ionisiertes Calcium messen, Magnesiumsulfat 0,15–0,3 mEq/kg verdünnt über 5–15 min IV.'
+            : 'Lidocain 2 mg/kg langsam IV über 1–2 min, bei Bedarf alle 5–10 min bis kumulativ höchstens 8 mg/kg, danach Dauertropf 25–75 µg/kg/min · Abbruch bei Zittern, Nystagmus, Krampf, Erbrechen, Blutdruckabfall.'),
+          'tachykardie','hr');
+      }
+      /* Sprosse 4 — hämodynamisch wirksam, auch ohne VT-Kriterium. */
+      else if(hypo60 && haeltAn(function(p){ return p.nibp>0&&p.nibp<60; })>=60){
+        xc(4,'#ff7b7b','Ventrikuläre Ektopie mit Hypotonie','MAP < 60',
+          'MAP '+fmt(mapM)+' mmHg bei HF '+fmt(r.hr)+'/min. Die Extrasystole kommt zu früh, die Kammer ist nicht gefüllt, der Schlag wirft kaum Blut aus — hämodynamisch wirksam trotz normaler Zählfrequenz.',
+          'Verdampfer Richtung '+isoTgt.iso+' Vol% senken · '+urT+'Volumenbolus kristalloid 5–10 ml/kg über 10–15 min · Lidocain (nur Hund) ERST, wenn der MAP danach unter 60 bleibt UND ein Pulsdefizit tastbar ist · Dobutamin kann die Ektopie verstärken.',
+          'hypotension',['nibp','hr']);
+      }
+      /* Sprosse 5 — AIVR: stabiler Kammerrhythmus, ausreichender Druck, keine offene Ursache. */
+      else if(state.sp==='hund' && r.ekg==='ves' && r.hr>=45 && r.hr<180 && mapM>0
+              && !(r.spo2>0&&r.spo2<spo2Lo) && !(r.fico2>3)
+              && !(tempLo!=null&&r.temp>0&&r.temp<tempLo)){
+        xc(2,'#a3e635','Beschleunigter idioventrikulärer Rhythmus — beobachten','Kein Lidocain',
+          'Kammerrhythmus '+fmt(r.hr)+'/min bei MAP '+fmt(mapM)+' mmHg: das ist definitionsgemäß ein AIVR und keine Kammertachykardie. Die Kammer hat Füllungszeit, der Rhythmus ist stabil, und er begleitet fast immer eine Störung AUSSERHALB des Herzens (Milztumor, Magendrehung, Trauma, Pankreatitis, Sepsis).',
+          'KEIN Lidocain · '+urT+'Ursache suchen: Volumen, Analgesie, Temperatur, K⁺/Mg²⁺, Hämatokrit · EKG, MAP und Kapnografie eng beobachten · behandeln erst, wenn eine Grenze kippt: HF ≥ 180, MAP < 60, R-auf-T, vielgestaltige Komplexe oder Salven.',
+          'tachykardie','hr');
+      }
+      /* Sprosse 6 — alles Übrige. */
+      else {
+        xc(3,'#ff9f43',(r.ekg==='vtach'?'Ventrikuläre Tachykardie':'Ventrikuläre Extrasystolen'),'Ursache zuerst',
+          'Breite, vorzeitige QRS ohne P bei HF '+fmt(r.hr)+'/min'+(ektSek>=60?(' · steht seit '+Math.round(ektSek/60)+' min'):'')+'. Der Schweregrad hängt nicht am Rhythmus, sondern am Kreislauf: dieselbe Form ist bei MAP 80 und 37,8 °C eine Beobachtungslage.',
+          (ur.length?urT:'Ursachenkette abarbeiten: Oxygenierung, EtCO₂/FiCO₂, Narkosetiefe, Analgesie, Volumen, Temperatur, K⁺/Mg²⁺. ')+'Kein Antiarrhythmikum, solange eine behebbare Ursache offen ist.',
+          'tachykardie','hr');
+      }
+      /* Der langsame Verfall — der Anlassfall aus dem Praxisprotokoll vom 06.08.2026.
+       * KEINE eigene Karte: eine zweite rote Kachel neben der Rhythmuskarte wäre genau die
+       * Doppelmeldung, die die Leiter oben vermeidet. Der Verlauf wird der bestehenden Karte
+       * angehängt — dort, wo ohnehin gelesen wird. Fenster, Schwelle und die Opioid-Sperre sind
+       * NICHT publiziert; das steht auch so auf der Karte. */
+      var tH=trend('hr',30);
+      if(tH && tH.sekunden>=1200 && tH.delta<=-Math.max(4, v.hr[1]*0.035) && tH.proMinute>-1.2
+         && gabeMinAny(['fentanyl','methadon','morphin','polamivet','dexmedetomidin','medetomidin'])==null
+         && cross.length){
+        cross[cross.length-1].verlauf='Verlauf: HF '+fmt(tH.von)+' → '+fmt(tH.bis)+'/min in '+Math.round(tH.sekunden/60)+' min, ohne Opioid oder α2-Gabe. Hier ist die Richtung der Befund, nicht der Momentanwert. (Schwelle nicht publiziert — als Hinweis lesen.)';
+      }
+    }
     var brady=(r.hr>0&&r.hr<v.hr[0])||['sinusbrady','avb2a','avb2b','avb3'].indexOf(r.ekg)>=0;
     if(brady&&isoHigh&&r.nibp>0&&r.nibp<v.map[0]+8) xc(4,'#66a6ff','Bradykardie bei zu tiefer Narkose','Iso zuerst senken','Niedrige HF + niedriger MAP bei hohem Verdampfer ('+iso.toFixed(1)+' Vol%) → Narkose zu tief.','ZUERST Verdampfer senken Richtung Soll ('+isoTgt.iso+' Vol%) – kein sofortiges Atropin.','bradykardie');
-    else if(r.nibp>0&&r.nibp<v.map[0]&&isoHigh) xc(3,'#ff4d4d','Hypotonie bei tiefer Narkose','MAP ↓','MAP '+r.nibp+' mmHg bei Verdampfer '+iso.toFixed(1)+' Vol% → häufigste Ursache: Narkose zu tief.','ZUERST Verdampfer senken ('+isoTgt.iso+' Vol%), dann Volumenbolus, dann Ephedrin.','hypotension');
-    if(r.capno==='shark') xc(3,'#a3e635','Bronchospasmus / Obstruktion','Atemweg','Kapno-Haifischflosse bei erhaltenem EKG → Problem ist der Atemweg, nicht das Herz.','Tubus prüfen (Knick/Sekret), ggf. vertiefen; β2-Bronchodilatator; O₂ 100 %.','hypoxaemie');
+    /* MAP-Grenze 60 statt v.map[0]=70, und tiefe statt nur isoHigh: unter Inhalationsnarkose ist
+     * ein MAP von 60–69 Alltag und kein Befund (AAHA 2020). Das Normband der KACHEL bleibt bei
+     * 70 — dort ist es richtig —, die MASSNAHME beginnt bei 60. Die Reihenfolge stimmt nur
+     * oberhalb von 50: darunter kommt der Vasopressor zuerst und die Ursachensuche danach. */
+    else if(mapM>0&&mapM<60&&(isoHigh||tiefe)) xc(3,'#ff4d4d','Hypotonie bei tiefer Narkose','MAP ↓','MAP '+fmt(mapM)+' mmHg bei Verdampfer '+iso.toFixed(1)+' Vol% → häufigste Ursache: Narkose zu tief.','ZUERST Verdampfer senken ('+isoTgt.iso+' Vol%), dann Volumenbolus, dann Ephedrin 0,06–0,2 mg/kg IV. Bei MAP unter 50 umgekehrt: Vasopressor sofort, Ursache danach. Bei Verdacht auf Blutung zuerst Volumen und Blutstillung. Kein Vasopressor auf einen unbestätigten Manschettenwert — am kalten Tier zuerst Manschettengröße und Doppler prüfen.','hypotension');
+    if(r.capno==='shark') xc(3,'#a3e635','Bronchospasmus / Obstruktion','Atemweg','Kapno-Haifischflosse bei erhaltenem EKG → Problem ist der Atemweg, nicht das Herz.','Zuerst mechanisch: Tubus auf Knick und Sekret prüfen, absaugen, Lagerung · O₂ 100 % · ggf. Narkose vertiefen · erst dann β2: Terbutalin 0,01 mg/kg SC/IM bzw. langsam IV (Hund und Katze) oder Salbutamol inhalativ über den Tubus. Bei bestehender ventrikulärer Ektopie zurückhaltend — β2 verstärkt sie.','hypoxaemie');
     /* RUECKATMUNG — neu mit dem FiCO2-Kanal (05.08.2026). Genau das Bild vom Veta-5-Foto:
      * FiCO2 8, EtCO2 51, Alarmband "FiCO2 zu hoch". Ohne diesen Kanal sah man nur ein hohes
      * EtCO2 und haette staerker beatmet — der erschoepfte Atemkalk waere drin geblieben. */
@@ -2317,7 +2553,8 @@ function renderAssess(){
       var eth=(r.etco2>v.etco2[1]);
       xc(eth?4:3,'#ffb020','Rückatmung – eingeatmetes CO₂ '+fmt(r.fico2)+' mmHg','FiCO₂ ↑',
         'Am Ende der EINatmung ist noch CO₂ im Gas (Kapno-Grundlinie geht nicht auf 0 zurück)'+(eth?' und das EtCO₂ liegt bereits über der Norm':'')+'. Das Tier atmet sein eigenes CO₂ wieder ein – die Beatmung ist NICHT die Ursache.',
-        'Atemkalk prüfen/wechseln (Farbumschlag, Wärme, Verhärtung) · Ein-/Ausatemventil auf Klemmen prüfen · Frischgasfluss erhöhen · bei Nicht-Rückatemsystem Fluss auf 200–300 ml/kg/min · Totraum/Y-Stück am Kleintier verkleinern. Erst danach die Ventilation nachstellen.',
+        'Atemkalk prüfen/wechseln (Farbumschlag, Wärme, Verhärtung) · Ein-/Ausatemventil auf Klemmen prüfen · Frischgasfluss erhöhen · bei Nicht-Rückatemsystem Fluss auf 200–300 ml/kg/min · Totraum/Y-Stück am Kleintier verkleinern. Erst danach die Ventilation nachstellen.'
+        +(vent?' Die laufende Ektopie ist hier wahrscheinlich Folge der Hyperkapnie — erst das FiCO₂ beseitigen, dann den Rhythmus neu beurteilen.':''),
         'hypoventilation','fico2');
     }
     /* HOHER SPITZENDRUCK — mit dem Paw-Kanal messbar geworden. */
@@ -2331,7 +2568,7 @@ function renderAssess(){
   }
   cross.sort(function(a,b){return b.sev-a.sev;});
   items=items.filter(function(it){ return !crossKanaele[it.p.id]; });
-  var crossHtml=cross.map(function(cc){ return '<div class="assess-card" style="border-left-color:'+cc.color+';border-color:'+cc.color+'55" data-inc="'+cc.inc+'"><div class="assess-h"><b>'+cc.title+'</b><span class="assess-inc" style="background:'+cc.color+'">'+cc.tag+'</span></div><div class="assess-s">🔧 <b>Gerät:</b> '+cc.fix+'</div><div class="assess-m">'+cc.cause+'</div><div class="assess-go">→ Volles Protokoll, Dosen &amp; Schritte</div></div>'; }).join('');
+  var crossHtml=cross.map(function(cc){ return '<div class="assess-card" style="border-left-color:'+cc.color+';border-color:'+cc.color+'55" data-inc="'+cc.inc+'"><div class="assess-h"><b>'+cc.title+'</b><span class="assess-inc" style="background:'+cc.color+'">'+cc.tag+'</span></div><div class="assess-s">🔧 <b>Gerät:</b> '+cc.fix+'</div><div class="assess-m">'+cc.cause+'</div>'+(cc.verlauf?('<div class="assess-tr">📉 '+cc.verlauf+'</div>'):'')+'<div class="assess-go">→ Volles Protokoll, Dosen &amp; Schritte</div></div>'; }).join('');
   if(!items.length && !cross.length){ box.innerHTML='<div class="assess-ok">✓ Alle Kanäle im Normbereich für '+sp().name+' – Patient stabil.</div>'; return; }
   var wgt={spo2:6,etco2:5,nibp:5,hr:4,rr:3,temp:2};
   items.sort(function(a,b){ return (wgt[b.p.id]||1)*(1+b.far) - (wgt[a.p.id]||1)*(1+a.far); });
@@ -2343,7 +2580,43 @@ function renderAssess(){
     var arrow=(it.dir==='high')?'↑':'↓';
     var warn=(it.dir!=='crit' && it.far<0.12)?' warn':'';
     var firstStep=(i.steps&&i.steps[0])||'';
+    /* ===== DREI SPERREN VOR DER DOSISZEILE (Arzneimittel-Durchgang 06.08.2026) ==============
+     * Hier stand blank i.drugs[0] — die erste Dosis des Zwischenfalls, ohne Rückfrage an die
+     * Messlage. Das erzeugte drei Empfehlungen, die am Patienten Schaden anrichten:
+     *
+     *  ADRENALIN bei SpO₂ 94 %. Der Zwischenfall "hypoxaemie" trägt Adrenalin, weil es in die
+     *  Reanimation gehört. Ein Tier mit tastbarem Puls und leicht abgefallener Sättigung bekam
+     *  damit eine ausgerechnete Adrenalin-MILLILITERZAHL ins Bild. Adrenalin am schlagenden,
+     *  hypoxischen Herzen ist der Weg ins Kammerflimmern. Die CPR-Karte hat Adrenalin ohnehin.
+     *
+     *  ATROPIN bei jeder Bradykardie. Unter einem α2-Agonisten (Dexmedetomidin, Medetomidin)
+     *  ist die niedrige Frequenz die ANTWORT auf einen hohen Gefäßwiderstand. Ein
+     *  Anticholinergikum in dieser Phase treibt den Druck auf Spitzen um 230 mmHg und erzeugt
+     *  Extrasystolen. Nur bei Bradykardie MIT Hypotonie ist Atropin die richtige Antwort.
+     *
+     *  NALOXON ohne Opioid. Der Zwischenfall "hypoventilation" trägt Naloxon — sinnvoll, wenn
+     *  ein Opioid die Atmung dämpft. Ohne dokumentierte Opioidgabe nimmt Naloxon eine Analgesie
+     *  weg, die es nicht gibt, und macht aus einer Hypoventilation ein waches Tier mit Schmerz.
+     *  Deshalb wird jetzt das Gabenprotokoll gefragt (gabeMinAny) statt geraten. */
     var drug=(i.drugs&&i.drugs[0]);
+    /* Die Sperren hängen am MITTEL, nicht am Zwischenfall. Das ist die tragfähigere Regel:
+     * dieselbe Naloxon-Zeile hing an ZWEI Zwischenfällen (Hypoventilation und Apnoe), und eine
+     * Sperre auf den einen ließ die andere offen — im Versuch stand Naloxon prompt unter
+     * „AF ↓ 6/min". An der Mittel-Id kann das nicht passieren, und eine spätere Umbenennung
+     * eines Zwischenfalls hebelt sie nicht aus. */
+    if(drug){
+      var gesperrt=false;
+      /* Ein Gegenmittel ohne das Mittel, gegen das es wirkt, ist immer falsch. */
+      if(drug.id==='naloxon'     && gabeMinAny(['fentanyl','methadon','morphin','polamivet','buprenorphin','butorphanol','pethidin'])==null) gesperrt=true;
+      if(drug.id==='flumazenil'  && gabeMinAny(['midazolam','diazepam'])==null) gesperrt=true;
+      if(drug.id==='atipamezol'  && gabeMinAny(['dexmedetomidin','medetomidin','xylazin'])==null) gesperrt=true;
+      /* Adrenalin gehört in die Reanimation, nicht ans schlagende hypoxische Herz. */
+      if(drug.id==='adrenalin'   && !(W.flat||W.chaos)) gesperrt=true;
+      /* Anticholinergikum nur bei Bradykardie MIT Hypotonie — unter einem α2-Agonisten ist die
+       * niedrige Frequenz die Antwort auf den hohen Gefäßwiderstand. */
+      if((drug.id==='atropin'||drug.id==='glyco') && !(mapM>0 && mapM<v.map[0])) gesperrt=true;
+      if(gesperrt) drug=null;
+    }
     return '<div class="assess-card'+warn+'" data-inc="'+it.inc+'"><div class="assess-h"><b>'+it.p.abbr+' '+arrow+' '+fmt(it.x)+' '+it.p.unit+'</b><span class="an">Norm '+it.band[0]+'–'+it.band[1]+'</span><span class="assess-inc">'+(i.name||it.inc)+'</span></div>'+
       (i.machine?'<div class="assess-m">⚙️ '+i.machine+'</div>':'')+
       (firstStep?'<div class="assess-s">➊ '+firstStep+'</div>':'')+
@@ -2402,7 +2675,7 @@ function renderDevCtrl(){
     if(VG.hatKanal(gg,'ppeak')&&r0.ppeak>0){ var pipS=(spSet().pip||15); zus+=row('📈 Spitzendruck', fmt(r0.ppeak)+' cmH₂O', '≤ '+pipS+' cmH₂O', r0.ppeak>pipS+3); }
     if(VG.hatKanal(gg,'vte')&&r0.vte>0){ var bv=VG.bandFuer('vte',bandCtx()); zus+=row('🫁 Vt (gemessen)', fmt(r0.vte)+' ml', bv?(fmtRange(bv[0],bv[1])+' ml'):'—', !!(bv&&(r0.vte<bv[0]*0.8||r0.vte>bv[1]*1.2))); }
     if(VG.hatKanal(gg,'fico2')){ zus+=row('♻️ FiCO₂ (Rückatmung)', fmt(r0.fico2||0)+' mmHg', '< 3 mmHg', (r0.fico2||0)>3); }
-    if(VG.hatKanal(gg,'etAgent')&&r0.etAgent>0&&r0.mac!=null){ zus+=row('💨 '+t.gasName+' exspir.', fmt(r0.etAgent)+' Vol% · '+fmt(r0.mac)+' MAC'+(t.gasAbgeleitet?'*':''), '0,8–1,3 MAC', (r0.mac<0.7||r0.mac>1.5)); }
+    if(VG.hatKanal(gg,'etAgent')&&r0.etAgent>0&&r0.mac!=null){ zus+=row('💨 '+t.gasName+' exspir.', fmt(r0.etAgent)+' Vol% · '+fmt(r0.mac)+' MAC'+(t.gasAbgeleitet?'*':''), '0,8–1,3 MAC', (r0.mac<0.8||r0.mac>1.3)); }   /* dieselbe Grenze wie im Soll daneben — vorher standen hier 0,7/1,5 und im Band 0,8/1,3, also drei Grenzen fuer "zu tief" */
   }
   box.innerHTML =
     row('🟦 O₂-Fluss', state.dev.o2.toFixed(1)+' L/min', fmtRange(t.o2[0],t.o2[1])+' L/min', o2off)+
