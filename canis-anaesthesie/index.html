@@ -4911,6 +4911,7 @@ fab.addEventListener('click',function(){ dock.classList.remove('collapsed'); fab
       <span class="ekg-mess"><i>Δt</i><b id="zDt">–</b></span>
       <span class="ekg-mess"><i>entspricht</i><b id="zBpm">–</b></span>
       <span class="ekg-mess"><i>ΔAmplitude</i><b id="zMv">–</b></span>
+      <span class="ekg-mess"><i>als QT gelesen (QTcV)</i><b id="zQtc">–</b></span>
       <span class="ekg-mess"><i>Papier</i><b id="zScale">–</b></span>
       <span class="hint" id="zHint">Ziehen mit der Maus setzt die Marken. Doppelklick auf die Fläche = Marken löschen.</span>
     </div>
@@ -5240,8 +5241,15 @@ function updateMeasures(){
     $('#mQrs').innerHTML=mitNorm(B.qrsBreiteMs, N&&N.qrs, 'ms', 'gemessen');
     /* QT liefert die Auswertung nicht; gezeigt wird stattdessen die ST-Strecke — und wenn
      * eine Frequenz da ist, die frequenzkorrigierte QT-Zeit NACH VAN DE WATER (nicht Bazett). */
+    /* ST — MIT AUSDRUECKLICHEM VORBEHALT.
+     * Die Lehrbuchgrenzen (Hund: Senkung > 0,2 mV, Hebung > 0,15 mV) beruhen nach der
+     * Quellenlage NICHT auf soliden Originaldaten; in gesunden Hunden wurden Abweichungen
+     * gemessen, die darueber lagen. Sie werden deshalb als ORIENTIERUNG gezeigt und nicht
+     * als Urteil — eine harte Ampel an dieser Stelle waere eine Genauigkeit, die es nicht
+     * gibt. Ausserdem gilt der humanmedizinische Messpunkt J+60/80 ms hier NICHT: die
+     * ST-Strecke dauert beim Hund 0,04-0,1 s, bei der Katze 0,06-0,08 s. */
     $('#mQt').innerHTML= st.messbar?((st.mv>0?'+':'')+st.mv+' <small>mV ST</small>'+
-              (N&&N.stSenkung!=null?'<br><small style="color:'+((st.mv<-N.stSenkung||st.mv>N.stHebung)?'#ff4d4d':'#28e07a')+'">Grenze ±'+N.stSenkung+'/'+N.stHebung+' mV</small>':''))
+              (N&&N.stSenkung!=null?'<br><small style="color:#c9a227">Orientierung ±'+N.stSenkung+'/'+N.stHebung+' mV · Quellenlage schwach</small>':''))
               : '<small>ST: '+(st.richtung?st.richtung+' (unkalibriert)':'nicht messbar')+'</small>';
     var mea=achseRechnen();
     var uA=(N&&N.achse)?normUrteil(N.achse,mea,'°'):null;
@@ -5644,13 +5652,38 @@ function qtcVanDeWater(qtMs,hf){
   var qtc=qtS-0.087*((60/hf)-1);
   return Math.round(qtc*1000);
 }
+/* FUER WELCHE ART DARF DIESE FORMEL UEBERHAUPT GELTEN?
+ * Van de Water wurde an NARKOTISIERTEN HUNDEN abgeleitet und an Beagles bestaetigt. Fuer
+ * Katze, Pferd und Heimtiere ist sie NICHT belegt. Sie dort trotzdem anzuwenden hiesse, eine
+ * Zahl mit einer Genauigkeit auszugeben, die es fuer diese Art nicht gibt — deshalb wird sie
+ * dort gar nicht erst angeboten. (Bazett waere die schlechteste Alternative: bei einer Katze
+ * mit HF 200 und Roh-QT 154 ms liefert Bazett 281 ms gegen 215 ms nach Van de Water.) */
+function qtcErlaubt(sp){ return sp==='hund'; }
 
 /* MITTLERE ELEKTRISCHE ACHSE aus den Nettoausschlaegen zweier Ableitungen.
- * Netto = R - (|Q| + |S|); der Winkel folgt aus Ableitung I (0 Grad) und aVF (90 Grad):
- *   MEA = atan2(Netto_aVF, Netto_I)
- * Gerechnet wird auf dem GEZEIGTEN Streifen: je Ableitung der groesste positive und der
- * groesste negative Ausschlag um die Grundlinie. Das ist die Naeherung, die ein Untersucher
- * am Papier auch macht — und sie ist ehrlich, solange sie so benannt ist. */
+ *
+ * KORREKTUR 07.08.2026 — DIE ERSTE FASSUNG WAR SYSTEMATISCH FALSCH.
+ * Sie rechnete schlicht atan2(Netto_aVF, Netto_I). Das ist die verbreitete, aber
+ * UNKORRIGIERTE Formel: die bipolaren Ableitungen (I, II, III) und die augmentierten
+ * unipolaren (aVR, aVL, aVF) sind unterschiedlich skaliert — aVF misst denselben Vektor
+ * um den Faktor sqrt(3)/2 kleiner. Wer das uebergeht, bekommt durchweg zu KLEINE
+ * Winkelbetraege, also eine scheinbar normalere Achse, als sie ist.
+ *
+ * Richtig ist die Streckung der senkrechten Komponente:
+ *     y = Netto_aVF * 2 / sqrt(3)      (= 1,1547 * Netto_aVF)
+ *     MEA = atan2(y, Netto_I)
+ * Gegenprobe ueber den anderen ueblichen Weg (I und III): dort gilt
+ *     y = (Netto_I + 2 * Netto_III) / sqrt(3),
+ * und wegen aVF = (I + 2*III)/2 ist das genau derselbe Ausdruck. Zwei Wege, ein Ergebnis —
+ * so gehoert es sich.
+ *
+ * atan2 und NICHT atan: atan liefert nur -90 bis +90 Grad. Eine Rechtsverschiebung von
+ * +150 Grad kaeme damit als -30 Grad heraus, also als LINKSverschiebung — ein
+ * Vorzeichenfehler mitten in der Diagnose.
+ *
+ * Netto = groesster positiver plus groesster negativer Ausschlag um die Grundlinie. Das ist
+ * die Naeherung, die am Papier auch von Hand gemacht wird; sie ist ehrlich, solange sie so
+ * benannt ist (die Flaechenmethode waere genauer, braucht aber sichere QRS-Grenzen). */
 function nettoAusschlag(buf){
   if(!buf||buf.length<10) return null;
   var hi=-1e9, lo=1e9;
@@ -5663,7 +5696,8 @@ function achseRechnen(){
   var nI=nettoAusschlag(M.buf['I']), nF=nettoAusschlag(M.buf['aVF']);
   if(nI==null||nF==null) return null;
   if(Math.abs(nI)<1e-6&&Math.abs(nF)<1e-6) return null;
-  var grad=Math.atan2(nF,nI)*180/Math.PI;
+  var y=nF*2/Math.sqrt(3);                 // Skalenkorrektur der augmentierten Ableitung
+  var grad=Math.atan2(y,nI)*180/Math.PI;
   return Math.round(grad);
 }
 
@@ -5908,6 +5942,24 @@ function zZeigeMesswerte(){
   else if(M.echt&&M.kal) mvEl.textContent=(Math.round(m.mv*1000)/1000)+' mV';
   else mvEl.textContent=(Math.round(m.mv*Z.gain*10)/10)+' mm (unkalibriert)';
   $('#zScale').textContent=Z.speed+' mm/s · '+Z.gain+' mm/mV';
+  /* AUS DER GEMESSENEN STRECKE WIRD EIN BEFUND.
+   * Wer mit dem Zeit-Messzirkel eine QT-Strecke abnimmt, will nicht die Rohzahl, sondern die
+   * frequenzkorrigierte — sonst ist sie zwischen zwei Frequenzen nicht vergleichbar. Die
+   * Korrektur erscheint deshalb direkt neben der Messung, aber NUR beim Hund (siehe
+   * qtcErlaubt) und nur, wenn eine Herzfrequenz vorliegt. */
+  var f=M.feed||{}, hz=$('#zQtc');
+  if(hz){
+    var qtc=(m.ms!=null&&qtcErlaubt(f.sp)&&f.hr>0)?qtcVanDeWater(m.ms,f.hr):null;
+    if(qtc!=null){
+      var N=normOf(f.sp), u=N?normUrteil(N.qt,qtc,'ms'):null;
+      hz.innerHTML=qtc+' ms'+(u?' <span style="color:'+u.farbe+';font-size:11px">Norm '+u.band+'</span>':'');
+      hz.parentNode.style.display='';
+    } else {
+      hz.textContent='–';
+      /* Bei anderen Arten wird die Zelle nicht mit einer nicht belegbaren Zahl gefuellt. */
+      hz.parentNode.style.display=(m.ms!=null&&!qtcErlaubt(f.sp))?'none':'';
+    }
+  }
 }
 
 function zSync(){
@@ -5957,8 +6009,16 @@ function openEkg(){
    * Ein Katzen-QRS dauert 0,04 s — bei 25 mm/s ist das EIN Millimeter. Daran laesst sich
    * nichts ausmessen. Die Katze startet deshalb auf 50 mm/s, der Hund auf 25. Der Vorschub
    * bleibt jederzeit umstellbar; vorbelegt wird nur, was fuer diese Art sinnvoll ist. */
+  /* Vorbelegt wird bei JEDEM Artwechsel, nicht nur einmal je Sitzung. Sonst bleibt die Katze,
+   * die nach einem Hund untersucht wird, auf 25 mm/s stehen — und genau dort ist ihr QRS
+   * ein einziger Millimeter (im Browser nachgestellt 07.08.2026). Innerhalb derselben Art
+   * wird NICHT angefasst: wer den Vorschub von Hand aendert, hat seinen Grund. */
   var N=normOf(f.sp);
-  if(N && !M._vorbelegt){ M.speed=N.speed; M.gain=N.gain; Z.speed=Math.max(50,N.speed); Z.gain=N.gain; M._vorbelegt=1; }
+  if(N && M._vorbelegtFuer!==f.sp){
+    M.speed=N.speed; M.gain=N.gain;
+    Z.speed=Math.max(50,N.speed); Z.gain=N.gain;
+    M._vorbelegtFuer=f.sp;
+  }
   ov.classList.add('open'); M.open=true; ov.dataset.seite='';
   rebuildSide(); syncBtns();
   M.last=(window.performance?performance.now():Date.now()); M.acc=0;
