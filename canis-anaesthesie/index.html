@@ -1024,6 +1024,16 @@ html[data-theme="light"] .assess-tr{color:#5a3c00;background:rgba(255,180,60,.16
 <script src="../shared/breed-genetics.js?v=2"></script>
 <script src="../shared/narkose-risiko.js?v=1"></script>
 <script src="../shared/breed-katalog.js?v=1"></script>
+<!-- jsPDF fuer den ECHTEN PDF-Ausdruck des Diagnostik-EKG (Submodul am Dateiende).
+     Liegt bewusst in shared/ und nicht in vendor/: shared/ steht in BEIDEN Baeumen auf
+     derselben Ebene (quellcode/ui/shared und canis-vetpharm/shared), damit derselbe
+     Pfad in der Station UND in der Fern-Web-App aufgeht. -->
+<script src="../shared/jspdf.umd.min.js"></script>
+<!-- Echte QRS-/Rhythmus-/ST-Auswertung auf ABTASTWERTEN (window.VS.ekg). Sie misst und
+     schweigt im Zweifel; das Diagnostik-EKG benutzt sie, sobald ein Geraet echte Kurven
+     liefert. Gleiche Datei wie bridge/ui-engine — in shared/, damit Station und Web-App
+     dieselbe verwenden. -->
+<script src="../shared/ekg-analyse.js?v=1"></script>
 <script>
 /* ============ Canis Anæsthesia – Engine ============ */
 (function(){
@@ -2831,7 +2841,14 @@ window.__setRealWave=function(map){
   ['ekg','pleth','capno','paw','flow','resp'].forEach(function(key){
     var ch=map[key]; if(!ch||!ch.samples) return;
     var norm=__normReal(ch.samples); if(!norm) return;
-    out[key]={ norm:norm, hz:(ch.hz&&ch.hz>0?ch.hz:256), pos:0 };
+    /* ROHWERTE, SKALA UND EINHEIT MITFUEHREN (07.08.2026).
+     * norm ist auf 0..1 gespreizt (Min/Max) — das genuegt zum ZEICHNEN einer Bahn, aber es
+     * loescht die Verstaerkung. Fuer einen kalibrierten EKG-Ausdruck ("10 mm/mV") und fuer
+     * jede Aussage in mV (ST-Strecke!) braucht es die Rohwerte samt Faktor; ohne sie waere
+     * jede mV-Zahl eine Scheingenauigkeit — genau das, was ekg-analyse.js ausdruecklich
+     * verweigert. Rein additiv: realVal() liest weiterhin nur norm. */
+    out[key]={ norm:norm, hz:(ch.hz&&ch.hz>0?ch.hz:256), pos:0,
+               samples:ch.samples, skala:ch.skala, einheit:ch.einheit, quelle:ch.quelle||null };
   });
   mon.real=Object.keys(out).length?out:null;
 };
@@ -4098,6 +4115,24 @@ try{ window.state=state;
   window.curGeraet=curGeraet; window.geraetName=geraetName;
   window.renderGeraetWahl=renderGeraetWahl; window.cockpitHoehe=cockpitHoehe;
   window.aktiveBahnen=aktiveBahnen; window.geraetTitel=geraetTitel; window.grenzeOf=grenzeOf; window.alarmAnpassung=alarmAnpassung;
+  /* ===== EKG-Submodul (Diagnostik-EKG) — NUR-LESE-Schnittstelle (07.08.2026) =====
+   * Das eigenstaendige EKG-Fenster (unten im Datei-Ende) darf den Monitor-/Narkose-Ablauf NICHT
+   * anfassen. Es holt sich den aktuellen Zustand ausschliesslich ueber diese eine Funktion und
+   * synthetisiert seine Kurven selbst (eigener Schlagzaehler, eigene rAF-Schleife). Rein lesend:
+   * es geht nichts an ein Geraet und nichts in den Monitor zurueck. Dieselben Werte (hr, rhythm)
+   * stehen im Fern-Strom (applyLive -> v.ekgRhythm), deshalb zeigt die Web-App dasselbe Bild live. */
+  window.__ekgFeed=function(){
+    try{ var r=monResolve(); var def=ekgDef(r.ekg||'sinus');
+      /* mon ist eine Closure-Variable dieses Moduls und steht NICHT auf window (nachgemessen
+       * 07.08.2026: window.mon === undefined). Der echte Abtaststreifen muss deshalb HIER
+       * herausgereicht werden — sonst sucht das EKG-Fenster ihn vergeblich und zeigt still
+       * eine Nachbildung, obwohl ein Geraet angeschlossen ist. Genau der Fehler, der ohne
+       * Messung wie "funktioniert" aussieht. */
+      return { hr:r.hr, rhythm:(r.ekg||'sinus'), spo2:r.spo2, temp:r.temp, def:def,
+               sp:state.sp, wt:state.wt, breed:state.breed, mode:state.monMode,
+               running:!!mon.running, real:(mon.real&&mon.real.ekg)?mon.real.ekg:null };
+    }catch(e){ return null; }
+  };
 }catch(e){}
 
 
@@ -4699,6 +4734,827 @@ dock.addEventListener('click',function(e){
 fab.addEventListener('click',function(){ dock.classList.remove('collapsed'); fab.classList.remove('show'); });
 })();
 </script>
+
+<!-- ==================================================================================
+     DIAGNOSTIK-EKG (Submodul) — 07.08.2026
+     Ein eigenes Vollbild-Fenster im virtuellen Geraet, geoeffnet ueber den Knopf "📈 EKG"
+     in der Cockpit-Schalterleiste. Es laeuft in einer EIGENEN Ueberlagerung mit EIGENER
+     Zeichenschleife und stoert den laufenden Monitor / das Narkosegeraet nicht (nur-lesend
+     ueber window.__ekgFeed). Bildinhalt: 6 Extremitaeten-Ableitungen (I, II, III, aVR, aVL,
+     aVF) aus der Ableitung-II-Kurve nach Einthoven/Goldberger abgeleitet, dazu ein langer
+     Rhythmusstreifen (II). Funktionen wie am Ruhe-EKG-Geraet: Geschwindigkeit (25/50 mm/s),
+     Verstaerkung (5/10/20 mm/mV), Filter, Einfrieren, DRUCKEN (weisses Millimeterpapier),
+     SPEICHERN (Archiv im Browser, PNG-Export). Dieselben Werte stehen im Fern-Strom, die
+     Web-App zeigt dasselbe live (~150 ms).
+     Alles additiv und in sich geschlossen — es aendert keine bestehende Funktion.
+     ================================================================================== -->
+<style>
+#ekgOverlay{position:fixed;inset:0;z-index:9000;display:none;flex-direction:column;background:#05080d;color:#e6eef7;font-family:var(--tech,'Segoe UI',Inter,system-ui,sans-serif)}
+#ekgOverlay.open{display:flex}
+.ekg-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;background:linear-gradient(180deg,#0c1420,#080d15);border-bottom:1px solid #1d2a3a}
+.ekg-bar .ekg-title{font-weight:800;font-size:15px;letter-spacing:.3px;color:#dff3ff;display:flex;align-items:center;gap:8px}
+.ekg-bar .ekg-title small{font-weight:600;color:#7fa6c8;font-size:11px}
+.ekg-pat{font-size:12px;color:#9fc0dd;background:rgba(40,224,122,.08);border:1px solid rgba(40,224,122,.25);border-radius:8px;padding:4px 9px}
+.ekg-spacer{flex:1 1 auto}
+.ekg-grp{display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.04);border:1px solid #22303f;border-radius:9px;padding:3px 5px}
+.ekg-grp .lbl{font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;color:#7fa6c8;margin:0 4px 0 2px}
+.ekg-btn{height:30px;min-width:34px;padding:0 9px;border-radius:7px;border:1px solid #2b3a4d;background:#0f1826;color:#cfe0f0;font-size:12px;font-weight:600;cursor:pointer;transition:.14s}
+.ekg-btn:hover{border-color:#39557a;background:#132133}
+.ekg-btn.on{background:linear-gradient(90deg,#1cc7ff,#8b7cf6);border:0;color:#04121a}
+.ekg-btn.big{height:32px;padding:0 12px;font-size:12.5px}
+.ekg-btn.close{background:#2a1420;border-color:#5a2740;color:#ffd0dd}
+.ekg-btn.close:hover{background:#3a1a2c}
+.ekg-btn.rec{background:#3a1418;border-color:#7a2730;color:#ffd7d7}
+.ekg-body{flex:1 1 auto;display:flex;min-height:0}
+.ekg-main{flex:1 1 auto;display:flex;flex-direction:column;min-width:0;padding:8px 8px 6px}
+.ekg-screen{flex:1 1 auto;position:relative;min-height:0;border-radius:8px;overflow:hidden;background:#05080d}
+.ekg-screen canvas{position:absolute;inset:0;width:100%;height:100%}
+.ekg-strip{flex:0 0 118px;position:relative;margin-top:6px;border-radius:8px;overflow:hidden;background:#05080d}
+.ekg-strip canvas{position:absolute;inset:0;width:100%;height:100%}
+.ekg-side{flex:0 0 288px;border-left:1px solid #1d2a3a;background:#080d15;padding:12px 13px;overflow-y:auto}
+.ekg-side h4{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:#7fa6c8}
+.ekg-mrow{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px solid #14202e}
+.ekg-mrow .k{font-size:12px;color:#9fb6cc}
+.ekg-mrow .v{font-size:16px;font-weight:700;color:#eaf4ff;font-family:Consolas,monospace}
+.ekg-mrow .v small{font-size:11px;color:#7fa6c8;font-weight:400}
+.ekg-dx{margin-top:12px;border:1px solid #23303f;border-radius:10px;padding:11px 12px;background:rgba(255,255,255,.02)}
+.ekg-dx .nm{font-size:14px;font-weight:800;color:#eaf4ff;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.ekg-dx .sev{font-size:10px;font-weight:800;letter-spacing:.5px;border-radius:20px;padding:2px 9px}
+.ekg-dx .txt{margin-top:8px;font-size:12px;line-height:1.55;color:#c4d6e8}
+.ekg-dx .txt b{color:#fff}
+.ekg-dx .cause{margin-top:6px;font-size:11.5px;line-height:1.5;color:#9fb6cc}
+.ekg-note{margin-top:12px;font-size:11px;line-height:1.5;color:#87a2bd;border-top:1px dashed #23303f;padding-top:10px}
+.ekg-arch-item{display:flex;gap:9px;align-items:center;padding:8px;border:1px solid #23303f;border-radius:9px;margin-bottom:8px;background:rgba(255,255,255,.02)}
+.ekg-arch-item img{width:96px;height:44px;object-fit:cover;border-radius:5px;background:#fff;flex:0 0 auto}
+.ekg-arch-item .meta{flex:1;min-width:0;font-size:11px;color:#b9cbe0;line-height:1.4}
+.ekg-arch-item .meta b{color:#eaf4ff;font-size:12px}
+.ekg-arch-item .acts{display:flex;flex-direction:column;gap:4px}
+.ekg-empty{color:#6f8aa4;font-size:12px;padding:14px 4px;text-align:center}
+/* PDF-Ansicht MIT RUECKWEG — dieselbe Ueberlegung wie in vetstation-live.js zeigePdfVorschau():
+   der Praxis-PC laeuft in einem Edge mit --kiosk. Ein per doc.save() geoeffnetes PDF landet dort
+   im PDF-Betrachter OHNE Adresszeile, Zuruecktaste und Reiter — eine Sackgasse mitten in einer
+   Narkose. Das PDF bleibt deshalb INNERHALB des EKG-Fensters, mit Zurueck/Drucken/Speichern. */
+#ekgPdfView{position:absolute;inset:0;z-index:20;display:none;flex-direction:column;background:#070b11}
+#ekgPdfView.open{display:flex}
+#ekgPdfView .pdfhead{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#0c1420;border-bottom:1px solid #1d2a3a;flex-wrap:wrap}
+#ekgPdfView .pdftitle{font-size:13px;font-weight:700;color:#dff3ff}
+#ekgPdfView iframe{flex:1 1 auto;width:100%;border:0;background:#525659}
+#ekgPdfView .pdffoot{padding:6px 12px;font-size:11px;color:#7fa6c8;background:#0a1018;border-top:1px solid #1d2a3a}
+.ekg-fern{font-size:11.5px;color:#7fe0a8;background:rgba(40,224,122,.08);border:1px solid rgba(40,224,122,.25);border-radius:8px;padding:5px 10px;white-space:nowrap}
+@media(max-width:820px){ .ekg-side{flex-basis:210px} .ekg-bar .ekg-title small{display:none} }
+/* Druck/Speichern: nur das EKG-Blatt, weisses Papier. */
+@media print{
+  html.ekg-print body>*{display:none !important}
+  html.ekg-print #ekgOverlay{display:none !important}
+  html.ekg-print #ekgPrintSheet{display:block !important;position:static}
+}
+#ekgPrintSheet{display:none;background:#fff}
+#ekgPrintSheet img{display:block;width:100%;height:auto}
+</style>
+<div id="ekgOverlay" role="dialog" aria-label="Diagnostik-EKG" aria-modal="true">
+  <div class="ekg-bar">
+    <span class="ekg-title">📈 Diagnostik-EKG <small id="ekgSub">6-Kanal · Extremitätenableitungen</small></span>
+    <span class="ekg-pat" id="ekgPat">—</span>
+    <span class="ekg-spacer"></span>
+    <span class="ekg-grp"><span class="lbl">mm/s</span>
+      <button class="ekg-btn" data-speed="25">25</button>
+      <button class="ekg-btn" data-speed="50">50</button></span>
+    <span class="ekg-grp"><span class="lbl">mm/mV</span>
+      <button class="ekg-btn" data-gain="5">5</button>
+      <button class="ekg-btn" data-gain="10">10</button>
+      <button class="ekg-btn" data-gain="20">20</button></span>
+    <span class="ekg-grp"><span class="lbl">Filter</span>
+      <button class="ekg-btn" data-filt="musk" title="Muskelfilter (40 Hz) – glättet Zittern/EMG">EMG</button>
+      <button class="ekg-btn" data-filt="netz" title="Netzfilter (50 Hz) gegen Störeinstreuung">50Hz</button></span>
+    <button class="ekg-btn big" id="ekgFreeze" title="Bild einfrieren / weiterlaufen">⏸️ Einfrieren</button>
+    <button class="ekg-btn big" id="ekgPdf" title="Echtes PDF erzeugen (maßstabsgetreu, vektoriell) – ansehen, drucken, speichern">📄 PDF</button>
+    <button class="ekg-btn big" id="ekgPrint" title="Direkt auf weißem Millimeterpapier drucken">🖨️ Drucken</button>
+    <button class="ekg-btn big rec" id="ekgSave" title="Streifen im Archiv sichern">💾 Speichern</button>
+    <button class="ekg-btn big" id="ekgArchBtn" title="Gespeicherte Streifen">📁 Archiv</button>
+    <button class="ekg-btn big close" id="ekgClose" title="Schließen (Esc)">✕</button>
+  </div>
+  <div class="ekg-body">
+    <div class="ekg-main">
+      <div class="ekg-screen"><canvas id="ekgCanvas"></canvas></div>
+      <div class="ekg-strip"><canvas id="ekgStripCv"></canvas></div>
+    </div>
+    <aside class="ekg-side" id="ekgSide">
+      <h4>Messwerte</h4>
+      <div class="ekg-mrow"><span class="k">Herzfrequenz</span><span class="v" id="mHr">–</span></div>
+      <div class="ekg-mrow"><span class="k">RR-Abstand</span><span class="v" id="mRr">–</span></div>
+      <div class="ekg-mrow"><span class="k">PQ / PR</span><span class="v" id="mPr">–</span></div>
+      <div class="ekg-mrow"><span class="k">QRS-Breite</span><span class="v" id="mQrs">–</span></div>
+      <div class="ekg-mrow"><span class="k">QT (geschätzt)</span><span class="v" id="mQt">–</span></div>
+      <div class="ekg-mrow"><span class="k">El. Achse</span><span class="v" id="mAxis">–</span></div>
+      <div class="ekg-dx" id="ekgDx"></div>
+      <div class="ekg-note" id="ekgNote"></div>
+    </aside>
+  </div>
+  <div id="ekgPdfView">
+    <div class="pdfhead">
+      <button class="ekg-btn big close" id="pdfBack" title="Zurück zum EKG (Esc)">← Zurück zum EKG</button>
+      <span class="pdftitle">📄 EKG-Ausdruck</span>
+      <span class="ekg-spacer"></span>
+      <button class="ekg-btn big" id="pdfPrintBtn" title="Drucken">🖨️ Drucken</button>
+      <button class="ekg-btn big" id="pdfSaveBtn" title="Als PDF-Datei speichern">⤓ Als PDF speichern</button>
+      <span class="ekg-fern" id="pdfFernNote" title="Die Fern-Ansicht erzeugt denselben Ausdruck aus demselben Streifen">☁️ Fern-Web-App: gleicher Ausdruck, live</span>
+    </div>
+    <iframe id="pdfFrame" title="EKG-Ausdruck"></iframe>
+    <div class="pdffoot">Maßstabsgetreu und vektoriell: <b id="pdfScaleNote">–</b>. Diese Ansicht bleibt in der VetStation — der Kiosk-Browser hat keinen eigenen Zurück-Knopf.</div>
+  </div>
+</div>
+<div id="ekgPrintSheet"></div>
+
+<script>
+/* ============ DIAGNOSTIK-EKG — eigenständiges Submodul (ES5, in sich geschlossen) ============ */
+(function(){
+"use strict";
+var $=function(s,r){return (r||document).querySelector(s);};
+function gauss(x,mu,s){var d=(x-mu)/s;return Math.exp(-0.5*d*d);}
+
+/* Reine EKG-Wellenform mit ÜBERGEBENEM Schlagzähler (unabhängig vom Monitor-mon.beatN),
+ * inhaltsgleich zu wEkg()/waveforms.js. So bleibt das Fenster von der Monitor-Schleife
+ * vollständig entkoppelt: eigener Zähler, eigener Rhythmus-Jitter. */
+function ekgWave(ph,W,beatN){
+  W=W||{};
+  if(W.flat) return 0.5+(Math.random()-0.5)*0.02;
+  if(W.chaos) return 0.5+0.26*Math.sin(ph*38+beatN)+0.15*Math.sin(ph*67+2)+(Math.random()-0.5)*0.14;
+  var beat=beatN||0,y=0.5;
+  var wide=(W.qrs>1.5),hasP=(W.p&&W.pq!=='diss'),drop=false,tSign=1,ampR=0.42;
+  if(W.drop==='wenckebach'){var r1=W.ratio||4;if(beat%r1===r1-1)drop=true;}
+  if(W.drop==='mobitz2'){var r2=W.ratio||3;if(beat%r2===r2-1)drop=true;}
+  if(W.ectopic&&beat%4===3){if(W.ectopic==='ves'){wide=true;hasP=false;tSign=-1;ampR=0.5;}else{hasP=true;wide=false;}}
+  var pq=(typeof W.pq==='number')?(W.pq-1)*0.05:(W.pq==='inc'?(beat%(W.ratio||4))*0.028:0);
+  if(hasP)y+=0.07*gauss(ph,0.16+pq*0.3,0.028);
+  if(!drop){var qc=0.335+pq;
+    if(wide){y+=ampR*gauss(ph,qc+0.02,0.030)-0.13*gauss(ph,qc-0.04,0.02)-0.16*gauss(ph,qc+0.08,0.026)+0.17*(-tSign)*gauss(ph,0.62,0.05);}
+    else{y+=-0.05*gauss(ph,qc-0.03,0.010)+ampR*gauss(ph,qc,0.010)-0.12*gauss(ph,qc+0.03,0.012)+0.13*tSign*gauss(ph,0.55,0.045);}
+  }
+  if(W.flutter)y+=0.06*(2*((ph*4)%1)-1);
+  if(W.irregular)y+=(Math.random()-0.5)*0.03;
+  if(W.pq==='diss')y+=0.06*gauss((ph*2)%1,0.5,0.05);
+  return y;
+}
+
+/* Extremitätenableitungen: Projektion der Herzachse auf die Ableitungsvektoren.
+ * Einthoven/Goldberger-Winkel; Projektionsfaktor = cos(Achse − Ableitungswinkel).
+ * Ableitung II bei Achse ~60° = volle Höhe, aVR gespiegelt (negativ) — genau wie am Gerät. */
+var LEADS=[
+  {id:'I',   ang:0,    col:'#28e07a'},
+  {id:'II',  ang:60,   col:'#28e07a'},
+  {id:'III', ang:120,  col:'#28e07a'},
+  {id:'aVR', ang:-150, col:'#ffd166'},
+  {id:'aVL', ang:-30,  col:'#ffd166'},
+  {id:'aVF', ang:90,   col:'#ffd166'}
+];
+function proj(leadAng,axis){return Math.cos((axis-leadAng)*Math.PI/180);}
+
+var M={
+  open:false, freeze:false, speed:25, gain:10, musk:false, netz:false,
+  axis:70, beatN:0, phE:0, rrJit:1, acc:0, last:0, raf:null,
+  dpr:Math.min(2,window.devicePixelRatio||1),
+  buf:null, strip:null, feed:null, lastMeas:0, lastFeedT:0,
+  echt:false,        // laeuft gerade ein ECHTER Geraetestreifen?
+  kal:false,         // ist er in mV kalibriert (Verstaerkung bekannt)?
+  ePos:0             // Abspielstelle im echten Streifen
+};
+
+/* ---- Zugang zum ECHTEN Abtaststreifen des Geraets --------------------------------
+ * Quelle ist mon.real.ekg (window.__setRealWave). Dort liegen seit 07.08.2026 neben der
+ * gezeichneten Normierung auch die ROHWERTE mit skala/einheit. Nur damit laesst sich in
+ * mV rechnen; fehlt die Verstaerkung, wird NICHT geraten: dann wird der Streifen auf eine
+ * ablesbare Hoehe normiert und im Bild UND auf dem Ausdruck als "nicht kalibriert"
+ * ausgewiesen. Eine erfundene mV-Zahl waere schlimmer als keine. */
+function echtEkg(){
+  try{
+    var f=M.feed||currentFeed();
+    var R=f&&f.real?f.real:null;      // ueber __ekgFeed, NICHT ueber window.mon (gibt es nicht)
+    if(!R) return null;
+    if(R.samples&&R.samples.length>3) return R;
+    if(R.norm&&R.norm.length>3) return R;
+    return null;
+  }catch(e){ return null; }
+}
+/* Naechster Abtastwert in mV (oder normiert, wenn unkalibriert). Der echte Streifen wird
+ * mit SEINER Abtastrate abgespielt, nicht mit der Bildschirmrate — sonst liefe er zu
+ * schnell oder zu langsam und jede Zeitmessung darauf waere falsch. */
+function echtNaechster(R,colT){
+  var hz=(R.hz&&R.hz>0)?R.hz:256;
+  var roh=R.samples&&R.samples.length>3?R.samples:null;
+  var arr=roh||R.norm, len=arr.length;
+  var i=Math.floor(M.ePos)%len; if(i<0)i+=len;
+  M.ePos=(M.ePos+hz*colT)%len;
+  var v=arr[i];
+  if(v==null) v= roh?0:0.5;
+  if(roh){
+    var sk=R.skala, eh=String(R.einheit||'');
+    if(typeof sk==='number'&&isFinite(sk)&&sk>0&&/uv|µv|mv/i.test(eh)){
+      M.echt=true; M.kal=true;
+      return v*sk*(/mv/i.test(eh)?1:0.001);          // -> mV
+    }
+    // Unbekannte Verstaerkung: Form bleibt echt, Hoehe ist nicht belegbar.
+    M.echt=true; M.kal=false;
+    var n=R.norm&&R.norm[i]!=null?R.norm[i]:0.5;
+    return (n-0.5)*2;                                 // ~ +/-1 "Einheiten", KEINE mV-Aussage
+  }
+  M.echt=true; M.kal=false;
+  return (v-0.5)*2;
+}
+
+function speciesName(sp){var m={hund:'Hund',katze:'Katze',kaninchen:'Kaninchen',pferd:'Pferd',
+  meerschweinchen:'Meerschweinchen',frettchen:'Frettchen',ratte:'Ratte',maus:'Maus',
+  reptil:'Reptil',vogel:'Vogel',hamster:'Hamster',chinchilla:'Chinchilla'};
+  return m[sp]||(sp?sp.charAt(0).toUpperCase()+sp.slice(1):'Patient');}
+
+function currentFeed(){
+  var f=(window.__ekgFeed&&window.__ekgFeed())||null;
+  if(!f) f={hr:80,rhythm:'sinus',def:{name:'Sinusrhythmus',w:{p:true,pq:1,qrs:1}},sp:null,wt:null,mode:'ist'};
+  M.feed=f; return f;
+}
+
+/* ---- Zeichnen ---- */
+function mmPx(){return Math.max(2,Math.round(2.2*M.dpr));}
+function sizeCanvas(cv){
+  var r=cv.getBoundingClientRect();
+  var w=Math.max(2,Math.floor(r.width*M.dpr)), h=Math.max(2,Math.floor(r.height*M.dpr));
+  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;return true;}
+  return false;
+}
+function ensureBuffers(){
+  var cv=$('#ekgCanvas'), sc=$('#ekgStripCv'); if(!cv||!sc) return;
+  var rz=sizeCanvas(cv), rz2=sizeCanvas(sc);
+  var cols=Math.max(60,cv.width), scols=Math.max(60,sc.width);
+  if(!M.buf||M.buf.__cols!==cols){
+    M.buf={__cols:cols}; for(var i=0;i<LEADS.length;i++) M.buf[LEADS[i].id]=new Array(cols).fill(0);
+  }
+  if(!M.strip||M.strip.length!==scols){ M.strip=new Array(scols).fill(0); }
+}
+function drawGrid(ctx,x,y,w,h){
+  var mp=mmPx(), i;
+  ctx.fillStyle='#070b11'; ctx.fillRect(x,y,w,h);
+  ctx.lineWidth=1;
+  ctx.strokeStyle='rgba(0,216,255,.06)';
+  ctx.beginPath();
+  for(i=x;i<=x+w;i+=mp){ctx.moveTo(i,y);ctx.lineTo(i,y+h);}
+  for(i=y;i<=y+h;i+=mp){ctx.moveTo(x,i);ctx.lineTo(x+w,i);}
+  ctx.stroke();
+  ctx.strokeStyle='rgba(0,216,255,.16)';
+  ctx.beginPath();
+  for(i=x;i<=x+w;i+=mp*5){ctx.moveTo(i,y);ctx.lineTo(i,y+h);}
+  for(i=y;i<=y+h;i+=mp*5){ctx.moveTo(x,i);ctx.lineTo(x+w,i);}
+  ctx.stroke();
+}
+/* Ein Signalwert -> y in Pixeln innerhalb einer Bahn (Verstärkung in mm/mV). */
+function yOf(mv,center,gain){ return center - mv*gain*mmPx()/M.dpr*M.dpr; }
+function drawTrace(ctx,buf,cx,cyCenter,laneH,gain,col){
+  var W=buf.length, mp=mmPx();
+  ctx.strokeStyle=col; ctx.lineWidth=Math.max(1.1,1.4*M.dpr); ctx.beginPath();
+  var clip=laneH*0.46;
+  for(var i=0;i<W;i++){
+    var x=i*(cx/(W-1));
+    var dy=buf[i]*gain*mp; if(dy>clip)dy=clip; if(dy<-clip)dy=-clip;
+    var y=cyCenter-dy;
+    if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+}
+function drawLeadCanvas(){
+  var cv=$('#ekgCanvas'); if(!cv) return; var ctx=cv.getContext('2d');
+  var W=cv.width,H=cv.height; if(!W||!H) return;
+  drawGrid(ctx,0,0,W,H);
+  var rows=2, colsN=3, cellW=W/colsN, cellH=H/rows, mp=mmPx();
+  for(var li=0;li<LEADS.length;li++){
+    var rr=Math.floor(li/colsN), cc=li%colsN;
+    var x0=cc*cellW, y0=rr*cellH, center=y0+cellH*0.5;
+    var buf=M.buf[LEADS[li].id];
+    // Kalibrierimpuls 1 mV am linken Rand
+    ctx.strokeStyle='rgba(255,255,255,.5)'; ctx.lineWidth=1.2*M.dpr; ctx.beginPath();
+    var calH=1*M.gain*mp, cx0=x0+6*M.dpr;
+    ctx.moveTo(cx0,center); ctx.lineTo(cx0,center-calH); ctx.lineTo(cx0+8*M.dpr,center-calH); ctx.lineTo(cx0+8*M.dpr,center); ctx.stroke();
+    // Kurve (in eigener Zelle, links um den Kalibrierimpuls versetzt)
+    ctx.save(); ctx.beginPath(); ctx.rect(x0,y0,cellW,cellH); ctx.clip();
+    ctx.strokeStyle=LEADS[li].col; ctx.lineWidth=Math.max(1.1,1.4*M.dpr); ctx.beginPath();
+    var innerX0=x0+18*M.dpr, innerW=cellW-22*M.dpr, clip=cellH*0.44, N=buf.length;
+    for(var i=0;i<N;i++){
+      var x=innerX0+i*(innerW/(N-1));
+      var dy=buf[i]*M.gain*mp; if(dy>clip)dy=clip; if(dy<-clip)dy=-clip;
+      var y=center-dy; if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke(); ctx.restore();
+    // Beschriftung
+    ctx.fillStyle=LEADS[li].col; ctx.font=(12*M.dpr)+'px Consolas,monospace';
+    ctx.fillText(LEADS[li].id, x0+8*M.dpr, y0+16*M.dpr);
+    // Zell-Trennlinie
+    ctx.strokeStyle='rgba(120,150,180,.14)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(x0,y0+0.5); ctx.lineTo(x0,y0+cellH); ctx.moveTo(x0+0.5,y0+cellH-0.5); ctx.lineTo(x0+cellW,y0+cellH-0.5); ctx.stroke();
+  }
+}
+function drawStripCanvas(){
+  var cv=$('#ekgStripCv'); if(!cv) return; var ctx=cv.getContext('2d');
+  var W=cv.width,H=cv.height; if(!W||!H||!M.strip) return;
+  drawGrid(ctx,0,0,W,H);
+  drawTrace(ctx,M.strip,W,H*0.5,H,M.gain,'#28e07a');
+  ctx.fillStyle='#7fe0a8'; ctx.font=(12*M.dpr)+'px Consolas,monospace';
+  ctx.fillText('II · Rhythmus', 8*M.dpr, 16*M.dpr);
+}
+
+function advance(dt){
+  var f=M.feed||currentFeed();
+  var W=(f.def&&f.def.w)||{};
+  ensureBuffers(); if(!M.buf) return;
+  var cols=M.buf.__cols, mp=mmPx();
+  /* ZEITBASIS — mp ist bereits Geraetepixel JE MILLIMETER (2,2*dpr). Die Vorschubrate ist
+   * also mm/s * px/mm = M.speed * mp; ein zusaetzliches *dpr (erste Fassung) machte den
+   * Vorschub um den Geraetefaktor zu schnell und damit die Papierskala falsch. Genau diese
+   * Zahl bestimmt, ob "25 mm/s" auf dem Ausdruck 25 mm/s SIND — sie darf nicht geschaetzt sein.
+   * Eine Spalte = eine Abtastung, daher ist pxPerSec zugleich die Abtastrate. */
+  var pxPerSec=mp*M.speed;       // Abtastspalten je Sekunde
+  M.hz=pxPerSec;                 // fuer Ausdruck und Auswertung
+  M.acc+=pxPerSec*dt; var k=Math.floor(M.acc); if(k>90)k=90; M.acc-=k;
+  var colT=1/pxPerSec;           // Sekunden je Spalte
+  var per=f.hr>0?60/f.hr:9999;
+  for(var j=0;j<k;j++){
+    var prev=M.phE;
+    M.phE=(M.phE+colT/(per*(M.rrJit||1)))%1;
+    if(M.phE<prev){ M.beatN=(M.beatN||0)+1; M.rrJit=W.irregular?(0.55+Math.random()*0.95):1; }
+    /* ECHTES SIGNAL HAT IMMER VORRANG.
+     * Liegt ein Abtaststreifen des Geraets an (mon.real.ekg, gespeist ueber __setRealWave),
+     * wird GENAU DIESER abgespielt — nicht die Nachbildung. Nur wenn kein Geraet eine Kurve
+     * liefert, wird synthetisiert; das steht dann auch so im Bild und auf dem Ausdruck. */
+    var base, ech=echtEkg();
+    if(ech){ base=echtNaechster(ech,colT); }
+    else {
+      M.echt=false; M.kal=false;
+      base=(ekgWave(M.phE,W,M.beatN)-0.5)/0.42;   // ~mV, R-Zacke ~1 mV in Ableitung II
+      if(M.musk){ base=base*0.85; }               // EMG-Filter daempft den Rauschanteil
+    }
+    for(var li=0;li<LEADS.length;li++){
+      /* Der gemessene Kanal IST Ableitung II — er wird unveraendert uebernommen, nicht
+       * projiziert. Die uebrigen Ableitungen werden daraus abgeleitet. Wer auch II ueber
+       * cos(70-60) rechnet, verfaelscht das gemessene Signal um 1,5 %. */
+      var mv;
+      if(ech && LEADS[li].id==='II') mv=base;
+      else mv=base*proj(LEADS[li].ang,M.axis);
+      // Grundrauschen NUR in der Nachbildung — einem echten Streifen faelscht man nichts hinzu.
+      if(!ech && !M.musk && !W.flat){ mv+=(Math.random()-0.5)*(M.netz?0.004:0.012); }
+      var b=M.buf[LEADS[li].id]; b.push(mv); b.shift();
+    }
+    var mvII=ech?base:(base*proj(60,M.axis));
+    M.strip.push(mvII); M.strip.shift();
+  }
+}
+
+function tick(ts){
+  if(!M.open){M.raf=null;return;}
+  M.raf=requestAnimationFrame(tick);
+  if(M._lastDraw&&(ts-M._lastDraw)<30) { /* fps-Deckel ~33/s */ }
+  var dt=(ts-M.last)/1000; M.last=ts; if(dt>0.08)dt=0.05; if(dt<0)dt=0;
+  // Feed höchstens 4x/s neu holen (monResolve ist nicht gratis)
+  if(ts-M.lastFeedT>250){ currentFeed(); M.lastFeedT=ts; }
+  if(!M.freeze) advance(dt);
+  drawLeadCanvas(); drawStripCanvas();
+  if(ts-M.lastMeas>400){ updateMeasures(); M.lastMeas=ts; }
+  M._lastDraw=ts;
+}
+
+/* ---- Messung auf dem ECHTEN Streifen -------------------------------------------------
+ * Sobald ein Geraet Abtastwerte liefert, wird GEMESSEN statt aus dem Modell abgeleitet:
+ * VS.ekg.analysiere() (ui/shared/ekg-analyse.js) sucht die QRS-Zacken, rechnet RR, QRS-Breite
+ * und ST und sagt ausdruecklich NICHTS, wenn der Streifen zu kurz, zu verrauscht oder die
+ * Verstaerkung unbekannt ist. Genau diese Zurueckhaltung ist der Grund, diese Datei zu
+ * benutzen statt selbst zu rechnen. */
+function echtBefund(){
+  if(!M.echt||!window.VS||!VS.ekg||!M.strip||!M.strip.length) return null;
+  var R=echtEkg(); if(!R) return null;
+  try{
+    var hz=(R.hz&&R.hz>0)?R.hz:256;
+    // Auf dem tatsaechlich gezeigten Streifen messen (das ist der, den man auch ausdruckt).
+    var kurve={ samples:M.strip.slice(), hz:M.hz||hz, skala:(M.kal?1:null), einheit:(M.kal?'mV':null) };
+    var f=M.feed||{};
+    var band=null;
+    try{ if(window.grenzeOf){ var g=grenzeOf('hr'); if(g&&g.length===2) band=g; } }catch(e){}
+    return VS.ekg.analysiere(kurve,{bandHr:band,einheit:(M.kal?'mV':null)});
+  }catch(e){ return null; }
+}
+
+/* ---- Messwerte + Deutung (gemessen wenn echt, sonst aus dem Rhythmusmodell) ---- */
+function updateMeasures(){
+  var f=M.feed||currentFeed(); var W=(f.def&&f.def.w)||{}; var hr=f.hr||0;
+  var B=echtBefund();
+  if(B){
+    var st=B.st||{};
+    $('#mHr').innerHTML=(B.hf!=null?B.hf:'—')+' <small>/min gemessen</small>';
+    $('#mRr').innerHTML=(B.rr?B.rr.mittelMs:'—')+' <small>ms'+(B.rr?' ('+B.rr.minMs+'–'+B.rr.maxMs+')':'')+'</small>';
+    $('#mPr').innerHTML='<small>aus dem Streifen nicht belegbar</small>';
+    $('#mQrs').innerHTML=(B.qrsBreiteMs!=null?B.qrsBreiteMs:'—')+' <small>ms gemessen</small>';
+    $('#mQt').innerHTML= st.messbar?((st.mv>0?'+':'')+st.mv+' <small>mV ST</small>')
+              : '<small>ST: '+(st.richtung?st.richtung+' (unkalibriert)':'nicht messbar')+'</small>';
+    $('#mAxis').innerHTML=(B.guete!=null?B.guete+'× <small>Signalgüte</small>':'–');
+    var rh=B.rhythmus||{};
+    var dxE=$('#ekgDx');
+    dxE.innerHTML='<div class="nm">'+(B.brauchbar?(rh.name||'—'):'nicht beurteilbar')+
+      ' <span class="sev" style="background:#28e07a22;color:#28e07a;border:1px solid #28e07a55">GEMESSEN'+(M.kal?' · kalibriert':' · unkalibriert')+'</span></div>'+
+      (rh.begruendung?'<div class="txt">'+rh.begruendung+'</div>':'')+
+      (B.warum?'<div class="cause">'+B.warum+'</div>':'')+
+      '<div class="cause">'+B.schlaege+' Zacken · '+B.sekunden+' s · '+Math.round(B.hz)+' Hz</div>';
+    $('#ekgPat').textContent=speciesName(f.sp)+(f.wt?' · '+f.wt+' kg':'')+' · ECHT';
+    var nE=$('#ekgNote');
+    if(nE) nE.innerHTML='Kurve und Zahlen stammen aus den <b>Abtastwerten des Geräts</b> — keine Nachbildung.'+
+      (M.kal?' Die Verstärkung ist bekannt, mV-Angaben sind belegt.':' Die <b>Verstärkung des Geräts ist unbekannt</b>, deshalb keine Angabe in mV — die Form ist echt, die Höhe nicht belegbar.')+
+      ' Ableitung II ist gemessen, die übrigen sind daraus abgeleitet.';
+    var sub=$('#ekgSub'); if(sub) sub.textContent='6-Kanal · ECHTES Gerätesignal';
+    return;
+  }
+  var sub0=$('#ekgSub'); if(sub0) sub0.textContent='6-Kanal · Extremitätenableitungen';
+  var cat=(f.sp==='katze'); var qrsBase=cat?38:52, prBase=cat?70:100;
+  var rrMs=hr>0?Math.round(60000/hr):0;
+  var qrsMs=Math.round(qrsBase*(W.qrs||1));
+  var prTxt;
+  if(W.pq==='diss') prTxt='dissoziiert';
+  else if(W.pq==='inc') prTxt='zunehmend';
+  else if(!W.p||W.p===false) prTxt='keine P';
+  else prTxt=Math.round(prBase*(typeof W.pq==='number'?W.pq:1))+' ms';
+  var qtMs=rrMs>0?Math.round(Math.min(0.55*rrMs,(cat?160:200)*Math.sqrt(rrMs/1000)*1.0)):0;
+  $('#mHr').innerHTML=(hr>0?hr:'—')+' <small>/min</small>';
+  $('#mRr').innerHTML=(rrMs>0?rrMs:'—')+' <small>ms</small>';
+  $('#mPr').innerHTML=prTxt;
+  $('#mQrs').innerHTML=qrsMs+' <small>ms</small>'+(W.qrs>1.5?' <small style="color:#ff8f8f">breit</small>':'');
+  $('#mQt').innerHTML=(qtMs>0?qtMs:'—')+' <small>ms</small>';
+  $('#mAxis').innerHTML=M.axis+'° <small>Modell</small>';
+  // Deutung
+  var def=f.def||{}; var sevColors=['','#28e07a','#8fd14f','#ffd166','#ff9f45','#ff4d4d'];
+  var sev=def.severity||1; var col=sevColors[Math.min(5,sev)]||'#8fd14f';
+  var emg=def.emergency?'<span class="sev" style="background:#ff4d4d;color:#210">NOTFALL</span>':'';
+  var dx=$('#ekgDx');
+  dx.innerHTML='<div class="nm">'+(def.name||f.rhythm)+
+    ' <span class="sev" style="background:'+col+'22;color:'+col+';border:1px solid '+col+'55">Schweregrad '+sev+'</span>'+emg+'</div>'+
+    (def.recognize?'<div class="txt"><b>Erkennen:</b> '+def.recognize+'</div>':'')+
+    (def.cause?'<div class="cause"><b>Ursache:</b> '+def.cause+'</div>':'');
+  $('#ekgPat').textContent=speciesName(f.sp)+(f.wt?' · '+f.wt+' kg':'')+' · '+(f.mode==='sim'?'Szenario':'Ist');
+  var note=$('#ekgNote');
+  if(note) note.innerHTML='Kurve <b>modellhaft</b> aus dem gewählten Rhythmus synthetisiert (Ableitung II, Achse '+M.axis+'°; übrige Ableitungen nach Einthoven/Goldberger abgeleitet). '+
+    'Für eine Diagnose am Patienten das klinische EKG heranziehen — dieses Fenster ist Entscheidungs- und Trainingshilfe. '+
+    'Dieselben Werte laufen live in die Web-App (Fern-Ansicht).';
+}
+
+/* ---- Weißes Millimeterpapier für Druck/Speichern ---- */
+function renderSheet(scale){
+  scale=scale||2;
+  var mp=8; // Pixel je mm auf dem Blatt (hohe Auflösung)
+  var f=M.feed||currentFeed();
+  // A4-quer-ähnlich: 6 Ableitungen (2x3) + Rhythmusstreifen
+  var Wmm=250, Hmm=170;
+  var w=Wmm*mp, h=Hmm*mp;
+  var cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+  var ctx=cv.getContext('2d');
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,w,h);
+  // rotes Millimeterraster
+  function grid(x,y,gw,gh){
+    var i; ctx.lineWidth=1; ctx.strokeStyle='rgba(255,120,120,.4)'; ctx.beginPath();
+    for(i=0;i<=gw;i+=mp){ctx.moveTo(x+i,y);ctx.lineTo(x+i,y+gh);} for(i=0;i<=gh;i+=mp){ctx.moveTo(x,y+i);ctx.lineTo(x+gw,y+i);} ctx.stroke();
+    ctx.lineWidth=1.4; ctx.strokeStyle='rgba(230,70,70,.55)'; ctx.beginPath();
+    for(i=0;i<=gw;i+=mp*5){ctx.moveTo(x+i,y);ctx.lineTo(x+i,y+gh);} for(i=0;i<=gh;i+=mp*5){ctx.moveTo(x,y+i);ctx.lineTo(x+gw,y+i);} ctx.stroke();
+  }
+  // Kopf
+  var now=new Date();
+  ctx.fillStyle='#111'; ctx.font='bold '+(3.4*mp)+'px Segoe UI,Arial';
+  ctx.fillText('VetStation · Diagnostik-EKG', 4*mp, 5.5*mp);
+  ctx.font=(2.4*mp)+'px Segoe UI,Arial'; ctx.fillStyle='#333';
+  var kopf=speciesName(f.sp)+(f.wt?' · '+f.wt+' kg':'')+'   |   '+M.speed+' mm/s · '+M.gain+' mm/mV'+
+    (M.musk?' · EMG':'')+(M.netz?' · 50Hz':'')+'   |   '+now.toLocaleString();
+  ctx.fillText(kopf, 4*mp, 9.5*mp);
+  ctx.fillText('Rhythmus: '+((f.def&&f.def.name)||f.rhythm)+'   HF '+(f.hr||'—')+'/min', 4*mp, 13*mp);
+  // 6 Ableitungen 2x3
+  var top=16*mp, gridW=(Wmm-8)*mp, gridH=(Hmm-16-40)*mp;
+  grid(4*mp, top, gridW, gridH);
+  var cols=3, rows=2, cellW=gridW/cols, cellH=gridH/rows;
+  for(var li=0;li<LEADS.length;li++){
+    var rr=Math.floor(li/cols), cc=li%cols;
+    var x0=4*mp+cc*cellW, y0=top+rr*cellH, center=y0+cellH*0.5, buf=M.buf[LEADS[li].id]||[];
+    ctx.strokeStyle='#111'; ctx.lineWidth=1.6;
+    // Kalibrierimpuls
+    var cal=1*M.gain*mp; ctx.beginPath(); ctx.moveTo(x0+2*mp,center); ctx.lineTo(x0+2*mp,center-cal); ctx.lineTo(x0+4*mp,center-cal); ctx.lineTo(x0+4*mp,center); ctx.stroke();
+    ctx.beginPath();
+    var ix0=x0+6*mp, iw=cellW-8*mp, N=buf.length, clip=cellH*0.44;
+    for(var i=0;i<N;i++){ var x=ix0+i*(iw/(N-1)); var dy=buf[i]*M.gain*mp; if(dy>clip)dy=clip; if(dy<-clip)dy=-clip; var y=center-dy; if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+    ctx.stroke();
+    ctx.fillStyle='#c0143c'; ctx.font='bold '+(2.8*mp)+'px Consolas,monospace'; ctx.fillText(LEADS[li].id, x0+1*mp, y0+3.4*mp);
+  }
+  // Rhythmusstreifen II
+  var sy=top+gridH+3*mp, sh=34*mp;
+  grid(4*mp, sy, gridW, sh);
+  ctx.strokeStyle='#111'; ctx.lineWidth=1.6; ctx.beginPath();
+  var sbuf=M.strip||[], sc=sy+sh*0.5, sN=sbuf.length, sclip=sh*0.44;
+  for(var s=0;s<sN;s++){ var xx=4*mp+s*(gridW/(sN-1)); var ddy=sbuf[s]*M.gain*mp; if(ddy>sclip)ddy=sclip; if(ddy<-sclip)ddy=-sclip; var yy=sc-ddy; if(s===0)ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);}
+  ctx.stroke();
+  ctx.fillStyle='#c0143c'; ctx.font='bold '+(2.8*mp)+'px Consolas,monospace'; ctx.fillText('II', 5*mp, sy+3.4*mp);
+  return cv;
+}
+
+/* ================= ECHTES PDF — vektoriell und MASSSTABSGETREU =================
+ * Kein Bildschirmfoto in ein PDF gelegt, sondern ein gezeichnetes Blatt: das Raster sind
+ * echte 1-mm-/5-mm-Linien, die Kurve ein Vektorzug. Entscheidend ist die SKALA — auf einem
+ * EKG-Ausdruck darf "25 mm/s · 10 mm/mV" keine Beschriftung sein, sondern muss stimmen:
+ *   waagerecht  1 s  = M.speed mm
+ *   senkrecht   1 mV = M.gain  mm
+ * Daraus folgt, wieviel Signal in eine Zelle passt (T = Zellbreite / speed) — nicht umgekehrt.
+ * Wer stattdessen das Signal in die Zelle staucht, druckt ein Bild, das aussieht wie ein EKG,
+ * aber aus dem man weder Frequenz noch Zeiten ablesen darf.
+ * Latin-1-Filter wie im Narkoseprotokoll (jsPDF/helvetica kann kein ₂ und keine Pfeile).
+ */
+function pdfSan(s){
+  return String(s==null?'':s)
+    .replace(/₀/g,'0').replace(/₁/g,'1').replace(/₂/g,'2').replace(/₃/g,'3').replace(/₄/g,'4')
+    .replace(/₅/g,'5').replace(/₆/g,'6').replace(/₇/g,'7').replace(/₈/g,'8').replace(/₉/g,'9')
+    .replace(/[↑⬆]/g,' hoch').replace(/[↓⬇]/g,' tief').replace(/→/g,'->').replace(/←/g,'<-')
+    .replace(/[–—―]/g,'-').replace(/[‘’‚‛]/g,"'").replace(/[“”„‟]/g,'"').replace(/…/g,'...')
+    .replace(/[•●]/g,'-').replace(/≈/g,'~').replace(/≥/g,'>=').replace(/≤/g,'<=').replace(/×/g,'x')
+    .replace(/[^\x00-\xFF]/g,'');
+}
+var _pdfLast=null;   // { doc, datei, meta } — für Speichern/Drucken/Senden
+function buildPDF(){
+  var jsPDF=window.jspdf&&window.jspdf.jsPDF;
+  if(!jsPDF){ flash('⚠️ PDF-Bibliothek nicht geladen'); return null; }
+  var f=M.feed||currentFeed();
+  var doc=new jsPDF({unit:'mm',format:'a4',orientation:'landscape'});
+  var _t=doc.text.bind(doc); doc.text=function(){ if(arguments.length) arguments[0]=pdfSan(arguments[0]); return _t.apply(doc,arguments); };
+  var W=297,H=210,Mg=10;
+  // Kopfband (wie im Narkoseprotokoll, damit beide Ausdrucke zusammengehören)
+  doc.setFillColor(18,110,120); doc.rect(0,0,W,16,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(14);
+  doc.text('VetStation · Diagnostik-EKG', Mg, 7);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+  doc.text(speciesName(f.sp)+(f.wt?' · '+f.wt+' kg':'')+'   |   Rhythmus: '+((f.def&&f.def.name)||f.rhythm)+'   |   HF '+(f.hr||'—')+'/min', Mg, 12.5);
+  doc.setFontSize(8); doc.text(new Date().toLocaleString(), W-Mg, 7, {align:'right'});
+  doc.text(M.speed+' mm/s · '+M.gain+' mm/mV'+(M.musk?' · EMG-Filter':'')+(M.netz?' · 50-Hz-Filter':''), W-Mg, 12.5, {align:'right'});
+
+  var hz=M.hz||(mmPx()*M.speed);
+  function raster(x,y,w,h){
+    var i;
+    doc.setDrawColor(246,178,178); doc.setLineWidth(0.08);
+    for(i=0;i<=w+0.01;i+=1) doc.line(x+i,y,x+i,y+h);
+    for(i=0;i<=h+0.01;i+=1) doc.line(x,y+i,x+w,y+i);
+    doc.setDrawColor(224,96,96); doc.setLineWidth(0.22);
+    for(i=0;i<=w+0.01;i+=5) doc.line(x+i,y,x+i,y+h);
+    for(i=0;i<=h+0.01;i+=5) doc.line(x,y+i,x+w,y+i);
+  }
+  /* Zeichnet den ZEITLICH LETZTEN Abschnitt eines Puffers massstabsgetreu.
+   * Es wird nur soviel Signal genommen, wie bei M.speed in die Breite passt. */
+  function kurve(buf,x,y,w,h){
+    if(!buf||!buf.length) return;
+    var n=Math.min(buf.length, Math.max(2, Math.round(w/M.speed*hz)));  // Punkte für w mm
+    var von=buf.length-n, mitte=y+h/2, clip=h/2-0.6;
+    var dxmm=w/(n-1);
+    function yAt(i){
+      var v=buf[von+i]; if(v==null) v=0;
+      var dy=v*M.gain; if(dy>clip)dy=clip; if(dy<-clip)dy=-clip;
+      return mitte-dy;
+    }
+    /* doc.lines() nimmt RELATIVE Schritte ab einem Startpunkt — der Startpunkt muss deshalb
+     * der erste Kurvenpunkt sein, nicht die Bahnmitte (sonst haengt der ganze Zug schief). */
+    var startY=yAt(0), px=x, py=startY, pts=[];
+    for(var i=1;i<n;i++){ var cx=x+i*dxmm, cy=yAt(i); pts.push([cx-px,cy-py]); px=cx; py=cy; }
+    doc.setDrawColor(20,20,20); doc.setLineWidth(0.28);
+    if(pts.length) doc.lines(pts, x, startY, [1,1], 'S', false);
+  }
+  function eichzacke(x,y,h){   // 1-mV-Kalibrierimpuls: so hoch wie M.gain mm
+    var mitte=y+h/2, amp=Math.min(M.gain, h/2-1);
+    doc.setDrawColor(20,20,20); doc.setLineWidth(0.35);
+    doc.line(x,mitte,x+1.5,mitte); doc.line(x+1.5,mitte,x+1.5,mitte-amp);
+    doc.line(x+1.5,mitte-amp,x+5,mitte-amp); doc.line(x+5,mitte-amp,x+5,mitte); doc.line(x+5,mitte,x+6.5,mitte);
+  }
+  // 6 Ableitungen als 2x3-Feld
+  var top=20, feldW=W-2*Mg, feldH=110;
+  var spalten=3, reihen=2, zellW=feldW/spalten, zellH=feldH/reihen;
+  raster(Mg,top,feldW,feldH);
+  for(var li=0;li<LEADS.length;li++){
+    var rr=Math.floor(li/spalten), cc=li%spalten;
+    var zx=Mg+cc*zellW, zy=top+rr*zellH;
+    eichzacke(zx+1.5,zy,zellH);
+    kurve(M.buf&&M.buf[LEADS[li].id], zx+9, zy, zellW-10, zellH);
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(170,20,50);
+    doc.text(LEADS[li].id, zx+1.5, zy+5);
+  }
+  // Rhythmusstreifen II über die volle Breite
+  var sy=top+feldH+5, sh=42;
+  raster(Mg,sy,feldW,sh);
+  eichzacke(Mg+1.5,sy,sh);
+  kurve(M.strip, Mg+9, sy, feldW-10, sh);
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(170,20,50);
+  doc.text('II · Rhythmus', Mg+1.5, sy+5);
+  // Befundzeile + Haftungshinweis
+  var by=sy+sh+6;
+  doc.setTextColor(33,41,51); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.text('Befund: '+((f.def&&f.def.name)||f.rhythm), Mg, by);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.6); doc.setTextColor(90,100,112);
+  var erk=(f.def&&f.def.recognize)||'';
+  if(erk) doc.text(doc.splitTextToSize('Erkennen: '+erk, feldW), Mg, by+4);
+  /* HERKUNFT DER KURVE GEHOERT AUF DAS BLATT.
+   * Ein Ausdruck wandert in die Akte. Ob die Linie darauf GEMESSEN oder aus einer Herzfrequenz
+   * NACHGEBILDET ist, muss dort stehen — sonst ist beides spaeter nicht mehr zu unterscheiden. */
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.6);
+  if(M.echt&&M.kal){ doc.setTextColor(20,110,60); doc.text('Gemessenes Gerätesignal, kalibriert (mV belegt).', Mg, H-10); }
+  else if(M.echt){ doc.setTextColor(150,110,20); doc.text('Gemessenes Gerätesignal — Verstärkung unbekannt: Form echt, Amplitude NICHT kalibriert.', Mg, H-10); }
+  else { doc.setTextColor(150,110,20); doc.text('Kein Gerätesignal angeschlossen — Kurve aus dem gewählten Rhythmus NACHGEBILDET (Trainings-/Demonstrationsblatt).', Mg, H-10); }
+  doc.setFont('helvetica','italic'); doc.setFontSize(7); doc.setTextColor(150,80,80);
+  doc.text('Entscheidungs-/Trainingshilfe — kein zugelassener Patientenmonitor-Ersatz. Der Tierarzt entscheidet und handelt.', Mg, H-6);
+  doc.setTextColor(120,130,140); doc.setFont('helvetica','normal');
+  doc.text('Zeitbasis '+M.speed+' mm/s · Verstärkung '+M.gain+' mm/mV · Abtastung '+Math.round(hz)+' Hz', W-Mg, H-6, {align:'right'});
+
+  var datei='EKG_'+(f.rhythm||'streifen')+'_'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.pdf';
+  _pdfLast={doc:doc,datei:datei,meta:{sp:f.sp,wt:f.wt,rhythm:f.rhythm,name:(f.def&&f.def.name)||f.rhythm,hr:f.hr,speed:M.speed,gain:M.gain,hz:Math.round(hz)}};
+  return _pdfLast;
+}
+function doPDF(){
+  var p=buildPDF(); if(!p) return;
+  var box=$('#ekgPdfView'), fr=$('#pdfFrame');
+  var url=null; try{ url=p.doc.output('bloburl'); }catch(e){ url=null; }
+  if(!url){ try{ p.doc.save(p.datei); }catch(e2){ flash('⚠️ PDF konnte nicht erzeugt werden'); } return; }
+  fr.src=url; box.classList.add('open');
+  var sn=$('#pdfScaleNote'); if(sn) sn.textContent=M.speed+' mm/s · '+M.gain+' mm/mV (1 mV = '+M.gain+' mm auf dem Papier)';
+}
+function closePDF(){ var b=$('#ekgPdfView'); if(b){ b.classList.remove('open'); var fr=$('#pdfFrame'); if(fr) fr.src='about:blank'; } }
+
+/* ---- WIE DER AUSDRUCK FERN ANKOMMT -------------------------------------------------
+ *
+ * ES WIRD NICHTS EXTRA UEBERTRAGEN — und das ist eine bewusste Entscheidung, keine Luecke.
+ *
+ * Erste Fassung hatte hier einen Knopf "An Web-App senden", der den Streifen ueber
+ * /api/ekg-streifen in einen neuen RTDB-Zweig /live/<uid>/ekg/... geschrieben haette.
+ * Beim Nachlesen der Regeldatei (installer/firebase-rtdb-rules.json) zeigte sich:
+ *   - Ein solcher Zweig WAERE erlaubt (das .write kaskadiert von $praxis herunter, und wo
+ *     kein .validate steht, gilt in Firebase "erlaubt") —
+ *   - er haette aber KEINE EINZIGE Groessengrenze. Genau davor warnt die Regeldatei in
+ *     ihrem eigenen Kopf: ein einziger grosser Text zieht das Kontingent ALLER Praxen leer,
+ *     und jede offene Fern-Ansicht laedt ihn bei jedem Delta erneut.
+ * Ein fertiges A4-PDF als Base64 (~300 KB) wird ausserdem an JEDER geregelten Stelle
+ * abgewiesen (b64 12000 Zeichen, Blattfelder 2000) — es haette also ohnehin nur auf dem
+ * ungeregelten Weg gehen koennen. Und drei Abweisungen schalten cloud.js DAUERHAFT ab.
+ *
+ * Der Streifen ist fern laengst da: die echte EKG-Kurve laeuft ueber den GEREGELTEN
+ * kurven-Pfad (Int16+Base64, 12000-Zeichen-Grenze) ohnehin laufend in die Web-App und
+ * landet dort ueber pushKurven() in demselben window.__setRealWave. Die Web-App traegt
+ * seit 07.08.2026 dieses gesamte Modul — sie erzeugt denselben Ausdruck aus demselben
+ * Streifen mit demselben Code, samt Skala und Kalibrierung.
+ * Ergebnis: der Ausdruck ist fern live verfuegbar, ohne ein zusaetzliches Byte, ohne neuen
+ * Zweig, ohne Regelaenderung und ohne Kontingentrisiko. Weniger Code, der mehr leistet. */
+
+/* ---- Drucken ---- */
+function doPrint(){
+  var cv=renderSheet();
+  var sheet=$('#ekgPrintSheet'); sheet.innerHTML='';
+  var img=new Image(); img.src=cv.toDataURL('image/png'); sheet.appendChild(img);
+  document.documentElement.classList.add('ekg-print');
+  var clean=function(){ document.documentElement.classList.remove('ekg-print'); window.removeEventListener('afterprint',clean); };
+  window.addEventListener('afterprint',clean);
+  // dem Bild Zeit zum Dekodieren geben
+  setTimeout(function(){ window.print(); setTimeout(clean,1500); },120);
+}
+
+/* ---- Archiv (localStorage) ---- */
+var ARCH_KEY='vetstation_ekg_archiv';
+function archLoad(){ try{ return JSON.parse(localStorage.getItem(ARCH_KEY)||'[]'); }catch(e){ return []; } }
+function archSave(list){ try{ localStorage.setItem(ARCH_KEY, JSON.stringify(list.slice(0,60))); }catch(e){} }
+function doSave(){
+  var f=M.feed||currentFeed();
+  var full=renderSheet().toDataURL('image/png');
+  // kleines Vorschaubild
+  var big=new Image();
+  var thumbCv=document.createElement('canvas'); thumbCv.width=192; thumbCv.height=88;
+  var tctx=thumbCv.getContext('2d');
+  var rec={ id:'ekg'+Date.now(), ts:Date.now(),
+    sp:f.sp, wt:f.wt, rhythm:f.rhythm, name:(f.def&&f.def.name)||f.rhythm, hr:f.hr,
+    speed:M.speed, gain:M.gain, png:full, thumb:'' };
+  big.onload=function(){ tctx.drawImage(big,0,0,192,88); try{rec.thumb=thumbCv.toDataURL('image/png');}catch(e){} finish(); };
+  big.onerror=finish; big.src=full;
+  function finish(){ var list=archLoad(); list.unshift(rec); archSave(list); flash('💾 Streifen gespeichert'); if($('#ekgOverlay').dataset.arch==='1') renderArch(); }
+}
+function flash(msg){
+  var d=document.createElement('div'); d.textContent=msg;
+  d.style.cssText='position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:9999;background:#0f2a1a;border:1px solid #2f8f52;color:#bff5d0;padding:8px 16px;border-radius:9px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.4)';
+  document.body.appendChild(d); setTimeout(function(){ d.style.transition='opacity .4s'; d.style.opacity='0'; setTimeout(function(){d.remove();},420); },1300);
+}
+function downloadPNG(dataURL,name){ var a=document.createElement('a'); a.href=dataURL; a.download=name; document.body.appendChild(a); a.click(); a.remove(); }
+function fmtTs(ts){ try{ return new Date(ts).toLocaleString(); }catch(e){ return ''; } }
+function renderArch(){
+  var side=$('#ekgSide'); var list=archLoad();
+  var html='<h4>📁 Archiv <span style="float:right"><button class="ekg-btn" id="ekgArchBack">← Messwerte</button></span></h4>';
+  if(!list.length){ html+='<div class="ekg-empty">Noch keine gespeicherten Streifen.<br>Mit 💾 <b>Speichern</b> einen Streifen sichern.</div>'; }
+  else{
+    for(var i=0;i<list.length;i++){ var r=list[i];
+      html+='<div class="ekg-arch-item" data-id="'+r.id+'">'+
+        '<img src="'+(r.thumb||r.png)+'" alt="">'+
+        '<div class="meta"><b>'+(r.name||r.rhythm)+'</b><br>'+speciesName(r.sp)+(r.wt?' · '+r.wt+' kg':'')+' · HF '+(r.hr||'—')+'<br><span style="color:#7fa6c8">'+fmtTs(r.ts)+'</span></div>'+
+        '<div class="acts"><button class="ekg-btn" data-view="'+r.id+'" title="Drucken">🖨️</button>'+
+        '<button class="ekg-btn" data-dl="'+r.id+'" title="Als PNG laden">⬇️</button>'+
+        '<button class="ekg-btn close" data-del="'+r.id+'" title="Löschen">🗑️</button></div></div>';
+    }
+  }
+  side.innerHTML=html;
+  $('#ekgOverlay').dataset.arch='1';
+  $('#ekgArchBack').onclick=function(){ $('#ekgOverlay').dataset.arch='0'; rebuildSide(); updateMeasures(); };
+  side.querySelectorAll('[data-del]').forEach(function(b){ b.onclick=function(){ var id=b.getAttribute('data-del'); archSave(archLoad().filter(function(x){return x.id!==id;})); renderArch(); }; });
+  side.querySelectorAll('[data-dl]').forEach(function(b){ b.onclick=function(){ var r=archLoad().filter(function(x){return x.id===b.getAttribute('data-dl');})[0]; if(r) downloadPNG(r.png,'EKG_'+(r.rhythm||'streifen')+'_'+r.id+'.png'); }; });
+  side.querySelectorAll('[data-view]').forEach(function(b){ b.onclick=function(){ var r=archLoad().filter(function(x){return x.id===b.getAttribute('data-view');})[0]; if(!r)return;
+    var sheet=$('#ekgPrintSheet'); sheet.innerHTML=''; var img=new Image(); img.src=r.png; sheet.appendChild(img);
+    document.documentElement.classList.add('ekg-print'); setTimeout(function(){ window.print(); setTimeout(function(){document.documentElement.classList.remove('ekg-print');},1200); },120); }; });
+}
+function rebuildSide(){
+  $('#ekgSide').innerHTML='<h4>Messwerte</h4>'+
+    '<div class="ekg-mrow"><span class="k">Herzfrequenz</span><span class="v" id="mHr">–</span></div>'+
+    '<div class="ekg-mrow"><span class="k">RR-Abstand</span><span class="v" id="mRr">–</span></div>'+
+    '<div class="ekg-mrow"><span class="k">PQ / PR</span><span class="v" id="mPr">–</span></div>'+
+    '<div class="ekg-mrow"><span class="k">QRS-Breite</span><span class="v" id="mQrs">–</span></div>'+
+    '<div class="ekg-mrow"><span class="k">QT (geschätzt)</span><span class="v" id="mQt">–</span></div>'+
+    '<div class="ekg-mrow"><span class="k">El. Achse</span><span class="v" id="mAxis">–</span></div>'+
+    '<div class="ekg-dx" id="ekgDx"></div><div class="ekg-note" id="ekgNote"></div>';
+}
+
+/* ---- Öffnen / Schließen ---- */
+function setSpeed(v){ M.speed=v; syncBtns(); }
+function setGain(v){ M.gain=v; syncBtns(); }
+function syncBtns(){
+  var ov=$('#ekgOverlay'); if(!ov) return;
+  ov.querySelectorAll('[data-speed]').forEach(function(b){ b.classList.toggle('on', +b.getAttribute('data-speed')===M.speed); });
+  ov.querySelectorAll('[data-gain]').forEach(function(b){ b.classList.toggle('on', +b.getAttribute('data-gain')===M.gain); });
+  ov.querySelector('[data-filt="musk"]').classList.toggle('on',M.musk);
+  ov.querySelector('[data-filt="netz"]').classList.toggle('on',M.netz);
+  var fb=$('#ekgFreeze'); if(fb){ fb.classList.toggle('on',M.freeze); fb.innerHTML=M.freeze?'▶️ Weiter':'⏸️ Einfrieren'; }
+}
+function openEkg(){
+  var ov=$('#ekgOverlay'); if(!ov) return;
+  var f=currentFeed();
+  M.axis=(f.sp==='katze')?75:70;
+  ov.classList.add('open'); M.open=true; ov.dataset.arch='0';
+  rebuildSide(); syncBtns();
+  M.last=(window.performance?performance.now():Date.now()); M.acc=0;
+  ensureBuffers();
+  if(!M.raf) M.raf=requestAnimationFrame(tick);
+  updateMeasures();
+}
+function closeEkg(){
+  var ov=$('#ekgOverlay'); if(!ov) return;
+  ov.classList.remove('open'); M.open=false;
+  if(M.raf){ cancelAnimationFrame(M.raf); M.raf=null; }
+}
+
+/* ---- Knopf in die Cockpit-Schalterleiste einhängen (rein additiv) ---- */
+function injectButton(){
+  if($('#ekgOpenBtn')) return true;
+  var host=$('.ck-schalter');
+  /* WICHTIG: NICHT die Klasse 'mon-mode' verwenden — der Cockpit-Aufbau bindet ALLE
+   * '.mon-mode'-Knoepfe per b.onclick=setMonMode(b.dataset.m) neu (Zeile ~2865) und wuerde
+   * unseren Oeffnen-Handler ueberschreiben (dataset.m waere undefined). Eigene Klasse +
+   * addEventListener sind dagegen unempfindlich. */
+  var btn=document.createElement('button');
+  btn.id='ekgOpenBtn'; btn.className='ekg-launch'; btn.type='button';
+  btn.innerHTML='📈 EKG'; btn.title='Diagnostik-EKG öffnen (6 Ableitungen, Rhythmusstreifen, Drucken/Speichern)';
+  btn.style.cssText='flex:0 0 auto;height:36px;padding:0 12px;font-size:12px;font-weight:700;border-radius:8px;cursor:pointer;background:linear-gradient(90deg,#123b2a,#0f2740);border:1px solid #2f6f52;color:#bff5d0';
+  btn.addEventListener('click',openEkg);
+  if(host){ host.appendChild(btn); return true; }
+  return false;
+}
+
+function wire(){
+  var ov=$('#ekgOverlay'); if(!ov) return;
+  ov.querySelectorAll('[data-speed]').forEach(function(b){ b.onclick=function(){ setSpeed(+b.getAttribute('data-speed')); }; });
+  ov.querySelectorAll('[data-gain]').forEach(function(b){ b.onclick=function(){ setGain(+b.getAttribute('data-gain')); }; });
+  ov.querySelector('[data-filt="musk"]').onclick=function(){ M.musk=!M.musk; syncBtns(); };
+  ov.querySelector('[data-filt="netz"]').onclick=function(){ M.netz=!M.netz; syncBtns(); };
+  $('#ekgFreeze').onclick=function(){ M.freeze=!M.freeze; syncBtns(); };
+  $('#ekgPdf').onclick=doPDF;
+  $('#pdfBack').onclick=closePDF;
+  $('#pdfSaveBtn').onclick=function(){ if(_pdfLast){ try{ _pdfLast.doc.save(_pdfLast.datei); }catch(e){ flash('⚠️ Speichern nicht möglich'); } } };
+  $('#pdfPrintBtn').onclick=function(){
+    var fr=$('#pdfFrame');
+    try{ fr.contentWindow.focus(); fr.contentWindow.print(); }
+    catch(e){ if(_pdfLast){ try{ _pdfLast.doc.save(_pdfLast.datei); }catch(e2){} } }
+  };
+  $('#ekgPrint').onclick=doPrint;
+  $('#ekgSave').onclick=doSave;
+  $('#ekgArchBtn').onclick=function(){ if(ov.dataset.arch==='1'){ ov.dataset.arch='0'; rebuildSide(); updateMeasures(); } else { renderArch(); } };
+  $('#ekgClose').onclick=closeEkg;
+  /* Esc raeumt IMMER nur die oberste Schicht ab: liegt die PDF-Ansicht oben, fuehrt Esc dorthin
+   * zurueck und NICHT aus dem EKG heraus — sonst waere der Ausdruck weg, den man gerade ansieht. */
+  document.addEventListener('keydown',function(e){
+    if(e.key!=='Escape') return;
+    if($('#ekgPdfView')&&$('#ekgPdfView').classList.contains('open')){ closePDF(); return; }
+    if(M.open) closeEkg();
+  });
+  /* In der Fern-Ansicht steht der Hinweis andersherum: dort IST man die Web-App. */
+  if(window.__anaesLive){ var fn=$('#pdfFernNote'); if(fn) fn.textContent='☁️ Fern-Ansicht · Ausdruck aus dem Live-Streifen'; }
+  window.addEventListener('resize',function(){ if(M.open){ M.buf=null; M.strip=null; ensureBuffers(); } });
+  window.__ekgOeffnen=openEkg; // für Verknüpfungen aus anderen Modulen
+}
+
+function init(){
+  wire();
+  // Der Cockpit-Reiter baut die Schalterleiste evtl. später; ein paar Versuche.
+  var tries=0; (function tryInject(){ if(injectButton()) return; if(++tries<40) setTimeout(tryInject,300); })();
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+})();
+</script>
 </body>
 </html>
 
@@ -5119,7 +5975,13 @@ function pushKurven(p){
   Object.keys(kv).forEach(function(k){
     var kd=kv[k], lane=laneOf(kd); if(!lane || map[lane]) return;
     var s=decodeSamples(kd); if(!s || !s.length) return;
-    map[lane]={ hz:kd.hz, samples:s };
+    /* decodeSamples rechnet die UEBERTRAGUNGSskala heraus und liefert wieder die Rohwerte des
+     * Geraets. Erst kd.geraeteSkala macht daraus uV/mV — sie muss deshalb mit, sonst druckt das
+     * Diagnostik-EKG fern "unkalibriert", waehrend derselbe Streifen am Praxis-PC kalibriert
+     * ist. Zwei Ausdrucke desselben Streifens duerfen sich darin nicht unterscheiden.
+     * kd.skala gehoert NICHT hierher — die ist bereits verrechnet; sie ein zweites Mal
+     * anzuwenden waere ein stiller Faktor-Fehler. */
+    map[lane]={ hz:kd.hz, samples:s, skala:kd.geraeteSkala, einheit:kd.einheit, quelle:kd.code||kd.name||null };
   });
   kurvenSigGezeigt=sig;
   try{ window.__setRealWave(Object.keys(map).length?map:null); }catch(e){}
