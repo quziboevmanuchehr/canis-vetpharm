@@ -4129,7 +4129,8 @@ try{ window.state=state;
        * eine Nachbildung, obwohl ein Geraet angeschlossen ist. Genau der Fehler, der ohne
        * Messung wie "funktioniert" aussieht. */
       return { hr:r.hr, rhythm:(r.ekg||'sinus'), spo2:r.spo2, temp:r.temp, def:def,
-               sp:state.sp, wt:state.wt, breed:state.breed, mode:state.monMode,
+               sp:state.sp, wt:state.wt, breed:state.breed, age:state.age, mode:state.monMode,
+               breedName:(function(){ try{ var b=curBreed(); return b?(b.name||b.id):null; }catch(e){ return null; } })(),
                running:!!mon.running, real:(mon.real&&mon.real.ekg)?mon.real.ekg:null };
     }catch(e){ return null; }
   };
@@ -4810,6 +4811,34 @@ fab.addEventListener('click',function(){ dock.classList.remove('collapsed'); fab
 }
 #ekgPrintSheet{display:none;background:#fff}
 #ekgPrintSheet img{display:block;width:100%;height:auto}
+/* ===== Einzelableitung gross (Studien-/Ausmessansicht) ===== */
+.ekg-zoom{position:absolute;inset:0;z-index:15;display:none;flex-direction:column;background:#05080d}
+.ekg-zoom.open{display:flex}
+.ekg-zoom .zbar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:7px 11px;background:#0c1420;border-bottom:1px solid #1d2a3a}
+.ekg-zoom .zlead{font:800 17px Consolas,monospace;color:#28e07a;min-width:44px}
+.ekg-zoom .zstage{flex:1 1 auto;position:relative;min-height:0;cursor:crosshair;touch-action:none}
+.ekg-zoom .zstage canvas{position:absolute;inset:0;width:100%;height:100%}
+.ekg-zoom .zfoot{display:flex;gap:14px;flex-wrap:wrap;padding:7px 12px;background:#0a1018;border-top:1px solid #1d2a3a;font-size:12px;color:#9fb6cc}
+.ekg-zoom .zfoot b{color:#eaf4ff;font-family:Consolas,monospace;font-size:14px}
+.ekg-zoom .zfoot .hint{color:#6f8aa4;font-size:11px}
+.ekg-mess{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.04);border:1px solid #22303f;border-radius:8px;padding:4px 10px}
+.ekg-mess i{font-style:normal;color:#7fa6c8;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px}
+/* Doppelklick-Hinweis auf der Uebersicht */
+.ekg-dblhint{position:absolute;right:10px;top:8px;z-index:5;font-size:11px;color:#7fa6c8;background:rgba(10,16,24,.82);border:1px solid #22303f;border-radius:7px;padding:4px 9px;pointer-events:none}
+/* ===== Patientendaten ===== */
+.ekg-patbox{padding:2px 0 10px}
+.ekg-patbox .pf{display:flex;flex-direction:column;gap:3px;margin-bottom:7px}
+.ekg-patbox label{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:#7fa6c8}
+.ekg-patbox input,.ekg-patbox select{height:30px;border-radius:7px;border:1px solid #2b3a4d;background:#0d1219;color:#e6eef7;font-size:12.5px;padding:0 8px;box-sizing:border-box}
+.ekg-patbox .zwei{display:flex;gap:7px}.ekg-patbox .zwei .pf{flex:1;min-width:0}
+.ekg-modus{display:flex;gap:5px;margin-bottom:9px}
+.ekg-modus button{flex:1;height:30px;border-radius:7px;border:1px solid #2b3a4d;background:#0f1826;color:#cfe0f0;font-size:11.5px;font-weight:700;cursor:pointer}
+.ekg-modus button.on{background:linear-gradient(90deg,#1cc7ff,#8b7cf6);border:0;color:#04121a}
+.ekg-uebernahme{font-size:11px;color:#7fe0a8;background:rgba(40,224,122,.07);border:1px solid rgba(40,224,122,.22);border-radius:7px;padding:6px 8px;line-height:1.45;margin-bottom:8px}
+/* ===== Platz fuer die spaetere KI-Beurteilung (heute leer, Vertrag steht) ===== */
+.ekg-ki{margin-top:12px;border:1px dashed #2b3a4d;border-radius:10px;padding:10px 11px;background:rgba(139,124,246,.05)}
+.ekg-ki .kh{font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;color:#a99bff;display:flex;align-items:center;gap:6px}
+.ekg-ki .kb{margin-top:6px;font-size:11.5px;line-height:1.5;color:#9fb6cc}
 </style>
 <div id="ekgOverlay" role="dialog" aria-label="Diagnostik-EKG" aria-modal="true">
   <div class="ekg-bar">
@@ -4830,12 +4859,16 @@ fab.addEventListener('click',function(){ dock.classList.remove('collapsed'); fab
     <button class="ekg-btn big" id="ekgPdf" title="Echtes PDF erzeugen (maßstabsgetreu, vektoriell) – ansehen, drucken, speichern">📄 PDF</button>
     <button class="ekg-btn big" id="ekgPrint" title="Direkt auf weißem Millimeterpapier drucken">🖨️ Drucken</button>
     <button class="ekg-btn big rec" id="ekgSave" title="Streifen im Archiv sichern">💾 Speichern</button>
+    <button class="ekg-btn big" id="ekgPatBtn" title="Patientendaten – aus der Narkose übernommen oder für den Kardio-Termin von Hand">🐾 Patient</button>
     <button class="ekg-btn big" id="ekgArchBtn" title="Gespeicherte Streifen">📁 Archiv</button>
     <button class="ekg-btn big close" id="ekgClose" title="Schließen (Esc)">✕</button>
   </div>
   <div class="ekg-body">
     <div class="ekg-main">
-      <div class="ekg-screen"><canvas id="ekgCanvas"></canvas></div>
+      <div class="ekg-screen">
+        <canvas id="ekgCanvas"></canvas>
+        <div class="ekg-dblhint">Doppelklick auf eine Ableitung → groß &amp; ausmessen</div>
+      </div>
       <div class="ekg-strip"><canvas id="ekgStripCv"></canvas></div>
     </div>
     <aside class="ekg-side" id="ekgSide">
@@ -4847,8 +4880,40 @@ fab.addEventListener('click',function(){ dock.classList.remove('collapsed'); fab
       <div class="ekg-mrow"><span class="k">QT (geschätzt)</span><span class="v" id="mQt">–</span></div>
       <div class="ekg-mrow"><span class="k">El. Achse</span><span class="v" id="mAxis">–</span></div>
       <div class="ekg-dx" id="ekgDx"></div>
+      <div class="ekg-ki" id="ekgKI"></div>
       <div class="ekg-note" id="ekgNote"></div>
     </aside>
+  </div>
+  <!-- EINZELABLEITUNG GROSS: hier wird studiert und AUSGEMESSEN. Erreichbar per Doppelklick
+       auf eine Ableitung der Uebersicht oder auf den Rhythmusstreifen, sowie ueber die
+       Ableitungsknoepfe in dieser Leiste. -->
+  <div class="ekg-zoom" id="ekgZoom">
+    <div class="zbar">
+      <button class="ekg-btn big close" id="zBack" title="Zurück zur Übersicht (Esc)">← Übersicht</button>
+      <span class="zlead" id="zLead">II</span>
+      <span class="ekg-grp" id="zLeadBtns"></span>
+      <span class="ekg-spacer"></span>
+      <span class="ekg-grp"><span class="lbl">mm/s</span>
+        <button class="ekg-btn" data-zspeed="25">25</button>
+        <button class="ekg-btn" data-zspeed="50">50</button>
+        <button class="ekg-btn" data-zspeed="100">100</button></span>
+      <span class="ekg-grp"><span class="lbl">mm/mV</span>
+        <button class="ekg-btn" data-zgain="5">5</button>
+        <button class="ekg-btn" data-zgain="10">10</button>
+        <button class="ekg-btn" data-zgain="20">20</button>
+        <button class="ekg-btn" data-zgain="40">40</button></span>
+      <button class="ekg-btn big" id="zCalT" title="Zeit-Messzirkel: zwei senkrechte Marken ziehen → ms und Frequenz">↔️ Zeit messen</button>
+      <button class="ekg-btn big" id="zCalA" title="Amplituden-Messzirkel: zwei waagerechte Marken → mV">↕️ Amplitude</button>
+      <button class="ekg-btn big" id="zReset" title="Marken zurücksetzen">↺</button>
+    </div>
+    <div class="zstage" id="zStage"><canvas id="zCanvas"></canvas></div>
+    <div class="zfoot">
+      <span class="ekg-mess"><i>Δt</i><b id="zDt">–</b></span>
+      <span class="ekg-mess"><i>entspricht</i><b id="zBpm">–</b></span>
+      <span class="ekg-mess"><i>ΔAmplitude</i><b id="zMv">–</b></span>
+      <span class="ekg-mess"><i>Papier</i><b id="zScale">–</b></span>
+      <span class="hint" id="zHint">Ziehen mit der Maus setzt die Marken. Doppelklick auf die Fläche = Marken löschen.</span>
+    </div>
   </div>
   <div id="ekgPdfView">
     <div class="pdfhead">
@@ -4946,19 +5011,15 @@ function echtNaechster(R,colT){
   M.ePos=(M.ePos+hz*colT)%len;
   var v=arr[i];
   if(v==null) v= roh?0:0.5;
-  if(roh){
-    var sk=R.skala, eh=String(R.einheit||'');
-    if(typeof sk==='number'&&isFinite(sk)&&sk>0&&/uv|µv|mv/i.test(eh)){
-      M.echt=true; M.kal=true;
-      return v*sk*(/mv/i.test(eh)?1:0.001);          // -> mV
-    }
-    // Unbekannte Verstaerkung: Form bleibt echt, Hoehe ist nicht belegbar.
-    M.echt=true; M.kal=false;
-    var n=R.norm&&R.norm[i]!=null?R.norm[i]:0.5;
-    return (n-0.5)*2;                                 // ~ +/-1 "Einheiten", KEINE mV-Aussage
+  if(roh && kalOf(R)){
+    var eh=String(R.einheit||'');
+    return v*R.skala*(/mv/i.test(eh)?1:0.001);        // -> mV
   }
-  M.echt=true; M.kal=false;
-  return (v-0.5)*2;
+  /* Unbekannte Verstaerkung: die FORM bleibt echt, die HOEHE ist nicht belegbar. Dann wird
+   * auf eine ablesbare Hoehe normiert und ueberall als "unkalibriert" ausgewiesen. */
+  var n=R.norm&&R.norm[i]!=null?R.norm[i]:(roh?null:v);
+  if(n==null) return 0;
+  return (n-0.5)*2;                                   // ~ +/-1 Einheiten, KEINE mV-Aussage
 }
 
 function speciesName(sp){var m={hund:'Hund',katze:'Katze',kaninchen:'Kaninchen',pferd:'Pferd',
@@ -4966,14 +5027,33 @@ function speciesName(sp){var m={hund:'Hund',katze:'Katze',kaninchen:'Kaninchen',
   reptil:'Reptil',vogel:'Vogel',hamster:'Hamster',chinchilla:'Chinchilla'};
   return m[sp]||(sp?sp.charAt(0).toUpperCase()+sp.slice(1):'Patient');}
 
+/* Ist dieser Kanal in mV umrechenbar? Reine Pruefung auf den DATEN — nicht darauf, ob
+ * gerade gezeichnet wurde. (Erste Fassung setzte M.kal als Nebenwirkung von advance();
+ * bei eingefrorenem Bild stand deshalb "unkalibriert", obwohl der Streifen kalibriert war —
+ * gemessen 07.08.2026 im Messzirkel.) */
+function kalOf(R){
+  if(!R) return false;
+  var sk=R.skala, eh=String(R.einheit||'');
+  return typeof sk==='number' && isFinite(sk) && sk>0 && /uv|µv|mv/i.test(eh);
+}
 function currentFeed(){
   var f=(window.__ekgFeed&&window.__ekgFeed())||null;
   if(!f) f={hr:80,rhythm:'sinus',def:{name:'Sinusrhythmus',w:{p:true,pq:1,qrs:1}},sp:null,wt:null,mode:'ist'};
-  M.feed=f; return f;
+  M.feed=f;
+  /* Herkunft und Kalibrierung stehen an EINER Stelle fest und gelten fuer Bild, Messzirkel,
+   * Auswertung und Ausdruck gleichermassen. */
+  var R=(f.real && ((f.real.samples&&f.real.samples.length>3)||(f.real.norm&&f.real.norm.length>3))) ? f.real : null;
+  M.echt=!!R; M.kal=kalOf(R);
+  return f;
 }
 
 /* ---- Zeichnen ---- */
 function mmPx(){return Math.max(2,Math.round(2.2*M.dpr));}
+/* Abtastrate des GEZEIGTEN Streifens. advance() setzt M.hz beim Zeichnen; war das Bild von
+ * Anfang an angehalten, gaebe es sie nicht — und eine 0 an eine Auswertung oder an ein
+ * KI-Modell zu uebergeben ist schlimmer als gar nichts (gemessen 07.08.2026: hz kam als 0
+ * im KI-Vertrag an). Deshalb hier EINE Stelle mit dem rechnerisch richtigen Rueckfall. */
+function hzJetzt(){ return (M.hz && M.hz>0) ? M.hz : (mmPx()*M.speed); }
 function sizeCanvas(cv){
   var r=cv.getBoundingClientRect();
   var w=Math.max(2,Math.floor(r.width*M.dpr)), h=Math.max(2,Math.floor(r.height*M.dpr));
@@ -5081,10 +5161,9 @@ function advance(dt){
      * Liegt ein Abtaststreifen des Geraets an (mon.real.ekg, gespeist ueber __setRealWave),
      * wird GENAU DIESER abgespielt — nicht die Nachbildung. Nur wenn kein Geraet eine Kurve
      * liefert, wird synthetisiert; das steht dann auch so im Bild und auf dem Ausdruck. */
-    var base, ech=echtEkg();
+    var base, ech=echtEkg();   // M.echt/M.kal stehen bereits aus currentFeed() fest
     if(ech){ base=echtNaechster(ech,colT); }
     else {
-      M.echt=false; M.kal=false;
       base=(ekgWave(M.phE,W,M.beatN)-0.5)/0.42;   // ~mV, R-Zacke ~1 mV in Ableitung II
       if(M.musk){ base=base*0.85; }               // EMG-Filter daempft den Rauschanteil
     }
@@ -5112,8 +5191,9 @@ function tick(ts){
   // Feed höchstens 4x/s neu holen (monResolve ist nicht gratis)
   if(ts-M.lastFeedT>250){ currentFeed(); M.lastFeedT=ts; }
   if(!M.freeze) advance(dt);
-  drawLeadCanvas(); drawStripCanvas();
-  if(ts-M.lastMeas>400){ updateMeasures(); M.lastMeas=ts; }
+  if(Z.open){ zeichneZoom(); }        // die grosse Ansicht liegt oben — dann nur sie zeichnen
+  else { drawLeadCanvas(); drawStripCanvas(); }
+  if(ts-M.lastMeas>400){ updateMeasures(); if(Z.open) zZeigeMesswerte(); M.lastMeas=ts; }
   M._lastDraw=ts;
 }
 
@@ -5129,7 +5209,7 @@ function echtBefund(){
   try{
     var hz=(R.hz&&R.hz>0)?R.hz:256;
     // Auf dem tatsaechlich gezeigten Streifen messen (das ist der, den man auch ausdruckt).
-    var kurve={ samples:M.strip.slice(), hz:M.hz||hz, skala:(M.kal?1:null), einheit:(M.kal?'mV':null) };
+    var kurve={ samples:M.strip.slice(), hz:hzJetzt(), skala:(M.kal?1:null), einheit:(M.kal?'mV':null) };
     var f=M.feed||{};
     var band=null;
     try{ if(window.grenzeOf){ var g=grenzeOf('hr'); if(g&&g.length===2) band=g; } }catch(e){}
@@ -5143,13 +5223,32 @@ function updateMeasures(){
   var B=echtBefund();
   if(B){
     var st=B.st||{};
-    $('#mHr').innerHTML=(B.hf!=null?B.hf:'—')+' <small>/min gemessen</small>';
+    var N=normOf(f.sp);
+    /* Der Normbereich steht NEBEN dem Wert, nicht in einer Fussnote. Wer eine QRS-Breite
+     * von 55 ms liest, muss ohne Nachschlagen wissen, ob das beim Hund normal (ja) oder bei
+     * der Katze deutlich zu breit ist (ja). Fehlt fuer eine Art ein belegtes Band, wird nur
+     * gemessen und NICHT bewertet. */
+    function mitNorm(wert,band,einheit,zusatz){
+      var u=normUrteil(band,wert,einheit);
+      var kern=(wert!=null?wert:'—')+' <small>'+(einheit||'')+(zusatz?' '+zusatz:'')+'</small>';
+      if(!u) return kern;
+      return kern+'<br><small style="color:'+u.farbe+'">Norm '+u.band+'</small>';
+    }
+    $('#mHr').innerHTML=mitNorm(B.hf, N&&N.hf, '/min', 'gemessen');
     $('#mRr').innerHTML=(B.rr?B.rr.mittelMs:'—')+' <small>ms'+(B.rr?' ('+B.rr.minMs+'–'+B.rr.maxMs+')':'')+'</small>';
-    $('#mPr').innerHTML='<small>aus dem Streifen nicht belegbar</small>';
-    $('#mQrs').innerHTML=(B.qrsBreiteMs!=null?B.qrsBreiteMs:'—')+' <small>ms gemessen</small>';
-    $('#mQt').innerHTML= st.messbar?((st.mv>0?'+':'')+st.mv+' <small>mV ST</small>')
+    $('#mPr').innerHTML='<small>PQ: am Messzirkel abnehmen</small>';
+    $('#mQrs').innerHTML=mitNorm(B.qrsBreiteMs, N&&N.qrs, 'ms', 'gemessen');
+    /* QT liefert die Auswertung nicht; gezeigt wird stattdessen die ST-Strecke — und wenn
+     * eine Frequenz da ist, die frequenzkorrigierte QT-Zeit NACH VAN DE WATER (nicht Bazett). */
+    $('#mQt').innerHTML= st.messbar?((st.mv>0?'+':'')+st.mv+' <small>mV ST</small>'+
+              (N&&N.stSenkung!=null?'<br><small style="color:'+((st.mv<-N.stSenkung||st.mv>N.stHebung)?'#ff4d4d':'#28e07a')+'">Grenze ±'+N.stSenkung+'/'+N.stHebung+' mV</small>':''))
               : '<small>ST: '+(st.richtung?st.richtung+' (unkalibriert)':'nicht messbar')+'</small>';
-    $('#mAxis').innerHTML=(B.guete!=null?B.guete+'× <small>Signalgüte</small>':'–');
+    var mea=achseRechnen();
+    var uA=(N&&N.achse)?normUrteil(N.achse,mea,'°'):null;
+    $('#mAxis').innerHTML=(mea!=null?mea+'°':'–')+' <small>MEA</small>'+
+      (uA?'<br><small style="color:'+uA.farbe+'">Norm '+uA.band+'</small>':
+        ((N&&N.achse===null)?'<br><small style="color:#7fa6c8">beim Pferd nicht aussagekräftig</small>':''))+
+      (B.guete!=null?'<br><small style="color:#7fa6c8">Güte '+B.guete+'×</small>':'');
     var rh=B.rhythmus||{};
     var dxE=$('#ekgDx');
     dxE.innerHTML='<div class="nm">'+(B.brauchbar?(rh.name||'—'):'nicht beurteilbar')+
@@ -5284,11 +5383,20 @@ function buildPDF(){
   doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(14);
   doc.text('VetStation · Diagnostik-EKG', Mg, 7);
   doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
-  doc.text(speciesName(f.sp)+(f.wt?' · '+f.wt+' kg':'')+'   |   Rhythmus: '+((f.def&&f.def.name)||f.rhythm)+'   |   HF '+(f.hr||'—')+'/min', Mg, 12.5);
+  /* PATIENTENZEILE — ein EKG-Ausdruck ohne Patient ist in der Akte wertlos. Was fehlt,
+   * bleibt weg; es wird nichts erfunden. */
+  var pd=patDaten(), kopf=[];
+  if(pd.name) kopf.push(pd.name);
+  if(pd.besitzer) kopf.push('Bes. '+pd.besitzer);
+  kopf.push(speciesName(pd.sp));
+  if(pd.rasse) kopf.push(pd.rasse);
+  if(pd.wt) kopf.push(pd.wt+' kg');
+  if(pd.alter) kopf.push(pd.alter);
+  doc.text(kopf.join('  ·  '), Mg, 12.5);
   doc.setFontSize(8); doc.text(new Date().toLocaleString(), W-Mg, 7, {align:'right'});
   doc.text(M.speed+' mm/s · '+M.gain+' mm/mV'+(M.musk?' · EMG-Filter':'')+(M.netz?' · 50-Hz-Filter':''), W-Mg, 12.5, {align:'right'});
 
-  var hz=M.hz||(mmPx()*M.speed);
+  var hz=hzJetzt();
   function raster(x,y,w,h){
     var i;
     doc.setDrawColor(246,178,178); doc.setLineWidth(0.08);
@@ -5345,7 +5453,15 @@ function buildPDF(){
   // Befundzeile + Haftungshinweis
   var by=sy+sh+6;
   doc.setTextColor(33,41,51); doc.setFont('helvetica','bold'); doc.setFontSize(9);
-  doc.text('Befund: '+((f.def&&f.def.name)||f.rhythm), Mg, by);
+  doc.text('Rhythmus: '+((f.def&&f.def.name)||f.rhythm)+'   ·   HF '+(f.hr||'—')+'/min', Mg, by);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  var zeile2=[];
+  if(pd.frage) zeile2.push('Fragestellung: '+pd.frage);
+  if(pd.untersucher) zeile2.push('Untersucher: '+pd.untersucher);
+  zeile2.push(pd.quelle);
+  doc.setTextColor(90,100,112);
+  doc.text(zeile2.join('   ·   '), W-Mg, by, {align:'right'});
+  doc.setTextColor(33,41,51); doc.setFont('helvetica','bold'); doc.setFontSize(9);
   doc.setFont('helvetica','normal'); doc.setFontSize(7.6); doc.setTextColor(90,100,112);
   var erk=(f.def&&f.def.recognize)||'';
   if(erk) doc.text(doc.splitTextToSize('Erkennen: '+erk, feldW), Mg, by+4);
@@ -5427,7 +5543,7 @@ function doSave(){
     speed:M.speed, gain:M.gain, png:full, thumb:'' };
   big.onload=function(){ tctx.drawImage(big,0,0,192,88); try{rec.thumb=thumbCv.toDataURL('image/png');}catch(e){} finish(); };
   big.onerror=finish; big.src=full;
-  function finish(){ var list=archLoad(); list.unshift(rec); archSave(list); flash('💾 Streifen gespeichert'); if($('#ekgOverlay').dataset.arch==='1') renderArch(); }
+  function finish(){ var list=archLoad(); list.unshift(rec); archSave(list); flash('💾 Streifen gespeichert'); if($('#ekgOverlay').dataset.seite==='arch') renderArch(); }
 }
 function flash(msg){
   var d=document.createElement('div'); d.textContent=msg;
@@ -5451,8 +5567,8 @@ function renderArch(){
     }
   }
   side.innerHTML=html;
-  $('#ekgOverlay').dataset.arch='1';
-  $('#ekgArchBack').onclick=function(){ $('#ekgOverlay').dataset.arch='0'; rebuildSide(); updateMeasures(); };
+  $('#ekgOverlay').dataset.seite='arch';
+  $('#ekgArchBack').onclick=function(){ $('#ekgOverlay').dataset.seite=''; rebuildSide(); updateMeasures(); };
   side.querySelectorAll('[data-del]').forEach(function(b){ b.onclick=function(){ var id=b.getAttribute('data-del'); archSave(archLoad().filter(function(x){return x.id!==id;})); renderArch(); }; });
   side.querySelectorAll('[data-dl]').forEach(function(b){ b.onclick=function(){ var r=archLoad().filter(function(x){return x.id===b.getAttribute('data-dl');})[0]; if(r) downloadPNG(r.png,'EKG_'+(r.rhythm||'streifen')+'_'+r.id+'.png'); }; });
   side.querySelectorAll('[data-view]').forEach(function(b){ b.onclick=function(){ var r=archLoad().filter(function(x){return x.id===b.getAttribute('data-view');})[0]; if(!r)return;
@@ -5467,7 +5583,359 @@ function rebuildSide(){
     '<div class="ekg-mrow"><span class="k">QRS-Breite</span><span class="v" id="mQrs">–</span></div>'+
     '<div class="ekg-mrow"><span class="k">QT (geschätzt)</span><span class="v" id="mQt">–</span></div>'+
     '<div class="ekg-mrow"><span class="k">El. Achse</span><span class="v" id="mAxis">–</span></div>'+
-    '<div class="ekg-dx" id="ekgDx"></div><div class="ekg-note" id="ekgNote"></div>';
+    '<div class="ekg-dx" id="ekgDx"></div><div class="ekg-ki" id="ekgKI"></div><div class="ekg-note" id="ekgNote"></div>';
+  renderKI();
+}
+
+/* ==================================================================================
+ * TIERMEDIZINISCHE NORMWERTE — die Grundlage jeder Beurteilung.
+ *
+ * HUMANGRENZEN GELTEN HIER NICHT, und das ist keine Feinheit: "QRS > 120 ms = Schenkelblock"
+ * ist beim Hund um den Faktor zwei zu weit und bei der Katze um den Faktor drei. Ein
+ * Katzen-QRS ist normal 0,04 s — bei 25 mm/s ist das EIN Millimeter Papier. Deshalb steht
+ * neben jedem Messwert sein tierartrichtiger Normbereich, und deshalb schaltet die Katze
+ * auf 50 mm/s.
+ *
+ * Quellen: Tilley, Essentials of Canine and Feline Electrocardiography; Willis/Oliveira/
+ * Schwartz, Guide to Canine and Feline Electrocardiography; Ettinger/Feldman.
+ * Pferd (Basis-Apex): eigene Referenzintervalle, deshalb eigener Eintrag.
+ * ================================================================================== */
+var EKGNORM={
+  hund:{ name:'Hund',
+    hf:[70,160], pDauer:[null,40], pAmp:[null,0.4], pq:[60,130], qrs:[null,60], rAmp:[null,3.0],
+    qt:[150,250], achse:[40,100], stSenkung:0.2, stHebung:0.15,
+    sinusarrhythmie:'normal',        // beim Hund physiologisch (atemabhaengig)
+    speed:25, gain:10 },
+  katze:{ name:'Katze',
+    hf:[120,240], pDauer:[null,40], pAmp:[null,0.2], pq:[50,90], qrs:[null,40], rAmp:[null,0.9],
+    qt:[120,180], achse:[0,160], stSenkung:0.001, stHebung:0.001,
+    sinusarrhythmie:'auffaellig',    // bei der Katze NICHT physiologisch
+    speed:50, gain:10 },
+  pferd:{ name:'Pferd',
+    hf:[28,44], pDauer:[60,150], pAmp:[null,0.5], pq:[210,380], qrs:[40,160], rAmp:[null,1.5],
+    qt:[410,630], achse:null,       // beim Pferd sagt die Frontalachse nichts ueber die Kammer
+    stSenkung:null, stHebung:null,
+    sinusarrhythmie:'normal',
+    speed:25, gain:10 }
+};
+/* Fuer alle uebrigen Arten gibt es KEINE belastbaren Bandbreiten in der Literatur, die diese
+ * Anwendung nennen duerfte. Dann wird gemessen und NICHT bewertet — eine erfundene Ampel
+ * waere schlimmer als keine. */
+function normOf(sp){ return EKGNORM[sp]||null; }
+
+/* Bewertung eines Messwertes gegen sein Band. Gibt Farbe und Klartext, oder nichts. */
+function normUrteil(band,wert,einheit){
+  if(!band||wert==null||!isFinite(wert)) return null;
+  var u=band[0], o=band[1];
+  var txt=(u!=null?u:'')+(u!=null&&o!=null?'–':'')+(o!=null?o:'')+(einheit?' '+einheit:'');
+  if(u!=null&&wert<u) return {ok:false,farbe:'#ff9f45',band:txt,wie:'zu kurz/niedrig'};
+  if(o!=null&&wert>o) return {ok:false,farbe:'#ff4d4d',band:txt,wie:'zu lang/hoch'};
+  return {ok:true,farbe:'#28e07a',band:txt,wie:'im Normbereich'};
+}
+
+/* QT-KORREKTUR — beim Tier NICHT nach Bazett.
+ * Bazett (QT/sqrt(RR)) ueberkorrigiert bei hohen Frequenzen massiv; bei einer Katze mit
+ * 220/min wird daraus eine Zahl, die nichts mehr bedeutet. Fuer den Hund ist die
+ * Van-de-Water-Korrektur die empfohlene: QTcV = QT - 0,087 * ((60/HF) - 1), QT in Sekunden.
+ * Sie wird ausdruecklich als "QTcV" beschriftet, damit niemand sie fuer Bazett haelt. */
+function qtcVanDeWater(qtMs,hf){
+  if(!qtMs||!hf||hf<=0) return null;
+  var qtS=qtMs/1000;
+  var qtc=qtS-0.087*((60/hf)-1);
+  return Math.round(qtc*1000);
+}
+
+/* MITTLERE ELEKTRISCHE ACHSE aus den Nettoausschlaegen zweier Ableitungen.
+ * Netto = R - (|Q| + |S|); der Winkel folgt aus Ableitung I (0 Grad) und aVF (90 Grad):
+ *   MEA = atan2(Netto_aVF, Netto_I)
+ * Gerechnet wird auf dem GEZEIGTEN Streifen: je Ableitung der groesste positive und der
+ * groesste negative Ausschlag um die Grundlinie. Das ist die Naeherung, die ein Untersucher
+ * am Papier auch macht — und sie ist ehrlich, solange sie so benannt ist. */
+function nettoAusschlag(buf){
+  if(!buf||buf.length<10) return null;
+  var hi=-1e9, lo=1e9;
+  for(var i=0;i<buf.length;i++){ var v=buf[i]; if(v==null) continue; if(v>hi)hi=v; if(v<lo)lo=v; }
+  if(hi<=-1e9||lo>=1e9) return null;
+  return hi+lo;                     // positiver Gipfel minus Betrag des negativen Tals
+}
+function achseRechnen(){
+  if(!M.buf) return null;
+  var nI=nettoAusschlag(M.buf['I']), nF=nettoAusschlag(M.buf['aVF']);
+  if(nI==null||nF==null) return null;
+  if(Math.abs(nI)<1e-6&&Math.abs(nF)<1e-6) return null;
+  var grad=Math.atan2(nF,nI)*180/Math.PI;
+  return Math.round(grad);
+}
+
+/* ==================================================================================
+ * LUECKE FUER DIE SPAETERE KI — der Vertrag steht, das Modell fehlt (07.08.2026).
+ *
+ * Es wird HEUTE keine KI gebaut. Damit man spaeter eine einhaengen kann, ohne die
+ * Oberflaeche umzubauen, steht hier die Schnittstelle — und zwar so, dass sie die
+ * Grundhaltung dieser Anwendung nicht aushebelt: die KI ist ein ZWEITER LESER, nie die
+ * Quelle der Wahrheit. Sie darf nichts ueberschreiben, was gemessen wurde.
+ *
+ * EINHAENGEN (spaeter, an genau EINER Stelle):
+ *     window.__ekgKI = function (eingabe) { ... return ausgabe | null; }
+ *
+ * EINGABE (alles, was ein Modell ueblicherweise braucht):
+ *   { samples:[Number], hz:Number, einheit:'mV'|null, kalibriert:Boolean,
+ *     ableitung:'II', art:'hund'|'katze'|..., gewichtKg:Number|null,
+ *     speed:Number, gain:Number, echt:Boolean }
+ *   samples sind die Werte des GEZEIGTEN Streifens, in mV wenn kalibriert, sonst
+ *   normiert. hz ist die tatsaechliche Abtastrate. Nichts ist geraten.
+ *
+ * AUSGABE (oder null, wenn das Modell nichts sagen kann — das ist ein gueltiges Ergebnis):
+ *   { befund:String, vertrauen:0..1, begruendung:String,
+ *     schlaege:[{ tMs:Number, art:'normal'|'ves'|'sves'|'unklar' }] | null,
+ *     guete:String|null }
+ *
+ * REGELN, die die Oberflaeche durchsetzt (nicht das Modell):
+ *   - Ein Vertrauen unter 0,6 wird als "unsicher" gezeigt und NICHT als Befund.
+ *   - Die KI-Aussage steht in einem EIGENEN, sichtbar getrennten Kasten. Sie ersetzt
+ *     weder die Messung (VS.ekg) noch das Urteil des Tierarztes, und das steht dabei.
+ *   - Wirft das Modell oder braucht es zu lange, passiert nichts. Ein EKG, das wegen
+ *     einer KI stehen bleibt, waere ein Rueckschritt.
+ * ================================================================================== */
+function kiBefund(){
+  if(typeof window.__ekgKI!=='function') return null;
+  if(!M.strip||M.strip.length<10) return null;
+  try{
+    var f=M.feed||{};
+    var a=window.__ekgKI({
+      samples:M.strip.slice(), hz:Math.round(hzJetzt()),
+      einheit:(M.kal?'mV':null), kalibriert:!!M.kal,
+      ableitung:'II', art:f.sp||null, gewichtKg:f.wt||null,
+      speed:M.speed, gain:M.gain, echt:!!M.echt
+    });
+    if(!a||typeof a!=='object'||!a.befund) return null;
+    return a;
+  }catch(e){ return null; }   // eine kaputte KI darf das EKG nicht anhalten
+}
+function renderKI(){
+  var host=$('#ekgKI'); if(!host) return;
+  var a=kiBefund();
+  if(!a){
+    host.innerHTML='<div class="kh">🤖 KI-Zweitmeinung</div>'+
+      '<div class="kb">Noch kein Modell eingehängt. Die Schnittstelle steht bereit '+
+      '(<code>window.__ekgKI</code>); bis dahin misst und beurteilt die Station ohne KI.</div>';
+    return;
+  }
+  var sicher=(typeof a.vertrauen==='number' && a.vertrauen>=0.6);
+  host.innerHTML='<div class="kh">🤖 KI-Zweitmeinung'+
+      (typeof a.vertrauen==='number'?' <span style="color:#7fa6c8">· Vertrauen '+Math.round(a.vertrauen*100)+' %</span>':'')+'</div>'+
+    '<div class="kb"><b style="color:'+(sicher?'#eaf4ff':'#ffd166')+'">'+
+      (sicher?'':'Unsicher: ')+String(a.befund).slice(0,200)+'</b>'+
+      (a.begruendung?'<br>'+String(a.begruendung).slice(0,300):'')+
+      '<br><span style="color:#6f8aa4">Zweiter Leser, keine Diagnose. Messung und Urteil bleiben bei der Tierärztin/dem Tierarzt.</span></div>';
+}
+
+/* ==================================================================================
+ * PATIENTENDATEN — zwei Wege, weil es zwei Situationen gibt.
+ *
+ * 1. WAEHREND DER NARKOSE laeuft der Patient bereits in der Anwendung (Tierart, Gewicht,
+ *    Rasse, Alter sind gesetzt). Diese Daten werden UEBERNOMMEN und nicht noch einmal
+ *    abgefragt — wer waehrend einer Narkose Formulare ausfuellt, schaut nicht auf das Tier.
+ * 2. BEIM KARDIO-TERMIN (Ultraschall + EKG) gibt es keine Narkose und keinen Datenstrom.
+ *    Dann werden Name, Besitzer, Rasse, Gewicht, Alter und die Fragestellung von Hand
+ *    eingetragen — sie gehoeren auf den Ausdruck, der in die Akte geht.
+ *
+ * Die Uebernahme ist EINSEITIG: das EKG liest aus der Anwendung, schreibt aber nie zurueck.
+ * Sonst wuerde eine Eingabe im Kardio-Termin die Narkosedosen eines anderen Patienten
+ * veraendern — der gefaehrlichste denkbare Nebeneffekt in dieser Anwendung.
+ * ================================================================================== */
+var P={ modus:'auto', name:'', besitzer:'', sp:'', rasse:'', wt:'', alter:'', frage:'', untersucher:'' };
+var PKEY='vetstation_ekg_patient';
+try{ var pg=JSON.parse(localStorage.getItem(PKEY)||'null'); if(pg&&typeof pg==='object') P=Object.assign(P,pg); }catch(e){}
+function pMerken(){ try{ localStorage.setItem(PKEY, JSON.stringify(P)); }catch(e){} }
+
+/* Die Daten, die auf dem Ausdruck und in der Kopfzeile stehen: im Auto-Modus aus der
+ * Anwendung, im Kardio-Modus aus der Eingabe. Fehlendes bleibt LEER statt geraten. */
+function patDaten(){
+  var f=M.feed||currentFeed()||{};
+  if(P.modus==='auto'){
+    return { quelle:'Narkose-Patient (übernommen)',
+      name:P.name||'', besitzer:P.besitzer||'',
+      sp:f.sp||'', rasse:(f.breedName||f.breed||''), wt:(f.wt||''),
+      alter:({adult:'adult',pediatric:'Jungtier/neonatal',senior:'geriatrisch'}[f.age]||f.age||''),
+      frage:P.frage||'', untersucher:P.untersucher||'' };
+  }
+  return { quelle:'Kardio-Termin (von Hand)',
+    name:P.name||'', besitzer:P.besitzer||'', sp:P.sp||'', rasse:P.rasse||'',
+    wt:P.wt||'', alter:P.alter||'', frage:P.frage||'', untersucher:P.untersucher||'' };
+}
+function patKopfzeile(){
+  var d=patDaten(), t=[];
+  if(d.name) t.push(d.name);
+  t.push(speciesName(d.sp));
+  if(d.rasse) t.push(d.rasse);
+  if(d.wt) t.push(d.wt+' kg');
+  return t.join(' · ');
+}
+function renderPatient(){
+  var side=$('#ekgSide'), d=patDaten();
+  var ov=$('#ekgOverlay'); ov.dataset.seite='pat';
+  var arten=['hund','katze','kaninchen','meerschweinchen','frettchen','ratte','maus','hamster','chinchilla','vogel','reptil','pferd'];
+  side.innerHTML='<h4>🐾 Patient <span style="float:right"><button class="ekg-btn" id="pBack">← Messwerte</button></span></h4>'+
+    '<div class="ekg-modus">'+
+      '<button id="pAuto" class="'+(P.modus==='auto'?'on':'')+'" title="Daten aus dem laufenden Narkose-Patienten übernehmen">💤 Aus Narkose</button>'+
+      '<button id="pHand" class="'+(P.modus==='hand'?'on':'')+'" title="Kardio-Termin: Daten von Hand eintragen">🫀 Kardio-Termin</button>'+
+    '</div>'+
+    (P.modus==='auto'
+      ? '<div class="ekg-uebernahme">Tierart, Rasse, Gewicht und Alter kommen <b>aus dem laufenden Patienten</b> der Anwendung und ändern sich mit ihm. Das EKG schreibt nie zurück.</div>'
+      : '<div class="ekg-uebernahme">Für den <b>Kardio-Termin</b> (Ultraschall + EKG) ohne Narkose. Die Angaben stehen auf dem Ausdruck.</div>')+
+    '<div class="ekg-patbox">'+
+      '<div class="zwei"><div class="pf"><label>Name des Tieres</label><input id="pName" value="'+esc2(P.name)+'" placeholder="z. B. Luna"></div>'+
+        '<div class="pf"><label>Besitzer</label><input id="pBes" value="'+esc2(P.besitzer)+'" placeholder="Nachname"></div></div>'+
+      (P.modus==='hand'
+        ? '<div class="zwei"><div class="pf"><label>Tierart</label><select id="pSp">'+
+            arten.map(function(a){ return '<option value="'+a+'"'+(P.sp===a?' selected':'')+'>'+speciesName(a)+'</option>'; }).join('')+
+          '</select></div><div class="pf"><label>Gewicht (kg)</label><input id="pWt" value="'+esc2(P.wt)+'" inputmode="decimal" placeholder="z. B. 4,3"></div></div>'+
+          '<div class="zwei"><div class="pf"><label>Rasse</label><input id="pRas" value="'+esc2(P.rasse)+'" placeholder="z. B. Maine Coon"></div>'+
+          '<div class="pf"><label>Alter</label><input id="pAlt" value="'+esc2(P.alter)+'" placeholder="z. B. 9 J"></div></div>'
+        : '<div class="ekg-mrow"><span class="k">Tierart</span><span class="v">'+esc2(speciesName(d.sp))+'</span></div>'+
+          '<div class="ekg-mrow"><span class="k">Gewicht</span><span class="v">'+(d.wt?esc2(d.wt)+' <small>kg</small>':'–')+'</span></div>'+
+          '<div class="ekg-mrow"><span class="k">Rasse</span><span class="v" style="font-size:13px">'+(d.rasse?esc2(d.rasse):'–')+'</span></div>'+
+          '<div class="ekg-mrow"><span class="k">Alter</span><span class="v" style="font-size:13px">'+(d.alter?esc2(d.alter):'–')+'</span></div>')+
+      '<div class="pf"><label>Fragestellung / Indikation</label><input id="pFrage" value="'+esc2(P.frage)+'" placeholder="z. B. Herzgeräusch III/VI, Synkope"></div>'+
+      '<div class="pf"><label>Untersucher</label><input id="pUnt" value="'+esc2(P.untersucher)+'" placeholder="Name"></div>'+
+    '</div>';
+  $('#pBack').onclick=function(){ ov.dataset.seite=''; rebuildSide(); updateMeasures(); };
+  $('#pAuto').onclick=function(){ P.modus='auto'; pMerken(); renderPatient(); };
+  $('#pHand').onclick=function(){ P.modus='hand'; pMerken(); renderPatient(); };
+  function bind(id,feld){ var el=$(id); if(el) el.oninput=function(){ P[feld]=el.value; pMerken(); }; }
+  bind('#pName','name'); bind('#pBes','besitzer'); bind('#pFrage','frage'); bind('#pUnt','untersucher');
+  if(P.modus==='hand'){ bind('#pWt','wt'); bind('#pRas','rasse'); bind('#pAlt','alter');
+    var s=$('#pSp'); if(s) s.onchange=function(){ P.sp=s.value; pMerken(); }; }
+}
+function esc2(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* ==================================================================================
+ * EINZELABLEITUNG GROSS — die Ansicht, in der wirklich befundet wird.
+ *
+ * WARUM SIE SEIN MUSS: auf einer 2x3-Uebersicht kann man einen Rhythmus erkennen, aber
+ * nichts ausmessen. Eine P-Welle beim Katzen-EKG ist rund 0,04 mV hoch und 20 ms breit —
+ * bei 25 mm/s sind das 0,5 mm Papier. Wer daran eine PQ-Zeit bestimmen will, braucht
+ * Vorschub und Verstaerkung, und er braucht einen MESSZIRKEL.
+ *
+ * DER MESSZIRKEL IST DAS EIGENTLICHE WERKZEUG. Er rechnet nicht "ungefaehr", sondern
+ * ueber genau denselben Massstab wie der Ausdruck:
+ *     Bildpunkte -> Millimeter (mp = Punkte je mm) -> Millisekunden (mm / (mm/s) * 1000)
+ *     Bildpunkte -> Millimeter -> Millivolt        (mm / (mm/mV))
+ * Aus einem Zeitabstand wird zusaetzlich die Frequenz genannt (60000/ms) — das ist der
+ * haeufigste Handgriff ueberhaupt: zwei R-Zacken fassen und die Herzfrequenz ablesen.
+ *
+ * GEMESSEN WIRD AUF EINEM STEHENDEN BILD. Sobald ein Messzirkel benutzt wird, haelt das
+ * Bild an (M.freeze). Auf einer laufenden Kurve zu messen ergibt eine Zahl, die schon
+ * beim Ablesen nicht mehr stimmt.
+ * ================================================================================== */
+var ZLEADS=['I','II','III','aVR','aVL','aVF','RHY'];
+var Z={ open:false, lead:'II', speed:50, gain:10, modus:null, t1:null, t2:null, a1:null, a2:null, drag:null };
+
+function zBuf(){ return Z.lead==='RHY' ? (M.strip||[]) : ((M.buf&&M.buf[Z.lead])||[]); }
+function zStageCv(){ return $('#zCanvas'); }
+
+function zeichneZoom(){
+  var cv=zStageCv(); if(!cv) return;
+  var r=cv.getBoundingClientRect();
+  var w=Math.max(2,Math.floor(r.width*M.dpr)), h=Math.max(2,Math.floor(r.height*M.dpr));
+  if(cv.width!==w||cv.height!==h){ cv.width=w; cv.height=h; }
+  var ctx=cv.getContext('2d'), mp=mmPx();
+  drawGrid(ctx,0,0,w,h);
+  var buf=zBuf(); if(!buf.length) return;
+  var hz=hzJetzt();
+  // So viele Abtastwerte, wie bei DIESEM Vorschub in die Breite passen (Massstab bleibt echt).
+  var breiteMm=w/mp, n=Math.min(buf.length, Math.max(4, Math.round(breiteMm/Z.speed*hz)));
+  var von=buf.length-n, mitte=h/2, dx=w/(n-1);
+  // Kalibrierimpuls links (1 mV)
+  var cal=Z.gain*mp;
+  ctx.strokeStyle='rgba(255,255,255,.55)'; ctx.lineWidth=1.3*M.dpr; ctx.beginPath();
+  ctx.moveTo(4*M.dpr,mitte); ctx.lineTo(4*M.dpr,mitte-cal); ctx.lineTo(14*M.dpr,mitte-cal); ctx.lineTo(14*M.dpr,mitte); ctx.stroke();
+  // Kurve
+  ctx.strokeStyle=(Z.lead==='aVR'||Z.lead==='aVL'||Z.lead==='aVF')?'#ffd166':'#28e07a';
+  ctx.lineWidth=Math.max(1.4,1.7*M.dpr); ctx.beginPath();
+  for(var i=0;i<n;i++){
+    var v=buf[von+i]; if(v==null)v=0;
+    var y=mitte - v*Z.gain*mp;
+    if(y<2)y=2; if(y>h-2)y=h-2;
+    if(i===0) ctx.moveTo(0,y); else ctx.lineTo(i*dx,y);
+  }
+  ctx.stroke();
+  // Messzirkel
+  function senkrecht(x,farbe){ ctx.strokeStyle=farbe; ctx.lineWidth=1.4*M.dpr; ctx.setLineDash([5*M.dpr,4*M.dpr]);
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); ctx.setLineDash([]); }
+  function waagerecht(y,farbe){ ctx.strokeStyle=farbe; ctx.lineWidth=1.4*M.dpr; ctx.setLineDash([5*M.dpr,4*M.dpr]);
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); ctx.setLineDash([]); }
+  if(Z.t1!=null) senkrecht(Z.t1*M.dpr,'#00d8ff');
+  if(Z.t2!=null) senkrecht(Z.t2*M.dpr,'#00d8ff');
+  if(Z.t1!=null&&Z.t2!=null){
+    var xa=Math.min(Z.t1,Z.t2)*M.dpr, xb=Math.max(Z.t1,Z.t2)*M.dpr;
+    ctx.fillStyle='rgba(0,216,255,.10)'; ctx.fillRect(xa,0,xb-xa,h);
+  }
+  if(Z.a1!=null) waagerecht(Z.a1*M.dpr,'#ff9f45');
+  if(Z.a2!=null) waagerecht(Z.a2*M.dpr,'#ff9f45');
+  if(Z.a1!=null&&Z.a2!=null){
+    var ya=Math.min(Z.a1,Z.a2)*M.dpr, yb=Math.max(Z.a1,Z.a2)*M.dpr;
+    ctx.fillStyle='rgba(255,159,69,.10)'; ctx.fillRect(0,ya,w,yb-ya);
+  }
+}
+
+/* Umrechnung der Marken in echte Groessen — EINE Stelle, damit Anzeige und Ausdruck
+ * nie auseinanderlaufen koennen. */
+function zMesswerte(){
+  var mpCss=mmPx()/M.dpr;                        // Bildschirmpunkte je Millimeter (CSS)
+  var ms=null, bpm=null, mv=null;
+  if(Z.t1!=null&&Z.t2!=null){
+    var mm=Math.abs(Z.t2-Z.t1)/mpCss;
+    ms=mm/Z.speed*1000;
+    if(ms>0) bpm=60000/ms;
+  }
+  if(Z.a1!=null&&Z.a2!=null){
+    var mmA=Math.abs(Z.a2-Z.a1)/mpCss;
+    mv=mmA/Z.gain;
+  }
+  return { ms:ms, bpm:bpm, mv:mv };
+}
+function zZeigeMesswerte(){
+  var m=zMesswerte();
+  $('#zDt').textContent  = m.ms!=null ? (Math.round(m.ms)+' ms') : '–';
+  $('#zBpm').textContent = m.bpm!=null ? (Math.round(m.bpm)+' /min') : '–';
+  /* OHNE KALIBRIERUNG KEINE mV-ZAHL. Bei einer Nachbildung oder einem Geraet ohne
+   * bekannte Verstaerkung waere "0,42 mV" eine Scheingenauigkeit — dann wird die
+   * Kaestchenzahl genannt, die immer stimmt. */
+  var mvEl=$('#zMv');
+  if(m.mv==null) mvEl.textContent='–';
+  else if(M.echt&&M.kal) mvEl.textContent=(Math.round(m.mv*1000)/1000)+' mV';
+  else mvEl.textContent=(Math.round(m.mv*Z.gain*10)/10)+' mm (unkalibriert)';
+  $('#zScale').textContent=Z.speed+' mm/s · '+Z.gain+' mm/mV';
+}
+
+function zSync(){
+  var z=$('#ekgZoom'); if(!z) return;
+  $('#zLead').textContent = Z.lead==='RHY'?'II · Rhythmus':Z.lead;
+  z.querySelectorAll('[data-zspeed]').forEach(function(b){ b.classList.toggle('on', +b.getAttribute('data-zspeed')===Z.speed); });
+  z.querySelectorAll('[data-zgain]').forEach(function(b){ b.classList.toggle('on', +b.getAttribute('data-zgain')===Z.gain); });
+  $('#zCalT').classList.toggle('on', Z.modus==='t');
+  $('#zCalA').classList.toggle('on', Z.modus==='a');
+  z.querySelectorAll('[data-zlead]').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-zlead')===Z.lead); });
+  zZeigeMesswerte();
+}
+function oeffneZoom(lead){
+  if(ZLEADS.indexOf(lead)<0) lead='II';
+  Z.lead=lead; Z.open=true;
+  var z=$('#ekgZoom'); if(z) z.classList.add('open');
+  zSync();
+}
+function schliesseZoom(){ Z.open=false; var z=$('#ekgZoom'); if(z) z.classList.remove('open'); }
+
+/* Welche Ableitung liegt unter diesem Punkt der Uebersicht? (2 Reihen x 3 Spalten) */
+function leadUnterPunkt(cv,ev){
+  var r=cv.getBoundingClientRect();
+  var x=(ev.clientX-r.left)/r.width, y=(ev.clientY-r.top)/r.height;
+  if(x<0||x>1||y<0||y>1) return null;
+  var sp=Math.min(2,Math.floor(x*3)), re=Math.min(1,Math.floor(y*2));
+  var idx=re*3+sp;
+  return LEADS[idx]?LEADS[idx].id:null;
 }
 
 /* ---- Öffnen / Schließen ---- */
@@ -5485,7 +5953,13 @@ function openEkg(){
   var ov=$('#ekgOverlay'); if(!ov) return;
   var f=currentFeed();
   M.axis=(f.sp==='katze')?75:70;
-  ov.classList.add('open'); M.open=true; ov.dataset.arch='0';
+  /* PAPIERVORSCHUB NACH TIERART VORBELEGEN.
+   * Ein Katzen-QRS dauert 0,04 s — bei 25 mm/s ist das EIN Millimeter. Daran laesst sich
+   * nichts ausmessen. Die Katze startet deshalb auf 50 mm/s, der Hund auf 25. Der Vorschub
+   * bleibt jederzeit umstellbar; vorbelegt wird nur, was fuer diese Art sinnvoll ist. */
+  var N=normOf(f.sp);
+  if(N && !M._vorbelegt){ M.speed=N.speed; M.gain=N.gain; Z.speed=Math.max(50,N.speed); Z.gain=N.gain; M._vorbelegt=1; }
+  ov.classList.add('open'); M.open=true; ov.dataset.seite='';
   rebuildSide(); syncBtns();
   M.last=(window.performance?performance.now():Date.now()); M.acc=0;
   ensureBuffers();
@@ -5531,14 +6005,83 @@ function wire(){
     catch(e){ if(_pdfLast){ try{ _pdfLast.doc.save(_pdfLast.datei); }catch(e2){} } }
   };
   $('#ekgPrint').onclick=doPrint;
+
+  /* ===== Einzelableitung gross ===== */
+  // Ableitungsknoepfe erzeugen (auch ohne Doppelklick erreichbar - mit Handschuh am
+  // Touchgeraet ist ein Doppelklick nicht immer zu treffen).
+  var lb=$('#zLeadBtns');
+  if(lb) lb.innerHTML=ZLEADS.map(function(id){
+    return '<button class="ekg-btn" data-zlead="'+id+'" title="'+(id==='RHY'?'Rhythmusstreifen II':'Ableitung '+id)+'">'+(id==='RHY'?'Rhy':id)+'</button>';
+  }).join('');
+  $('#ekgZoom').querySelectorAll('[data-zlead]').forEach(function(b){
+    b.addEventListener('click',function(){ Z.lead=b.getAttribute('data-zlead'); zSync(); });
+  });
+  $('#ekgZoom').querySelectorAll('[data-zspeed]').forEach(function(b){
+    b.addEventListener('click',function(){ Z.speed=+b.getAttribute('data-zspeed'); zSync(); });
+  });
+  $('#ekgZoom').querySelectorAll('[data-zgain]').forEach(function(b){
+    b.addEventListener('click',function(){ Z.gain=+b.getAttribute('data-zgain'); zSync(); });
+  });
+  $('#zBack').addEventListener('click',schliesseZoom);
+  $('#zReset').addEventListener('click',function(){ Z.t1=Z.t2=Z.a1=Z.a2=null; zSync(); });
+  function messModus(m){
+    Z.modus=(Z.modus===m)?null:m;
+    /* AUF EINEM LAUFENDEN BILD KANN MAN NICHT MESSEN. Wer den Messzirkel nimmt, will eine
+     * Zahl ablesen - also haelt das Bild an. Das ist keine Bevormundung, sondern die
+     * Voraussetzung dafuer, dass die Zahl beim Ablesen noch stimmt. */
+    if(Z.modus && !M.freeze){ M.freeze=true; syncBtns(); flash('⏸️ Bild angehalten – zum Messen'); }
+    zSync();
+  }
+  $('#zCalT').addEventListener('click',function(){ messModus('t'); });
+  $('#zCalA').addEventListener('click',function(){ messModus('a'); });
+
+  // Doppelklick auf die Uebersicht bzw. den Rhythmusstreifen -> gross
+  var uc=$('#ekgCanvas');
+  if(uc) uc.addEventListener('dblclick',function(e){ var l=leadUnterPunkt(uc,e); if(l) oeffneZoom(l); });
+  var sc2=$('#ekgStripCv');
+  if(sc2) sc2.addEventListener('dblclick',function(){ oeffneZoom('RHY'); });
+
+  /* Messzirkel ziehen. Der Horcher haengt an der BUEHNE (wird nie ersetzt) und der
+   * pointermove/-up an document - genau die Lehre aus dem kaputten O2-Regler (1.4.6):
+   * ein in einer Closure gemerktes Element ist nach einem Neuaufbau aus dem Baum. */
+  var stage=$('#zStage');
+  if(stage){
+    stage.addEventListener('pointerdown',function(e){
+      if(!Z.modus) return;
+      var r=stage.getBoundingClientRect();
+      var x=e.clientX-r.left, y=e.clientY-r.top;
+      if(Z.modus==='t'){ Z.t1=x; Z.t2=x; Z.drag='t2'; }
+      else { Z.a1=y; Z.a2=y; Z.drag='a2'; }
+      zZeigeMesswerte();
+      try{ stage.setPointerCapture(e.pointerId); }catch(err){}
+      e.preventDefault();
+    });
+    document.addEventListener('pointermove',function(e){
+      if(!Z.drag||!Z.open) return;
+      var r=stage.getBoundingClientRect();
+      if(Z.drag==='t2') Z.t2=Math.max(0,Math.min(r.width, e.clientX-r.left));
+      else Z.a2=Math.max(0,Math.min(r.height, e.clientY-r.top));
+      zZeigeMesswerte();
+    });
+    document.addEventListener('pointerup',function(){ Z.drag=null; });
+    stage.addEventListener('dblclick',function(){ Z.t1=Z.t2=Z.a1=Z.a2=null; zZeigeMesswerte(); });
+  }
+
+  /* ===== Patientendaten ===== */
+  $('#ekgPatBtn').addEventListener('click',function(){
+    var ov=$('#ekgOverlay');
+    if(ov.dataset.seite==='pat'){ ov.dataset.seite=''; rebuildSide(); updateMeasures(); }
+    else renderPatient();
+  });
   $('#ekgSave').onclick=doSave;
-  $('#ekgArchBtn').onclick=function(){ if(ov.dataset.arch==='1'){ ov.dataset.arch='0'; rebuildSide(); updateMeasures(); } else { renderArch(); } };
+  $('#ekgArchBtn').onclick=function(){ if(ov.dataset.seite==='arch'){ ov.dataset.seite=''; rebuildSide(); updateMeasures(); } else { renderArch(); } };
   $('#ekgClose').onclick=closeEkg;
   /* Esc raeumt IMMER nur die oberste Schicht ab: liegt die PDF-Ansicht oben, fuehrt Esc dorthin
    * zurueck und NICHT aus dem EKG heraus — sonst waere der Ausdruck weg, den man gerade ansieht. */
   document.addEventListener('keydown',function(e){
     if(e.key!=='Escape') return;
     if($('#ekgPdfView')&&$('#ekgPdfView').classList.contains('open')){ closePDF(); return; }
+    if(Z.open){ schliesseZoom(); return; }
     if(M.open) closeEkg();
   });
   /* In der Fern-Ansicht steht der Hinweis andersherum: dort IST man die Web-App. */
