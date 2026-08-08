@@ -5285,6 +5285,13 @@ function zeigeHinweise(B,f,N,mea){
     pqVerlauf:(B.p?B.p.pqVerlauf:null), pqSpanne:(B.p&&B.p.pqSpanneMs!=null?B.p.pqSpanneMs:null),
     pDauerGrenze:(N&&N.pDauer?N.pDauer[1]:null), pAmpGrenze:(N&&N.pAmp?N.pAmp[1]:null),
     pqBand:(N?N.pq:null),
+    /* T-Welle und QT - Tangentenverfahren, Korrektur nur beim Hund. */
+    qt:(B.t&&B.t.qtMs!=null?B.t.qtMs:null),
+    qtc:(B.t&&B.t.qtcMs!=null?B.t.qtcMs:null),
+    qtBand:(N?N.qt:null), tMessbar:(B.t?B.t.messbar===true:false),
+    /* Die frequenzkorrigierte Zeit wird nur beim Hund gebildet (Van de Water); sonst bleibt
+     * der Zusatz leer, statt eine nicht belegte Zahl in den Hinweistext zu schreiben. */
+    qtcText:((B.t&&B.t.qtcMs!=null)?' (frequenzkorrigiert '+B.t.qtcMs+' ms nach Van de Water)':''),
     /* Windhunde und ausdauertrainierte Rassen: hohe Ausschlaege sind dort normal. Die
      * Rassekennung kommt aus der Anwendung; ohne sie greift die Ausnahme bewusst nicht. */
     /* Filter, die die Amplitude antasten (heute: der Muskelfilter). Der Netzfilter
@@ -5398,7 +5405,16 @@ function updateMeasures(){
      * als Urteil — eine harte Ampel an dieser Stelle waere eine Genauigkeit, die es nicht
      * gibt. Ausserdem gilt der humanmedizinische Messpunkt J+60/80 ms hier NICHT: die
      * ST-Strecke dauert beim Hund 0,04-0,1 s, bei der Katze 0,06-0,08 s. */
-    $('#mQt').innerHTML= st.messbar?((st.mv>0?'+':'')+st.mv+' <small>mV ST</small>'+
+    /* QT WIRD JETZT GEMESSEN (08.08.2026, Tangentenverfahren). Die ST-Angabe wandert in
+     * die Zeile darunter - sie bleibt wichtig, aber QT ist der belastbarere Wert. */
+    var tw=B.t||{};
+    if(tw.messbar&&tw.qtMs!=null){
+      var uQT=(N&&N.qt)?normUrteil(N.qt,tw.qtMs,'ms'):null;
+      $('#mQt').innerHTML=tw.qtMs+' <small>ms QT</small>'+
+        (tw.qtcMs!=null?' <small style="color:#7fa6c8">QTcV '+tw.qtcMs+'</small>':'')+
+        (uQT?'<br><small style="color:'+uQT.farbe+'">Norm '+uQT.band+'</small>':'')+
+        (st.messbar?'<br><small style="color:#7fa6c8">ST '+(st.mv>0?'+':'')+st.mv+' mV</small>':'');
+    } else $('#mQt').innerHTML= st.messbar?((st.mv>0?'+':'')+st.mv+' <small>mV ST</small>'+
               (N&&N.stSenkung!=null?'<br><small style="color:#c9a227">Orientierung ±'+N.stSenkung+'/'+N.stHebung+' mV · Quellenlage schwach</small>':''))
               : '<small>ST: '+(st.richtung?st.richtung+' (unkalibriert)':'nicht messbar')+'</small>';
     /* ACHSE NUR, WENN SIE AUCH BESTIMMBAR IST (Korrektur 08.08.2026).
@@ -6096,6 +6112,22 @@ var BEFUNDREGELN=[
     differenzial:'Sympathikotonus, schlanker Brustkorb, Messunschärfe',
     sicherheit:'Verdacht', quelle:'Hund > 0,4 mV, Katze > 0,2 mV (Tilley)' },
 
+  /* --- QT-Zeit (Tangentenverfahren) ---
+   * Bewertet wird die ZEIT, nicht die Form. Die Form der T-Welle ist beim Tier ausgesprochen
+   * unspezifisch - sie wechselt mit Lage, Atmung, Frequenz und Tageszeit, ohne dass etwas
+   * krank waere. Eine Formaussage waere deshalb Scheingenauigkeit. */
+  { id:'qt-lang', name:'QT-Zeit verlängert', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.tMessbar && m.qt!=null && m.qtBand && m.qt>m.qtBand[1]; },
+    hinweis:'QT {qt} ms über dem Normband {qtBand} dieser Tierart{qtcText}. Eine verlängerte Repolarisation passt zu Hypokalzämie, Hypokaliämie, Hypothermie, zentralnervösen Erkrankungen und zu einer Reihe von Medikamenten (u. a. Sotalol, Amiodaron, manche Antibiotika). Bei ausgeprägter Verlängerung besteht ein Risiko für Torsade de pointes.',
+    differenzial:'Elektrolytstörung, Hypothermie, Medikament, Messunschärfe bei flacher T-Welle',
+    sicherheit:'Verdacht', quelle:'Hund 150–250 ms, Katze 120–180 ms (Tilley); Tangentenverfahren' },
+
+  { id:'qt-kurz', name:'QT-Zeit verkürzt', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.tMessbar && m.qt!=null && m.qtBand && m.qt<m.qtBand[0]; },
+    hinweis:'QT {qt} ms unter dem Normband {qtBand}{qtcText}. Eine verkürzte Repolarisation passt vor allem zu <b>Hyperkalzämie</b> und zu einer Digitalis-Wirkung.',
+    differenzial:'Hyperkalzämie, Digoxin, hohe Frequenz, Messunschärfe',
+    sicherheit:'Verdacht', quelle:'Hund 150–250 ms, Katze 120–180 ms (Tilley)' },
+
   /* --- Ausgefallener Kammerkomplex: der EINZIGE Blockhinweis, der ohne P-Welle geht ---
    * Ein AV-Block II. Grades laesst einen QRS ausfallen; die Pause ist dann etwa DOPPELT so
    * lang wie der normale Abstand. Welcher Blocktyp es ist, entscheidet die P-Welle — und die
@@ -6419,7 +6451,7 @@ function renderAnlegen(){
 var WISSEN={ suche:'', nurAuto:false };
 /* Messgroessen, die die Station heute tatsaechlich erhebt. Aendert sich das, aendert sich
  * automatisch, was als "automatisch geprueft" gilt — EINE Liste, keine zweite Wahrheit. */
-var MESSGROESSEN_HEUTE=['hf','rr','rrschwankung','qrs','guete','signalguete','st','sekunden','schlaege','vorzeitig','ramp','p','pq','pvorhanden','pdauer','pamp','pform'];
+var MESSGROESSEN_HEUTE=['hf','rr','rrschwankung','qrs','guete','signalguete','st','sekunden','schlaege','vorzeitig','ramp','p','pq','pvorhanden','pdauer','pamp','pform','qt','tamp'];
 function wissenListe(){
   if(!window.VS||!VS.befunde) return [];
   var f=M.feed||currentFeed()||{};

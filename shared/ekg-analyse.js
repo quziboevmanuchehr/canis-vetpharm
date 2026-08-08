@@ -500,6 +500,164 @@
     };
   }
 
+  /* ================================================================================ *
+   * 4c) T-WELLE UND QT-ZEIT  (08.08.2026)
+   *
+   * DAS T-ENDE NACH DEM TANGENTENVERFAHREN.
+   * Die T-Welle laeuft flach aus - es gibt keinen Punkt, an dem sie "aufhoert". Wer das Ende
+   * ueber eine Schwelle sucht, bekommt eine Zahl, die allein von der Schwelle abhaengt.
+   * Das anerkannte Verfahren legt stattdessen die TANGENTE an die steilste Stelle des
+   * absteigenden Schenkels und nimmt deren Schnittpunkt mit der Grundlinie:
+   *     t_s   = Stelle der steilsten Flanke nach dem Gipfel (Extremum von dy/dt)
+   *     y(t)  = y(t_s) + m * (t - t_s),  m = dy/dt an t_s
+   *     T_ende = Nullstelle dieser Geraden
+   * Das Verfahren liefert bewusst ein etwas FRUEHERES Ende als der geometrische Auslauf
+   * (bei einer glatten Welle rund 9 % ihrer Dauer). Das ist bekannt und gewollt: es ist
+   * reproduzierbar und unabhaengig von der Verstaerkung.
+   *
+   * QT = QRS-BEGINN bis T-ENDE. Nicht ab der R-Spitze - derselbe Fehler wie bei der PQ-Zeit.
+   *
+   * WOFUER DIE T-WELLE HIER NICHT BENUTZT WIRD:
+   * Ihre FORM (spitz, breit, negativ) ist beim Tier ausgesprochen unspezifisch - sie
+   * wechselt mit Lage, Atmung, Frequenz und Tageszeit, ohne dass etwas krank waere.
+   * Es wird deshalb NUR die Zeit gemessen, keine Formaussage getroffen. Eine Ausnahme
+   * bleibt bewusst offen: die Bewertung von QT-Verlaengerung/-Verkuerzung.
+   * ================================================================================ */
+
+  /* Suchfenster und QT-Baender je Tierart.
+   * qt = plausibler QT-Bereich; ausserhalb wird der Schlag verworfen, weil dann mit hoher
+   * Wahrscheinlichkeit nicht die T-Welle vermessen wurde. */
+  var T_ART = {
+    hund:     { abQrs: 0.030, bisRR: 0.62, qt: [120, 320] },
+    katze:    { abQrs: 0.025, bisRR: 0.62, qt: [90, 240] },
+    pferd:    { abQrs: 0.080, bisRR: 0.62, qt: [280, 760] },
+    standard: { abQrs: 0.030, bisRR: 0.62, qt: [100, 340] }
+  };
+  function tArt(art) { return T_ART[art] || T_ART.standard; }
+
+  /* Ende des Kammerkomplexes - von dort an wird die T-Welle gesucht. */
+  function qrsEnde(werte, r, hz) {
+    var spitze = werte[r] == null ? 0 : Math.abs(werte[r]);
+    if (!spitze) return r;
+    var grenze = spitze * 0.15;
+    var max = Math.round(hz * 0.09);
+    var i = r;
+    for (var k = 1; k <= max; k++) {
+      var re = r + k;
+      if (re >= werte.length || werte[re] == null) break;
+      i = re;
+      if (Math.abs(werte[re]) < grenze) break;
+    }
+    return i;
+  }
+
+  /*
+   * Sucht die T-Welle nach dem Kammerkomplex bei r und misst das Ende per Tangente.
+   * Anders als bei der P-Welle wird hier der GROESSTE Ausschlag genommen - die T ist die
+   * beherrschende Welle nach dem QRS, und es gibt keine hoehere Nachbarwelle, die sie
+   * verdraengen koennte (das war bei der P die T selbst).
+   * Rueckgabe { gipfel, ende, amp, qtMs, tEndeIdx } oder null.
+   */
+  function findeT(werte, r, hz, naechstesR, schwelle, art) {
+    var A = tArt(art);
+    var qb = qrsBeginn(werte, r, hz);
+    var qe = qrsEnde(werte, r, hz);
+    var von = qe + Math.max(2, Math.round(hz * A.abQrs));
+    var bis;
+    if (naechstesR != null) bis = r + Math.round((naechstesR - r) * A.bisRR);
+    else bis = r + Math.round(hz * 0.5);
+    if (bis >= werte.length) bis = werte.length - 2;
+    if (bis - von < Math.max(4, Math.round(hz * 0.03))) return null;
+
+    // Gipfel der T-Welle (Betrag - die T darf negativ sein, das ist beim Tier haeufig)
+    var gi = -1, gv = 0;
+    for (var i = von; i <= bis; i++) {
+      var w = werte[i];
+      if (w == null) continue;
+      if (Math.abs(w) > Math.abs(gv)) { gv = w; gi = i; }
+    }
+    if (gi < 0 || !(Math.abs(gv) >= schwelle)) return null;
+    if (gi >= bis - 2) return null;                 // Gipfel am Fensterrand: Ende nicht messbar
+
+    /* Steilste Stelle des ABSTEIGENDEN Schenkels: Extremum der Ableitung nach dem Gipfel.
+     * Vorzeichenabhaengig - bei negativer T ist der "Abstieg" ein Anstieg zur Grundlinie. */
+    var vorz = gv >= 0 ? 1 : -1;
+    var ts = -1, beste = 0;
+    for (i = gi + 1; i < bis; i++) {
+      var a = werte[i + 1], b = werte[i - 1];
+      if (a == null || b == null) continue;
+      var m = (a - b) / 2;                          // diskrete Ableitung je Abtastschritt
+      var gerichtet = -vorz * m;                    // Rueckkehr zur Grundlinie = positiv
+      if (gerichtet > beste) { beste = gerichtet; ts = i; }
+    }
+    if (ts < 0 || beste <= 0) return null;
+
+    /* Tangente: y = y(ts) + m*(t-ts), Nullstelle t0 = ts - y(ts)/m.
+     * m ist hier die Steigung JE ABTASTSCHRITT, also ist t0 direkt ein Index. */
+    var mSteig = -vorz * beste;                     // tatsaechliche (vorzeichenbehaftete) Steigung
+    var yts = werte[ts];
+    if (yts == null || mSteig === 0) return null;
+    var t0 = ts - yts / mSteig;
+    if (!(t0 > gi)) return null;                    // Ende muss NACH dem Gipfel liegen
+    if (t0 > bis) return null;                      // laeuft aus dem Fenster: nicht messbar
+
+    var qt = (t0 - qb) / hz * 1000;
+    if (qt < A.qt[0] || qt > A.qt[1]) return null;  // ausserhalb plausibler QT: verworfen
+
+    return {
+      gipfel: gi, amp: gv, tEndeIdx: t0,
+      qtMs: Math.round(qt),
+      negativ: gv < 0,
+    };
+  }
+
+  /*
+   * Wertet die T-Wellen ueber alle Schlaege aus. Wie bei der P-Welle gilt: erst ab einem
+   * Mindestanteil auswertbarer Schlaege wird ueberhaupt etwas gesagt.
+   */
+  function tAuswertung(werte, zacken, hz, rausch, rAmp, art, hf) {
+    if (!hz || hz < P_MIN_HZ) {
+      return { messbar: false, warum: 'Abtastrate zu niedrig für die T-Welle' };
+    }
+    if (zacken.length < P_MIN_SCHLAEGE) {
+      return { messbar: false, warum: 'zu wenige Herzschläge für eine QT-Aussage' };
+    }
+    /* Schwelle wie bei der P: Rauschen ODER Mindesthoehe relativ zur R-Zacke. Die T ist
+     * groesser als die P, die Schwelle darf hier deshalb ruhig dieselbe sein. */
+    var schwelle = Math.max(rausch * 3, (rAmp || 0) * 0.04);
+    var funde = [], i;
+    for (i = 0; i < zacken.length; i++) {
+      var t = findeT(werte, zacken[i], hz, i + 1 < zacken.length ? zacken[i + 1] : null, schwelle, art);
+      if (t) funde.push(t);
+    }
+    var anteil = funde.length / zacken.length;
+    if (funde.length < P_MIN_SCHLAEGE || anteil < P_ANTEIL) {
+      return {
+        messbar: false, anteil: Math.round(anteil * 100),
+        warum: 'in nur ' + funde.length + ' von ' + zacken.length + ' Schlägen ein T-Ende bestimmbar' +
+          ' — bei hoher Frequenz, flacher T-Welle oder unruhiger Grundlinie ist das erwartbar.',
+      };
+    }
+    var qts = [], amps = [];
+    for (i = 0; i < funde.length; i++) { qts.push(funde[i].qtMs); amps.push(funde[i].amp); }
+    var qtMed = median(qts);
+    var qtc = null;
+    /* QT-KORREKTUR nur beim HUND: Van de Water wurde an narkotisierten Hunden abgeleitet und
+     * an Beagles bestaetigt; fuer Katze, Pferd und Heimtiere ist sie NICHT belegt. Bazett
+     * wird bewusst nirgends angeboten - er ueberkorrigiert bei hoher Frequenz. */
+    if (art === 'hund' && hf > 0) {
+      qtc = Math.round((qtMed / 1000 - 0.087 * ((60 / hf) - 1)) * 1000);
+    }
+    return {
+      messbar: true, anteil: Math.round(anteil * 100), schlaege: funde.length,
+      qtMs: Math.round(qtMed),
+      qtMinMs: Math.round(Math.min.apply(null, qts)),
+      qtMaxMs: Math.round(Math.max.apply(null, qts)),
+      qtcMs: qtc, qtcFormel: qtc != null ? 'Van de Water' : null,
+      negativ: median(amps) < 0,
+    };
+  }
+
   /* ------------------------------------------------------------------ *
    * 5) Rhythmus aus den RR-Abstaenden
    *
@@ -692,6 +850,7 @@
      * Der Median liegt mitten in der T-Welle (siehe Kommentar bei perzentil()). */
     var pRausch = perzentil(ruhe, 0.25);
     ergebnis.p = pAuswertung(werte, zacken, hz, pRausch, spitze, kurve.skala, opts.einheit || 'uV', art);
+    ergebnis.t = tAuswertung(werte, zacken, hz, pRausch, spitze, art, ergebnis.hf);
     return ergebnis;
   }
 
@@ -700,8 +859,9 @@
     // fuer die Selbsttests einzeln pruefbar:
     findeQRS: findeQRS, qrsBreiteMs: qrsBreiteMs, grundlinieAbziehen: grundlinieAbziehen,
     rhythmus: rhythmus, stMessung: stMessung, median: median,
-    qrsBeginn: qrsBeginn, findeP: findeP, pAuswertung: pAuswertung, perzentil: perzentil,
-    P_ART: P_ART,
+    qrsBeginn: qrsBeginn, qrsEnde: qrsEnde, findeP: findeP, pAuswertung: pAuswertung, perzentil: perzentil,
+    findeT: findeT, tAuswertung: tAuswertung,
+    P_ART: P_ART, T_ART: T_ART,
     MIN_SEKUNDEN: MIN_SEKUNDEN, MIN_SCHLAEGE: MIN_SCHLAEGE,
     P_MIN_HZ: P_MIN_HZ, P_MIN_SCHLAEGE: P_MIN_SCHLAEGE, P_ANTEIL: P_ANTEIL,
   };
