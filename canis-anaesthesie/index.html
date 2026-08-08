@@ -4836,6 +4836,15 @@ fab.addEventListener('click',function(){ dock.classList.remove('collapsed'); fab
 .ekg-modus button.on{background:linear-gradient(90deg,#1cc7ff,#8b7cf6);border:0;color:#04121a}
 .ekg-uebernahme{font-size:11px;color:#7fe0a8;background:rgba(40,224,122,.07);border:1px solid rgba(40,224,122,.22);border-radius:7px;padding:6px 8px;line-height:1.45;margin-bottom:8px}
 /* ===== Platz fuer die spaetere KI-Beurteilung (heute leer, Vertrag steht) ===== */
+.ekg-tipps{margin-top:12px;border:1px solid #23303f;border-radius:10px;padding:10px 11px;background:rgba(255,255,255,.02)}
+.ekg-tipps .th{font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;color:#7fa6c8;margin-bottom:7px}
+.ekg-tipps .tb{font-size:11.5px;line-height:1.5;color:#9fb6cc}
+.ekg-tipps .tipp{border-left:3px solid #7fa6c8;padding:5px 0 5px 9px;margin:8px 0}
+.ekg-tipps .tn{font-size:12.5px;font-weight:800;margin-bottom:3px}
+.ekg-tipps .tt{font-size:11.5px;line-height:1.5;color:#c4d6e8}
+.ekg-tipps .td{font-size:11px;line-height:1.45;color:#9fb6cc;margin-top:3px;font-style:italic}
+.ekg-tipps .tq{font-size:10px;color:#6f8aa4;margin-top:3px;font-family:Consolas,monospace}
+.ekg-tipps .tf{font-size:10.5px;color:#87a2bd;border-top:1px dashed #23303f;padding-top:7px;margin-top:9px;line-height:1.45}
 .ekg-ki{margin-top:12px;border:1px dashed #2b3a4d;border-radius:10px;padding:10px 11px;background:rgba(139,124,246,.05)}
 .ekg-ki .kh{font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;color:#a99bff;display:flex;align-items:center;gap:6px}
 .ekg-ki .kb{margin-top:6px;font-size:11.5px;line-height:1.5;color:#9fb6cc}
@@ -4880,6 +4889,7 @@ fab.addEventListener('click',function(){ dock.classList.remove('collapsed'); fab
       <div class="ekg-mrow"><span class="k">QT (geschätzt)</span><span class="v" id="mQt">–</span></div>
       <div class="ekg-mrow"><span class="k">El. Achse</span><span class="v" id="mAxis">–</span></div>
       <div class="ekg-dx" id="ekgDx"></div>
+      <div class="ekg-tipps" id="ekgTipps"></div>
       <div class="ekg-ki" id="ekgKI"></div>
       <div class="ekg-note" id="ekgNote"></div>
     </aside>
@@ -4904,7 +4914,8 @@ fab.addEventListener('click',function(){ dock.classList.remove('collapsed'); fab
         <button class="ekg-btn" data-zgain="40">40</button></span>
       <button class="ekg-btn big" id="zCalT" title="Zeit-Messzirkel: zwei senkrechte Marken ziehen → ms und Frequenz">↔️ Zeit messen</button>
       <button class="ekg-btn big" id="zCalA" title="Amplituden-Messzirkel: zwei waagerechte Marken → mV">↕️ Amplitude</button>
-      <button class="ekg-btn big" id="zReset" title="Marken zurücksetzen">↺</button>
+      <button class="ekg-btn big" id="zArt" title="Gestörten Abschnitt überstreichen – er wird aus der Auswertung ausgeklammert">🚫 Artefakt ausklammern</button>
+      <button class="ekg-btn big" id="zReset" title="Marken und Ausklammerungen zurücksetzen">↺</button>
     </div>
     <div class="zstage" id="zStage"><canvas id="zCanvas"></canvas></div>
     <div class="zfoot">
@@ -5198,6 +5209,58 @@ function tick(ts){
   M._lastDraw=ts;
 }
 
+/* Baut aus dem Befund die Messgroessen, auf denen die Regeln arbeiten, und zeigt die
+ * Hinweise an. NUR bei brauchbarem Streifen — sonst laeuft keine einzige Regel. */
+function zeigeHinweise(B,f,N,mea){
+  var host=$('#ekgTipps'); if(!host) return;
+  if(!B||!B.brauchbar){
+    /* Auch ohne auswertbaren Streifen gelten die Bedien- und Technikhinweise — sie brauchen
+     * keine Messung, sondern nur die Einstellung (z. B. Vorschub bei der Katze). */
+    var mT={ sp:(f&&f.sp)||null, speed:M.speed, kal:M.kal, echt:M.echt,
+             hf:null, qrs:null, guete:null, achse:null, rrSchwankung:null };
+    var tech=befundHinweise(mT).filter(function(t){ return t.stufe==='hinweis'; });
+    var kopf='<div class="th">🔎 Hinweise</div>';
+    var grund=B&&B.warum ? B.warum
+      : (M.echt ? 'Der Streifen reicht noch nicht für eine Aussage.'
+                : 'Es hängt kein Gerät an — die Kurve ist nachgebildet. Auf einer selbst erzeugten Kurve wird bewusst nicht befundet.');
+    var htmlT=kopf+'<div class="tb">'+grund+'</div>';
+    for(var q=0;q<tech.length;q++){
+      htmlT+='<div class="tipp" style="border-left-color:#7fa6c8">'+
+        '<div class="tn" style="color:#7fa6c8">'+tech[q].name+'</div>'+
+        '<div class="tt">'+tech[q].text+'</div>'+
+        '<div class="tq">'+tech[q].sicherheit+' · '+tech[q].quelle+'</div></div>';
+    }
+    host.innerHTML=htmlT+'<div class="tf">Hinweise, <b>keine Diagnose</b>.</div>';
+    return;
+  }
+  var rr=B.rr||{};
+  var schwank=(rr.mittelMs>0)?((rr.maxMs-rr.minMs)/rr.mittelMs):null;
+  var m={
+    sp:f.sp||null, hf:B.hf, qrs:B.qrsBreiteMs, guete:B.guete, achse:mea,
+    rrSchwankung:schwank, vorzeitig:(B.rhythmus&&B.rhythmus.id==='ves'),
+    band:N?N.hf:null, qrsGrenze:N?N.qrs[1]:null, achseBand:N?N.achse:null,
+    speed:M.speed, kal:M.kal, echt:M.echt, sekunden:B.sekunden
+  };
+  var liste=befundHinweise(m);
+  var farbe={kritisch:'#ff4d4d',auffaellig:'#ff9f45',hinweis:'#7fa6c8'};
+  var html='<div class="th">🔎 Hinweise <span style="color:#6f8aa4;font-weight:400;text-transform:none;letter-spacing:0">'+
+    (liste.length?liste.length+' Auffälligkeit'+(liste.length>1?'en':''):'nichts Auffälliges')+'</span></div>';
+  if(!liste.length){
+    html+='<div class="tb">Alle gemessenen Größen liegen im Band dieser Tierart. Das schließt eine Herzerkrankung <b>nicht aus</b> — ein EKG zeigt Rhythmus und Leitung, nicht die Pumpfunktion.</div>';
+  } else {
+    for(var i=0;i<liste.length;i++){
+      var t=liste[i], c=farbe[t.stufe]||'#7fa6c8';
+      html+='<div class="tipp" style="border-left-color:'+c+'">'+
+        '<div class="tn" style="color:'+c+'">'+t.name+'</div>'+
+        '<div class="tt">'+t.text+'</div>'+
+        (t.differenzial?'<div class="td">Auch möglich: '+t.differenzial+'</div>':'')+
+        '<div class="tq">'+t.sicherheit+' · '+t.quelle+'</div></div>';
+    }
+  }
+  html+='<div class="tf">Hinweise, <b>keine Diagnose</b>. Sie ersetzen weder die klinische Untersuchung noch den Herzultraschall.</div>';
+  host.innerHTML=html;
+}
+
 /* ---- Messung auf dem ECHTEN Streifen -------------------------------------------------
  * Sobald ein Geraet Abtastwerte liefert, wird GEMESSEN statt aus dem Modell abgeleitet:
  * VS.ekg.analysiere() (ui/shared/ekg-analyse.js) sucht die QRS-Zacken, rechnet RR, QRS-Breite
@@ -5210,7 +5273,7 @@ function echtBefund(){
   try{
     var hz=(R.hz&&R.hz>0)?R.hz:256;
     // Auf dem tatsaechlich gezeigten Streifen messen (das ist der, den man auch ausdruckt).
-    var kurve={ samples:M.strip.slice(), hz:hzJetzt(), skala:(M.kal?1:null), einheit:(M.kal?'mV':null) };
+    var kurve={ samples:streifenFuerMessung(), hz:hzJetzt(), skala:(M.kal?1:null), einheit:(M.kal?'mV':null) };
     var f=M.feed||{};
     var band=null;
     try{ if(window.grenzeOf){ var g=grenzeOf('hr'); if(g&&g.length===2) band=g; } }catch(e){}
@@ -5270,6 +5333,7 @@ function updateMeasures(){
       (M.kal?' Die Verstärkung ist bekannt, mV-Angaben sind belegt.':' Die <b>Verstärkung des Geräts ist unbekannt</b>, deshalb keine Angabe in mV — die Form ist echt, die Höhe nicht belegbar.')+
       ' Ableitung II ist gemessen, die übrigen sind daraus abgeleitet.';
     var sub=$('#ekgSub'); if(sub) sub.textContent='6-Kanal · ECHTES Gerätesignal';
+    zeigeHinweise(B,f,N,mea);
     return;
   }
   var sub0=$('#ekgSub'); if(sub0) sub0.textContent='6-Kanal · Extremitätenableitungen';
@@ -5302,6 +5366,12 @@ function updateMeasures(){
   if(note) note.innerHTML='Kurve <b>modellhaft</b> aus dem gewählten Rhythmus synthetisiert (Ableitung II, Achse '+M.axis+'°; übrige Ableitungen nach Einthoven/Goldberger abgeleitet). '+
     'Für eine Diagnose am Patienten das klinische EKG heranziehen — dieses Fenster ist Entscheidungs- und Trainingshilfe. '+
     'Dieselben Werte laufen live in die Web-App (Fern-Ansicht).';
+  /* AUF EINER NACHGEBILDETEN KURVE WIRD NICHT "BEFUNDET".
+   * Die Kurve wird aus dem gewaehlten Rhythmus erzeugt — eine Regel, die darin etwas
+   * "erkennt", haette nur die eigene Vorgabe wiedergefunden. Das waere ein Zirkelschluss
+   * mit dem Anschein einer Messung. Gezeigt wird deshalb nur, was auch ohne Signal gilt
+   * (Bedienhinweise), und der Grund, warum sonst nichts dasteht. */
+  zeigeHinweise(null,f,normOf(f.sp),null);
 }
 
 /* ---- Weißes Millimeterpapier für Druck/Speichern ---- */
@@ -5591,7 +5661,7 @@ function rebuildSide(){
     '<div class="ekg-mrow"><span class="k">QRS-Breite</span><span class="v" id="mQrs">–</span></div>'+
     '<div class="ekg-mrow"><span class="k">QT (geschätzt)</span><span class="v" id="mQt">–</span></div>'+
     '<div class="ekg-mrow"><span class="k">El. Achse</span><span class="v" id="mAxis">–</span></div>'+
-    '<div class="ekg-dx" id="ekgDx"></div><div class="ekg-ki" id="ekgKI"></div><div class="ekg-note" id="ekgNote"></div>';
+    '<div class="ekg-dx" id="ekgDx"></div><div class="ekg-tipps" id="ekgTipps"></div><div class="ekg-ki" id="ekgKI"></div><div class="ekg-note" id="ekgNote"></div>';
   renderKI();
 }
 
@@ -5699,6 +5769,114 @@ function achseRechnen(){
   var y=nF*2/Math.sqrt(3);                 // Skalenkorrektur der augmentierten Ableitung
   var grad=Math.atan2(y,nI)*180/Math.PI;
   return Math.round(grad);
+}
+
+/* ==================================================================================
+ * HINWEIS-MASCHINE — die Anwendung sagt, was ihr auffaellt. Sie stellt KEINE DIAGNOSE.
+ *
+ * GRUNDHALTUNG (dieselbe wie in ekg-analyse.js): messen, benennen, im Zweifel schweigen.
+ * Jede Regel prueft AUSSCHLIESSLICH Groessen, die tatsaechlich gemessen wurden, nennt ihre
+ * Quelle und ihre Sicherheit, und ist als HINWEIS formuliert — nie als Anordnung. Der
+ * gefaehrlichste denkbare Fehler waere ein erfundener Befund, der zu einer Behandlung
+ * verleitet; deshalb gilt:
+ *   1. Ohne brauchbaren Streifen (zu kurz, zu verrauscht, zu viele Luecken) laeuft KEINE
+ *      Regel. Lieber nichts sagen als etwas Falsches.
+ *   2. Amplituden-Regeln laufen nur bei bekannter Verstaerkung (M.kal) — sonst waere die
+ *      Zahl, auf der sie beruhen, nicht belegbar.
+ *   3. Jede Regel traegt ihre Tierart. Was beim Hund normal ist, kann bei der Katze ein
+ *      Befund sein (Sinusarrhythmie!) — und umgekehrt.
+ *   4. Die Stufe steuert nur die REIHENFOLGE und die Farbe, nicht den Ton. Auch ein
+ *      kritischer Hinweis bleibt ein Hinweis.
+ *
+ * stufe: 'kritisch' (sofort ansehen) | 'auffaellig' | 'hinweis' (Bedienung/Technik)
+ * pruef(m) bekommt die gemessenen Groessen und gibt true/false. m enthaelt nur MESSWERTE,
+ * keine DOM-Zugriffe — dadurch ist jede Regel einzeln nachrechenbar (tools/ekg-modul-test.js).
+ * ================================================================================== */
+var BEFUNDREGELN=[
+  /* --- Technik und Bedienung: erst muss der Streifen ueberhaupt etwas hergeben --- */
+  { id:'guete-niedrig', name:'Signal zu unruhig', stufe:'hinweis', art:'alle',
+    pruef:function(m){ return m.guete!=null && m.guete<5; },
+    hinweis:'Der Ausschlag ragt nur '+'{guete}'+'-fach aus der Grundlinie. Elektrodensitz, Kontakt (Alkohol/Gel) und Störquellen prüfen; gestörte Abschnitte lassen sich ausklammern.',
+    differenzial:'Muskelzittern, lose Klemme, 50-Hz-Einstreuung, Bewegung',
+    sicherheit:'Messung', quelle:'Signalgüte aus der Zackensuche' },
+
+  { id:'katze-vorschub', name:'Vorschub für eine Katze zu langsam', stufe:'hinweis', art:'katze',
+    pruef:function(m){ return m.speed<50; },
+    hinweis:'Bei der Katze dauert ein QRS-Komplex etwa 40 ms — bei 25 mm/s ist das 1 mm Papier. Für Zeitmessungen 50 mm/s wählen.',
+    sicherheit:'Messung', quelle:'Tilley; Willis/Oliveira/Schwartz' },
+
+  { id:'unkalibriert', name:'Amplituden nicht beurteilbar', stufe:'hinweis', art:'alle',
+    pruef:function(m){ return m.echt && !m.kal; },
+    hinweis:'Die Verstärkung des Geräts ist unbekannt. Die Kurvenform ist echt, aber jede Angabe in mV wäre nicht belegbar — Amplituden-Befunde bleiben deshalb aus.',
+    sicherheit:'Messung', quelle:'—' },
+
+  /* --- Frequenz --- */
+  { id:'hf-hoch', name:'Herzfrequenz über dem Normband', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.band && m.hf!=null && m.hf>m.band[1]; },
+    hinweis:'{hf}/min liegt über dem Normband {band} dieser Tierart. Bei gleichmäßigen Abständen und schmalem QRS spricht das für eine Sinustachykardie — Schmerz, zu flache Narkose, Hypovolämie, Hyperkapnie, Fieber und Katecholamine kommen als Ursache in Frage.',
+    differenzial:'supraventrikuläre Tachykardie (dann meist starr regelmäßig und höher)',
+    sicherheit:'Messung', quelle:'Tierartband nach Tilley' },
+
+  { id:'hf-tief', name:'Herzfrequenz unter dem Normband', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.band && m.hf!=null && m.hf<m.band[0]; },
+    hinweis:'{hf}/min liegt unter dem Normband {band}. An Vagotonus, α₂-Agonisten und Opioide, tiefe Narkose, Hypothermie, Hyperkaliämie und AV-Blockierungen denken.',
+    differenzial:'AV-Block, Sick-Sinus-Syndrom, Hyperkaliämie',
+    sicherheit:'Messung', quelle:'Tierartband nach Tilley' },
+
+  /* --- Kammerkomplex --- */
+  { id:'qrs-breit', name:'QRS verbreitert', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.qrsGrenze && m.qrs!=null && m.qrs>m.qrsGrenze; },
+    hinweis:'QRS {qrs} ms über der Grenze dieser Tierart ({qrsGrenze} ms). Ein verbreiterter Kammerkomplex spricht für einen ventrikulären Ursprung oder eine Leitungsstörung (Schenkelblock). Die humanmedizinische Grenze von 120 ms gilt hier ausdrücklich NICHT.',
+    differenzial:'Schenkelblock, ventrikuläre Ektopie, Hyperkaliämie, Kammerersatzrhythmus',
+    sicherheit:'Messung', quelle:'Hund > 60 ms, Katze > 40 ms (Tilley)' },
+
+  /* --- Rhythmus: die artabhaengige Umkehrung --- */
+  { id:'sinusarrhythmie-hund', name:'Atemabhängige Sinusarrhythmie', stufe:'hinweis', art:'hund',
+    pruef:function(m){ return m.rrSchwankung!=null && m.rrSchwankung>0.10 && m.rrSchwankung<=0.40 && !m.vorzeitig; },
+    hinweis:'RR-Abstände schwanken um {rrSchwankung}. Beim Hund ist eine atemabhängige Sinusarrhythmie physiologisch — sie verschwindet bei Aufregung, Belastung und nach Atropin. Kein Befund, solange die P-Wellen gleich aussehen.',
+    sicherheit:'Messung', quelle:'Tilley; Kresken/Wendt/Modler' },
+
+  { id:'sinusarrhythmie-katze', name:'Unregelmäßiger Rhythmus bei der Katze', stufe:'auffaellig', art:'katze',
+    pruef:function(m){ return m.rrSchwankung!=null && m.rrSchwankung>0.10; },
+    hinweis:'RR-Abstände schwanken um {rrSchwankung}. Anders als beim Hund ist eine ausgeprägte Sinusarrhythmie bei der Katze NICHT physiologisch — sie gehört abgeklärt.',
+    differenzial:'Sinusarrest, Vorhofektopie, AV-Blockierung, Artefakt',
+    sicherheit:'Messung', quelle:'Tilley (Artunterschied ausdrücklich)' },
+
+  /* --- Achse --- */
+  { id:'achse-ausserhalb', name:'Elektrische Achse außerhalb des Normsektors', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.achseBand && m.achse!=null &&
+      (m.achse<m.achseBand[0] || m.achse>m.achseBand[1]); },
+    hinweis:'Die mittlere elektrische Achse liegt bei {achse}°, der Normsektor dieser Tierart ist {achseBand}. Eine Rechtsverschiebung passt zu einer Rechtsherzbelastung, eine Linksverschiebung zu einer Linksherzvergrößerung oder einem Schenkelblock.',
+    differenzial:'Elektrodenlage vertauscht, Lagerung des Tieres, Thoraxform',
+    sicherheit:'Verdacht', quelle:'Hund +40…+100°, Katze 0…+160° (Tilley)' }
+];
+
+/* Fuehrt alle passenden Regeln aus. Gibt eine nach Dringlichkeit sortierte Liste zurueck. */
+function befundHinweise(m){
+  if(!m) return [];
+  var raus=[];
+  for(var i=0;i<BEFUNDREGELN.length;i++){
+    var R=BEFUNDREGELN[i];
+    if(R.art!=='alle' && R.art!==m.sp) continue;
+    var trifft=false;
+    try{ trifft=!!R.pruef(m); }catch(e){ trifft=false; }   // eine kaputte Regel schweigt
+    if(!trifft) continue;
+    raus.push({ id:R.id, name:R.name, stufe:R.stufe, sicherheit:R.sicherheit, quelle:R.quelle,
+      differenzial:R.differenzial||null, text:fuelle(R.hinweis,m) });
+  }
+  var rang={kritisch:0,auffaellig:1,hinweis:2};
+  raus.sort(function(a,b){ return (rang[a.stufe]||9)-(rang[b.stufe]||9); });
+  return raus;
+}
+/* Platzhalter im Hinweistext durch die tatsaechlichen Messwerte ersetzen. */
+function fuelle(txt,m){
+  return String(txt).replace(/\{(\w+)\}/g,function(_,k){
+    var v=m[k];
+    if(v==null) return '—';
+    if(k==='band'||k==='achseBand') return Array.isArray(v)?(v[0]+'–'+v[1]):String(v);
+    if(k==='rrSchwankung') return Math.round(v*100)+' %';
+    return String(v);
+  });
 }
 
 /* ==================================================================================
@@ -5864,7 +6042,38 @@ function esc2(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g
  * beim Ablesen nicht mehr stimmt.
  * ================================================================================== */
 var ZLEADS=['I','II','III','aVR','aVL','aVF','RHY'];
-var Z={ open:false, lead:'II', speed:50, gain:10, modus:null, t1:null, t2:null, a1:null, a2:null, drag:null };
+/* Z.aus = ausgeklammerte Abschnitte des Rhythmusstreifens, je {von,bis} als INDEX in M.strip.
+ * Das Original-PC-EKG kann "eventuelle Artefakte erkennen und per Mausklick ausklammern"
+ * (Herstellerangabe) — und das ist keine Bequemlichkeit: ein Zittern oder ein verrutschtes
+ * Kabel erzeugt Zacken, die jede Zackensuche als Schlaege zaehlt. Aus Rauschen wird dann
+ * "unregelmaessig mit vorzeitigen Schlaegen" — die gefaehrlichste Art Fehlbefund, weil sie
+ * zu einer Behandlung verleitet. Ausgeklammerte Abschnitte werden fuer die AUSWERTUNG auf
+ * null gesetzt; ekg-analyse.js zaehlt null als Luecke und schweigt ab 20 % Luecken ganz. */
+var Z={ open:false, lead:'II', speed:50, gain:10, modus:null, t1:null, t2:null, a1:null, a2:null, drag:null, aus:[] };
+
+/* Rechnet eine Bildschirm-x-Position der Zoomansicht in einen Index von M.strip um.
+ * EINE Stelle fuer beide Richtungen, damit Markierung und Auswertung nie auseinanderlaufen. */
+function zIndexVon(xCss,breiteCss){
+  var buf=zBuf(); if(!buf.length) return null;
+  var mp=mmPx(), hz=hzJetzt();
+  var breiteMm=(breiteCss*M.dpr)/mp;
+  var n=Math.min(buf.length, Math.max(4, Math.round(breiteMm/Z.speed*hz)));
+  var von=buf.length-n;
+  var anteil=Math.max(0,Math.min(1,xCss/breiteCss));
+  return Math.round(von+anteil*(n-1));
+}
+function istAusgeklammert(i){
+  for(var k=0;k<Z.aus.length;k++){ if(i>=Z.aus[k].von&&i<=Z.aus[k].bis) return true; }
+  return false;
+}
+/* Der Streifen, auf dem GEMESSEN wird: ausgeklammerte Stellen als null. */
+function streifenFuerMessung(){
+  if(!M.strip) return [];
+  if(!Z.aus.length) return M.strip.slice();
+  var out=M.strip.slice();
+  for(var i=0;i<out.length;i++){ if(istAusgeklammert(i)) out[i]=null; }
+  return out;
+}
 
 function zBuf(){ return Z.lead==='RHY' ? (M.strip||[]) : ((M.buf&&M.buf[Z.lead])||[]); }
 function zStageCv(){ return $('#zCanvas'); }
@@ -5885,6 +6094,22 @@ function zeichneZoom(){
   var cal=Z.gain*mp;
   ctx.strokeStyle='rgba(255,255,255,.55)'; ctx.lineWidth=1.3*M.dpr; ctx.beginPath();
   ctx.moveTo(4*M.dpr,mitte); ctx.lineTo(4*M.dpr,mitte-cal); ctx.lineTo(14*M.dpr,mitte-cal); ctx.lineTo(14*M.dpr,mitte); ctx.stroke();
+  /* Ausgeklammerte Abschnitte ZUERST hinterlegen — man muss auf einen Blick sehen, welcher
+   * Teil des Streifens nicht in die Auswertung eingeht. */
+  if(Z.aus.length && Z.lead==='RHY'){
+    ctx.fillStyle='rgba(255,77,77,.13)';
+    for(var q=0;q<Z.aus.length;q++){
+      var a=Z.aus[q];
+      var xa=(a.von-von)*dx, xb=(a.bis-von)*dx;
+      if(xb<0||xa>w) continue;
+      ctx.fillRect(Math.max(0,xa),0,Math.min(w,xb)-Math.max(0,xa),h);
+      ctx.strokeStyle='rgba(255,77,77,.5)'; ctx.lineWidth=1.2*M.dpr;
+      ctx.beginPath(); ctx.moveTo(Math.max(0,xa),0); ctx.lineTo(Math.max(0,xa),h);
+      ctx.moveTo(Math.min(w,xb),0); ctx.lineTo(Math.min(w,xb),h); ctx.stroke();
+    }
+    ctx.fillStyle='rgba(255,140,140,.9)'; ctx.font=(11*M.dpr)+'px Consolas,monospace';
+    ctx.fillText('ausgeklammert', 6*M.dpr, h-6*M.dpr);
+  }
   // Kurve
   ctx.strokeStyle=(Z.lead==='aVR'||Z.lead==='aVL'||Z.lead==='aVF')?'#ffd166':'#28e07a';
   ctx.lineWidth=Math.max(1.4,1.7*M.dpr); ctx.beginPath();
@@ -5969,6 +6194,11 @@ function zSync(){
   z.querySelectorAll('[data-zgain]').forEach(function(b){ b.classList.toggle('on', +b.getAttribute('data-zgain')===Z.gain); });
   $('#zCalT').classList.toggle('on', Z.modus==='t');
   $('#zCalA').classList.toggle('on', Z.modus==='a');
+  $('#zArt').classList.toggle('on', Z.modus==='art');
+  var hn=$('#zHint');
+  if(hn) hn.textContent = Z.modus==='art'
+    ? 'Gestörten Abschnitt überstreichen. Er wird rot hinterlegt und geht NICHT in die Auswertung ein. ↺ hebt alles wieder auf.'
+    : 'Ziehen mit der Maus setzt die Marken. Doppelklick auf die Fläche = Marken löschen.';
   z.querySelectorAll('[data-zlead]').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-zlead')===Z.lead); });
   zZeigeMesswerte();
 }
@@ -5991,8 +6221,11 @@ function leadUnterPunkt(cv,ev){
 }
 
 /* ---- Öffnen / Schließen ---- */
-function setSpeed(v){ M.speed=v; syncBtns(); }
-function setGain(v){ M.gain=v; syncBtns(); }
+/* Vorschub/Verstaerkung aendern die Messgrundlage — die Anzeige muss SOFORT nachziehen.
+ * Vorher wartete sie auf den naechsten Messtakt; wer bei der Katze auf 25 mm/s stellte, sah
+ * den Bedienhinweis erst Sekunden spaeter oder (bei angehaltenem Bild) gar nicht. */
+function setSpeed(v){ M.speed=v; syncBtns(); try{ updateMeasures(); }catch(e){} }
+function setGain(v){ M.gain=v; syncBtns(); try{ updateMeasures(); }catch(e){} }
 function syncBtns(){
   var ov=$('#ekgOverlay'); if(!ov) return;
   ov.querySelectorAll('[data-speed]').forEach(function(b){ b.classList.toggle('on', +b.getAttribute('data-speed')===M.speed); });
@@ -6083,7 +6316,19 @@ function wire(){
     b.addEventListener('click',function(){ Z.gain=+b.getAttribute('data-zgain'); zSync(); });
   });
   $('#zBack').addEventListener('click',schliesseZoom);
-  $('#zReset').addEventListener('click',function(){ Z.t1=Z.t2=Z.a1=Z.a2=null; zSync(); });
+  $('#zReset').addEventListener('click',function(){
+    Z.t1=Z.t2=Z.a1=Z.a2=null;
+    if(Z.aus.length){ Z.aus=[]; flash('↺ Ausklammerungen aufgehoben'); }
+    zSync(); updateMeasures();
+  });
+  $('#zArt').addEventListener('click',function(){
+    Z.modus=(Z.modus==='art')?null:'art';
+    if(Z.modus==='art'){
+      if(Z.lead!=='RHY'){ Z.lead='RHY'; }          // dorthin wechseln, wo es wirkt
+      if(!M.freeze){ M.freeze=true; syncBtns(); }
+    }
+    zSync();
+  });
   function messModus(m){
     Z.modus=(Z.modus===m)?null:m;
     /* AUF EINEM LAUFENDEN BILD KANN MAN NICHT MESSEN. Wer den Messzirkel nimmt, will eine
@@ -6111,6 +6356,13 @@ function wire(){
       var r=stage.getBoundingClientRect();
       var x=e.clientX-r.left, y=e.clientY-r.top;
       if(Z.modus==='t'){ Z.t1=x; Z.t2=x; Z.drag='t2'; }
+      else if(Z.modus==='art'){
+        /* Ausklammern geht NUR auf dem Rhythmusstreifen — dort wird gemessen. Auf einer
+         * abgeleiteten Ableitung waere die Markierung nicht auf die Auswertung abbildbar. */
+        if(Z.lead!=='RHY'){ flash('🚫 Ausklammern nur im Rhythmusstreifen (II)'); return; }
+        var iv=zIndexVon(x,r.width);
+        Z.aus.push({von:iv,bis:iv}); Z.drag='art';
+      }
       else { Z.a1=y; Z.a2=y; Z.drag='a2'; }
       zZeigeMesswerte();
       try{ stage.setPointerCapture(e.pointerId); }catch(err){}
@@ -6120,6 +6372,13 @@ function wire(){
       if(!Z.drag||!Z.open) return;
       var r=stage.getBoundingClientRect();
       if(Z.drag==='t2') Z.t2=Math.max(0,Math.min(r.width, e.clientX-r.left));
+      else if(Z.drag==='art'){
+        var letzte=Z.aus[Z.aus.length-1];
+        if(letzte){
+          var iv2=zIndexVon(Math.max(0,Math.min(r.width,e.clientX-r.left)), r.width);
+          if(iv2!=null){ letzte.bis=Math.max(letzte.von,iv2); if(iv2<letzte.von){ letzte.bis=letzte.von; letzte.von=iv2; } }
+        }
+      }
       else Z.a2=Math.max(0,Math.min(r.height, e.clientY-r.top));
       zZeigeMesswerte();
     });
