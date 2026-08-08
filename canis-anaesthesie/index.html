@@ -1034,6 +1034,9 @@ html[data-theme="light"] .assess-tr{color:#5a3c00;background:rgba(255,180,60,.16
      liefert. Gleiche Datei wie bridge/ui-engine — in shared/, damit Station und Web-App
      dieselbe verwenden. -->
 <script src="../shared/ekg-analyse.js?v=1"></script>
+<!-- Wissensbasis: 203 belegte Befundregeln aus der Fachrecherche (Nachschlagewerk +
+     Regelgrundlage). Reine Daten, keine Diagnosemaschine. -->
+<script src="../shared/ekg-befunde.js?v=1"></script>
 <script>
 /* ============ Canis Anæsthesia – Engine ============ */
 (function(){
@@ -4868,6 +4871,7 @@ fab.addEventListener('click',function(){ dock.classList.remove('collapsed'); fab
     <button class="ekg-btn big" id="ekgPdf" title="Echtes PDF erzeugen (maßstabsgetreu, vektoriell) – ansehen, drucken, speichern">📄 PDF</button>
     <button class="ekg-btn big" id="ekgPrint" title="Direkt auf weißem Millimeterpapier drucken">🖨️ Drucken</button>
     <button class="ekg-btn big rec" id="ekgSave" title="Streifen im Archiv sichern">💾 Speichern</button>
+    <button class="ekg-btn big" id="ekgWissenBtn" title="Befund-Nachschlagewerk: 203 belegte Regeln, nach Tierart gefiltert und durchsuchbar">📚 Befunde</button>
     <button class="ekg-btn big" id="ekgPatBtn" title="Patientendaten – aus der Narkose übernommen oder für den Kardio-Termin von Hand">🐾 Patient</button>
     <button class="ekg-btn big" id="ekgArchBtn" title="Gespeicherte Streifen">📁 Archiv</button>
     <button class="ekg-btn big close" id="ekgClose" title="Schließen (Esc)">✕</button>
@@ -5250,7 +5254,19 @@ function zeigeHinweise(B,f,N,mea){
     rrSchwankung:schwank, vorzeitig:(B.rhythmus&&B.rhythmus.id==='ves'),
     band:N?N.hf:null, qrsGrenze:N?N.qrs[1]:null, achseBand:N?N.achse:null,
     speed:M.speed, kal:M.kal, echt:M.echt, sekunden:B.sekunden,
-    ablGemessen:gemesseneAbleitungen()
+    ablGemessen:gemesseneAbleitungen(),
+    rAmp:(B.rAmpMv!=null?B.rAmpMv:null),
+    rUnten:(N&&N.rAmp?N.rAmp[0]:null), rOben:(N&&N.rAmp?N.rAmp[1]:null),
+    rrMax:(rr.maxMs!=null?rr.maxMs:null),
+    /* Windhunde und ausdauertrainierte Rassen: hohe Ausschlaege sind dort normal. Die
+     * Rassekennung kommt aus der Anwendung; ohne sie greift die Ausnahme bewusst nicht. */
+    /* Filter, die die Amplitude antasten (heute: der Muskelfilter). Der Netzfilter
+     * verzerrt zwar QRS/ST, senkt die Amplitude aber nicht systematisch. */
+    filterAmp:!!M.musk,
+    lagerung:(P.lagerung||'rechte Seitenlage'),
+    lagerungAbweichend:!!(P.lagerung && P.lagerung!=='rechte Seitenlage'),
+    windhund:(function(){ var b=String((f.breedName||f.breed||'')).toLowerCase();
+      return /greyhound|whippet|galgo|saluki|barsoi|borzoi|afghan|windhund|deerhound|wolfhound|podenco|magyar agar/.test(b); })()
   };
   var liste=befundHinweise(m);
   var farbe={kritisch:'#ff4d4d',auffaellig:'#ff9f45',hinweis:'#7fa6c8'};
@@ -5288,12 +5304,35 @@ function echtBefund(){
     var f=M.feed||{};
     var band=null;
     try{ if(window.grenzeOf){ var g=grenzeOf('hr'); if(g&&g.length===2) band=g; } }catch(e){}
-    return VS.ekg.analysiere(kurve,{bandHr:band,einheit:(M.kal?'mV':null)});
+    var erg=VS.ekg.analysiere(kurve,{bandHr:band,einheit:(M.kal?'mV':null)});
+    /* R-AMPLITUDE MITMESSEN.
+     * Sie ist die Groesse, an der die meisten Befundregeln haengen (Niedervoltage,
+     * Linksherzvergroesserung, das rassetypisch hohe R des Windhunds). ekg-analyse.js liefert
+     * sie nicht, sie ist aber aus denselben Zacken billig zu haben: Betrag des Ausschlags an
+     * jeder R-Zacke, davon der Median (unempfindlich gegen einen einzelnen Ausreisser).
+     * NUR bei bekannter Verstaerkung — ohne Kalibrierung waere eine mV-Zahl nicht belegbar,
+     * und genau darauf beruhen die Grenzwerte. */
+    try{
+      if(M.kal && erg && erg.brauchbar && VS.ekg.findeQRS && VS.ekg.grundlinieAbziehen && VS.ekg.median){
+        var w=VS.ekg.grundlinieAbziehen(kurve.samples,kurve.hz);
+        var z=VS.ekg.findeQRS(w,kurve.hz);
+        var betr=[];
+        for(var i=0;i<z.length;i++){ var v=w[z[i]]; if(v!=null&&isFinite(v)) betr.push(Math.abs(v)); }
+        if(betr.length>=3) erg.rAmpMv=Math.round(VS.ekg.median(betr)*1000)/1000;
+      }
+    }catch(e){}
+    return erg;
   }catch(e){ return null; }
 }
 
 /* ---- Messwerte + Deutung (gemessen wenn echt, sonst aus dem Rhythmusmodell) ---- */
 function updateMeasures(){
+  /* NUR SCHREIBEN, WENN DAS MESSFELD AUCH DASTEHT.
+   * Diese Funktion laeuft im Messtakt (alle 400 ms). Zeigt die Seitenleiste gerade Patient,
+   * Archiv oder das Nachschlagewerk, dann gibt es #mHr & Co. nicht — und jeder Takt liefe in
+   * einen Fehler. In der Vorschau faellt das nie auf, weil dort keine Zeichenschleife laeuft;
+   * auf der Station waere es ein Fehler pro 400 ms, sobald jemand das Archiv oeffnet. */
+  if(!$('#mHr')) return;
   var f=M.feed||currentFeed(); var W=(f.def&&f.def.w)||{}; var hr=f.hr||0;
   var B=echtBefund();
   if(B){
@@ -5556,6 +5595,7 @@ function buildPDF(){
   var zeile2=[];
   if(pd.frage) zeile2.push('Fragestellung: '+pd.frage);
   if(pd.untersucher) zeile2.push('Untersucher: '+pd.untersucher);
+  zeile2.push('Lagerung: '+(P.lagerung||'—'));
   zeile2.push(pd.quelle);
   doc.setTextColor(90,100,112);
   doc.text(zeile2.join('   ·   '), W-Mg, by, {align:'right'});
@@ -5700,12 +5740,12 @@ function rebuildSide(){
  * ================================================================================== */
 var EKGNORM={
   hund:{ name:'Hund',
-    hf:[70,160], pDauer:[null,40], pAmp:[null,0.4], pq:[60,130], qrs:[null,60], rAmp:[null,3.0],
+    hf:[70,160], pDauer:[null,40], pAmp:[null,0.4], pq:[60,130], qrs:[null,60], rAmp:[1.0,3.0],
     qt:[150,250], achse:[40,100], stSenkung:0.2, stHebung:0.15,
     sinusarrhythmie:'normal',        // beim Hund physiologisch (atemabhaengig)
     speed:25, gain:10 },
   katze:{ name:'Katze',
-    hf:[120,240], pDauer:[null,40], pAmp:[null,0.2], pq:[50,90], qrs:[null,40], rAmp:[null,0.9],
+    hf:[120,240], pDauer:[null,40], pAmp:[null,0.2], pq:[50,90], qrs:[null,40], rAmp:[0.2,0.9],
     qt:[120,180], achse:[0,160], stSenkung:0.001, stHebung:0.001,
     sinusarrhythmie:'auffaellig',    // bei der Katze NICHT physiologisch
     speed:50, gain:10 },
@@ -5879,6 +5919,53 @@ var BEFUNDREGELN=[
     differenzial:'Sinusarrest, Vorhofektopie, AV-Blockierung, Artefakt',
     sicherheit:'Messung', quelle:'Tilley (Artunterschied ausdrücklich)' },
 
+  /* --- Amplituden (nur bei bekannter Verstaerkung; sonst waere jede Grenze sinnlos) --- */
+  /* AMPLITUDEN-REGELN SIND BEI EINGESCHALTETEM MUSKELFILTER GESPERRT (Befund 08.08.2026).
+   * Ein Tiefpass um 40 Hz SENKT die R-Amplitude — das ist in der Geraeteliteratur ausdruecklich
+   * als Gefahr benannt. Ohne diese Sperre haette die Anwendung eine "Niedervoltage" gemeldet,
+   * die sie mit ihrem eigenen Filter erzeugt hat, und daraus einen Perikarderguss-Verdacht
+   * abgeleitet. Die Sperre gilt fuer BEIDE Richtungen: auch ein zu hohes R waere unter Filter
+   * nicht mehr sauber zu behaupten. */
+  { id:'niedervoltage', name:'Niedervoltage – kleine Kammerkomplexe', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.kal && !m.filterAmp && m.rAmp!=null && m.rUnten!=null && m.rAmp<m.rUnten; },
+    hinweis:'R-Amplitude {rAmp} mV liegt unter {rUnten} mV. Kleine Ausschläge passen zu einem Perikard- oder Pleuraerguss, zu Adipositas oder einem Myxödem — oder schlicht zu schlechtem Elektrodenkontakt.',
+    differenzial:'Elektrodenkontakt, Fell statt Haut, Lagerung, Adipositas',
+    sicherheit:'wahrscheinlich', quelle:'Tilley: R < 1,0 mV (Hund), < 0,2 mV (Katze)' },
+
+  { id:'r-hoch', name:'Hohe R-Amplitude', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.kal && !m.filterAmp && m.rAmp!=null && m.rOben!=null && m.rAmp>m.rOben && !m.windhund; },
+    hinweis:'R-Amplitude {rAmp} mV über {rOben} mV. Das kann für eine linksventrikuläre Vergrößerung sprechen — beweisen kann sie das EKG nicht, dafür ist der Herzultraschall zuständig.',
+    differenzial:'schlanker Brustkorb, junges Tier, Lagerung, Sportrasse',
+    sicherheit:'Verdacht', quelle:'Tilley: R > 3,0 mV (Hund), > 0,9 mV (Katze)' },
+
+  /* DIE AUSNAHME, DIE EINEN FEHLBEFUND VERHINDERT.
+   * Bei Windhunden und ausdauertrainierten Rassen sind hohe R-Amplituden und eine niedrige
+   * Ruhefrequenz RASSETYPISCH und kein Vergroesserungsbeleg ("Athletenherz"). Ohne diese
+   * Regel haette die Anwendung jedem gesunden Greyhound eine Herzvergroesserung angedeutet. */
+  { id:'windhund-normal', name:'Sportrasse – hohe Ausschläge sind hier normal', stufe:'hinweis', art:'hund',
+    pruef:function(m){ return m.windhund && m.kal && !m.filterAmp && m.rAmp!=null && m.rOben!=null && m.rAmp>m.rOben; },
+    hinweis:'R-Amplitude {rAmp} mV liegt über dem allgemeinen Hundeband — bei einem Windhund oder einer ausdauertrainierten Rasse ist das <b>rassetypisch</b> und kein Beleg für eine Herzvergrößerung („Athletenherz"). Eine niedrige Ruhefrequenz gehört dort ebenfalls dazu.',
+    sicherheit:'gesichert', quelle:'Rasserecherche 08.08.2026 (Windhund-Normabweichung)' },
+
+  { id:'filter-amplitude', name:'Muskelfilter verfälscht die Amplituden', stufe:'hinweis', art:'alle',
+    pruef:function(m){ return m.filterAmp; },
+    hinweis:'Der Muskelfilter (Tiefpass) ist eingeschaltet. Er <b>senkt die R-Amplitude</b> — deshalb werden Amplituden-Befunde (Niedervoltage, hohes R) so lange nicht ausgegeben. Für Amplitudenmessungen den Filter ausschalten und neu aufzeichnen.',
+    differenzial:null,
+    sicherheit:'gesichert', quelle:'GE HealthCare, Guide to ECG Signal Filtering; Physiol Meas 31(1) 2010' },
+
+  { id:'lagerung', name:'Normwerte gelten nur in rechter Seitenlage', stufe:'hinweis', art:'alle',
+    pruef:function(m){ return m.lagerungAbweichend; },
+    hinweis:'Als Lagerung ist <b>{lagerung}</b> vermerkt. Sämtliche veröffentlichten Normwerte für Amplituden und elektrische Achse wurden in <b>rechter Seitenlage</b> erhoben — in anderer Lagerung ändert sich die Wellenform, und die Normbänder gelten nicht mehr. Der Rhythmus bleibt beurteilbar.',
+    differenzial:null,
+    sicherheit:'gesichert', quelle:'JVIM 20(4):873; PubMed 11822807 (Körperlage und 6-Kanal-EKG des Hundes)' },
+
+  /* --- Pausen --- */
+  { id:'pause-lang', name:'Lange Pause zwischen zwei Schlägen', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.rrMax!=null && m.rrMax>=(m.sp==='katze'?2000:3000); },
+    hinweis:'Längster Abstand {rrMax} ms. Pausen dieser Länge passen zu einem Sinusarrest, einem Vorhofstillstand oder einer höhergradigen AV-Blockierung; bei hohem Vagotonus (brachyzephale Rassen) kommen sie auch ohne Krankheitswert vor.',
+    differenzial:'Vagotonus, Sinusarrest, AV-Block II/III, Vorhofstillstand bei Hyperkaliämie',
+    sicherheit:'Verdacht', quelle:'Rhythmusrecherche 08.08.2026' },
+
   /* --- Achse --- */
   /* Diese Regel verlangt ausdruecklich MEHR ALS EINE gemessene Ableitung. Ohne die Bedingung
    * haette sie aus einer zurueckgerechneten Annahme einen Achsenbefund gemacht — also eine
@@ -5996,7 +6083,7 @@ function renderKI(){
  * Sonst wuerde eine Eingabe im Kardio-Termin die Narkosedosen eines anderen Patienten
  * veraendern — der gefaehrlichste denkbare Nebeneffekt in dieser Anwendung.
  * ================================================================================== */
-var P={ modus:'auto', name:'', besitzer:'', sp:'', rasse:'', wt:'', alter:'', frage:'', untersucher:'' };
+var P={ modus:'auto', name:'', besitzer:'', sp:'', rasse:'', wt:'', alter:'', frage:'', untersucher:'', lagerung:'rechte Seitenlage' };
 var PKEY='vetstation_ekg_patient';
 try{ var pg=JSON.parse(localStorage.getItem(PKEY)||'null'); if(pg&&typeof pg==='object') P=Object.assign(P,pg); }catch(e){}
 function pMerken(){ try{ localStorage.setItem(PKEY, JSON.stringify(P)); }catch(e){} }
@@ -6051,16 +6138,86 @@ function renderPatient(){
           '<div class="ekg-mrow"><span class="k">Alter</span><span class="v" style="font-size:13px">'+(d.alter?esc2(d.alter):'–')+'</span></div>')+
       '<div class="pf"><label>Fragestellung / Indikation</label><input id="pFrage" value="'+esc2(P.frage)+'" placeholder="z. B. Herzgeräusch III/VI, Synkope"></div>'+
       '<div class="pf"><label>Untersucher</label><input id="pUnt" value="'+esc2(P.untersucher)+'" placeholder="Name"></div>'+
+      /* LAGERUNG IST KEIN SCHMUCKFELD. Alle veroeffentlichten Normwerte (Amplituden, Achse)
+       * sind in rechter Seitenlage erhoben; in anderer Lage gelten sie nicht. */
+      '<div class="pf"><label>Lagerung (entscheidet über die Gültigkeit der Normwerte)</label><select id="pLag">'+
+        ['rechte Seitenlage','linke Seitenlage','Brust-Bauch-Lage','stehend','sitzend','in Narkose, andere Lage']
+          .map(function(o){ return '<option value="'+o+'"'+(P.lagerung===o?' selected':'')+'>'+o+'</option>'; }).join('')+
+      '</select></div>'+
     '</div>';
   $('#pBack').onclick=function(){ ov.dataset.seite=''; rebuildSide(); updateMeasures(); };
   $('#pAuto').onclick=function(){ P.modus='auto'; pMerken(); renderPatient(); };
   $('#pHand').onclick=function(){ P.modus='hand'; pMerken(); renderPatient(); };
   function bind(id,feld){ var el=$(id); if(el) el.oninput=function(){ P[feld]=el.value; pMerken(); }; }
   bind('#pName','name'); bind('#pBes','besitzer'); bind('#pFrage','frage'); bind('#pUnt','untersucher');
+  var lg=$('#pLag'); if(lg) lg.onchange=function(){ P.lagerung=lg.value; pMerken(); try{ updateMeasures(); }catch(e){} };
   if(P.modus==='hand'){ bind('#pWt','wt'); bind('#pRas','rasse'); bind('#pAlt','alter');
     var s=$('#pSp'); if(s) s.onchange=function(){ P.sp=s.value; pMerken(); }; }
 }
 function esc2(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* ==================================================================================
+ * BEFUND-NACHSCHLAGEWERK — die Fachrecherche zum Nachlesen am Tisch.
+ *
+ * WARUM NACHSCHLAGEN UND NICHT AUTOMATISCH BEHAUPTEN:
+ * Von den 203 belegten Regeln lassen sich mit den heute erhobenen Messgroessen nur
+ * gut zwanzig wirklich PRUEFEN. Der Rest verlangt Messungen, die die Station (noch) nicht
+ * erhebt — P-Welle, PQ-Zeit, QT, QRS-Form. Diese Regeln trotzdem automatisch zu melden
+ * hiesse, eine Messung zu behaupten, die es nicht gibt. Sie stehen deshalb hier: nach
+ * Tierart gefiltert, durchsuchbar, jede mit Bedingung, Differenzial, Sicherheit und Quelle.
+ * Was die Anwendung selbst pruefen kann, ist als "automatisch geprueft" gekennzeichnet.
+ * ================================================================================== */
+var WISSEN={ suche:'', nurAuto:false };
+/* Messgroessen, die die Station heute tatsaechlich erhebt. Aendert sich das, aendert sich
+ * automatisch, was als "automatisch geprueft" gilt — EINE Liste, keine zweite Wahrheit. */
+var MESSGROESSEN_HEUTE=['hf','rr','rrschwankung','qrs','guete','signalguete','st','sekunden','schlaege','vorzeitig','ramp'];
+function wissenListe(){
+  if(!window.VS||!VS.befunde) return [];
+  var f=M.feed||currentFeed()||{};
+  var liste=VS.befunde.suche(WISSEN.suche, f.sp||null);
+  if(WISSEN.nurAuto) liste=liste.filter(function(r){ return VS.befunde.machbar(r,MESSGROESSEN_HEUTE); });
+  return liste;
+}
+function renderWissen(){
+  var side=$('#ekgSide'), ov=$('#ekgOverlay');
+  ov.dataset.seite='wissen';
+  if(!window.VS||!VS.befunde){
+    side.innerHTML='<h4>📚 Befunde <span style="float:right"><button class="ekg-btn" id="wBack">← Messwerte</button></span></h4>'+
+      '<div class="ekg-empty">Wissensbasis nicht geladen.</div>';
+    $('#wBack').onclick=function(){ ov.dataset.seite=''; rebuildSide(); updateMeasures(); };
+    return;
+  }
+  var f=M.feed||{}, liste=wissenListe();
+  var farbe={gesichert:'#28e07a',wahrscheinlich:'#ffd166',Verdacht:'#ff9f45'};
+  var html='<h4>📚 Befunde <span style="float:right"><button class="ekg-btn" id="wBack">← Messwerte</button></span></h4>'+
+    '<div class="ekg-patbox"><div class="pf"><input id="wSuche" value="'+esc2(WISSEN.suche)+'" placeholder="suchen: Vorhofflimmern, Dobermann, Perikard …"></div></div>'+
+    '<div class="ekg-modus"><button id="wAlle" class="'+(WISSEN.nurAuto?'':'on')+'">Alle '+VS.befunde.fuerArt(f.sp||null).length+'</button>'+
+    '<button id="wAuto" class="'+(WISSEN.nurAuto?'on':'')+'" title="Nur Regeln, die die Station selbst prüfen kann">automatisch geprüft</button></div>'+
+    '<div class="tb" style="font-size:11px;color:#7fa6c8;margin-bottom:8px">'+liste.length+' Regel'+(liste.length===1?'':'n')+
+    ' für <b>'+speciesName(f.sp)+'</b>. Nachschlagewerk — die Station behauptet davon nur, was sie messen kann.</div>';
+  var max=Math.min(liste.length,40);
+  for(var i=0;i<max;i++){
+    var r=liste[i], c=farbe[r.sicher]||'#7fa6c8';
+    var auto=VS.befunde.machbar(r,MESSGROESSEN_HEUTE);
+    html+='<div class="tipp" style="border-left-color:'+c+'">'+
+      '<div class="tn" style="color:'+c+'">'+esc2(r.name)+
+        (auto?' <span style="font-size:9.5px;color:#28e07a;border:1px solid #28e07a55;border-radius:9px;padding:1px 6px">automatisch geprüft</span>':'')+'</div>'+
+      '<div class="tt"><b>Wenn:</b> '+esc2(r.bedingung)+'</div>'+
+      '<div class="tt" style="margin-top:4px">'+esc2(r.hinweis)+'</div>'+
+      (r.dd?'<div class="td">Auch möglich: '+esc2(r.dd)+'</div>':'')+
+      '<div class="tq">'+esc2(r.sicher)+' · '+esc2(r.quelle)+'</div></div>';
+  }
+  if(liste.length>max) html+='<div class="ekg-empty">… und '+(liste.length-max)+' weitere. Suchbegriff eingeben, um einzugrenzen.</div>';
+  if(!liste.length) html+='<div class="ekg-empty">Kein Treffer.</div>';
+  html+='<div class="tf">Diese Sammlung ersetzt kein Lehrbuch und keine klinische Untersuchung. Jede Zeile nennt ihre Quelle.</div>';
+  side.innerHTML=html;
+  $('#wBack').onclick=function(){ ov.dataset.seite=''; rebuildSide(); updateMeasures(); };
+  $('#wAlle').onclick=function(){ WISSEN.nurAuto=false; renderWissen(); };
+  $('#wAuto').onclick=function(){ WISSEN.nurAuto=true; renderWissen(); };
+  var su=$('#wSuche');
+  if(su){ su.oninput=function(){ WISSEN.suche=su.value; var pos=su.selectionStart; renderWissen();
+    var neu=$('#wSuche'); if(neu){ neu.focus(); try{ neu.setSelectionRange(pos,pos); }catch(e){} } }; }
+}
 
 /* ==================================================================================
  * EINZELABLEITUNG GROSS — die Ansicht, in der wirklich befundet wird.
@@ -6431,6 +6588,11 @@ function wire(){
     var ov=$('#ekgOverlay');
     if(ov.dataset.seite==='pat'){ ov.dataset.seite=''; rebuildSide(); updateMeasures(); }
     else renderPatient();
+  });
+  $('#ekgWissenBtn').addEventListener('click',function(){
+    var ov=$('#ekgOverlay');
+    if(ov.dataset.seite==='wissen'){ ov.dataset.seite=''; rebuildSide(); updateMeasures(); }
+    else renderWissen();
   });
   $('#ekgSave').onclick=doSave;
   $('#ekgArchBtn').onclick=function(){ if(ov.dataset.seite==='arch'){ ov.dataset.seite=''; rebuildSide(); updateMeasures(); } else { renderArch(); } };
