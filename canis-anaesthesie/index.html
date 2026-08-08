@@ -5133,9 +5133,19 @@ function drawLeadCanvas(){
       var y=center-dy; if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);
     }
     ctx.stroke(); ctx.restore();
-    // Beschriftung
+    /* GEMESSEN ODER GERECHNET — das gehoert an die Ableitung selbst.
+     * Nur Ableitung II kommt als Abtastkurve vom Geraet; die uebrigen fuenf sind daraus
+     * abgeleitet. Wer das nicht am Bild sieht, haelt sechs gerechnete Kurven fuer sechs
+     * gemessene und traut ihrer Morphologie mehr zu, als sie hergibt (Forderung aus der
+     * Fachrecherche 08.08.2026). */
     ctx.fillStyle=LEADS[li].col; ctx.font=(12*M.dpr)+'px Consolas,monospace';
     ctx.fillText(LEADS[li].id, x0+8*M.dpr, y0+16*M.dpr);
+    if(M.echt){
+      var gemessen=(LEADS[li].id==='II');
+      ctx.fillStyle=gemessen?'rgba(127,224,168,.95)':'rgba(159,182,204,.75)';
+      ctx.font=(9.5*M.dpr)+'px Consolas,monospace';
+      ctx.fillText(gemessen?'gemessen':'gerechnet', x0+8*M.dpr+(LEADS[li].id.length*8+6)*M.dpr, y0+16*M.dpr);
+    }
     // Zell-Trennlinie
     ctx.strokeStyle='rgba(120,150,180,.14)'; ctx.lineWidth=1;
     ctx.beginPath(); ctx.moveTo(x0,y0+0.5); ctx.lineTo(x0,y0+cellH); ctx.moveTo(x0+0.5,y0+cellH-0.5); ctx.lineTo(x0+cellW,y0+cellH-0.5); ctx.stroke();
@@ -5239,7 +5249,8 @@ function zeigeHinweise(B,f,N,mea){
     sp:f.sp||null, hf:B.hf, qrs:B.qrsBreiteMs, guete:B.guete, achse:mea,
     rrSchwankung:schwank, vorzeitig:(B.rhythmus&&B.rhythmus.id==='ves'),
     band:N?N.hf:null, qrsGrenze:N?N.qrs[1]:null, achseBand:N?N.achse:null,
-    speed:M.speed, kal:M.kal, echt:M.echt, sekunden:B.sekunden
+    speed:M.speed, kal:M.kal, echt:M.echt, sekunden:B.sekunden,
+    ablGemessen:gemesseneAbleitungen()
   };
   var liste=befundHinweise(m);
   var farbe={kritisch:'#ff4d4d',auffaellig:'#ff9f45',hinweis:'#7fa6c8'};
@@ -5314,12 +5325,21 @@ function updateMeasures(){
     $('#mQt').innerHTML= st.messbar?((st.mv>0?'+':'')+st.mv+' <small>mV ST</small>'+
               (N&&N.stSenkung!=null?'<br><small style="color:#c9a227">Orientierung ±'+N.stSenkung+'/'+N.stHebung+' mV · Quellenlage schwach</small>':''))
               : '<small>ST: '+(st.richtung?st.richtung+' (unkalibriert)':'nicht messbar')+'</small>';
-    var mea=achseRechnen();
+    /* ACHSE NUR, WENN SIE AUCH BESTIMMBAR IST (Korrektur 08.08.2026).
+     * Mit einer gemessenen Ableitung gibt es keine Frontalachse — vorher stand hier eine
+     * Zahl, die aus der angenommenen Achse zurueckgerechnet war. */
+    var mea=achseRechnen(), nAbl=gemesseneAbleitungen();
     var uA=(N&&N.achse)?normUrteil(N.achse,mea,'°'):null;
-    $('#mAxis').innerHTML=(mea!=null?mea+'°':'–')+' <small>MEA</small>'+
-      (uA?'<br><small style="color:'+uA.farbe+'">Norm '+uA.band+'</small>':
-        ((N&&N.achse===null)?'<br><small style="color:#7fa6c8">beim Pferd nicht aussagekräftig</small>':''))+
-      (B.guete!=null?'<br><small style="color:#7fa6c8">Güte '+B.guete+'×</small>':'');
+    if(mea!=null){
+      $('#mAxis').innerHTML=mea+'° <small>MEA gemessen</small>'+
+        (uA?'<br><small style="color:'+uA.farbe+'">Norm '+uA.band+'</small>':
+          ((N&&N.achse===null)?'<br><small style="color:#7fa6c8">beim Pferd nicht aussagekräftig</small>':''))+
+        (B.guete!=null?'<br><small style="color:#7fa6c8">Güte '+B.guete+'×</small>':'');
+    } else {
+      $('#mAxis').innerHTML='<small style="color:#ff9f45">nicht berechenbar</small>'+
+        '<br><small style="color:#7fa6c8">'+nAbl+' Ableitung gemessen – für die Achse sind 2 nötig</small>'+
+        (B.guete!=null?'<br><small style="color:#7fa6c8">Güte '+B.guete+'×</small>':'');
+    }
     var rh=B.rhythmus||{};
     var dxE=$('#ekgDx');
     dxE.innerHTML='<div class="nm">'+(B.brauchbar?(rh.name||'—'):'nicht beurteilbar')+
@@ -5761,8 +5781,25 @@ function nettoAusschlag(buf){
   if(hi<=-1e9||lo>=1e9) return null;
   return hi+lo;                     // positiver Gipfel minus Betrag des negativen Tals
 }
+/* WIE VIELE EXTREMITAETENABLEITUNGEN SIND WIRKLICH GEMESSEN?
+ * Entscheidend fuer die Achse — und der Grund fuer die Korrektur vom 08.08.2026.
+ * __setRealWave fuehrt GENAU EINEN EKG-Kanal (Ableitung II). Die uebrigen fuenf entstehen in
+ * advance() als Projektion mit der ANGENOMMENEN Achse M.axis. Wer daraus die Achse
+ * zurueckrechnet, erhaelt zwangslaeufig eine Funktion der eigenen Annahme und nichts ueber
+ * das Tier: ein Zirkelschluss mit dem Anschein einer Messung. Aus EINER Ableitung ist die
+ * Frontalachse mathematisch nicht bestimmbar — dafuer braucht es mindestens zwei
+ * unabhaengige. Liefert ein Geraet spaeter mehrere echte Ableitungen, greift die Rechnung
+ * von selbst wieder. */
+function gemesseneAbleitungen(){
+  return echtEkg() ? 1 : 0;      // heute: nur Ableitung II kommt als Abtastkurve an
+}
 function achseRechnen(){
   if(!M.buf) return null;
+  /* Bei nachgebildeter Kurve ist die Achse eine Eigenschaft des MODELLS und wird auch so
+   * beschriftet — das ist ehrlich. Bei echtem Signal mit nur einer gemessenen Ableitung
+   * wird sie NICHT gerechnet. */
+  if(M.echt && gemesseneAbleitungen()<2) return null;
+  if(!M.echt) return null;       // Modellfall wird in der Anzeige eigens behandelt
   var nI=nettoAusschlag(M.buf['I']), nF=nettoAusschlag(M.buf['aVF']);
   if(nI==null||nF==null) return null;
   if(Math.abs(nI)<1e-6&&Math.abs(nF)<1e-6) return null;
@@ -5843,8 +5880,11 @@ var BEFUNDREGELN=[
     sicherheit:'Messung', quelle:'Tilley (Artunterschied ausdrücklich)' },
 
   /* --- Achse --- */
+  /* Diese Regel verlangt ausdruecklich MEHR ALS EINE gemessene Ableitung. Ohne die Bedingung
+   * haette sie aus einer zurueckgerechneten Annahme einen Achsenbefund gemacht — also eine
+   * Rechts- oder Linksverschiebung behauptet, die nie gemessen wurde (Befund 08.08.2026). */
   { id:'achse-ausserhalb', name:'Elektrische Achse außerhalb des Normsektors', stufe:'auffaellig', art:'alle',
-    pruef:function(m){ return m.achseBand && m.achse!=null &&
+    pruef:function(m){ return m.ablGemessen>=2 && m.achseBand && m.achse!=null &&
       (m.achse<m.achseBand[0] || m.achse>m.achseBand[1]); },
     hinweis:'Die mittlere elektrische Achse liegt bei {achse}°, der Normsektor dieser Tierart ist {achseBand}. Eine Rechtsverschiebung passt zu einer Rechtsherzbelastung, eine Linksverschiebung zu einer Linksherzvergrößerung oder einem Schenkelblock.',
     differenzial:'Elektrodenlage vertauscht, Lagerung des Tieres, Thoraxform',
