@@ -5292,6 +5292,14 @@ function zeigeHinweise(B,f,N,mea){
     /* Die frequenzkorrigierte Zeit wird nur beim Hund gebildet (Van de Water); sonst bleibt
      * der Zusatz leer, statt eine nicht belegte Zahl in den Hinweistext zu schreiben. */
     qtcText:((B.t&&B.t.qtcMs!=null)?' (frequenzkorrigiert '+B.t.qtcMs+' ms nach Van de Water)':''),
+    /* QRS-Form und Schlagvergleich - beides EINKANALIG zulaessig, anders als die
+     * Schenkelblock-Zuordnung (die braucht mindestens zwei gemessene Ableitungen). */
+    qrsPolaritaet:(B.qrsForm?B.qrsForm.polaritaet:null),
+    qrsKerben:(B.qrsForm?B.qrsForm.kerben:null),
+    kerbeInMv:(B.qrsForm?B.qrsForm.kerbMassMv===true:false),
+    formFremd:(B.form&&B.form.messbar?B.form.fremd:null),
+    formFremdAnteil:(B.form&&B.form.messbar?B.form.fremdAnteil:null),
+    formen:(B.form&&B.form.messbar?B.form.formen:null),
     /* Windhunde und ausdauertrainierte Rassen: hohe Ausschlaege sind dort normal. Die
      * Rassekennung kommt aus der Anwendung; ohne sie greift die Ausnahme bewusst nicht. */
     /* Filter, die die Amplitude antasten (heute: der Muskelfilter). Der Netzfilter
@@ -6112,6 +6120,40 @@ var BEFUNDREGELN=[
     differenzial:'Sympathikotonus, schlanker Brustkorb, Messunschärfe',
     sicherheit:'Verdacht', quelle:'Hund > 0,4 mV, Katze > 0,2 mV (Tilley)' },
 
+  /* ===== QRS-FORM UND SCHLAGVERGLEICH (einkanalig zulässig) ===== */
+
+  /* DIE SPERRE ALS SICHTBARE REGEL.
+   * Sie steht so in der Wissensbasis ("Achsen- und Morphologieregeln nur bei echt
+   * aufgezeichneten Ableitungen") und ist mathematisch zwingend: alle Schenkelblock-
+   * Kriterien verweisen auf mehrere Ableitungen. Statt still zu schweigen, sagt die
+   * Anwendung, WAS fehlt — sonst hält man das Schweigen für einen unauffälligen Befund. */
+  { id:'block-nicht-klassifizierbar', name:'Breiter Kammerkomplex – Blockart nicht bestimmbar', stufe:'hinweis', art:'alle',
+    pruef:function(m){ return m.qrsGrenze && m.qrs!=null && m.qrs>m.qrsGrenze && m.ablGemessen<2; },
+    hinweis:'Der Kammerkomplex ist verbreitert ({qrs} ms). Ob ein <b>Rechts-</b> oder <b>Linksschenkelblock</b> vorliegt, lässt sich daraus <b>nicht</b> entscheiden: die Kriterien vergleichen mehrere Ableitungen (tiefe S in I/II/III/aVL beim Rechts-, breiter R ohne tiefe S in I/II/aVF beim Linksschenkelblock). Hier ist nur Ableitung II gemessen, die übrigen sind daraus gerechnet. Für die Zuordnung ein echtes Mehrkanal-EKG schreiben.',
+    differenzial:'ventrikulärer Ursprung, Hyperkaliämie, Kammerersatzrhythmus',
+    sicherheit:'Messung', quelle:'Einthoven-Dreieck; Wissensbasis-Sperre (mind. 2 gemessene Ableitungen)' },
+
+  { id:'qrs-gekerbt', name:'Gekerbter Kammerkomplex', stufe:'auffaellig', art:'hund',
+    pruef:function(m){ return m.kerbeInMv && m.qrsKerben!=null && m.qrsKerben>=1 && m.guete>=8; },
+    hinweis:'Innerhalb des Kammerkomplexes liegt eine zusätzliche Auslenkung, die die Grundlinie nicht durchquert ({qrsKerben} Kerbe/n). Gekerbte Komplexe sind beim Hund mit myokardialen Veränderungen in Verbindung gebracht worden. Sie sind aber auch bei Gesunden zu finden — und die <b>Fragmentierung</b> im engeren Sinn verlangt den Nachweis in <b>zwei benachbarten</b> Ableitungen, was hier nicht möglich ist.',
+    differenzial:'Normvariante, Störung, Überlagerung',
+    sicherheit:'Verdacht', quelle:'Winter & Bates, gekerbte QRS beim Hund (85 Fälle); Santarelli et al. (fQRS)' },
+
+  /* DER ZUGEWINN DES SCHLAGVERGLEICHS: uniform gegen multiform.
+   * Ein Ursprungsort erzeugt EINE fremde Form, mehrere Orte erzeugen mehrere — das wiegt
+   * klinisch verschieden schwer und war ohne Formvergleich gar nicht zu sehen. */
+  { id:'ektopie-uniform', name:'Formfremde Schläge, einheitliche Form', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.formen===1 && m.formFremd>=2 && m.guete>=8; },
+    hinweis:'{formFremd} Schläge ({formFremdAnteil} %) weichen in der Form vom übrigen Streifen ab, dabei alle mit <b>derselben</b> Form. Das spricht für <b>einen</b> Ursprungsort (uniforme Ektopie). Für Häufigkeit und Verlauf ist das Langzeit-EKG das Mittel der Wahl.',
+    differenzial:'ventrikuläre Extrasystolen, aberrant übergeleitete SVES, Artefakt',
+    sicherheit:'Verdacht', quelle:'Formvergleich über Kreuzkorrelation (r ≥ 0,95)' },
+
+  { id:'ektopie-multiform', name:'Formfremde Schläge in MEHREREN Formen', stufe:'kritisch', art:'alle',
+    pruef:function(m){ return m.formen!=null && m.formen>=2 && m.formFremd>=3 && m.guete>=8; },
+    hinweis:'{formFremd} Schläge ({formFremdAnteil} %) weichen in der Form ab, und zwar in <b>{formen} verschiedenen</b> Formen. Multiforme Ektopie spricht für <b>mehrere</b> Ursprungsorte und wiegt schwerer als eine einheitliche. Sauerstoffversorgung, Elektrolyte, Narkosetiefe und Grunderkrankung prüfen; Vorstellung beim Kardiologen erwägen.',
+    differenzial:'mehrere ventrikuläre Foci, wechselnde Aberration, Artefakt bei unruhigem Signal',
+    sicherheit:'Verdacht', quelle:'Formvergleich über Kreuzkorrelation (r ≥ 0,95)' },
+
   /* --- QT-Zeit (Tangentenverfahren) ---
    * Bewertet wird die ZEIT, nicht die Form. Die Form der T-Welle ist beim Tier ausgesprochen
    * unspezifisch - sie wechselt mit Lage, Atmung, Frequenz und Tageszeit, ohne dass etwas
@@ -6451,7 +6493,7 @@ function renderAnlegen(){
 var WISSEN={ suche:'', nurAuto:false };
 /* Messgroessen, die die Station heute tatsaechlich erhebt. Aendert sich das, aendert sich
  * automatisch, was als "automatisch geprueft" gilt — EINE Liste, keine zweite Wahrheit. */
-var MESSGROESSEN_HEUTE=['hf','rr','rrschwankung','qrs','guete','signalguete','st','sekunden','schlaege','vorzeitig','ramp','p','pq','pvorhanden','pdauer','pamp','pform','qt','tamp'];
+var MESSGROESSEN_HEUTE=['hf','rr','rrschwankung','qrs','guete','signalguete','st','sekunden','schlaege','vorzeitig','ramp','p','pq','pvorhanden','pdauer','pamp','pform','qt','tamp','qrsform'];
 function wissenListe(){
   if(!window.VS||!VS.befunde) return [];
   var f=M.feed||currentFeed()||{};

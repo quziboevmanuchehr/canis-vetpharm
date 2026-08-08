@@ -658,6 +658,166 @@
     };
   }
 
+  /* ================================================================================ *
+   * 4d) QRS-MORPHOLOGIE UND SCHLAGVERGLEICH  (08.08.2026)
+   *
+   * WAS HIER BEWUSST *NICHT* GEMACHT WIRD: SCHENKELBLOCK-ZUORDNUNG.
+   * Die Kriterien fuer Rechts- und Linksschenkelblock verweisen samtlich auf MEHRERE
+   * Ableitungen (RSB: tiefe S in I, II, III, aVL, CV6; LSB: breiter, oft gekerbter R in
+   * I, II, aVF OHNE tiefe S). Diese Station misst EINE Ableitung (II) - die uebrigen fuenf
+   * sind daraus gerechnet. Aus einer Ableitung laesst sich die Blockart nicht bestimmen;
+   * das ist keine Bequemlichkeit, sondern eine Folge des Einthoven-Dreiecks. Gemeldet wird
+   * deshalb die VERBREITERUNG mit dem ausdruecklichen Zusatz, was zur Zuordnung fehlt.
+   *
+   * WAS EINKANALIG SEHR WOHL GEHT und hier gebaut ist:
+   *   - Polaritaet, R- und S-Anteil, Q-Zacke, R/S-Verhaeltnis in Ableitung II
+   *   - KERBUNG des Kammerkomplexes (belegtes Kriterium: zusaetzliche Auslenkung INNERHALB
+   *     des QRS, die die Grundlinie nicht durchquert, Kerbtiefe >= 0,05 mV)
+   *   - SCHLAGVERGLEICH ueber Kreuzkorrelation gegen die dominante Vorlage. Damit wird aus
+   *     "vorzeitiger Schlag" ein "vorzeitiger UND FORMFREMDER Schlag" - genau das
+   *     unterscheidet die ventrikulaere von der supraventrikulaeren Extrasystole. Und die
+   *     Zahl der verschiedenen fremden Formen trennt UNIFORME von MULTIFORMER Ektopie,
+   *     was klinisch verschieden schwer wiegt.
+   * ================================================================================ */
+
+  /*
+   * Form eines einzelnen Kammerkomplexes in Ableitung II.
+   * kerben zaehlt zusaetzliche Umkehrpunkte INNERHALB des QRS, die die Grundlinie nicht
+   * durchqueren - das belegte Kerbungskriterium. Ohne Kalibrierung wird die Kerbtiefe
+   * relativ zur R-Zacke gemessen statt in mV (0,05 mV entspricht bei einer 1,5-mV-R rund
+   * 3 % - dieser Anteil wird dann als Ersatzmass benutzt und ausdruecklich so benannt).
+   */
+  function qrsForm(werte, r, hz, kalibriert, skala, einheit) {
+    var qb = qrsBeginn(werte, r, hz), qe = qrsEnde(werte, r, hz);
+    if (qe - qb < 2) return null;
+    var hoch = 0, tief = 0, i;
+    for (i = qb; i <= qe; i++) {
+      var w = werte[i];
+      if (w == null) continue;
+      if (w > hoch) hoch = w;
+      if (w < tief) tief = w;
+    }
+    var inMv = function (x) {
+      if (!kalibriert) return null;
+      return x * skala * (/mv/i.test(String(einheit)) ? 1 : 0.001);
+    };
+    /* KERBEN: Vorzeichenwechsel der Steigung innerhalb des QRS, deren Ausschlag gegen den
+     * benachbarten Extremwert gross genug ist. Die Grundlinie darf dabei NICHT durchquert
+     * werden - sonst waere es eine eigene Zacke (R', S) und keine Kerbe. */
+    var spanne = hoch - tief;
+    var mindest = spanne * 0.03;                 // Ersatzmass, wenn nicht kalibriert
+    if (kalibriert) {
+      var mv005 = 0.05 / (skala * (/mv/i.test(String(einheit)) ? 1 : 0.001));
+      if (mv005 > 0) mindest = mv005;            // belegte Kerbtiefe 0,05 mV
+    }
+    /*
+     * EINE KERBE IST DAS TAL, NICHT DER GIPFEL.
+     * Erste Fassung zaehlte alle Umkehrpunkte und zog einen ab. Eine M-foermige R-Zacke hat
+     * aber DREI Extrema (Gipfel - Tal - Gipfel) und haette damit ZWEI Kerben ergeben, obwohl
+     * es eine ist. Gezaehlt wird deshalb genau das, was die Definition meint: die zusaetzliche
+     * Auslenkung INNERHALB des Komplexes - bei positivem Hauptausschlag also die
+     * Zwischen-MINIMA, bei negativem die Zwischen-MAXIMA. Wer die Grundlinie durchquert, ist
+     * keine Kerbe, sondern eine eigene Zacke (R', S).
+     */
+    var positiv = (hoch >= Math.abs(tief));
+    var kerben = 0, letzteRichtung = 0, letztesExtrem = werte[qb];
+    for (i = qb + 1; i <= qe; i++) {
+      var a = werte[i], b = werte[i - 1];
+      if (a == null || b == null) continue;
+      var richtung = (a > b) ? 1 : (a < b ? -1 : 0);
+      if (richtung === 0) continue;
+      if (letzteRichtung !== 0 && richtung !== letzteRichtung) {
+        // b ist ein Extrem: Minimum wenn es jetzt wieder steigt, sonst Maximum.
+        var istMinimum = (richtung === 1);
+        var zaehlt = positiv ? istMinimum : !istMinimum;
+        var tiefGenug = Math.abs(b - letztesExtrem) >= mindest;
+        var ohneNulldurchgang = !((b > 0 && letztesExtrem < 0) || (b < 0 && letztesExtrem > 0));
+        if (zaehlt && tiefGenug && ohneNulldurchgang) kerben++;
+        letztesExtrem = b;
+      }
+      letzteRichtung = richtung;
+    }
+    return {
+      beginn: qb, ende: qe,
+      rAmp: hoch, sAmp: tief,
+      rAmpMv: inMv(hoch), sAmpMv: inMv(Math.abs(tief)),
+      polaritaet: (hoch >= Math.abs(tief)) ? 'positiv' : 'negativ',
+      rsVerhaeltnis: (Math.abs(tief) > 0) ? Math.round(hoch / Math.abs(tief) * 100) / 100 : null,
+      kerben: kerben,
+      kerbMassMv: kalibriert,
+    };
+  }
+
+  /*
+   * SCHLAGVERGLEICH ueber Kreuzkorrelation.
+   * Vorlage ist der punktweise MEDIAN aller an der R-Zacke ausgerichteten Schlaege - der
+   * Median wird von der Mehrheitsform bestimmt, ein paar abweichende Schlaege kippen ihn
+   * nicht (ein Mittelwert wuerde von einer grossen Extrasystole verzogen).
+   * Aufnahmekriterium r >= 0,95 gegen die Vorlage; darunter gilt ein Schlag als FORMFREMD.
+   */
+  function korrelation(a, b) {
+    var n = Math.min(a.length, b.length), i, sa = 0, sb = 0;
+    if (n < 4) return 0;
+    for (i = 0; i < n; i++) { sa += a[i]; sb += b[i]; }
+    var ma = sa / n, mb = sb / n, za = 0, na = 0, nb = 0;
+    for (i = 0; i < n; i++) {
+      var da = a[i] - ma, db = b[i] - mb;
+      za += da * db; na += da * da; nb += db * db;
+    }
+    if (na <= 0 || nb <= 0) return 0;
+    return za / Math.sqrt(na * nb);
+  }
+
+  function formVergleich(werte, zacken, hz) {
+    var vor = Math.round(hz * 0.06), nach = Math.round(hz * 0.08);
+    var breite = vor + nach + 1;
+    var bloecke = [], i, j;
+    for (i = 0; i < zacken.length; i++) {
+      var r = zacken[i];
+      if (r - vor < 0 || r + nach >= werte.length) continue;
+      var b = [];
+      for (j = r - vor; j <= r + nach; j++) b.push(werte[j] == null ? 0 : werte[j]);
+      bloecke.push({ idx: i, r: r, w: b });
+    }
+    if (bloecke.length < 3) return { messbar: false, warum: 'zu wenige vollständige Komplexe für einen Formvergleich' };
+    // Vorlage: punktweiser Median
+    var vorlage = [];
+    for (j = 0; j < breite; j++) {
+      var spalte = [];
+      for (i = 0; i < bloecke.length; i++) spalte.push(bloecke[i].w[j]);
+      vorlage.push(median(spalte));
+    }
+    var fremd = [], konform = 0, rWerte = [];
+    for (i = 0; i < bloecke.length; i++) {
+      var rk = korrelation(bloecke[i].w, vorlage);
+      rWerte.push(Math.round(rk * 1000) / 1000);
+      if (rk >= 0.95) konform++; else fremd.push(bloecke[i]);
+    }
+    /* WIEVIELE VERSCHIEDENE fremde Formen? Die fremden Schlaege werden untereinander
+     * verglichen: was zueinander passt (r >= 0,95), ist dieselbe Form. Eine Form =
+     * UNIFORME Ektopie (ein Ursprungsort), mehrere = MULTIFORME (mehrere Orte) - das ist
+     * klinisch der Unterschied. */
+    var klassen = [];
+    for (i = 0; i < fremd.length; i++) {
+      var passt = -1;
+      for (j = 0; j < klassen.length; j++) {
+        if (korrelation(fremd[i].w, klassen[j].w) >= 0.95) { passt = j; break; }
+      }
+      if (passt < 0) klassen.push({ w: fremd[i].w, n: 1 });
+      else klassen[passt].n++;
+    }
+    return {
+      messbar: true,
+      schlaege: bloecke.length,
+      konform: konform,
+      fremd: fremd.length,
+      fremdAnteil: Math.round(fremd.length / bloecke.length * 100),
+      formen: klassen.length,                       // Zahl verschiedener fremder Formen
+      rMin: Math.min.apply(null, rWerte),
+      vorlage: vorlage,
+    };
+  }
+
   /* ------------------------------------------------------------------ *
    * 5) Rhythmus aus den RR-Abstaenden
    *
@@ -851,6 +1011,11 @@
     var pRausch = perzentil(ruhe, 0.25);
     ergebnis.p = pAuswertung(werte, zacken, hz, pRausch, spitze, kurve.skala, opts.einheit || 'uV', art);
     ergebnis.t = tAuswertung(werte, zacken, hz, pRausch, spitze, art, ergebnis.hf);
+    /* QRS-Form am REPRAESENTATIVEN Schlag (mittlerer der Reihe) und der Formvergleich ueber
+     * alle Schlaege. Beides einkanalig zulaessig - im Gegensatz zur Schenkelblock-Zuordnung. */
+    var kal = endlich(kurve.skala) && kurve.skala > 0 && /uv|µv|mv/i.test(String(opts.einheit || 'uV'));
+    ergebnis.qrsForm = qrsForm(werte, zacken[Math.floor(zacken.length / 2)], hz, kal, kurve.skala, opts.einheit || 'uV');
+    ergebnis.form = formVergleich(werte, zacken, hz);
     return ergebnis;
   }
 
@@ -861,6 +1026,7 @@
     rhythmus: rhythmus, stMessung: stMessung, median: median,
     qrsBeginn: qrsBeginn, qrsEnde: qrsEnde, findeP: findeP, pAuswertung: pAuswertung, perzentil: perzentil,
     findeT: findeT, tAuswertung: tAuswertung,
+    qrsForm: qrsForm, formVergleich: formVergleich, korrelation: korrelation,
     P_ART: P_ART, T_ART: T_ART,
     MIN_SEKUNDEN: MIN_SEKUNDEN, MIN_SCHLAEGE: MIN_SCHLAEGE,
     P_MIN_HZ: P_MIN_HZ, P_MIN_SCHLAEGE: P_MIN_SCHLAEGE, P_ANTEIL: P_ANTEIL,
