@@ -4134,7 +4134,12 @@ try{ window.state=state;
       return { hr:r.hr, rhythm:(r.ekg||'sinus'), spo2:r.spo2, temp:r.temp, def:def,
                sp:state.sp, wt:state.wt, breed:state.breed, age:state.age, mode:state.monMode,
                breedName:(function(){ try{ var b=curBreed(); return b?(b.name||b.id):null; }catch(e){ return null; } })(),
-               running:!!mon.running, real:(mon.real&&mon.real.ekg)?mon.real.ekg:null };
+               running:!!mon.running, real:(mon.real&&mon.real.ekg)?mon.real.ekg:null,
+               /* Haengt ein GERAET am Patienten? Nur dann darf das EKG-Fenster Stammdaten
+                * uebernehmen. state.mess ist das letzte Geraetepaket, mon.real die echte Kurve;
+                * ohne beides ist niemand angeschlossen und der Tierarzt traegt von Hand ein. */
+               amGeraet:!!(mon.real&&mon.real.ekg) || !!(state.mess&&Object.keys(state.mess).length),
+               patId:(state.patientId||null) };
     }catch(e){ return null; }
   };
 }catch(e){}
@@ -4839,6 +4844,15 @@ fab.addEventListener('click',function(){ dock.classList.remove('collapsed'); fab
 .ekg-modus button.on{background:linear-gradient(90deg,#1cc7ff,#8b7cf6);border:0;color:#04121a}
 .ekg-uebernahme{font-size:11px;color:#7fe0a8;background:rgba(40,224,122,.07);border:1px solid rgba(40,224,122,.22);border-radius:7px;padding:6px 8px;line-height:1.45;margin-bottom:8px}
 /* ===== Platz fuer die spaetere KI-Beurteilung (heute leer, Vertrag steht) ===== */
+.ekg-warn{font-size:11px;line-height:1.5;color:#ffd7d7;background:rgba(255,77,77,.09);border:1px solid rgba(255,77,77,.3);border-radius:8px;padding:7px 9px;margin-bottom:9px}
+.ekg-svg{background:#080d15;border:1px solid #23303f;border-radius:9px;padding:4px;margin-bottom:9px}
+.ekg-kabel{display:flex;flex-direction:column;gap:5px}
+.ekg-kabel .kz{display:flex;align-items:center;gap:7px;font-size:11.5px;color:#c4d6e8}
+.ekg-kabel .kz i{width:14px;height:14px;border-radius:50%;border:1px solid #0b1017;flex:0 0 auto}
+.ekg-kabel .kz b{font-family:Consolas,monospace;color:#eaf4ff;min-width:26px}
+.ekg-kabel .kz .kf{min-width:52px;color:#9fb6cc}
+.ekg-kabel .kz .kw{color:#87a2bd;font-size:11px}
+.ekg-merk{margin-top:9px;font-size:11.5px;color:#bff5d0;background:rgba(40,224,122,.07);border:1px solid rgba(40,224,122,.22);border-radius:8px;padding:7px 9px}
 .ekg-tipps{margin-top:12px;border:1px solid #23303f;border-radius:10px;padding:10px 11px;background:rgba(255,255,255,.02)}
 .ekg-tipps .th{font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;color:#7fa6c8;margin-bottom:7px}
 .ekg-tipps .tb{font-size:11.5px;line-height:1.5;color:#9fb6cc}
@@ -4871,6 +4885,7 @@ fab.addEventListener('click',function(){ dock.classList.remove('collapsed'); fab
     <button class="ekg-btn big" id="ekgPdf" title="Echtes PDF erzeugen (maßstabsgetreu, vektoriell) – ansehen, drucken, speichern">📄 PDF</button>
     <button class="ekg-btn big" id="ekgPrint" title="Direkt auf weißem Millimeterpapier drucken">🖨️ Drucken</button>
     <button class="ekg-btn big rec" id="ekgSave" title="Streifen im Archiv sichern">💾 Speichern</button>
+    <button class="ekg-btn big" id="ekgAnlegenBtn" title="Elektroden anlegen: Kabelfarben (IEC/AHA) und Anlegeschema">🔌 Anlegen</button>
     <button class="ekg-btn big" id="ekgWissenBtn" title="Befund-Nachschlagewerk: 203 belegte Regeln, nach Tierart gefiltert und durchsuchbar">📚 Befunde</button>
     <button class="ekg-btn big" id="ekgPatBtn" title="Patientendaten – aus der Narkose übernommen oder für den Kardio-Termin von Hand">🐾 Patient</button>
     <button class="ekg-btn big" id="ekgArchBtn" title="Gespeicherte Streifen">📁 Archiv</button>
@@ -5257,7 +5272,10 @@ function zeigeHinweise(B,f,N,mea){
     ablGemessen:gemesseneAbleitungen(),
     rAmp:(B.rAmpMv!=null?B.rAmpMv:null),
     rUnten:(N&&N.rAmp?N.rAmp[0]:null), rOben:(N&&N.rAmp?N.rAmp[1]:null),
-    rrMax:(rr.maxMs!=null?rr.maxMs:null),
+    rrMax:(rr.maxMs!=null?rr.maxMs:null), rrMittel:(rr.mittelMs!=null?rr.mittelMs:null),
+    rhythmusId:(B.rhythmus&&B.rhythmus.id)||null,
+    rhythmusGrund:(B.rhythmus&&B.rhythmus.begruendung)?(B.rhythmus.begruendung+'.'):'',
+    netzStoerung:netzStoerung(streifenFuerMessung(),hzJetzt()),
     /* Windhunde und ausdauertrainierte Rassen: hohe Ausschlaege sind dort normal. Die
      * Rassekennung kommt aus der Anwendung; ohne sie greift die Ausnahme bewusst nicht. */
     /* Filter, die die Amplitude antasten (heute: der Muskelfilter). Der Netzfilter
@@ -5523,6 +5541,7 @@ function buildPDF(){
   /* PATIENTENZEILE — ein EKG-Ausdruck ohne Patient ist in der Akte wertlos. Was fehlt,
    * bleibt weg; es wird nichts erfunden. */
   var pd=patDaten(), kopf=[];
+  if(pd.patId) kopf.push('ID '+pd.patId);
   if(pd.name) kopf.push(pd.name);
   if(pd.besitzer) kopf.push('Bes. '+pd.besitzer);
   kopf.push(speciesName(pd.sp));
@@ -5596,6 +5615,7 @@ function buildPDF(){
   if(pd.frage) zeile2.push('Fragestellung: '+pd.frage);
   if(pd.untersucher) zeile2.push('Untersucher: '+pd.untersucher);
   zeile2.push('Lagerung: '+(P.lagerung||'—'));
+  zeile2.push('Kabelnorm: '+kabelNorm());
   zeile2.push(pd.quelle);
   doc.setTextColor(90,100,112);
   doc.text(zeile2.join('   ·   '), W-Mg, by, {align:'right'});
@@ -5814,6 +5834,45 @@ function qtcErlaubt(sp){ return sp==='hund'; }
  * Netto = groesster positiver plus groesster negativer Ausschlag um die Grundlinie. Das ist
  * die Naeherung, die am Papier auch von Hand gemacht wird; sie ist ehrlich, solange sie so
  * benannt ist (die Flaechenmethode waere genauer, braucht aber sichere QRS-Grenzen). */
+/* NETZEINSTREUUNG ERKENNEN — und sie von Muskelzittern UNTERSCHEIDEN.
+ *
+ * Das Unterscheidungsmerkmal aus der Fachliteratur ist nicht die Staerke, sondern die
+ * REGELMAESSIGKEIT: Netzbrumm ist eine gleichfoermige Schwingung fester Frequenz (50 Hz in
+ * Europa), Muskelzittern ist unregelmaessig und wechselt staendig die Amplitude.
+ *
+ * Gemessen wird ueber die Vorzeichenwechsel der ersten Ableitung: bei einer sauberen
+ * Schwingung sind die Abstaende zwischen zwei Wechseln fast gleich lang, bei Zittern nicht.
+ * Bewertet wird nur der Anteil ZWISCHEN den Kammerkomplexen — der QRS selbst ist steil und
+ * wuerde jede Messung verfaelschen.
+ *
+ * Braucht mindestens die doppelte Netzfrequenz als Abtastrate (Nyquist): unter 100 Hz ist
+ * 50-Hz-Brumm nicht darstellbar, und es wird ausdruecklich NICHTS behauptet.
+ */
+function netzStoerung(samples,hz){
+  if(!samples||samples.length<64||!hz||hz<100) return null;   // Nyquist: sonst nicht messbar
+  var d=[],i;
+  for(i=1;i<samples.length;i++){
+    var a=samples[i],b=samples[i-1];
+    d.push((a==null||b==null)?0:(a-b));
+  }
+  // Abstaende zwischen Vorzeichenwechseln der Steigung
+  var wechsel=[],letzt=-1;
+  for(i=1;i<d.length;i++){
+    if((d[i]>0)!==(d[i-1]>0)){ if(letzt>=0) wechsel.push(i-letzt); letzt=i; }
+  }
+  if(wechsel.length<24) return null;
+  wechsel.sort(function(a,b){return a-b;});
+  var med=wechsel[wechsel.length>>1];
+  if(!med) return null;
+  // Eine 50-Hz-Schwingung wechselt 100x/s die Richtung -> Halbperiode hz/100 Abtastwerte.
+  var erwartet=hz/100;
+  if(med<erwartet*0.6||med>erwartet*1.7) return false;        // nicht die Netzfrequenz
+  // Gleichfoermigkeit: Anteil der Abstaende dicht am Median.
+  var nah=0;
+  for(i=0;i<wechsel.length;i++){ if(Math.abs(wechsel[i]-med)<=Math.max(1,med*0.35)) nah++; }
+  return (nah/wechsel.length)>=0.75;                          // gleichfoermig => Netz
+}
+
 function nettoAusschlag(buf){
   if(!buf||buf.length<10) return null;
   var hi=-1e9, lo=1e9;
@@ -5959,6 +6018,40 @@ var BEFUNDREGELN=[
     differenzial:null,
     sicherheit:'gesichert', quelle:'JVIM 20(4):873; PubMed 11822807 (Körperlage und 6-Kanal-EKG des Hundes)' },
 
+  /* --- Extrasystolen: die Auswertung erkennt sie bereits, sie wurden nur nie GEZEIGT ---
+   * ekg-analyse.js verlangt dafuer das VOLLSTAENDIGE Muster (vorzeitiger Schlag UND
+   * kompensatorische Pause) und schweigt bei maessiger Signalguete. Diese Zurueckhaltung
+   * bleibt: die Regel gibt nur weiter, was dort schon streng geprueft wurde. */
+  { id:'extrasystolen', name:'Vorzeitige Schläge (Extrasystolen)', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.rhythmusId==='ves'; },
+    hinweis:'Im Streifen liegen vorzeitige Schläge mit nachfolgender Pause. {rhythmusGrund} Bei <b>breitem</b> QRS spricht das für einen ventrikulären Ursprung (VES), bei <b>schmalem</b> für einen supraventrikulären (SVES). Häufigkeit, Kopplung und ob sie gehäuft auftreten, entscheiden über die Bedeutung — dafür ist ein Langzeit-EKG das Mittel der Wahl.',
+    differenzial:'Artefakt (Bewegung, Wackelkontakt), Hypoxie/Hyperkapnie, Elektrolyte, Milz-/Magenerkrankung, Myokarditis',
+    sicherheit:'Verdacht', quelle:'ekg-analyse.js (vorzeitig + kompensatorische Pause); Tilley' },
+
+  { id:'vtach-verdacht', name:'Verdacht auf ventrikuläre Tachykardie', stufe:'kritisch', art:'alle',
+    pruef:function(m){ return m.rhythmusId==='vtach'; },
+    hinweis:'{rhythmusGrund} Eine schnelle Folge breiter Kammerkomplexe ist behandlungsrelevant, wenn sie anhält oder den Kreislauf beeinträchtigt. <b>Puls und Blutdruck am Tier prüfen</b> — nicht am Monitor entscheiden.',
+    differenzial:'supraventrikuläre Tachykardie mit Schenkelblock, Artefakt',
+    sicherheit:'Verdacht', quelle:'ekg-analyse.js (schnelle Folge mit verbreitertem QRS)' },
+
+  /* --- Ausgefallener Kammerkomplex: der EINZIGE Blockhinweis, der ohne P-Welle geht ---
+   * Ein AV-Block II. Grades laesst einen QRS ausfallen; die Pause ist dann etwa DOPPELT so
+   * lang wie der normale Abstand. Welcher Blocktyp es ist, entscheidet die P-Welle — und die
+   * misst die Station nicht. Deshalb wird der AUSFALL benannt und ausdruecklich offengelassen,
+   * um welchen Block es sich handelt. Alles andere waere eine Behauptung ohne Messung. */
+  { id:'schlag-ausgefallen', name:'Ausgefallener Kammerkomplex', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.rrMax!=null && m.rrMittel>0 && (m.rrMax/m.rrMittel)>=1.8 && (m.rrMax/m.rrMittel)<=2.4; },
+    hinweis:'Eine Pause ist etwa doppelt so lang wie der übrige Abstand ({rrMax} ms gegen {rrMittel} ms) — das Muster eines <b>ausgefallenen Kammerkomplexes</b>. Passt zu einem AV-Block II. Grades. <b>Welcher Typ</b> (Mobitz I mit zunehmender PQ-Zeit oder Mobitz II mit konstanter) lässt sich nur an der P-Welle entscheiden, und die misst diese Station nicht — dafür den Streifen groß ansehen oder befunden lassen.',
+    differenzial:'Sinusarrest (dann keine P-Welle in der Pause), blockierte SVES, Artefakt',
+    sicherheit:'Verdacht', quelle:'Rhythmusrecherche 08.08.2026; Tilley (AV-Block II)' },
+
+  /* --- Artefakte unterscheiden: regelmaessig = Netz, unregelmaessig = Muskel --- */
+  { id:'netzeinstreuung', name:'Netzeinstreuung (50 Hz)', stufe:'hinweis', art:'alle',
+    pruef:function(m){ return m.netzStoerung===true; },
+    hinweis:'Die Grundlinie trägt eine <b>regelmäßige</b> Schwingung um 50 Hz. Das ist Netzeinstreuung — meist durch ungenügenden Klemme-Haut-Kontakt, seltener durch Erdung oder benachbarte Geräte. <b>Kontakt und Erdung prüfen</b> ist besser als den Filter zuzuschalten: der Netzfilter verzerrt QRS und ST.',
+    differenzial:'Muskelzittern (dann unregelmäßig statt gleichförmig)',
+    sicherheit:'Messung', quelle:'dvm360; fokus-ekg.de; GE HealthCare (Filterrisiko)' },
+
   /* --- Pausen --- */
   { id:'pause-lang', name:'Lange Pause zwischen zwei Schlägen', stufe:'auffaellig', art:'alle',
     pruef:function(m){ return m.rrMax!=null && m.rrMax>=(m.sp==='katze'?2000:3000); },
@@ -6083,7 +6176,7 @@ function renderKI(){
  * Sonst wuerde eine Eingabe im Kardio-Termin die Narkosedosen eines anderen Patienten
  * veraendern — der gefaehrlichste denkbare Nebeneffekt in dieser Anwendung.
  * ================================================================================== */
-var P={ modus:'auto', name:'', besitzer:'', sp:'', rasse:'', wt:'', alter:'', frage:'', untersucher:'', lagerung:'rechte Seitenlage' };
+var P={ modus:'auto', name:'', besitzer:'', sp:'', rasse:'', wt:'', alter:'', frage:'', untersucher:'', lagerung:'rechte Seitenlage', kabelnorm:'IEC', patId:'' };
 var PKEY='vetstation_ekg_patient';
 try{ var pg=JSON.parse(localStorage.getItem(PKEY)||'null'); if(pg&&typeof pg==='object') P=Object.assign(P,pg); }catch(e){}
 function pMerken(){ try{ localStorage.setItem(PKEY, JSON.stringify(P)); }catch(e){} }
@@ -6093,13 +6186,13 @@ function pMerken(){ try{ localStorage.setItem(PKEY, JSON.stringify(P)); }catch(e
 function patDaten(){
   var f=M.feed||currentFeed()||{};
   if(P.modus==='auto'){
-    return { quelle:'Narkose-Patient (übernommen)',
+    return { quelle:'vom Gerät übernommen', patId:(f.patId||P.patId||''),
       name:P.name||'', besitzer:P.besitzer||'',
       sp:f.sp||'', rasse:(f.breedName||f.breed||''), wt:(f.wt||''),
       alter:({adult:'adult',pediatric:'Jungtier/neonatal',senior:'geriatrisch'}[f.age]||f.age||''),
       frage:P.frage||'', untersucher:P.untersucher||'' };
   }
-  return { quelle:'Kardio-Termin (von Hand)',
+  return { quelle:'von Hand eingetragen', patId:(P.patId||''),
     name:P.name||'', besitzer:P.besitzer||'', sp:P.sp||'', rasse:P.rasse||'',
     wt:P.wt||'', alter:P.alter||'', frage:P.frage||'', untersucher:P.untersucher||'' };
 }
@@ -6115,14 +6208,23 @@ function renderPatient(){
   var side=$('#ekgSide'), d=patDaten();
   var ov=$('#ekgOverlay'); ov.dataset.seite='pat';
   var arten=['hund','katze','kaninchen','meerschweinchen','frettchen','ratte','maus','hamster','chinchilla','vogel','reptil','pferd'];
+  /* HÄNGT DER PATIENT AM GERÄT ODER NICHT? Danach richtet sich alles Weitere.
+   * Am Gerät: die Stammdaten kommen von dort und werden nur angezeigt.
+   * Nicht am Gerät (Kardio-Termin): der Tierarzt trägt sie ein — mit ID-Nummer, denn ohne
+   * sie lässt sich der Ausdruck später keiner Akte zuordnen. */
+  var amGeraet=!!(M.feed&&M.feed.amGeraet);
   side.innerHTML='<h4>🐾 Patient <span style="float:right"><button class="ekg-btn" id="pBack">← Messwerte</button></span></h4>'+
     '<div class="ekg-modus">'+
-      '<button id="pAuto" class="'+(P.modus==='auto'?'on':'')+'" title="Daten aus dem laufenden Narkose-Patienten übernehmen">💤 Aus Narkose</button>'+
-      '<button id="pHand" class="'+(P.modus==='hand'?'on':'')+'" title="Kardio-Termin: Daten von Hand eintragen">🫀 Kardio-Termin</button>'+
+      '<button id="pAuto" class="'+(P.modus==='auto'?'on':'')+'" title="Daten vom angeschlossenen Monitor/Narkosegerät übernehmen">🖥️ Vom Gerät</button>'+
+      '<button id="pHand" class="'+(P.modus==='hand'?'on':'')+'" title="Kein Gerät angeschlossen: Daten von Hand eintragen">🫀 Von Hand</button>'+
     '</div>'+
     (P.modus==='auto'
-      ? '<div class="ekg-uebernahme">Tierart, Rasse, Gewicht und Alter kommen <b>aus dem laufenden Patienten</b> der Anwendung und ändern sich mit ihm. Das EKG schreibt nie zurück.</div>'
-      : '<div class="ekg-uebernahme">Für den <b>Kardio-Termin</b> (Ultraschall + EKG) ohne Narkose. Die Angaben stehen auf dem Ausdruck.</div>')+
+      ? (amGeraet
+          ? '<div class="ekg-uebernahme">✔ Ein Gerät ist angeschlossen. Tierart, Rasse, Gewicht und Alter kommen <b>von dort</b> und ändern sich mit dem Patienten. Das EKG schreibt nie zurück.</div>'
+          : '<div class="ekg-warn">⚠ <b>Kein Gerät angeschlossen.</b> Es werden die Werte der Anwendung angezeigt, aber nichts wird gemessen. Für einen Kardio-Termin auf <b>„Von Hand"</b> wechseln und die Daten samt <b>ID-Nummer</b> eintragen.</div>')
+      : '<div class="ekg-uebernahme">Für den <b>Kardio-Termin</b> (Ultraschall + EKG) ohne Monitor. Die Angaben stehen auf dem Ausdruck — die <b>ID-Nummer</b> ordnet ihn der Akte zu.</div>')+
+    '<div class="ekg-patbox"><div class="pf"><label>Patienten-ID / Aktennummer'+(P.modus==='hand'?' (Pflicht)':'')+'</label>'+
+      '<input id="pId" value="'+esc2(P.patId)+'" placeholder="'+(amGeraet&&M.feed.patId?esc2(M.feed.patId):'z. B. 2026-0417')+'"></div></div>'+
     '<div class="ekg-patbox">'+
       '<div class="zwei"><div class="pf"><label>Name des Tieres</label><input id="pName" value="'+esc2(P.name)+'" placeholder="z. B. Luna"></div>'+
         '<div class="pf"><label>Besitzer</label><input id="pBes" value="'+esc2(P.besitzer)+'" placeholder="Nachname"></div></div>'+
@@ -6149,12 +6251,97 @@ function renderPatient(){
   $('#pAuto').onclick=function(){ P.modus='auto'; pMerken(); renderPatient(); };
   $('#pHand').onclick=function(){ P.modus='hand'; pMerken(); renderPatient(); };
   function bind(id,feld){ var el=$(id); if(el) el.oninput=function(){ P[feld]=el.value; pMerken(); }; }
-  bind('#pName','name'); bind('#pBes','besitzer'); bind('#pFrage','frage'); bind('#pUnt','untersucher');
+  bind('#pName','name'); bind('#pBes','besitzer'); bind('#pFrage','frage'); bind('#pUnt','untersucher'); bind('#pId','patId');
   var lg=$('#pLag'); if(lg) lg.onchange=function(){ P.lagerung=lg.value; pMerken(); try{ updateMeasures(); }catch(e){} };
   if(P.modus==='hand'){ bind('#pWt','wt'); bind('#pRas','rasse'); bind('#pAlt','alter');
     var s=$('#pSp'); if(s) s.onchange=function(){ P.sp=s.value; pMerken(); }; }
 }
 function esc2(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* ==================================================================================
+ * ELEKTRODEN ANLEGEN — Kabelfarben und Anlegeschema.
+ *
+ * DIE GEFÄHRLICHSTE VERWECHSLUNG IM GANZEN EKG:
+ * Es gibt ZWEI Farbnormen, und sie sind unvereinbar.
+ *     IEC (Europa):  ROT   = rechte VORDERgliedmaße
+ *     AHA (USA):     ROT   = linke  HINTERgliedmaße
+ * Wer nach Farbe statt nach Buchstabe anlegt und das Kabel wechselt, vertauscht damit
+ * systematisch — und zwar so, dass das EKG plausibel aussieht und trotzdem falsch ist.
+ * Deshalb: die Norm ist eine ausdrückliche Einstellung, sie steht im Bild und auf dem
+ * Ausdruck, und intern wird IMMER mit RA/LA/LL/RL gerechnet, nie mit einer Farbe.
+ *
+ * Quellen: Biometric Cables; my-ekg.com; LEMR/AMEDTEC (Kabelcode IEC/AHA umschaltbar);
+ * Opti-ECG "Canine Lead Placement" (AHA-Zuordnung am Hund).
+ * ================================================================================== */
+var KABEL={
+  IEC:{ name:'IEC (Europa)', merk:'„Rot rechts, Sonne über der Wiese" – gelb über grün links.',
+    RA:{f:'#e33',  t:'rot'},    LA:{f:'#e8c31a', t:'gelb'},
+    LL:{f:'#2ba84a',t:'grün'},  RL:{f:'#2b2b2b', t:'schwarz'}, V:{f:'#8b5a2b',t:'braun'} },
+  AHA:{ name:'AHA (USA)', merk:'„Schnee auf dem Gras" rechts, „Rauch über Feuer" links.',
+    RA:{f:'#f2f2f2',t:'weiß'},  LA:{f:'#2b2b2b', t:'schwarz'},
+    LL:{f:'#e33',   t:'rot'},   RL:{f:'#2ba84a', t:'grün'},    V:{f:'#8b5a2b',t:'braun'} }
+};
+/* Anlegepunkte in rechter Seitenlage, als Anteil der Zeichenfläche. Vorn am Ellbogen,
+ * hinten am Knie — und ausdrücklich auf der HAUT, nicht im Fell. */
+var ANLEGEPUNKTE=[
+  { k:'RA', x:0.335, y:0.560, wo:'rechte Vordergliedmaße, Höhe Ellbogen' },
+  { k:'LA', x:0.395, y:0.660, wo:'linke Vordergliedmaße, Höhe Ellbogen' },
+  { k:'LL', x:0.735, y:0.660, wo:'linke Hintergliedmaße, Höhe Knie' },
+  { k:'RL', x:0.680, y:0.560, wo:'rechte Hintergliedmaße, Höhe Knie (Neutral/Erde)' }
+];
+function kabelNorm(){ return (P.kabelnorm==='AHA')?'AHA':'IEC'; }
+
+/* Tierumriss in rechter Seitenlage. Bewusst schlicht: er muss die LAGE zeigen, nicht schön
+ * sein — vier Beine, Rücken oben, Kopf links. Erkennbar genug, um die Klemmen zuzuordnen. */
+function tierSVG(){
+  return '<path d="M62,150 C58,120 72,96 100,90 L150,80 C176,74 214,74 246,80 L300,90 '+
+    'C330,96 344,118 340,150 C336,172 320,182 300,184 L110,184 C86,184 66,174 62,150 Z" '+
+    'fill="rgba(159,182,204,.16)" stroke="rgba(159,182,204,.5)" stroke-width="2"/>'+
+    '<path d="M100,90 C86,72 70,62 52,58 C40,55 34,62 38,72 C44,86 60,96 76,100" '+
+    'fill="rgba(159,182,204,.16)" stroke="rgba(159,182,204,.5)" stroke-width="2"/>'+
+    '<circle cx="44" cy="66" r="3" fill="rgba(159,182,204,.8)"/>'+
+    '<path d="M120,184 L112,238 M158,184 L166,238 M262,184 L254,238 M300,184 L308,238" '+
+    'stroke="rgba(159,182,204,.5)" stroke-width="9" stroke-linecap="round" fill="none"/>'+
+    '<path d="M340,150 C356,146 372,152 380,164" stroke="rgba(159,182,204,.5)" stroke-width="5" fill="none" stroke-linecap="round"/>';
+}
+function renderAnlegen(){
+  var side=$('#ekgSide'), ov=$('#ekgOverlay');
+  ov.dataset.seite='anlegen';
+  var N=kabelNorm(), K=KABEL[N];
+  var W=420,H=260;
+  var punkte=ANLEGEPUNKTE.map(function(p){
+    var c=K[p.k];
+    return '<circle cx="'+(p.x*W).toFixed(0)+'" cy="'+(p.y*H).toFixed(0)+'" r="11" fill="'+c.f+'" stroke="#0b1017" stroke-width="2"/>'+
+      '<text x="'+(p.x*W).toFixed(0)+'" y="'+(p.y*H+4).toFixed(0)+'" text-anchor="middle" '+
+      'font-family="Consolas,monospace" font-size="9" font-weight="700" fill="'+((N==='AHA'&&p.k==='RA')?'#111':'#fff')+'">'+p.k+'</text>';
+  }).join('');
+  side.innerHTML='<h4>🔌 Elektroden anlegen <span style="float:right"><button class="ekg-btn" id="aBack">← Messwerte</button></span></h4>'+
+    '<div class="ekg-modus">'+
+      '<button id="aIEC" class="'+(N==='IEC'?'on':'')+'" title="Europäische Farbnorm">IEC (Europa)</button>'+
+      '<button id="aAHA" class="'+(N==='AHA'?'on':'')+'" title="US-Farbnorm">AHA (USA)</button>'+
+    '</div>'+
+    '<div class="ekg-warn">Die beiden Normen sind <b>unvereinbar</b>: <b>Rot</b> ist bei IEC die '+
+      '<b>rechte Vorder</b>gliedmaße, bei AHA die <b>linke Hinter</b>gliedmaße. Nach <b>Buchstabe</b> anlegen, nicht nach Farbe.</div>'+
+    '<div class="ekg-svg"><svg viewBox="0 0 '+W+' '+H+'" width="100%">'+tierSVG()+punkte+
+      '<text x="'+(W/2)+'" y="18" text-anchor="middle" font-size="11" fill="#7fa6c8">rechte Seitenlage · Kopf links</text></svg></div>'+
+    '<div class="ekg-kabel">'+
+      ANLEGEPUNKTE.map(function(p){ var c=K[p.k];
+        return '<div class="kz"><i style="background:'+c.f+'"></i><b>'+p.k+'</b>'+
+          '<span class="kf">'+c.t+'</span><span class="kw">'+p.wo+'</span></div>'; }).join('')+
+      '<div class="kz"><i style="background:'+K.V.f+'"></i><b>V/C</b><span class="kf">'+K.V.t+'</span>'+
+        '<span class="kw">Brustwand (nur bei Brustwandableitung)</span></div>'+
+    '</div>'+
+    '<div class="ekg-merk">💡 '+K.merk+'</div>'+
+    '<div class="tb" style="margin-top:10px"><b>Vor der Aufzeichnung:</b> Tier in rechter Seitenlage auf '+
+      '<b>nicht leitender</b> Unterlage, Gliedmaßen parallel und im rechten Winkel zum Körper. Klemmen auf die '+
+      '<b>Haut</b>, nicht ins Fell. Kontaktmittel: kurzes Ruhe-EKG Alkohol, längere Ableitung '+
+      '<b>Gel</b> (Alkohol verdunstet).</div>'+
+    '<div class="tf">Alle veröffentlichten Normwerte gelten für die <b>rechte Seitenlage</b> und für '+
+      '<b>Ableitung II</b>. Quellen: JVIM 20(4):873; Clinician\'s Brief; Opti-ECG; tiermedizinportal.de</div>';
+  $('#aBack').onclick=function(){ ov.dataset.seite=''; rebuildSide(); updateMeasures(); };
+  $('#aIEC').onclick=function(){ P.kabelnorm='IEC'; pMerken(); renderAnlegen(); };
+  $('#aAHA').onclick=function(){ P.kabelnorm='AHA'; pMerken(); renderAnlegen(); };
+}
 
 /* ==================================================================================
  * BEFUND-NACHSCHLAGEWERK — die Fachrecherche zum Nachlesen am Tisch.
@@ -6588,6 +6775,11 @@ function wire(){
     var ov=$('#ekgOverlay');
     if(ov.dataset.seite==='pat'){ ov.dataset.seite=''; rebuildSide(); updateMeasures(); }
     else renderPatient();
+  });
+  $('#ekgAnlegenBtn').addEventListener('click',function(){
+    var ov=$('#ekgOverlay');
+    if(ov.dataset.seite==='anlegen'){ ov.dataset.seite=''; rebuildSide(); updateMeasures(); }
+    else renderAnlegen();
   });
   $('#ekgWissenBtn').addEventListener('click',function(){
     var ov=$('#ekgOverlay');
