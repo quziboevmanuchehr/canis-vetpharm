@@ -236,6 +236,212 @@
     };
   }
 
+  /* ================================================================================ *
+   * 4b) P-WELLE UND PQ-ZEIT  (08.08.2026)
+   *
+   * WARUM DAS DER HEIKELSTE TEIL DIESER DATEI IST:
+   * Die P-Welle ist klein. Beim Hund rund 0,2-0,4 mV, bei der KATZE bis 0,2 mV - also in
+   * derselben Groessenordnung wie Muskelzittern und 50-Hz-Brumm. Wer sie zu eifrig sucht,
+   * findet sie ueberall: in der T-Welle des vorigen Schlages, im Rauschen, in einer
+   * flimmernden Grundlinie. Und jede erfundene P erzeugt Folgefehler, die klinisch etwas
+   * bedeuten - "P vorhanden" schliesst Vorhofflimmern faelschlich aus, eine erfundene
+   * PQ-Zeit macht aus einem gesunden Tier einen AV-Block I.
+   *
+   * DESHALB IST DIESES VERFAHREN ABSICHTLICH ZURUECKHALTEND:
+   *   - Es sucht nur in einem Fenster, das die T-Welle des vorigen Schlages AUSSCHLIESST.
+   *   - Es verlangt einen Mindestabstand zur Grundlinie (Vielfaches des Rauschens).
+   *   - Es verlangt die P in der MEHRZAHL der Schlaege, nicht in einem.
+   *   - Unter 100 Hz Abtastrate sagt es gar nichts: eine 40-ms-P haette dort 4 Punkte.
+   *   - Es meldet ausdruecklich "keine P nachweisbar" statt "keine P" - das ist ein
+   *     Unterschied, an dem eine Vorhofflimmern-Diagnose haengt.
+   * ================================================================================ */
+
+  var P_MIN_HZ = 100;          // darunter ist eine 40-ms-Welle nicht darstellbar
+  var P_MIN_SCHLAEGE = 3;      // in weniger Schlaegen wird nichts behauptet
+  var P_ANTEIL = 0.6;          // in so vielen Schlaegen muss sie stehen, sonst "nicht nachweisbar"
+
+  /*
+   * QRS-BEGINN. Die PQ-Zeit endet nicht an der R-Spitze, sondern am ANFANG des Kammerkomplexes.
+   * Wer bis zur R-Spitze misst, bekommt beim breiten QRS eine zu lange PQ-Zeit - und damit
+   * einen AV-Block, den es nicht gibt. Gesucht wird nach links, bis das Signal zur Ruhe kommt.
+   */
+  function qrsBeginn(werte, r, hz) {
+    var spitze = werte[r] == null ? 0 : Math.abs(werte[r]);
+    if (!spitze) return r;
+    var grenze = spitze * 0.15;
+    var max = Math.round(hz * 0.09);      // mehr als 90 ms ist bei Hund/Katze kein QRS
+    var i = r;
+    for (var k = 1; k <= max; k++) {
+      var li = r - k;
+      if (li < 0 || werte[li] == null) break;
+      i = li;
+      if (Math.abs(werte[li]) < grenze) break;
+    }
+    return i;
+  }
+
+  /*
+   * Sucht EINE P-Welle vor dem Kammerkomplex bei r.
+   * fensterVon/fensterBis begrenzen die Suche so, dass die T-Welle des VORIGEN Schlages
+   * draussen bleibt: sie endet erfahrungsgemaess bei rund 55 % des RR-Abstandes.
+   * Rueckgabe: { beginn, ende, gipfel, amp, dauerMs, pqMs } oder null.
+   */
+  /*
+   * PERZENTIL — gebraucht fuer die Rauschschaetzung.
+   * Der MEDIAN taugt dafuer NICHT: er liegt mitten im Signal, und ausserhalb des QRS besteht
+   * das Signal ganz wesentlich aus der T-Welle (beim Hund 300 uV). Gemessen 08.08.2026 an
+   * einem sauberen Streifen: Median 95 uV, aber die stille Grundlinie liegt bei 11 uV. Mit dem
+   * Median als Rauschmass wurde die Schwelle 286 uV — hoeher als die gesuchte P (204 uV), und
+   * das Verfahren fand in einem einwandfreien Signal NICHTS. Das 25. Perzentil trifft die
+   * ruhige Strecke zwischen den Wellen und ist das richtige Mass.
+   */
+  function perzentil(arr, p) {
+    if (!arr.length) return 0;
+    var a = arr.slice().sort(function (x, y) { return x - y; });
+    var i = Math.floor(a.length * p);
+    if (i >= a.length) i = a.length - 1;
+    return a[i];
+  }
+
+  function findeP(werte, r, hz, vorigesR, schwelle) {
+    var qb = qrsBeginn(werte, r, hz);
+    // Suchfenster: hoechstens 320 ms vor dem QRS-Beginn, mindestens 20 ms Abstand davon.
+    var maxVor = Math.round(hz * 0.32);
+    var minAbst = Math.max(2, Math.round(hz * 0.02));
+    var von = qb - maxVor, bis = qb - minAbst;
+    if (vorigesR != null) {
+      /* Die T-Welle des vorigen Schlages ausschliessen. Bei sehr schneller Frequenz
+       * (Katze 220/min: RR = 273 ms) bleibt danach kaum Fenster - dann wird eher nichts
+       * gefunden, und genau das ist richtig: dort IST P und T nicht sicher zu trennen. */
+      var tEnde = vorigesR + Math.round((r - vorigesR) * 0.55);
+      if (von < tEnde) von = tEnde;
+    }
+    if (von < 0) von = 0;
+    if (bis - von < Math.max(3, Math.round(hz * 0.02))) return null;   // Fenster zu schmal
+
+    // Groesste Auslenkung im Fenster (P ist in Ableitung II normalerweise positiv, eine
+    // negative P ist aber ein Befund - deshalb wird der BETRAG gesucht und das Vorzeichen
+    // mitgegeben).
+    var gi = -1, gv = 0;
+    for (var i = von; i <= bis; i++) {
+      var w = werte[i];
+      if (w == null) continue;
+      if (Math.abs(w) > Math.abs(gv)) { gv = w; gi = i; }
+    }
+    if (gi < 0) return null;
+    /* SCHWELLE. Unter ihr ist eine Auslenkung keine P, sondern Zufall. Ohne sie "findet"
+     * das Verfahren in jedem verrauschten Streifen eine P - und schliesst damit ausgerechnet
+     * Vorhofflimmern aus. Die Schwelle wird EINMAL in pAuswertung gebildet (Rauschen UND
+     * Mindesthoehe relativ zur R-Zacke), damit sie an einer Stelle nachvollziehbar ist. */
+    if (!(Math.abs(gv) >= schwelle)) return null;
+
+    // Beginn und Ende: wo faellt die Welle unter 20 % ihres Gipfels?
+    var schw = Math.abs(gv) * 0.2;
+    var b = gi, e = gi, j;
+    var randLinks = false, randRechts = false;
+    for (j = gi; j >= von; j--) { if (werte[j] == null || Math.abs(werte[j]) < schw) break; b = j; }
+    if (b <= von) randLinks = true;
+    for (j = gi; j <= bis; j++) { if (werte[j] == null || Math.abs(werte[j]) < schw) break; e = j; }
+    if (e >= bis) randRechts = true;
+    /*
+     * EINE AM FENSTERRAND ABGESCHNITTENE WELLE WIRD VERWORFEN (Befund 08.08.2026).
+     * Reicht die Auslenkung bis an den Rand des Suchfensters, ist ihr Anfang (oder Ende) gar
+     * nicht im Bild - dann laesst sich weder die Dauer noch die PQ-Zeit bestimmen. Vor allem
+     * aber ist das der typische Fall der T-WELLE des vorigen Schlages: von ihr ragt bei hoher
+     * Frequenz nur der Auslaeufer ins Fenster, und genau der wurde im Test als "P" mit 14 ms
+     * Dauer gemeldet. Wer nur die Fenstergrenze verschiebt, verschiebt das Problem mit.
+     */
+    if (randLinks || randRechts) return null;
+    var dauer = (e - b) / hz * 1000;
+    /* Plausibilitaet der Breite: schmaler als 10 ms ist ein Zacken (Stoerung), breiter als
+     * 220 ms ist beim Kleintier keine P mehr (beim Pferd sind 170 ms normal, daher 220). */
+    if (dauer < 10 || dauer > 220) return null;
+
+    return {
+      beginn: b, ende: e, gipfel: gi, amp: gv,
+      dauerMs: Math.round(dauer),
+      pqMs: Math.round((qb - b) / hz * 1000),
+    };
+  }
+
+  /*
+   * Wertet die P-Wellen ueber ALLE Schlaege aus und gibt einen zurueckhaltenden Befund.
+   * skala/einheit werden nur gebraucht, um die Amplitude in mV zu benennen; ohne sie gibt es
+   * keine mV-Zahl (dieselbe Regel wie bei der ST-Strecke).
+   */
+  function pAuswertung(werte, zacken, hz, rausch, rAmp, skala, einheit) {
+    if (!hz || hz < P_MIN_HZ) {
+      return { messbar: false, warum: 'Abtastrate ' + Math.round(hz || 0) + ' Hz zu niedrig für die P-Welle (mindestens ' + P_MIN_HZ + ' Hz nötig)' };
+    }
+    if (zacken.length < P_MIN_SCHLAEGE) {
+      return { messbar: false, warum: 'zu wenige Herzschläge für eine P-Aussage' };
+    }
+    /*
+     * DIE SCHWELLE HAT ZWEI TEILE, und beide werden gebraucht:
+     *   3 x Grundlinienunruhe  - haelt Rauschen und Flimmerwellen draussen
+     *   4 % der R-Amplitude    - haelt die Schwelle auch dann sinnvoll, wenn die Grundlinie
+     *                            ungewoehnlich still ist (synthetische oder stark gefilterte
+     *                            Signale); ohne diesen Teil waere dort jede Regung eine P.
+     * Gemessen 08.08.2026: Hund P 204 uV gegen Schwelle 147 -> erkannt; Vorhofflimmern
+     * (Flimmerwellen 60 uV) gegen Schwelle 92 -> abgewiesen.
+     */
+    var schwelle = Math.max(rausch * 3, (rAmp || 0) * 0.04);
+    var funde = [], i;
+    for (i = 0; i < zacken.length; i++) {
+      var p = findeP(werte, zacken[i], hz, i > 0 ? zacken[i - 1] : null, schwelle);
+      if (p) funde.push(p);
+    }
+    var anteil = funde.length / zacken.length;
+    if (funde.length < P_MIN_SCHLAEGE || anteil < P_ANTEIL) {
+      /*
+       * "NICHT NACHWEISBAR" IST NICHT DASSELBE WIE "KEINE P".
+       * An diesem Unterschied haengt die Vorhofflimmern-Aussage. Die Station darf ihn nicht
+       * einebnen: sie sagt, was sie NICHT gefunden hat, und nennt den Anteil dazu.
+       */
+      return {
+        messbar: false, vorhanden: false, anteil: Math.round(anteil * 100),
+        warum: 'in nur ' + funde.length + ' von ' + zacken.length + ' Schlägen eine P-Welle abgrenzbar' +
+          ' — das kann an Vorhofflimmern/-stillstand liegen, ebenso an Überlagerung durch die T-Welle,' +
+          ' an zu kleiner P (Katze) oder an Störung. Zur Abgrenzung eine Brustwandableitung erwägen.',
+      };
+    }
+    var dauern = [], pqs = [], amps = [];
+    for (i = 0; i < funde.length; i++) {
+      dauern.push(funde[i].dauerMs); pqs.push(funde[i].pqMs); amps.push(funde[i].amp);
+    }
+    var pqMed = median(pqs);
+    /* PQ-VERLAUF: nimmt die Ueberleitungszeit zu (Wenckebach) oder ist sie konstant
+     * (Mobitz II)? Das ist der EINZIGE Weg, die beiden zu unterscheiden - und genau der,
+     * den die Station bisher nicht gehen konnte. Gemessen wird die Spannweite; ausserdem,
+     * ob die Werte MONOTON steigen (ein blosses Schwanken ist kein Wenckebach). */
+    var pqMin = pqs[0], pqMax = pqs[0], steigend = 0;
+    for (i = 1; i < pqs.length; i++) {
+      if (pqs[i] < pqMin) pqMin = pqs[i];
+      if (pqs[i] > pqMax) pqMax = pqs[i];
+      if (pqs[i] > pqs[i - 1] + 4) steigend++;
+    }
+    var kalibriert = endlich(skala) && skala > 0 && /uv|µv|mv/i.test(String(einheit || ''));
+    var ampMv = null;
+    if (kalibriert) {
+      ampMv = Math.round(median(amps.map(Math.abs)) * skala * (/mv/i.test(String(einheit)) ? 1 : 0.001) * 1000) / 1000;
+    }
+    return {
+      messbar: true, vorhanden: true,
+      anteil: Math.round(anteil * 100),
+      schlaege: funde.length,
+      dauerMs: Math.round(median(dauern)),
+      pqMs: Math.round(pqMed),
+      pqMinMs: Math.round(pqMin), pqMaxMs: Math.round(pqMax),
+      pqSpanneMs: Math.round(pqMax - pqMin),
+      /* "zunehmend" nur, wenn die Mehrzahl der Schritte WIRKLICH steigt UND die Spannweite
+       * deutlich ist. Sonst waere jede Messschwankung ein Wenckebach. */
+      pqVerlauf: (steigend >= Math.max(2, Math.floor((pqs.length - 1) * 0.6)) && (pqMax - pqMin) >= 15)
+        ? 'zunehmend' : ((pqMax - pqMin) <= 20 ? 'konstant' : 'schwankend'),
+      ampMv: ampMv,
+      negativ: median(amps) < 0,
+    };
+  }
+
   /* ------------------------------------------------------------------ *
    * 5) Rhythmus aus den RR-Abstaenden
    *
@@ -414,6 +620,16 @@
     };
     ergebnis.rhythmus = rhythmus(rrMs, qrsM, opts.bandHr || null, { guete: ergebnis.guete });
     ergebnis.st = stMessung(werte, zacken, hz, kurve.skala, opts.einheit || 'uV');
+    /*
+     * P-WELLE UND PQ-ZEIT. Als Rauschmass dient dieselbe Grundlinienunruhe (grund), die schon
+     * die Signalguete bestimmt - EINE Zahl, damit Guete und P-Schwelle nicht auseinanderlaufen.
+     * Ist die Grundlinie exakt still (synthetisches Signal), wird ein winziger Ersatzwert aus
+     * der Spitzenhoehe genommen: sonst waere die Schwelle 0 und JEDE Regung eine P.
+     */
+    /* Rauschmass fuer die P-Suche: das 25. PERZENTIL der Ruhestrecken, NICHT ihr Median.
+     * Der Median liegt mitten in der T-Welle (siehe Kommentar bei perzentil()). */
+    var pRausch = perzentil(ruhe, 0.25);
+    ergebnis.p = pAuswertung(werte, zacken, hz, pRausch, spitze, kurve.skala, opts.einheit || 'uV');
     return ergebnis;
   }
 
@@ -422,6 +638,8 @@
     // fuer die Selbsttests einzeln pruefbar:
     findeQRS: findeQRS, qrsBreiteMs: qrsBreiteMs, grundlinieAbziehen: grundlinieAbziehen,
     rhythmus: rhythmus, stMessung: stMessung, median: median,
+    qrsBeginn: qrsBeginn, findeP: findeP, pAuswertung: pAuswertung, perzentil: perzentil,
     MIN_SEKUNDEN: MIN_SEKUNDEN, MIN_SCHLAEGE: MIN_SCHLAEGE,
+    P_MIN_HZ: P_MIN_HZ, P_MIN_SCHLAEGE: P_MIN_SCHLAEGE, P_ANTEIL: P_ANTEIL,
   };
 }));

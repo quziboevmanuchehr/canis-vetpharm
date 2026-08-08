@@ -5276,6 +5276,15 @@ function zeigeHinweise(B,f,N,mea){
     rhythmusId:(B.rhythmus&&B.rhythmus.id)||null,
     rhythmusGrund:(B.rhythmus&&B.rhythmus.begruendung)?(B.rhythmus.begruendung+'.'):'',
     netzStoerung:netzStoerung(streifenFuerMessung(),hzJetzt()),
+    /* P-Welle und PQ - erst damit werden AV-Block-Typ und fehlende P pruefbar. */
+    pVorhanden:(B.p&&B.p.vorhanden===true), pAnteil:(B.p?B.p.anteil:null),
+    pMessbar:(B.p?B.p.messbar!==false||B.p.vorhanden===true:false),
+    pDauer:(B.p&&B.p.dauerMs!=null?B.p.dauerMs:null),
+    pAmp:(B.p&&B.p.ampMv!=null?B.p.ampMv:null),
+    pq:(B.p&&B.p.pqMs!=null?B.p.pqMs:null),
+    pqVerlauf:(B.p?B.p.pqVerlauf:null), pqSpanne:(B.p&&B.p.pqSpanneMs!=null?B.p.pqSpanneMs:null),
+    pDauerGrenze:(N&&N.pDauer?N.pDauer[1]:null), pAmpGrenze:(N&&N.pAmp?N.pAmp[1]:null),
+    pqBand:(N?N.pq:null),
     /* Windhunde und ausdauertrainierte Rassen: hohe Ausschlaege sind dort normal. Die
      * Rassekennung kommt aus der Anwendung; ohne sie greift die Ausnahme bewusst nicht. */
     /* Filter, die die Amplitude antasten (heute: der Muskelfilter). Der Netzfilter
@@ -5368,7 +5377,17 @@ function updateMeasures(){
     }
     $('#mHr').innerHTML=mitNorm(B.hf, N&&N.hf, '/min', 'gemessen');
     $('#mRr').innerHTML=(B.rr?B.rr.mittelMs:'—')+' <small>ms'+(B.rr?' ('+B.rr.minMs+'–'+B.rr.maxMs+')':'')+'</small>';
-    $('#mPr').innerHTML='<small>PQ: am Messzirkel abnehmen</small>';
+    /* PQ WIRD JETZT GEMESSEN (08.08.2026). Vorher stand hier nur ein Verweis auf den
+     * Messzirkel. Ist keine P abgrenzbar, wird das GESAGT statt eine Zahl zu zeigen. */
+    var pw=B.p||{};
+    if(pw.vorhanden&&pw.pqMs!=null){
+      var uPQ=(N&&N.pq)?normUrteil(N.pq,pw.pqMs,'ms'):null;
+      $('#mPr').innerHTML=pw.pqMs+' <small>ms gemessen</small>'+
+        (pw.pqVerlauf&&pw.pqVerlauf!=='konstant'?' <small style="color:#ffd166">'+pw.pqVerlauf+'</small>':'')+
+        (uPQ?'<br><small style="color:'+uPQ.farbe+'">Norm '+uPQ.band+'</small>':'');
+    } else {
+      $('#mPr').innerHTML='<small style="color:#ff9f45">keine P abgrenzbar</small>';
+    }
     $('#mQrs').innerHTML=mitNorm(B.qrsBreiteMs, N&&N.qrs, 'ms', 'gemessen');
     /* QT liefert die Auswertung nicht; gezeigt wird stattdessen die ST-Strecke — und wenn
      * eine Frequenz da ist, die frequenzkorrigierte QT-Zeit NACH VAN DE WATER (nicht Bazett). */
@@ -6034,6 +6053,49 @@ var BEFUNDREGELN=[
     differenzial:'supraventrikuläre Tachykardie mit Schenkelblock, Artefakt',
     sicherheit:'Verdacht', quelle:'ekg-analyse.js (schnelle Folge mit verbreitertem QRS)' },
 
+  /* ===== REGELN, DIE ERST DIE P-WELLEN-ERKENNUNG MOEGLICH MACHT (08.08.2026) ===== */
+
+  { id:'keine-p', name:'Keine P-Wellen abgrenzbar', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.pMessbar===false && m.pAnteil!=null && m.pAnteil<40 && m.guete>=5; },
+    hinweis:'In nur {pAnteil} % der Schläge ist eine P-Welle abgrenzbar. Bei <b>unregelmäßigem</b> Rhythmus passt das zu Vorhofflimmern, bei <b>regelmäßigem</b> und langsamem eher zu einem Vorhofstillstand (an Hyperkaliämie denken). Auch eine Überlagerung durch die T-Welle oder eine sehr kleine P (Katze) kann der Grund sein — zur Abgrenzung hilft eine Brustwandableitung.',
+    differenzial:'Vorhofflimmern, Vorhofstillstand/Hyperkaliämie, P in der T verborgen, zu kleine P, Störung',
+    sicherheit:'Verdacht', quelle:'P-Wellen-Auswertung; Tilley; LMU Tierkardiologie' },
+
+  { id:'pq-lang', name:'PQ-Zeit verlängert (AV-Block I° möglich)', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.pVorhanden && m.pq!=null && m.pqBand && m.pq>m.pqBand[1]; },
+    hinweis:'PQ {pq} ms über dem Normband {pqBand} dieser Tierart, bei vorhandener P vor jedem Kammerkomplex. Das entspricht einem <b>AV-Block I. Grades</b> — meist gutartig und häufig durch hohen Vagotonus, α₂-Agonisten oder Opioide bedingt.',
+    differenzial:'Vagotonus, α₂-Agonisten/Opioide, Elektrolyte, AV-Knoten-Erkrankung',
+    sicherheit:'wahrscheinlich', quelle:'Hund 60–130 ms, Katze 50–90 ms (Tilley)' },
+
+  /* DIE UNTERSCHEIDUNG, DIE OHNE P-WELLE UNMOEGLICH WAR.
+   * Wenckebach (Mobitz I) hat eine ZUNEHMENDE PQ-Zeit vor dem Ausfall, Mobitz II eine
+   * KONSTANTE. Der Unterschied ist klinisch erheblich: Mobitz I ist meist vagal und gutartig,
+   * Mobitz II ist infranodal, kaum atropinempfindlich und kann in einen totalen Block kippen. */
+  { id:'pq-zunehmend', name:'PQ-Zeit nimmt von Schlag zu Schlag zu', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.pVorhanden && m.pqVerlauf==='zunehmend'; },
+    hinweis:'Die Überleitungszeit wächst von Schlag zu Schlag (Spanne {pqSpanne} ms). Fällt danach ein Kammerkomplex aus, ist das das Muster des <b>AV-Blocks II° Typ Mobitz I (Wenckebach)</b> — meist vagal bedingt und gutartig.',
+    differenzial:'hoher Vagotonus, α₂-Agonisten, tiefe Narkose',
+    sicherheit:'Verdacht', quelle:'PQ-Verlaufsmessung; Tilley (Wenckebach)' },
+
+  { id:'pq-konstant-ausfall', name:'Ausfall bei KONSTANTER PQ-Zeit (Mobitz II möglich)', stufe:'kritisch', art:'alle',
+    pruef:function(m){ return m.pVorhanden && m.pqVerlauf==='konstant' && m.rrMax!=null && m.rrMittel>0 &&
+      (m.rrMax/m.rrMittel)>=1.8 && (m.rrMax/m.rrMittel)<=2.4; },
+    hinweis:'Ein Kammerkomplex fällt aus, während die PQ-Zeit <b>konstant</b> bleibt ({pq} ms). Das ist das Muster des <b>AV-Blocks II° Typ Mobitz II</b> — anders als der Wenckebach-Typ sitzt er unterhalb des AV-Knotens, spricht kaum auf Atropin an und kann in einen totalen Block übergehen. Vorstellung beim Kardiologen erwägen.',
+    differenzial:'blockierte SVES (dann vorzeitige P), Artefakt',
+    sicherheit:'Verdacht', quelle:'PQ-Verlaufsmessung; Tilley (Mobitz II)' },
+
+  { id:'p-breit', name:'P-Welle verbreitert (P mitrale)', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.pVorhanden && m.kal && !m.filterAmp && m.pDauer!=null && m.pDauerGrenze!=null && m.pDauer>m.pDauerGrenze; },
+    hinweis:'P-Dauer {pDauer} ms über {pDauerGrenze} ms. Eine verbreiterte P („P mitrale") spricht für eine <b>linksatriale Vergrößerung</b> — beim Hund typischerweise bei Mitralklappenendokardiose. Belegen kann das nur der Herzultraschall.',
+    differenzial:'intraatriale Leitungsverzögerung, Messunschärfe bei kleiner P',
+    sicherheit:'Verdacht', quelle:'Hund > 40 ms (Riesenrassen 50), Katze > 40 ms (Tilley; Kresken/Wendt/Modler)' },
+
+  { id:'p-hoch', name:'P-Welle überhöht (P pulmonale)', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.pVorhanden && m.kal && !m.filterAmp && m.pAmp!=null && m.pAmpGrenze!=null && m.pAmp>m.pAmpGrenze; },
+    hinweis:'P-Amplitude {pAmp} mV über {pAmpGrenze} mV. Eine überhöhte P („P pulmonale") spricht für eine <b>rechtsatriale Vergrößerung</b> — etwa bei Cor pulmonale, Trikuspidalinsuffizienz oder chronischer Atemwegserkrankung.',
+    differenzial:'Sympathikotonus, schlanker Brustkorb, Messunschärfe',
+    sicherheit:'Verdacht', quelle:'Hund > 0,4 mV, Katze > 0,2 mV (Tilley)' },
+
   /* --- Ausgefallener Kammerkomplex: der EINZIGE Blockhinweis, der ohne P-Welle geht ---
    * Ein AV-Block II. Grades laesst einen QRS ausfallen; die Pause ist dann etwa DOPPELT so
    * lang wie der normale Abstand. Welcher Blocktyp es ist, entscheidet die P-Welle — und die
@@ -6357,7 +6419,7 @@ function renderAnlegen(){
 var WISSEN={ suche:'', nurAuto:false };
 /* Messgroessen, die die Station heute tatsaechlich erhebt. Aendert sich das, aendert sich
  * automatisch, was als "automatisch geprueft" gilt — EINE Liste, keine zweite Wahrheit. */
-var MESSGROESSEN_HEUTE=['hf','rr','rrschwankung','qrs','guete','signalguete','st','sekunden','schlaege','vorzeitig','ramp'];
+var MESSGROESSEN_HEUTE=['hf','rr','rrschwankung','qrs','guete','signalguete','st','sekunden','schlaege','vorzeitig','ramp','p','pq','pvorhanden','pdauer','pamp','pform'];
 function wissenListe(){
   if(!window.VS||!VS.befunde) return [];
   var f=M.feed||currentFeed()||{};
