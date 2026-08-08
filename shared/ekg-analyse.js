@@ -659,6 +659,106 @@
   }
 
   /* ================================================================================ *
+   * 4e) WECHSELVERDACHT: sprach die Erkennung abwechselnd auf P-WELLE und R-ZACKE an?
+   *
+   * WOHER DIESER FEHLERMODUS BEKANNT IST (Quellen, 08.08.2026):
+   * Zwei voneinander unabhaengige veterinaermedizinische Dissertationen der LMU Muenchen
+   * (Schultheiss 2011, linker Vorhof in 3D; Penzl, linke Kammer in 3D gegen MRT) beschreiben
+   * denselben Ausfall der automatischen EKG-Triggerung eines Ultraschallgeraets: der Trigger
+   * loeste ABWECHSELND auf P-Welle und R-Zacke aus, bevorzugt bei Hunden mit HOHER P-Welle -
+   * und zwar bei normalem Sinusrhythmus und ausreichender QRS-Amplitude. Bei einem Dackel war
+   * die Untersuchung deshalb ueberhaupt nicht auswertbar; die Ursache blieb dort offen.
+   *
+   * Warum uns das angeht: unsere Zackensuche arbeitet nach demselben Grundprinzip
+   * (Ableitung, Quadrat, gleitende Summe, Schwelle). Eine hohe P-Welle kann auch hier ueber
+   * die Schwelle kommen. Das Ergebnis waere ein Streifen mit ABWECHSELND kurzen und langen
+   * Abstaenden - und genau so sieht auch eine echte ventrikulaere Bigeminie aus.
+   *
+   * DESHALB WIRD HIER NICHTS BEHAUPTET, SONDERN UNTERSCHIEDEN:
+   *   - Bei einer echten Bigeminie sind BEIDE Ausschlaege Kammerkomplexe, also aehnlich hoch.
+   *   - Spricht die Erkennung dagegen abwechselnd auf P und R an, ist jeder zweite Ausschlag
+   *     deutlich KLEINER (eine P-Welle liegt beim Hund im Zehntel-Millivolt-Bereich, eine
+   *     R-Zacke im Millivolt-Bereich).
+   * Zusaetzlich muessen die PAARSUMMEN konstant sein: kurz + lang ergibt dann zusammen genau
+   * einen echten Herzschlag. Bei einer Bigeminie mit kompensatorischer Pause ist das nicht
+   * zwingend so, aber es kann vorkommen - deshalb ist die Paarsumme allein kein Beweis.
+   *
+   * Rueckgabe: null (kein Verdacht) oder ein Befund, der BEIDE Deutungen nennt.
+   * ================================================================================ */
+  function wechselVerdacht(werte, zacken, rrMs) {
+    var i;
+    if (!rrMs || rrMs.length < 6 || !zacken || zacken.length < 7) return null;
+    /* Die Trennlinie zwischen "kurz" und "lang" ist das arithmetische MITTEL, nicht der
+     * Median (Befund im Selbsttest 08.08.2026): bei einem stark ungleichen Wechsel wie
+     * 110/490/110/490 liegt der Median genau AUF dem kurzen Wert, und die Gruppe "kurz"
+     * bleibt leer - der Verdacht waere ausgerechnet im deutlichsten Fall nie entstanden. */
+    var mittel = 0;
+    for (i = 0; i < rrMs.length; i++) mittel += rrMs[i];
+    mittel /= rrMs.length;
+    if (!(mittel > 0)) return null;
+
+    /* (1) Wechseln sich kurz und lang wirklich ab? Mindestens 80 % der Uebergaenge. */
+    var wechsel = 0;
+    for (i = 0; i + 1 < rrMs.length; i++) {
+      var a = rrMs[i] - mittel, b = rrMs[i + 1] - mittel;
+      if ((a < 0 && b > 0) || (a > 0 && b < 0)) wechsel++;
+    }
+    if (wechsel / (rrMs.length - 1) < 0.8) return null;
+
+    /* (2) Ist der Unterschied deutlich? Sonst ist es blosse Schwankung (beim Hund normal).
+     * Schwelle 1,35 und nicht 1,5: eine ventrikulaere Bigeminie hat typischerweise ein
+     * Kopplungsintervall um 40 % des Grundabstands, also genau das Verhaeltnis 1,5 - eine
+     * Schwelle bei 1,5 haette den haeufigsten echten Fall knapp verfehlt. Gegen Fehlalarme
+     * tragen die Pruefungen (1) und (3), nicht diese Zahl. */
+    var kurzW = [], langW = [];
+    for (i = 0; i < rrMs.length; i++) (rrMs[i] < mittel ? kurzW : langW).push(rrMs[i]);
+    if (kurzW.length < 2 || langW.length < 2) return null;
+    var mk = median(kurzW), ml = median(langW);
+    if (!(mk > 0) || ml / mk < 1.35) return null;
+
+    /* (3) Ergeben kurz + lang immer denselben Gesamtabstand? Dann war es EIN Schlag,
+     * der in zwei Teile zerlegt wurde. */
+    var summen = [];
+    for (i = 0; i + 1 < rrMs.length; i += 2) summen.push(rrMs[i] + rrMs[i + 1]);
+    if (summen.length < 3) return null;
+    var msum = median(summen), maxAbw = 0;
+    for (i = 0; i < summen.length; i++) maxAbw = Math.max(maxAbw, Math.abs(summen[i] - msum));
+    if (!(msum > 0) || maxAbw / msum > 0.15) return null;
+
+    /* (4) Sind beide Ausschlaege gleich hoch (Bigeminie) oder jeder zweite viel kleiner
+     * (P-Welle mitgezaehlt)? */
+    var gerade = [], ungerade = [];
+    for (i = 0; i < zacken.length; i++) {
+      var w = werte[zacken[i]];
+      if (w == null) continue;
+      (i % 2 === 0 ? gerade : ungerade).push(Math.abs(w));
+    }
+    if (gerade.length < 3 || ungerade.length < 3) return null;
+    var hg = median(gerade), hu = median(ungerade);
+    var gross = Math.max(hg, hu), klein = Math.min(hg, hu);
+    var verhaeltnis = klein > 0 ? gross / klein : 99;
+
+    var pVerdacht = verhaeltnis >= 2;
+    return {
+      kurzMs: Math.round(mk),
+      langMs: Math.round(ml),
+      paarsummeMs: Math.round(msum),
+      hoehenverhaeltnis: Math.round(verhaeltnis * 10) / 10,
+      deutung: pVerdacht ? 'p-mitgezaehlt' : 'offen',
+      hinweis: pVerdacht
+        ? ('Die Abstaende wechseln regelmaessig zwischen ' + Math.round(mk) + ' und ' +
+           Math.round(ml) + ' ms, und jeder zweite Ausschlag ist nur ' +
+           (Math.round(100 / verhaeltnis)) + ' % so hoch wie der andere. Das spricht dafuer, ' +
+           'dass die Erkennung abwechselnd die P-Welle mitzaehlt (bei Hunden mit hoher P-Welle ' +
+           'beschrieben) - und NICHT fuer eine Bigeminie. Bitte den Streifen ansehen.')
+        : ('Die Abstaende wechseln regelmaessig zwischen ' + Math.round(mk) + ' und ' +
+           Math.round(ml) + ' ms; beide Ausschlaege sind aehnlich hoch. Das passt zu einer ' +
+           'echten Bigeminie, kann aber auch eine Erkennung sein, die die P-Welle mitzaehlt. ' +
+           'Bitte den Streifen ansehen, bevor ein Befund gestellt wird.'),
+    };
+  }
+
+  /* ================================================================================ *
    * 4d) QRS-MORPHOLOGIE UND SCHLAGVERGLEICH  (08.08.2026)
    *
    * WAS HIER BEWUSST *NICHT* GEMACHT WIRD: SCHENKELBLOCK-ZUORDNUNG.
@@ -999,6 +1099,9 @@
       maxMs: Math.round(Math.max.apply(null, rrMs)),
     };
     ergebnis.rhythmus = rhythmus(rrMs, qrsM, opts.bandHr || null, { guete: ergebnis.guete });
+    /* Vor jeder Rhythmusaussage: koennte das Wechselmuster von der Erkennung selbst stammen?
+     * Siehe Kopf von wechselVerdacht() - zwei Dissertationen beschreiben genau diesen Ausfall. */
+    ergebnis.wechsel = wechselVerdacht(werte, zacken, rrMs);
     ergebnis.st = stMessung(werte, zacken, hz, kurve.skala, opts.einheit || 'uV');
     /*
      * P-WELLE UND PQ-ZEIT. Als Rauschmass dient dieselbe Grundlinienunruhe (grund), die schon
@@ -1027,6 +1130,7 @@
     qrsBeginn: qrsBeginn, qrsEnde: qrsEnde, findeP: findeP, pAuswertung: pAuswertung, perzentil: perzentil,
     findeT: findeT, tAuswertung: tAuswertung,
     qrsForm: qrsForm, formVergleich: formVergleich, korrelation: korrelation,
+    wechselVerdacht: wechselVerdacht,
     P_ART: P_ART, T_ART: T_ART,
     MIN_SEKUNDEN: MIN_SEKUNDEN, MIN_SCHLAEGE: MIN_SCHLAEGE,
     P_MIN_HZ: P_MIN_HZ, P_MIN_SCHLAEGE: P_MIN_SCHLAEGE, P_ANTEIL: P_ANTEIL,
