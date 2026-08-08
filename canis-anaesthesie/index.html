@@ -1037,6 +1037,9 @@ html[data-theme="light"] .assess-tr{color:#5a3c00;background:rgba(255,180,60,.16
 <!-- Wissensbasis: 203 belegte Befundregeln aus der Fachrecherche (Nachschlagewerk +
      Regelgrundlage). Reine Daten, keine Diagnosemaschine. -->
 <script src="../shared/ekg-befunde.js?v=1"></script>
+<!-- Beschriftete Achsen (window.VS.skala). Einheitenfrei, damit Bildschirm (Pixel/mm) und
+     PDF (Punkte/mm) GENAU dieselben Marken bekommen. -->
+<script src="../shared/ekg-skala.js?v=1"></script>
 <script>
 /* ============ Canis Anæsthesia – Engine ============ */
 (function(){
@@ -5605,13 +5608,73 @@ function buildPDF(){
     for(i=0;i<=w+0.01;i+=5) doc.line(x+i,y,x+i,y+h);
     for(i=0;i<=h+0.01;i+=5) doc.line(x,y+i,x+w,y+i);
   }
-  /* Zeichnet den ZEITLICH LETZTEN Abschnitt eines Puffers massstabsgetreu.
-   * Es wird nur soviel Signal genommen, wie bei M.speed in die Breite passt. */
+  /*
+   * SEKUNDENMARKEN AM UNTEREN RAND — auf professionellem EKG-Papier stehen sie ebenfalls dort.
+   * Ohne sie muss man auf einem Ausdruck Kaestchen zaehlen und dabei im Kopf behalten, ob
+   * eines 40 ms (25 mm/s) oder 20 ms (50 mm/s) traegt.
+   *
+   * Die Marken kommen aus DERSELBEN Funktion wie die des Bildschirms (VS.skala), nur mit
+   * "1 Einheit = 1 mm" statt "2 Bildpunkte = 1 mm". Damit misst der Tierarzt am Ausdruck
+   * garantiert dasselbe wie am Schirm - zwei getrennte Rechnungen waeren irgendwann
+   * auseinandergelaufen, ohne dass es jemandem auffaellt.
+   */
+  function sekundenmarken(x,y,w,h){
+    var S=window.VS&&window.VS.skala; if(!S) return;
+    var zm=S.zeitMarken(w,1,M.speed);
+    doc.setDrawColor(120,120,120);
+    doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(110,110,110);
+    for(var i=0;i<zm.length;i++){
+      var t=zm[i];
+      doc.setLineWidth(t.voll?0.35:0.18);
+      doc.line(x+t.x, y+h, x+t.x, y+h+(t.voll?1.6:0.8));
+      if(t.voll && t.x>0 && t.x<w-4) doc.text(Math.round(t.sek)+' s', x+t.x+0.6, y+h+3.4);
+    }
+  }
+  /* Amplitudenmarken am linken Rand, von der Grundlinie (Bahnmitte) aus.
+   * minAbstand 3,2 mm: die 6-pt-Schrift ist gut 2,1 mm hoch, darunter kleben zwei Zeilen.
+   *
+   * Die Beschriftung wird RECHTSBUENDIG vor den Strich gesetzt, nicht an eine feste Stelle.
+   * Grund (nachgerechnet 08.08.2026): die Texte sind verschieden lang - "+1" misst bei 6 pt
+   * 2,4 mm, "+0.5" aber 4,2 mm. An fester Stelle stiess die laengere Beschriftung in den
+   * Strich, und bei noch feinerer Teilung waere sie ueber den Blattrand hinausgelaufen. */
+  function mvmarken(x,y,h){
+    var S=window.VS&&window.VS.skala; if(!S) return;
+    var rand={oben:2,unten:2,minAbstand:3.2};
+    /* MILLIVOLT NUR BEI BEKANNTER VERSTAERKUNG. Ist sie unbekannt, schreibt die Fusszeile
+     * dieses Blattes im selben Lauf "Amplitude NICHT kalibriert" (siehe unten). Eine Achse in
+     * mV daneben wuerde dem Blatt widersprechen - und der Ausdruck ist das, was in der Akte
+     * landet und spaeter nachgemessen wird. Ohne Kalibrierung also Millimeter Ausschlag. */
+    var kal=!!(M.echt&&M.kal);
+    var am = kal ? S.mvMarken(h,1,M.gain,rand) : S.mmMarken(h,1,rand);
+    doc.setDrawColor(150,110,110); doc.setLineWidth(0.3);
+    doc.setFont('helvetica','normal'); doc.setFontSize(6); doc.setTextColor(140,90,90);
+    for(var i=0;i<am.length;i++){
+      var a=am[i], wert=kal?a.mv:a.mm, txt=(wert>0?'+':'')+wert;
+      doc.line(x-1.6, y+a.y, x, y+a.y);
+      doc.text(txt, x-2.2-doc.getTextWidth(txt), y+a.y+0.9);
+    }
+    /* Einheit einmal an die Achse schreiben - sonst steht dort eine nackte Zahl, und der
+     * Unterschied zwischen mV und mm ist genau der, auf den es hier ankommt. */
+    if(am.length){
+      doc.setFontSize(5.5);
+      doc.text(kal?'mV':'mm', x-2.2-doc.getTextWidth(kal?'mV':'mm'), y+2.4);
+    }
+  }
+  /* Zeichnet den ZEITLICH LETZTEN Abschnitt eines Puffers massstabsgetreu und liefert die
+   * Breite in mm zurueck, die er WIRKLICH einnimmt.
+   *
+   * Die Rueckgabe ist der Grund, warum die Sekundenskala erst NACH der Kurve gezeichnet wird:
+   * Reicht der Puffer nicht ueber die ganze Bahn, endet die Kurve frueher, und die Skala darf
+   * dann nicht weiterlaufen. Frueher wurden die vorhandenen Werte ueber die volle Bahnbreite
+   * verteilt (dxmm = w/(n-1)) - die Kurve war damit stillschweigend gedehnt und der Ausdruck
+   * behauptete eine Dauer, die er nicht zeigt. */
   function kurve(buf,x,y,w,h){
-    if(!buf||!buf.length) return;
-    var n=Math.min(buf.length, Math.max(2, Math.round(w/M.speed*hz)));  // Punkte für w mm
+    if(!buf||!buf.length) return 0;
+    var S=window.VS&&window.VS.skala;
+    var A=S?S.kurvenAusschnitt(w,1,M.speed,hz,buf.length):null;
+    if(!A||A.n<2) return 0;
+    var n=A.n, dxmm=A.proWert;
     var von=buf.length-n, mitte=y+h/2, clip=h/2-0.6;
-    var dxmm=w/(n-1);
     function yAt(i){
       var v=buf[von+i]; if(v==null) v=0;
       var dy=v*M.gain; if(dy>clip)dy=clip; if(dy<-clip)dy=-clip;
@@ -5623,6 +5686,7 @@ function buildPDF(){
     for(var i=1;i<n;i++){ var cx=x+i*dxmm, cy=yAt(i); pts.push([cx-px,cy-py]); px=cx; py=cy; }
     doc.setDrawColor(20,20,20); doc.setLineWidth(0.28);
     if(pts.length) doc.lines(pts, x, startY, [1,1], 'S', false);
+    return A.breite;
   }
   function eichzacke(x,y,h){   // 1-mV-Kalibrierimpuls: so hoch wie M.gain mm
     var mitte=y+h/2, amp=Math.min(M.gain, h/2-1);
@@ -5634,6 +5698,14 @@ function buildPDF(){
   var top=20, feldW=W-2*Mg, feldH=110;
   var spalten=3, reihen=2, zellW=feldW/spalten, zellH=feldH/reihen;
   raster(Mg,top,feldW,feldH);
+  /* HIER BEWUSST KEINE SEKUNDENSKALA (Befund beim Gegenlesen 08.08.2026):
+   * Die sechs Ableitungen stehen als 3x2-Feld NEBENEINANDER. Jede Zelle hat ihre EIGENE
+   * Zeitachse, die bei zx+9 neu beginnt. Eine durchgehende Skala unter dem ganzen Block
+   * behauptet einen Zeitverlauf ueber drei unabhaengige Felder hinweg - wer in der dritten
+   * Spalte misst, liest dann einen Versatz ab, der mit dieser Kurve nichts zu tun hat.
+   * Eine Skala je Zelle scheitert am Platz: die Beschriftung der oberen Reihe faellt in die
+   * Kurve der unteren. Das Feld behaelt deshalb sein blankes Millimeterraster - so wie am
+   * Bildschirm auch. Gemessen wird am Rhythmusstreifen und in der grossen Einzelansicht. */
   for(var li=0;li<LEADS.length;li++){
     var rr=Math.floor(li/spalten), cc=li%spalten;
     var zx=Mg+cc*zellW, zy=top+rr*zellH;
@@ -5644,11 +5716,26 @@ function buildPDF(){
   }
   // Rhythmusstreifen II über die volle Breite
   var sy=top+feldH+5, sh=42;
-  raster(Mg,sy,feldW,sh);
-  eichzacke(Mg+1.5,sy,sh);
-  kurve(M.strip, Mg+9, sy, feldW-10, sh);
+  /* SPALTE FUER DIE AMPLITUDENSKALA (Befund der Freigabepruefung 08.08.2026):
+   * Der Streifen rueckt 6 mm nach rechts, links davon stehen die mV- bzw. mm-Marken.
+   * Ohne diese Spalte begann ihre Beschriftung 3,7 mm vom Blattrand - uebliche Drucker
+   * lassen 4 bis 5 mm unbedruckt. Eine angeschnittene "-160" liest sich als "160", und das
+   * auf einem Blatt, das in der Akte landet und spaeter nachgemessen wird.
+   * Der Streifen verliert dadurch 6 mm Breite, bei 25 mm/s also 0,24 Sekunden. */
+  var sMg=Mg+6, sW=feldW-6;
+  raster(sMg,sy,sW,sh);
+  /* Der Rhythmusstreifen traegt die volle Skala: an ihm wird auf dem Ausdruck gemessen.
+   * Die Sekundenskala beginnt GENAU dort, wo die Kurve beginnt (sMg+9) - nicht am Rasterrand.
+   * Die Kurve ist um 9 mm eingerueckt, weil links der Eichzacken steht; eine Skala am
+   * Rasterrand haette ihre Null 9 mm vor dem Kurvenbeginn gehabt, bei 25 mm/s also 360 ms
+   * daneben. Und sie ist genau so BREIT wie die Kurve wirklich geworden ist - deshalb wird
+   * sie nach ihr gezeichnet und nimmt deren Rueckgabewert. */
+  mvmarken(sMg,sy,sh);
+  eichzacke(sMg+1.5,sy,sh);
+  var bStreifen=kurve(M.strip, sMg+9, sy, sW-10, sh);
+  sekundenmarken(sMg+9,sy,bStreifen,sh);
   doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(170,20,50);
-  doc.text('II · Rhythmus', Mg+1.5, sy+5);
+  doc.text('II · Rhythmus', sMg+1.5, sy+5);
   // Befundzeile + Haftungshinweis
   var by=sy+sh+6;
   doc.setTextColor(33,41,51); doc.setFont('helvetica','bold'); doc.setFontSize(9);
@@ -6598,6 +6685,86 @@ function streifenFuerMessung(){
 function zBuf(){ return Z.lead==='RHY' ? (M.strip||[]) : ((M.buf&&M.buf[Z.lead])||[]); }
 function zStageCv(){ return $('#zCanvas'); }
 
+/* ==================================================================================
+ * SKALA — beschriftete Achsen auf dem Millimeterraster.
+ *
+ * WARUM DAS NOETIG IST: Das Raster allein sagt nur "ein Kaestchen". Auf Papier hat man ein
+ * Lineal und zaehlt; am Bildschirm hat man weder das eine noch das andere. Ohne beschriftete
+ * Achsen muss man aus "25 mm/s" und der Kaestchenzahl jedes Mal im Kopf umrechnen - und genau
+ * dabei entstehen Lesefehler, weil bei 25 mm/s ein kleines Kaestchen 40 ms bedeutet und bei
+ * 50 mm/s nur 20 ms.
+ *
+ * Die Skala wird NICHT geschaetzt, sondern aus derselben Rechnung gezogen wie die Kurve
+ * selbst (mmPx / Z.speed / Z.gain). Damit kann sie gar nicht von der Darstellung abweichen -
+ * ein Massstab, der neben der Kurve steht statt aus ihr zu folgen, waere schlimmer als keiner.
+ *
+ * WO DIE GEOMETRIE STEHT: in ui/shared/ekg-skala.js. Diese Funktion zeichnet nur noch, was
+ * das Modul ausrechnet. Grund: dieselben Marken muessen auch im PDF-Ausdruck sitzen, und zwei
+ * getrennte Rechnungen laufen auseinander, ohne dass es auffaellt. Ausserdem ist die Geometrie
+ * dort im Selbsttest pruefbar - hier waere sie es nur im laufenden Browser.
+ * ================================================================================== */
+function zeichneSkala(ctx,w,h,speed,gain,mp){
+  var S=(window.VS&&window.VS.skala); if(!S) return;
+  ctx.save();
+  ctx.font=(10*M.dpr)+'px Consolas,monospace';
+  ctx.textBaseline='alphabetic';
+
+  /* --- ZEIT: Marken am unteren Rand, volle Sekunden beschriftet. */
+  var zm=S.zeitMarken(w,mp,speed), i;
+  ctx.strokeStyle='rgba(0,216,255,.45)'; ctx.fillStyle='rgba(159,196,220,.9)';
+  ctx.lineWidth=1;
+  for(i=0;i<zm.length;i++){
+    var t=zm[i];
+    ctx.beginPath();
+    ctx.moveTo(t.x, h);
+    ctx.lineTo(t.x, h-(t.voll?9:5)*M.dpr);
+    ctx.stroke();
+    if(t.voll && t.x>2 && t.x<w-14*M.dpr){
+      ctx.fillText(Math.round(t.sek)+' s', t.x+3*M.dpr, h-12*M.dpr);
+    }
+  }
+
+  /* --- AMPLITUDE: Marken am linken Rand, von der Grundlinie (Mitte) aus in beide Richtungen.
+   * Der Rand haelt oben die Legende und unten die Sekundenbeschriftung frei.
+   * minAbstand: die Beschriftung ist 10 px hoch, darunter laufen zwei Zeilen ineinander.
+   *
+   * IN MILLIVOLT NUR BEI BEKANNTER VERSTAERKUNG (M.kal). Ist sie unbekannt, ist der Streifen
+   * lediglich auf eine ablesbare Hoehe normiert - eine Millivoltzahl an der Achse waere dann
+   * erfunden. Die Anwendung sagt an jeder anderen Stelle genau das ("Verstaerkung des Geraets
+   * ist unbekannt, deshalb keine Angabe in mV"), und der Messzirkel gibt "mm (unkalibriert)"
+   * aus. Die Achse haelt sich an dieselbe Regel und misst dann in Millimetern Ausschlag. */
+  var rand={oben:12*M.dpr,unten:14*M.dpr,minAbstand:14*M.dpr};
+  ctx.strokeStyle='rgba(255,159,69,.40)'; ctx.fillStyle='rgba(255,190,140,.9)';
+  var am;
+  if(M.kal){
+    am=S.mvMarken(h,mp,gain,rand);
+    for(i=0;i<am.length;i++){
+      var a=am[i];
+      ctx.beginPath(); ctx.moveTo(0,a.y); ctx.lineTo(7*M.dpr,a.y); ctx.stroke();
+      ctx.fillText((a.mv>0?'+':'')+a.mv+' mV', 9*M.dpr, a.y+3.5*M.dpr);
+    }
+  } else {
+    am=S.mmMarken(h,mp,rand);
+    for(i=0;i<am.length;i++){
+      var b=am[i];
+      ctx.beginPath(); ctx.moveTo(0,b.y); ctx.lineTo(7*M.dpr,b.y); ctx.stroke();
+      ctx.fillText((b.mm>0?'+':'')+b.mm+' mm', 9*M.dpr, b.y+3.5*M.dpr);
+    }
+  }
+  /* Grundlinie deutlich: sie ist der Bezug JEDER Amplitudenaussage. */
+  var mitte=h/2;
+  ctx.strokeStyle='rgba(255,255,255,.28)'; ctx.lineWidth=1.2*M.dpr;
+  ctx.beginPath(); ctx.moveTo(0,mitte); ctx.lineTo(w,mitte); ctx.stroke();
+  ctx.fillStyle='rgba(200,215,230,.85)';
+  ctx.fillText('0', 9*M.dpr, mitte-4*M.dpr);
+
+  /* --- Was ein Kaestchen bedeutet, in Worten. Die haeufigste Frage am Streifen. */
+  ctx.fillStyle='rgba(127,166,200,.85)';
+  ctx.font=(9.5*M.dpr)+'px Consolas,monospace';
+  ctx.fillText(S.kaestchenText(speed,gain,!!M.kal), 9*M.dpr, 13*M.dpr);
+  ctx.restore();
+}
+
 function zeichneZoom(){
   var cv=zStageCv(); if(!cv) return;
   var r=cv.getBoundingClientRect();
@@ -6605,11 +6772,35 @@ function zeichneZoom(){
   if(cv.width!==w||cv.height!==h){ cv.width=w; cv.height=h; }
   var ctx=cv.getContext('2d'), mp=mmPx();
   drawGrid(ctx,0,0,w,h);
-  var buf=zBuf(); if(!buf.length) return;
+  var buf=zBuf();
+  if(!buf.length){ zeichneSkala(ctx,w,h,Z.speed,Z.gain,mp); return; }
   var hz=hzJetzt();
-  // So viele Abtastwerte, wie bei DIESEM Vorschub in die Breite passen (Massstab bleibt echt).
-  var breiteMm=w/mp, n=Math.min(buf.length, Math.max(4, Math.round(breiteMm/Z.speed*hz)));
-  var von=buf.length-n, mitte=h/2, dx=w/(n-1);
+  /* NICHT DEHNEN. Der Ausschnitt kommt aus VS.skala.kurvenAusschnitt() — derselben Stelle,
+   * die auch der PDF-Ausdruck benutzt. Warum ueberhaupt: siehe den ausfuehrlichen Kopf dieser
+   * Funktion in ui/shared/ekg-skala.js. Kurz: bis hierher wurden die vorhandenen Werte ueber
+   * die GANZE Flaeche verteilt, und weil der Puffer nur so lang ist wie die Uebersichts-
+   * Leinwand, war die Kurve im haeufigsten Fall um 17 % gedehnt — der Zeit-Messzirkel las
+   * dann eine um 17 % zu lange QRS-Dauer ab. */
+  var S=(window.VS&&window.VS.skala);
+  var A=S?S.kurvenAusschnitt(w,mp,Z.speed,hz,buf.length):null;
+  if(!A||A.n<2){ zeichneSkala(ctx,w,h,Z.speed,Z.gain,mp); return; }
+  var n=A.n, wK=A.breite;
+  var von=buf.length-n, mitte=h/2, dx=A.proWert;
+  /* Die Skala gilt nur fuer den Teil, in dem wirklich Signal steht. */
+  zeichneSkala(ctx,wK||w,h,Z.speed,Z.gain,mp);
+  /* Ein paar Punkte Rest sind kein fehlendes Signal, sondern die Breite EINES Abtastwerts
+   * (bei 100 mm/s Zoom und 25 mm/s Uebersicht bis zu 4 Punkte). Dafuer wird kein Feld
+   * aufgemacht - sonst stuende die Warnung dauernd da, wo nichts fehlt. */
+  if(w-wK > 8*M.dpr){
+    ctx.save();
+    ctx.fillStyle='rgba(7,11,17,.55)';
+    ctx.fillRect(wK,0,w-wK,h);
+    ctx.strokeStyle='rgba(127,166,200,.35)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(wK,0); ctx.lineTo(wK,h); ctx.stroke();
+    ctx.fillStyle='rgba(127,166,200,.75)'; ctx.font=(11*M.dpr)+'px Consolas,monospace';
+    ctx.fillText('kein Signal', wK+8*M.dpr, 20*M.dpr);
+    ctx.restore();
+  }
   // Kalibrierimpuls links (1 mV)
   var cal=Z.gain*mp;
   ctx.strokeStyle='rgba(255,255,255,.55)'; ctx.lineWidth=1.3*M.dpr; ctx.beginPath();
