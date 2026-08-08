@@ -50,9 +50,20 @@
     return n % 2 ? a[(n - 1) / 2] : (a[n / 2 - 1] + a[n / 2]) / 2;
   }
 
-  function grundlinieAbziehen(werte, hz) {
-    // Fensterbreite ~200 ms: breiter als ein QRS, schmaler als eine Grundlinienwelle.
-    var w = Math.max(3, Math.round(hz * 0.2));
+  /*
+   * fensterS = Breite des gleitenden Medians in Sekunden.
+   *
+   * FAUSTREGEL: das Fenster muss MINDESTENS DOPPELT so breit sein wie die breiteste Welle,
+   * die erhalten bleiben soll. Sonst haelt der Median die Welle selbst fuer Grundlinie und
+   * zieht sie ab.
+   *   Hund/Katze: P 40 ms, QRS 40-70 ms -> 200 ms genuegt.
+   *   PFERD:      P 90-170 ms -> 200 ms ist ZU KURZ. Die Pferde-P wurde bisher als
+   *               Grundlinie erkannt und weggerechnet; die P-Suche lief danach auf einem
+   *               Signal, aus dem die gesuchte Welle bereits entfernt war (Befund der
+   *               Fachrecherche 08.08.2026). Deshalb dort 600 ms.
+   */
+  function grundlinieAbziehen(werte, hz, fensterS) {
+    var w = Math.max(3, Math.round(hz * (fensterS || 0.2)));
     if (w % 2 === 0) w++;
     var halb = (w - 1) / 2;
     var out = new Array(werte.length);
@@ -303,37 +314,79 @@
     return a[i];
   }
 
-  function findeP(werte, r, hz, vorigesR, schwelle) {
+  /*
+   * TIERARTLICHE SUCHFENSTER UND DAUERBAENDER (Fachrecherche 08.08.2026).
+   * wHinten = wie weit vor dem QRS-Beginn gesucht wird (obere PQ-Norm + Toleranz),
+   * wVorn   = Mindestabstand zum QRS-Beginn,
+   * dauer   = zulaessige P-Breite. SIE ist das eigentliche Unterscheidungsmerkmal zur
+   *           T-Welle: eine Hunde-/Katzen-P ist <= 40-50 ms, eine T-Welle 60-120 ms.
+   *           Beim PFERD trennt die Dauer NICHT (P 90-170 ms, T ebenfalls breit) - dort
+   *           traegt allein die Lage (PQ 210-410 ms) und der RR/2-Deckel.
+   */
+  var P_ART = {
+    hund:     { wHinten: 0.190, wVorn: 0.015, dauer: [15, 60] },
+    katze:    { wHinten: 0.135, wVorn: 0.012, dauer: [15, 55] },
+    pferd:    { wHinten: 0.500, wVorn: 0.060, dauer: [50, 220] },
+    standard: { wHinten: 0.190, wVorn: 0.015, dauer: [15, 60] }
+  };
+  function pArt(art) { return P_ART[art] || P_ART.standard; }
+
+  function findeP(werte, r, hz, vorigesR, schwelle, art) {
+    var A = pArt(art);
     var qb = qrsBeginn(werte, r, hz);
-    // Suchfenster: hoechstens 320 ms vor dem QRS-Beginn, mindestens 20 ms Abstand davon.
-    var maxVor = Math.round(hz * 0.32);
-    var minAbst = Math.max(2, Math.round(hz * 0.02));
-    var von = qb - maxVor, bis = qb - minAbst;
+    var von = qb - Math.round(hz * A.wHinten);
+    var bis = qb - Math.max(2, Math.round(hz * A.wVorn));
     if (vorigesR != null) {
-      /* Die T-Welle des vorigen Schlages ausschliessen. Bei sehr schneller Frequenz
-       * (Katze 220/min: RR = 273 ms) bleibt danach kaum Fenster - dann wird eher nichts
-       * gefunden, und genau das ist richtig: dort IST P und T nicht sicher zu trennen. */
-      var tEnde = vorigesR + Math.round((r - vorigesR) * 0.55);
-      if (von < tEnde) von = tEnde;
+      /*
+       * RR/2-DECKEL — die tragende Sperre gegen die T-Welle des VORIGEN Schlages.
+       * Belegte Regel der Wavelet-Delineation: das Suchfenster reicht hoechstens bis zur
+       * HAELFTE des letzten RR-Abstandes zurueck, weil die T-Welle in dessen erster Haelfte
+       * liegt. Vorher stand hier 0,55*RR - fast dasselbe, aber ohne Beleg und ohne die
+       * tierartliche Fensterlaenge daneben.
+       * Wirkung: Katze 240/min (RR 250 ms) -> RR/2 = 125 ms greift vor den 135 ms.
+       */
+      var haelfte = vorigesR + Math.round((r - vorigesR) / 2);
+      if (von < haelfte) von = haelfte;
     }
     if (von < 0) von = 0;
     if (bis - von < Math.max(3, Math.round(hz * 0.02))) return null;   // Fenster zu schmal
 
-    // Groesste Auslenkung im Fenster (P ist in Ableitung II normalerweise positiv, eine
-    // negative P ist aber ein Befund - deshalb wird der BETRAG gesucht und das Vorzeichen
-    // mitgegeben).
-    var gi = -1, gv = 0;
-    for (var i = von; i <= bis; i++) {
+    /*
+     * DER DEM QRS NAECHSTE GUELTIGE KANDIDAT — NICHT DER GROESSTE (Befund 08.08.2026).
+     * Erst wurde hier schlicht das Maximum im Fenster genommen. Die Fachrecherche nennt
+     * genau das als systematischen Fehler: "Die T-Welle ist im Hund oft hoeher als die
+     * P-Welle - eine Maximumsuche greift systematisch daneben." Gesucht wird deshalb von
+     * der QRS-Seite her rueckwaerts der ERSTE Gipfel, der Schwelle UND Dauerband besteht.
+     * Das Vorzeichen ist ausdruecklich KEIN Kriterium: die P kann positiv, negativ oder
+     * biphasisch sein, und die T-Welle des Hundes ist es ebenso.
+     */
+    var kand = [];
+    for (var i = bis - 1; i > von; i--) {
       var w = werte[i];
       if (w == null) continue;
-      if (Math.abs(w) > Math.abs(gv)) { gv = w; gi = i; }
+      if (Math.abs(w) < schwelle) continue;
+      // lokaler Gipfel im Betrag
+      var vor = werte[i - 1], nach = werte[i + 1];
+      if (vor == null || nach == null) continue;
+      if (!(Math.abs(w) >= Math.abs(vor) && Math.abs(w) >= Math.abs(nach))) continue;
+      kand.push(i);
     }
-    if (gi < 0) return null;
-    /* SCHWELLE. Unter ihr ist eine Auslenkung keine P, sondern Zufall. Ohne sie "findet"
-     * das Verfahren in jedem verrauschten Streifen eine P - und schliesst damit ausgerechnet
-     * Vorhofflimmern aus. Die Schwelle wird EINMAL in pAuswertung gebildet (Rauschen UND
-     * Mindesthoehe relativ zur R-Zacke), damit sie an einer Stelle nachvollziehbar ist. */
-    if (!(Math.abs(gv) >= schwelle)) return null;
+    if (!kand.length) return null;
+    // Kandidaten der Reihe nach pruefen - der erste (QRS-naechste) gueltige gewinnt.
+    for (var k = 0; k < kand.length; k++) {
+      var treffer = pruefeKandidat(werte, kand[k], von, bis, qb, hz, A);
+      if (treffer) return treffer;
+    }
+    return null;
+  }
+
+  /* Prueft einen einzelnen Gipfel auf Rand, Dauer und Lage. Ausgelagert, damit findeP die
+   * Kandidaten der Reihe nach durchgehen kann, ohne sich zu verschachteln. */
+  function pruefeKandidat(werte, gi, von, bis, qb, hz, A) {
+    var gv = werte[gi];
+    if (gv == null) return null;
+    /* Die Schwelle ist bereits bei der Kandidatenwahl in findeP geprueft (sie wird EINMAL
+     * in pAuswertung gebildet: Rauschen UND Mindesthoehe relativ zur R-Zacke). */
 
     // Beginn und Ende: wo faellt die Welle unter 20 % ihres Gipfels?
     var schw = Math.abs(gv) * 0.2;
@@ -353,9 +406,14 @@
      */
     if (randLinks || randRechts) return null;
     var dauer = (e - b) / hz * 1000;
-    /* Plausibilitaet der Breite: schmaler als 10 ms ist ein Zacken (Stoerung), breiter als
-     * 220 ms ist beim Kleintier keine P mehr (beim Pferd sind 170 ms normal, daher 220). */
-    if (dauer < 10 || dauer > 220) return null;
+    /*
+     * DIE DAUER IST DAS EIGENTLICHE UNTERSCHEIDUNGSMERKMAL ZUR T-WELLE (Befund 08.08.2026).
+     * Erst stand hier ein Band von 10-220 ms - so weit, dass jede T-Welle hineinpasste.
+     * Belegt ist: Hund/Katze P <= 40-50 ms, T dagegen 60-120 ms. Das Band ist deshalb
+     * tierartlich eng gefuehrt. Beim PFERD trennt die Dauer NICHT (P 90-170 ms, T ebenso
+     * breit) - dort traegt allein die Lage und der RR/2-Deckel, und das Band ist bewusst weit.
+     */
+    if (dauer < A.dauer[0] || dauer > A.dauer[1]) return null;
 
     return {
       beginn: b, ende: e, gipfel: gi, amp: gv,
@@ -369,7 +427,7 @@
    * skala/einheit werden nur gebraucht, um die Amplitude in mV zu benennen; ohne sie gibt es
    * keine mV-Zahl (dieselbe Regel wie bei der ST-Strecke).
    */
-  function pAuswertung(werte, zacken, hz, rausch, rAmp, skala, einheit) {
+  function pAuswertung(werte, zacken, hz, rausch, rAmp, skala, einheit, art) {
     if (!hz || hz < P_MIN_HZ) {
       return { messbar: false, warum: 'Abtastrate ' + Math.round(hz || 0) + ' Hz zu niedrig für die P-Welle (mindestens ' + P_MIN_HZ + ' Hz nötig)' };
     }
@@ -388,7 +446,7 @@
     var schwelle = Math.max(rausch * 3, (rAmp || 0) * 0.04);
     var funde = [], i;
     for (i = 0; i < zacken.length; i++) {
-      var p = findeP(werte, zacken[i], hz, i > 0 ? zacken[i - 1] : null, schwelle);
+      var p = findeP(werte, zacken[i], hz, i > 0 ? zacken[i - 1] : null, schwelle, art);
       if (p) funde.push(p);
     }
     var anteil = funde.length / zacken.length;
@@ -557,7 +615,11 @@
       return ergebnis;
     }
 
-    var werte = grundlinieAbziehen(roh, hz);
+    /* Tierart steuert Grundlinienfenster, Suchfenster und Dauerband der P-Welle. Fehlt sie,
+     * wird der Kleintier-Standard genommen - beim Pferd MUSS sie gesetzt sein, sonst loescht
+     * der zu kurze Grundlinienmedian die P-Welle. */
+    var art = opts.art || null;
+    var werte = grundlinieAbziehen(roh, hz, art === 'pferd' ? 0.6 : 0.2);
     var zacken = findeQRS(werte, hz);
     ergebnis.schlaege = zacken.length;
     if (zacken.length < MIN_SCHLAEGE) {
@@ -629,7 +691,7 @@
     /* Rauschmass fuer die P-Suche: das 25. PERZENTIL der Ruhestrecken, NICHT ihr Median.
      * Der Median liegt mitten in der T-Welle (siehe Kommentar bei perzentil()). */
     var pRausch = perzentil(ruhe, 0.25);
-    ergebnis.p = pAuswertung(werte, zacken, hz, pRausch, spitze, kurve.skala, opts.einheit || 'uV');
+    ergebnis.p = pAuswertung(werte, zacken, hz, pRausch, spitze, kurve.skala, opts.einheit || 'uV', art);
     return ergebnis;
   }
 
@@ -639,6 +701,7 @@
     findeQRS: findeQRS, qrsBreiteMs: qrsBreiteMs, grundlinieAbziehen: grundlinieAbziehen,
     rhythmus: rhythmus, stMessung: stMessung, median: median,
     qrsBeginn: qrsBeginn, findeP: findeP, pAuswertung: pAuswertung, perzentil: perzentil,
+    P_ART: P_ART,
     MIN_SEKUNDEN: MIN_SEKUNDEN, MIN_SCHLAEGE: MIN_SCHLAEGE,
     P_MIN_HZ: P_MIN_HZ, P_MIN_SCHLAEGE: P_MIN_SCHLAEGE, P_ANTEIL: P_ANTEIL,
   };

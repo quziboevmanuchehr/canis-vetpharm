@@ -5331,7 +5331,7 @@ function echtBefund(){
     var f=M.feed||{};
     var band=null;
     try{ if(window.grenzeOf){ var g=grenzeOf('hr'); if(g&&g.length===2) band=g; } }catch(e){}
-    var erg=VS.ekg.analysiere(kurve,{bandHr:band,einheit:(M.kal?'mV':null)});
+    var erg=VS.ekg.analysiere(kurve,{bandHr:band,einheit:(M.kal?'mV':null),art:(f.sp||null)});
     /* R-AMPLITUDE MITMESSEN.
      * Sie ist die Groesse, an der die meisten Befundregeln haengen (Niedervoltage,
      * Linksherzvergroesserung, das rassetypisch hohe R des Windhunds). ekg-analyse.js liefert
