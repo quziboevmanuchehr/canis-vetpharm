@@ -1088,6 +1088,8 @@ html[data-theme="light"] .assess-tr{color:#5a3c00;background:rgba(255,180,60,.16
      stehen: rasse-herz.js schlaegt zur Laufzeit in VETBREED.CONDITIONS nach. -->
 <script src="../shared/patient-alter.js?v=1"></script>
 <script src="../shared/rasse-herz.js?v=1"></script>
+<!-- Drehbares 3D-Modell mit den Anlegepunkten. Reine Geometrie, Node-getestet. -->
+<script src="../shared/tier3d.js?v=1"></script>
 <script>
 /* ============ Canis Anæsthesia – Engine ============ */
 (function(){
@@ -4177,7 +4179,14 @@ function boot(){
     else if(e.key==='ArrowRight'){ e.preventDefault(); navVor(); }
   });
   navMerke();
-  $('#wt').addEventListener('input',function(e){ var v=parseFloat(e.target.value); state.wt=(v>0?v:0); syncPatient(); rerender(); });
+  /* wtGesetzt merkt, ob das Gewicht WIRKLICH eingetragen wurde. Die Anwendung startet mit
+   * einem Vorgabewert von 10 kg; ohne diese Marke reicht __ekgFeed() ihn als "vom Geraet
+   * uebernommen" weiter, und das EKG bewertet gegen die engsten Grenzen (QRS bis 50 ms).
+   * Gemessen: ein Kammerkomplex von 55 ms wurde damit bei jedem ungewogenen Hund als
+   * "verbreitert" gemeldet - ein Verdacht auf ventrikulaeren Ursprung, der nur aus einem
+   * Vorgabewert entstand. Der Zweig "OHNE GEWICHT WIRD NICHT GERATEN" in normFuer() war
+   * dadurch unerreichbar. (Gegenpruefung 09.08.2026) */
+  $('#wt').addEventListener('input',function(e){ var v=parseFloat(e.target.value); state.wt=(v>0?v:0); state.wtGesetzt=true; syncPatient(); rerender(); });
   /* Das ALTER geht in die Alarmgrenzen ein (Jungtier: Frequenzobergrenze hoch, Spitzendruck
    * gedeckelt; geriatrisch: Blutdruckuntergrenze hoeher). Vorher zog der Wechsel nur die
    * Einstellungsseite nach — im Cockpit standen danach noch die Grenzen des vorigen Alters,
@@ -4280,7 +4289,13 @@ try{ window.state=state;
        * eine Nachbildung, obwohl ein Geraet angeschlossen ist. Genau der Fehler, der ohne
        * Messung wie "funktioniert" aussieht. */
       return { hr:r.hr, rhythm:(r.ekg||'sinus'), spo2:r.spo2, temp:r.temp, def:def,
-               sp:state.sp, wt:state.wt, breed:state.breed, age:state.age, mode:state.monMode,
+               /* DAS GEWICHT NUR, WENN ES WIRKLICH GESETZT WURDE. Die Anwendung startet mit
+                * 10 kg; ohne diese Bedingung reicht sie den Vorgabewert als "vom Geraet
+                * uebernommen" ins EKG weiter, das daraufhin gegen die engsten Grenzen
+                * bewertet (QRS bis 50 ms) - ein 55-ms-Komplex galt dann bei JEDEM ungewogenen
+                * Hund als verbreitert. Ohne Gewicht sagt normFuer() ausdruecklich, dass es
+                * fehlt, und nimmt die weiteren Grenzen. */
+               sp:state.sp, wt:(state.wtGesetzt?state.wt:null), breed:state.breed, age:state.age, mode:state.monMode,
                breedName:(function(){ try{ var b=curBreed(); return b?(b.name||b.id):null; }catch(e){ return null; } })(),
                running:!!mon.running, real:(mon.real&&mon.real.ekg)?mon.real.ekg:null,
                /* Haengt ein GERAET am Patienten? Nur dann darf das EKG-Fenster Stammdaten
@@ -4324,7 +4339,7 @@ function applyLive(p){
   if(!p) return;
   var schwer=false;   // erzwingt den teuren Vollaufbau
   if(p.species && p.species!==state.sp && A.species.find(function(s){return s.id===p.species;})){ state.sp=p.species; schwer=true; }
-  if(p.weightKg>0 && state.wt!==p.weightKg){ state.wt=p.weightKg; var wtEl=$('#wt'); if(wtEl) wtEl.value=state.wt; schwer=true; }
+  if(p.weightKg>0 && state.wt!==p.weightKg){ state.wt=p.weightKg; state.wtGesetzt=true; var wtEl=$('#wt'); if(wtEl) wtEl.value=state.wt; schwer=true; }
   if(p.breed && VB && VB.byId && VB.byId(p.breed) && state.breed!==p.breed){ state.breed=p.breed; schwer=true; }
   state.monMode='ist';
   if(!state.istVals) istInit();
@@ -4438,11 +4453,23 @@ function applyLive(p){
  * gelten die Messkanaele des VORIGEN Saals weiterhin als gesetzt — fremde Zahlen unter neuem
  * Namen, und istNachziehen kommt nie wieder an sie heran. state.mess ist das zuletzt vom Geraet
  * gelieferte Messpaket und gehoert aus demselben Grund dem Saal, nicht dem Zuschauer.
+ *
+ * wtGesetzt (09.08.2026): Der Vorgabewert von 10 kg ist KEINE Messung. Ohne diese Marke
+ * reicht __ekgFeed() ihn als "vom Geraet uebernommen" an das Diagnostik-EKG weiter, das
+ * daraufhin gegen die engsten Normgrenzen bewertet (QRS bis 50 ms) - ein Kammerkomplex von
+ * 55 ms galt dann bei jedem ungewogenen Tier als verbreitert, also als Verdacht auf einen
+ * ventrikulaeren Ursprung. Der eigens dafuer gebaute Zweig "OHNE GEWICHT WIRD NICHT GERATEN"
+ * in normFuer() war dadurch unerreichbar.
+ *
+ * HINWEIS FUER SPAETERE AENDERUNGEN: tools/webapp-fern-test.js prueft, dass istInit() INNERHALB
+ * der ersten 700 Zeichen dieser Funktion steht. Lange Begruendungen gehoeren deshalb hierher,
+ * nicht zwischen die Zuweisungen - sonst wird der Test rot, ohne dass etwas kaputt ist.
  * --------------------------------------------------------------------------- */
 function neuerPatient(p){
   var art=(p&&p.species)||null;
   state.sp=(art&&A.species.some(function(s){return s.id===art;}))?art:((A.species[0]&&A.species[0].id)||'hund');
   state.wt=(p&&p.weightKg>0)?p.weightKg:10;
+  state.wtGesetzt=!!(p&&p.weightKg>0);      // siehe Kopf: 10 kg ist Vorgabe, keine Messung
   state.breed=(p&&p.breed&&VB&&VB.byId&&VB.byId(p.breed))?p.breed:null;
   state.rhythm='sinus';
   var wtEl=$('#wt'); if(wtEl) wtEl.value=state.wt;
@@ -4967,6 +4994,10 @@ fab.addEventListener('click',function(){ dock.classList.remove('collapsed'); fab
 .rh-karte .rh-a{font-size:11px;line-height:1.45;color:#ffd166;margin-top:4px}
 .rh-karte .rh-a.im{color:#7fe0a8}
 .rh-karte .rh-q{font-size:10px;color:#5f7b96;margin-top:4px}
+.rh-mehr>summary{cursor:pointer;font-size:11px;color:#7fa6c8;list-style:none;padding:3px 0;user-select:none}
+.rh-mehr>summary::-webkit-details-marker{display:none}
+.rh-mehr>summary:before{content:'▸ ';color:#5f7b96}
+.rh-mehr[open]>summary:before{content:'▾ '}
 html[data-theme="light"] .rh-karte{background:rgba(20,40,70,.04);border-color:rgba(20,40,70,.14)}
 html[data-theme="light"] .rh-karte .rh-n{color:#123}
 html[data-theme="light"] .rh-karte .rh-t,html[data-theme="light"] .rh-karte .rh-v{color:#334}
@@ -5108,6 +5139,20 @@ html[data-theme="light"] .rh-karte.normvar .rh-n{color:#0b6b45}
 /* ===== Platz fuer die spaetere KI-Beurteilung (heute leer, Vertrag steht) ===== */
 .ekg-warn{font-size:11px;line-height:1.5;color:#ffd7d7;background:rgba(255,77,77,.09);border:1px solid rgba(255,77,77,.3);border-radius:8px;padding:7px 9px;margin-bottom:9px}
 .ekg-svg{background:#080d15;border:1px solid #23303f;border-radius:9px;padding:4px;margin-bottom:9px}
+/* ===== Drehbares 3D-Modell =====
+ * touch-action:none ist Pflicht, nicht Kosmetik: ohne sie scrollt das Handy die Seite,
+ * sobald man auf der Leinwand zieht - das Modell laesst sich dann nicht drehen. */
+.m3d{background:#080d15;border:1px solid #23303f;border-radius:9px;padding:6px;margin-bottom:9px}
+.m3d-kopf{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:#7fa6c8;padding:1px 2px 5px;display:flex;gap:6px;flex-wrap:wrap;min-width:0}
+.m3d-kopf b{color:#cfe4ff}
+.m3d-kopf span{margin-left:auto;text-transform:none;letter-spacing:0;color:#5f7b96}
+.m3d-cv{display:block;width:100%;max-width:100%;border-radius:7px;cursor:grab;touch-action:none;background:radial-gradient(ellipse at 50% 42%,#101b28,#070b11 72%)}
+.m3d-cv:active{cursor:grabbing}
+.m3d-sicht{margin:7px 0 4px}
+.m3d-sicht button{font-size:10.5px;height:26px}
+.m3d-fuss{font-size:10.5px;line-height:1.45;color:#6f8aa4;padding:0 2px}
+html[data-theme="light"] .m3d{background:#f2f6fb;border-color:rgba(20,40,70,.14)}
+html[data-theme="light"] .m3d-cv{background:radial-gradient(ellipse at 50% 42%,#ffffff,#e6edf6 72%)}
 .ekg-kabel{display:flex;flex-direction:column;gap:5px}
 .ekg-kabel .kz{display:flex;align-items:center;gap:7px;font-size:11.5px;color:#c4d6e8}
 .ekg-kabel .kz i{width:14px;height:14px;border-radius:50%;border:1px solid #0b1017;flex:0 0 auto}
@@ -5509,7 +5554,7 @@ function tick(ts){
   if(M._lastDraw&&(ts-M._lastDraw)<30) { /* fps-Deckel ~33/s */ }
   var dt=(ts-M.last)/1000; M.last=ts; if(dt>0.08)dt=0.05; if(dt<0)dt=0;
   // Feed höchstens 4x/s neu holen (monResolve ist nicht gratis)
-  if(ts-M.lastFeedT>250){ currentFeed(); M.lastFeedT=ts; }
+  if(ts-M.lastFeedT>250){ currentFeed(); M.lastFeedT=ts; try{ patWechselPruefen(M.feed); }catch(e){} }
   if(!M.freeze) advance(dt);
   if(Z.open){ zeichneZoom(); }        // die grosse Ansicht liegt oben — dann nur sie zeichnen
   else { drawLeadCanvas(); drawStripCanvas(); }
@@ -5524,7 +5569,16 @@ function zeigeHinweise(B,f,N,mea){
   if(!B||!B.brauchbar){
     /* Auch ohne auswertbaren Streifen gelten die Bedien- und Technikhinweise — sie brauchen
      * keine Messung, sondern nur die Einstellung (z. B. Vorschub bei der Katze). */
-    var mT={ sp:(f&&f.sp)||null, speed:M.speed, kal:M.kal, echt:M.echt,
+    /* DIE TIERART DER REGELN KOMMT AUS DEN PATIENTENDATEN, nicht aus dem Geraetefeed.
+     *
+     * Genau hier war die Berichtigung vom 09.08.2026 halb steckengeblieben und ist bei der
+     * Gegenpruefung aufgefallen: die NORMBAENDER kamen bereits aus patDaten() (ueber
+     * bewertungsArt/normAktuell), der ART-FILTER der Regeln aber weiter aus f.sp - also aus
+     * dem Geraet bzw. der Nachbildung. Bei einer von Hand eingetragenen KATZE ohne Monitor
+     * bewertete die Anwendung damit gegen Katzenbaender, liess aber die HUNDEregeln laufen
+     * (z. B. "Sinusarrhythmie ist normal" - bei der Katze ist sie das nicht). Zwei Quellen
+     * fuer dieselbe Frage sind immer eine zu viel. */
+    var mT={ sp:bewertungsArt()||null, speed:M.speed, kal:M.kal, echt:M.echt,
              hf:null, qrs:null, guete:null, achse:null, rrSchwankung:null };
     var tech=befundHinweise(mT).filter(function(t){ return t.stufe==='hinweis'; });
     var kopf='<div class="th">🔎 Hinweise</div>';
@@ -5557,7 +5611,8 @@ function zeigeHinweise(B,f,N,mea){
    * loest die Rasse ueber den Katalog auf - das gehoert nicht in eine Schleife. */
   var d0=patDaten();
   var m={
-    sp:f.sp||null, hf:B.hf, qrs:B.qrsBreiteMs, guete:B.guete, achse:mea,
+    /* Dieselbe Quelle wie die Normbaender - siehe die Begruendung im Technikzweig oben. */
+    sp:bewertungsArt()||null, hf:B.hf, qrs:B.qrsBreiteMs, guete:B.guete, achse:mea,
     rrSchwankung:schwank, vorzeitig:(B.rhythmus&&B.rhythmus.id==='ves'),
     band:N?N.hf:null, qrsGrenze:N?N.qrs[1]:null, achseBand:N?N.achse:null,
     speed:M.speed, kal:M.kal, echt:M.echt, sekunden:B.sekunden,
@@ -5611,15 +5666,47 @@ function zeigeHinweise(B,f,N,mea){
      * Rasse sich nicht aufloesen liess: lieber eine Ausnahme zu viel als ein Fehlalarm.
      * ================================================================================== */
     windhund:patGruppe('sighthound', /greyhound|whippet|galgo|saluki|barsoi|borzoi|afghan|windhund|deerhound|sloughi|azawakh|podenco|magyar agar/),
-    brachyzephal:patGruppe('brachy', /mops|pug|bulldog|bulldogge|boxer|shih.?tzu|pekingese|boston terrier|franz(ö|oe)sische/),
-    riesenrasse:patGruppe('giant', /dogge|great dane|wolfshund|wolfhound|mastiff|bernhardiner|leonberger|neufundl/),
-    zwergrasse:patGruppe('toy', /chihuahua|zwerg|toy |papillon|malteser|yorkshire/),
+    /* WAS HIER NICHT MEHR STEHT, UND WARUM (Gegenpruefung 09.08.2026):
+     * brachyzephal, riesenrasse und zwergrasse standen hier und wurden von KEINER Regel
+     * gelesen - drei tote Felder, die beim Lesen des Quelltextes eine Beruecksichtigung
+     * vortaeuschten, die es nicht gab. Sie sind entfernt statt belebt:
+     *   - "giant" und "toy" des Katalogs sind Narkoserisiko-Gruppen, keine Groessenklassen
+     *     (die Gruppe "giant" enthaelt den Affenpinscher mit vier Kilogramm). Die
+     *     Koerpergroesse steuert die Grenzen ueber das GEWICHT, und dort ist sie belegt.
+     *   - "brachy" wirkt bereits sichtbar: als Normvariante im Rasseblock des Befundes.
+     * Ein Feld, das nichts tut, ist schlimmer als ein fehlendes - es wird geglaubt. */
     /* Das Alter als ZAHL - erst damit kann eine Regel ein Altersfenster pruefen.
      * null heisst "nicht eingetragen" und ist ausdruecklich nicht 0. */
     alterJahre:(d0&&d0.alterObj)?d0.alterObj.dezimalJahre:null,
     alterGeschaetzt:!!(d0&&d0.alterObj&&d0.alterObj.geschaetzt),
-    rasseId:(d0?d0.rasseId:'')||''
+    alterText:(d0&&d0.alter)||'ohne Altersangabe',
+    rasseId:(d0?d0.rasseId:'')||'',
+    /* ==================================================================================
+     * DIE RASSEPRAEDISPOSITION IM REGELKONTEXT (09.08.2026)
+     *
+     * Damit wird aus dem Rassehinweis ein BEFUND, wenn beides zusammentrifft: ein
+     * formfremder Schlag im Streifen UND eine Rasse, deren hinterlegte Herzerkrankung
+     * genau davon lebt. "Aktiv" heisst: das EKG kann bei dieser Erkrankung wirklich etwas
+     * zeigen (ekgSichtbar), sie ist als wichtig eingestuft, und das Alter passt.
+     *
+     * imFenster===null (Alter unbekannt) zaehlt hier NICHT als aktiv - eine Regel, die eine
+     * Aussage ueber dieses Tier macht, braucht die Altersangabe wirklich. Der Hinweis im
+     * Rasseblock erscheint trotzdem, dort steht dann der Vermerk, dass das Alter fehlt.
+     * ================================================================================== */
+    rassePraedAktiv:false, rassePraedName:'', rassePraedTun:''
   };
+  (function(){
+    var RH=(window.VS&&VS.rasseHerz)?VS.rasseHerz:null, VBl=window.VETBREED||null;
+    if(!RH||!VBl||!d0.breed) return;
+    var r=RH.fuerPatient({ breed:d0.breed, VB:VBl, alter:d0.alterObj });
+    for(var i=0;i<r.praedispositionen.length;i++){
+      var p=r.praedispositionen[i];
+      if(!p.ekgSichtbar || p.stufe!=='wichtig') continue;
+      if(p.imFenster===false || p.imFenster===null) continue;
+      m.rassePraedAktiv=true; m.rassePraedName=p.name; m.rassePraedTun=p.vorgehen;
+      break;
+    }
+  })();
   var liste=befundHinweise(m);
   /* ==================================================================================
    * DREI BLOECKE STATT EINER LISTE (09.08.2026)
@@ -5701,14 +5788,24 @@ function zeigeHinweise(B,f,N,mea){
   html+=rasseHerzBlock();
 
   if(aufnahme.length){
-    html+='<details class="ekg-aufnahme"><summary>🔧 Zur Aufnahme ('+aufnahme.length+')'+
+    /* OFFEN-ZUSTAND MERKEN. Dieser Block wird bei jedem Messtakt neu erzeugt - also gut
+     * zweimal je Sekunde. Ohne das gemerkte "open" klappte er dem Untersucher waehrend des
+     * Lesens wieder zu, und zwar ausgerechnet der Block, bei dem daneben "bitte zuerst
+     * lesen" steht. (Gegenpruefung 09.08.2026) */
+    html+='<details class="ekg-aufnahme"'+(M.aufnahmeOffen?' open':'')+'><summary>🔧 Zur Aufnahme ('+aufnahme.length+')'+
       (verdacht.length?'' : ' — bitte zuerst lesen')+'</summary>';
     for(var a=0; a<aufnahme.length; a++) html+=karte(aufnahme[a]);
     html+='</details>';
   }
 
   html+='<div class="tf">Hinweise, <b>keine Diagnose</b>. Sie ersetzen weder die klinische Untersuchung noch den Herzultraschall.</div>';
-  host.innerHTML=html;
+  /* NUR BEI AENDERUNG SCHREIBEN. Der Block wird zweieinhalbmal je Sekunde gebaut; ihn jedes
+   * Mal auch zu SETZEN kostet nicht nur Rechenzeit, es reisst auch die Textmarkierung des
+   * Untersuchers weg und schliesst offene Aufklappblocke. Der Vergleich ist ein
+   * Zeichenkettenvergleich und billiger als das Setzen. */
+  if(M._hinweisHtml!==html){ M._hinweisHtml=html; host.innerHTML=html; }
+  var det=host.querySelector('details.ekg-aufnahme');
+  if(det && !det.__gebunden){ det.__gebunden=true; det.addEventListener('toggle',function(){ M.aufnahmeOffen=det.open; }); }
   /* Fuer das Archiv merken: der letzte Befund und die letzte Hinweisliste. Beides wird
    * beim Speichern mit abgelegt, damit spaeter nachvollziehbar ist, was die Automatik
    * zum Zeitpunkt der Aufnahme gesagt hat. */
@@ -5764,8 +5861,15 @@ function rasseHerzBlock(){
        '<div class="rh-t">'+esc2(g.was)+'</div>'+
        '<div class="rh-g">'+esc2(g.grenze)+'</div></div>';
   }
+  /* DIE STUFE WIRD BENUTZT, nicht nur gepflegt (Gegenpruefung 09.08.2026).
+   * Der Dateikopf von rasse-herz.js sagt zu, dass "hintergrund" zuklappt - gebaut war das
+   * nicht: zehn Karten dieser Stufe standen mit demselben Gewicht da wie "wichtig". Genau
+   * der Teil des versprochenen Laermschutzes, der fehlte. Wer bei einem Boxer vier
+   * gleichrangige Kaesten sieht, liest den vierten nicht. */
+  var hg=[];
   for(var i=0; i<r.praedispositionen.length; i++){
     var p=r.praedispositionen[i];
+    if(p.stufe==='hintergrund'){ hg.push(p); continue; }
     /* Das Zeichen sagt auf einen Blick, ob das EKG hier ueberhaupt etwas beitraegt.
      * Ohne das liest man drei Absaetze, bevor man merkt, dass die Antwort woanders liegt. */
     var zeichen=p.ekgSichtbar?'📈':'🔇';
@@ -5776,17 +5880,27 @@ function rasseHerzBlock(){
     } else if(p.imFenster===null && (p.vonJahre!=null||p.bisJahre!=null)){
       alterHinweis='<div class="rh-a">Gilt '+altersFensterText(p)+
         ' — <b>ohne Altersangabe nicht prüfbar.</b> Geburtsdatum oder geschätztes Alter unter 🐾 Patient eintragen.</div>';
-    } else if(p.imFenster===true){
+    } else if(p.imFenster===true && p.hatFenster){
       alterHinweis='<div class="rh-a im">Das Tier ist '+esc2(d.alter)+' — im Fenster ('+altersFensterText(p)+').</div>';
     }
-    h+='<div class="rh-karte'+(p.imFenster===true?' aktiv':'')+'">'+
-       '<div class="rh-n">'+zeichen+' '+esc2(p.name)+'</div>'+
-       '<div class="rh-t">'+esc2(p.ekg)+'</div>'+
-       '<div class="rh-v">→ '+esc2(p.vorgehen)+'</div>'+
-       alterHinweis+
-       '<div class="rh-q">'+esc2(p.beleg)+'</div></div>';
+    h+=rhKarte(p, zeichen, alterHinweis, p.imFenster===true && p.hatFenster);
+  }
+  /* Was das EKG ohnehin nicht zeigt und was nicht dringlich ist, kommt zugeklappt darunter.
+   * Es ist nicht weg - es nimmt nur nicht den Platz des Wichtigen. */
+  if(hg.length){
+    h+='<details class="rh-mehr"><summary>Weitere Rassehinweise ('+hg.length+')</summary>';
+    for(var q=0;q<hg.length;q++) h+=rhKarte(hg[q], hg[q].ekgSichtbar?'📈':'🔇', '', false);
+    h+='</details>';
   }
   return h;
+}
+function rhKarte(p, zeichen, alterHinweis, aktiv){
+  return '<div class="rh-karte'+(aktiv?' aktiv':'')+'">'+
+    '<div class="rh-n">'+zeichen+' '+esc2(p.name)+'</div>'+
+    '<div class="rh-t">'+esc2(p.ekg)+'</div>'+
+    '<div class="rh-v">→ '+esc2(p.vorgehen)+'</div>'+
+    alterHinweis+
+    '<div class="rh-q">'+esc2(p.beleg)+'</div></div>';
 }
 /* Eine Zeile fuer den Ausdruck. Gedruckt wird, was das EKG betrifft - die Reihenfolge aus
  * fuerPatient() sorgt dafuer, dass das zuerst kommt, was in Ableitung II ueberhaupt sichtbar
@@ -5798,13 +5912,26 @@ function rasseHerzZeile(pd){
   var teile=[];
   for(var i=0;i<r.praedispositionen.length && teile.length<2;i++){
     var p=r.praedispositionen[i];
-    teile.push(p.name+' — '+p.vorgehen);
+    /* NUR DER ERSTE SATZ des Vorgehens. Gemessen (Gegenpruefung 09.08.2026): vier von 129
+     * Rassezeilen brauchten drei Zeilen, und der Ausdruck druckt nur zwei - beim Deutschen
+     * Schaeferhund und beim Golden Retriever fiel dabei ausgerechnet der Sicherheitszusatz
+     * weg, ohne dass etwas darauf hindeutete. Lieber von vornherein kuerzen, als hinten
+     * stillschweigend abzuschneiden; der volle Text steht im Befund auf dem Schirm. */
+    teile.push(p.name+' — '+ersterSatz(p.vorgehen));
   }
   /* Die Normvariante gehoert mit auf das Blatt: sie erklaert dem naechsten Leser, warum
    * eine hohe R-Zacke hier NICHT als Vergroesserung gewertet wurde. */
   for(var v=0; v<r.normvarianten.length && teile.length<2; v++) teile.push(r.normvarianten[v].name+': '+r.normvarianten[v].was);
   if(!teile.length) return '';
   return 'Zur Rasse ('+pd.rasse+'): '+teile.join('  |  ');
+}
+/* Der erste vollstaendige Satz. Punkt, Ausrufe- oder Fragezeichen gefolgt von einem
+ * Leerzeichen; ein Doppelpunkt beendet keinen Satz. Bleibt nichts uebrig, wird der ganze
+ * Text genommen - lieber lang als leer. */
+function ersterSatz(t){
+  var s=String(t||'');
+  var m=/^[\s\S]*?[.!?](\s|$)/.exec(s);
+  return (m && m[0].trim().length>20) ? m[0].trim() : s;
 }
 function altersFensterText(p){
   if(p.vonJahre!=null && p.bisJahre!=null) return 'von '+p.vonJahre+' bis '+p.bisJahre+' Jahren';
@@ -6991,15 +7118,15 @@ function normOf(sp){ return EKGNORM[sp]||null; }
  * Rasse ist. Ueber die Kennung ist das eindeutig.
  * ================================================================================== */
 var RASSE_AUSNAHMEN=[
-  { id:'dobermann', rassen:['dobermann'], muster:/dobermann|doberman/i,
+  { id:'dobermann', arten:['hund'], rassen:['dobermann'], muster:/dobermann|doberman/i,
     achse:[-45,100],
     grund:'Beim Dobermann ist eine Linksverschiebung der elektrischen Achse auch beim GESUNDEN Tier häufig.',
     quelle:'41 gesunde Dobermänner: Median +45°, Spanne −45 bis +90°; bei 39 % Achsenabweichung, ausnahmslos nach links' },
-  { id:'franzbulldogge', rassen:['franz-bulldogge'], muster:/franz(ö|oe)sische?\s*bulldogge|french\s*bulldog|bouledogue/i,
+  { id:'franzbulldogge', arten:['hund'], rassen:['franz-bulldogge'], muster:/franz(ö|oe)sische?\s*bulldogge|french\s*bulldog|bouledogue/i,
     achse:[-20,100],
     grund:'Bei der Französischen Bulldogge ist eine leichte Linksverschiebung beim gesunden Tier häufig.',
     quelle:'80 gesunde Französische Bulldoggen: Median 43,5°, Spanne −18 bis +90°; 30 % linksverschoben' },
-  { id:'amstaff', rassen:['american-staffordshire-terrier'], muster:/american\s*staffordshire|amstaff|am\.?\s*staff/i,
+  { id:'amstaff', arten:['hund'], rassen:['american-staffordshire-terrier'], muster:/american\s*staffordshire|amstaff|am\.?\s*staff/i,
     pDauer:[null,55], qrs:[null,75],
     grund:'Beim American Staffordshire Terrier liegen P- und QRS-Dauer regelhaft über der allgemeinen Artgrenze, ohne dass eine Erkrankung vorliegt.',
     quelle:'29 klinisch gesunde AST: 62 % P > 40 ms, 66 % QRS > 60 ms' },
@@ -7007,7 +7134,7 @@ var RASSE_AUSNAHMEN=[
    * Whippet erhoben. Das frueher hier stehende Muster /whippet/i traf beide - eine Zahl auf
    * eine Rasse zu uebertragen, an der sie nicht gemessen wurde, ist genau die Sorte stiller
    * Ungenauigkeit, die diese Anwendung vermeiden soll. */
-  { id:'whippet', rassen:['whippet'], muster:/^\s*whippet\s*$/i,
+  { id:'whippet', arten:['hund'], rassen:['whippet'], muster:/^\s*whippet\s*$/i,
     rAmp:[1.0,4.0],
     grund:'Windhundtyp: hohe R-Ausschläge sind hier die Regel, nicht ein Hinweis auf eine Vergrößerung.',
     quelle:'eigene publizierte Referenzintervalle (n = 105)' }
@@ -7070,6 +7197,21 @@ function normFuer(sp, wtKg, rasse, rasseId){
   if(r||rid){
     for(var i=0;i<RASSE_AUSNAHMEN.length;i++){
       var A=RASSE_AUSNAHMEN[i];
+      /* ==================================================================================
+       * DIE ART MUSS PASSEN (Gegenpruefung 09.08.2026 — schwerster Einzelbefund).
+       *
+       * Die Ausnahmen wurden ohne jede Artpruefung angewandt. Gemessen:
+       *   normFuer('katze', 4, 'Amstaff', '')  ->  qrs [null,75] statt [null,40]
+       * Ein Kammerkomplex von 60 ms ist bei der KATZE eindeutig verbreitert - mit der
+       * Hundegrenze lief er durch die Regel qrs-breit hindurch und wurde gar nicht mehr
+       * gemeldet. Auf dem Schirm stand dabei "Bewertet nach: Katze - Rasse beruecksichtigt:
+       * Beim American Staffordshire Terrier ...". Das ist ein WEGGEREDETER Befund und damit
+       * die schlimmere der beiden Fehlerrichtungen.
+       *
+       * Erreichbar war es ueber den Freitext: VETBREED.search('Amstaff','katze') ist leer,
+       * die Kennung bleibt deshalb leer - und genau dann greift der Musterzweig.
+       * ================================================================================== */
+      if(A.arten && A.arten.indexOf(sp)<0) continue;
       var trifft = (rid && A.rassen && A.rassen.indexOf(rid)>=0) || (!rid && r && A.muster.test(r));
       if(!trifft) continue;
       if(A.achse) out.achse=A.achse.slice();
@@ -7275,8 +7417,24 @@ var BEFUNDREGELN=[
     sicherheit:'Messung', quelle:'—' },
 
   /* --- Frequenz --- */
+  /* ==================================================================================
+   * DAS ALTER WIRKT AUF DIE BEWERTUNG — sonst ist es nur eine Zierleiste (09.08.2026)
+   *
+   * Bei der Gegenpruefung gemessen: alterJahre stand im Regelkontext, wurde aber von KEINER
+   * Regel gelesen. Der Tierarzt gab ein Geburtsdatum ein, sah "11 Jahre 3 Mon." auf dem Blatt
+   * und im Ausdruck - und durfte daraus schliessen, die Bewertung beruecksichtige das Alter.
+   * Sie tat es nicht. Eine Zusage ohne Wirkung ist schlimmer als ein fehlendes Feld.
+   *
+   * Der belegte Fall ist das Jungtier: die Frequenzbaender der Art gelten fuer das
+   * ERWACHSENE Tier. Ein sechs Wochen alter Welpe mit 190/min waere danach "ueber dem
+   * Normband" - und ist vollkommen unauffaellig. Die Zahlen stehen in der Wissensbasis
+   * (shared/ekg-befunde.js, Sinustachykardie Hund: "Welpen bis 220/min").
+   *
+   * ZWEI REGELN, WEIL ZWEI DINGE ZU TUN SIND: die Fehlmeldung unterdruecken UND sagen,
+   * warum. Nur zu schweigen waere hier falsch - der Untersucher soll wissen, dass die
+   * Bewertung eine andere Grenze benutzt hat. */
   { id:'hf-hoch', name:'Herzfrequenz über dem Normband', stufe:'auffaellig', art:'alle',
-    pruef:function(m){ return m.band && m.hf!=null && m.hf>m.band[1]; },
+    pruef:function(m){ return m.band && m.hf!=null && m.hf>m.band[1] && !jungtierBand(m); },
     hinweis:'{hf}/min liegt über dem Normband {band} dieser Tierart. Bei gleichmäßigen Abständen und schmalem QRS spricht das für eine Sinustachykardie — Schmerz, zu flache Narkose, Hypovolämie, Hyperkapnie, Fieber und Katecholamine kommen als Ursache in Frage.',
     differenzial:'supraventrikuläre Tachykardie (dann meist starr regelmäßig und höher)',
     sicherheit:'Messung', quelle:'Tierartband nach Tilley' },
@@ -7329,6 +7487,22 @@ var BEFUNDREGELN=[
    * Bei Windhunden und ausdauertrainierten Rassen sind hohe R-Amplituden und eine niedrige
    * Ruhefrequenz RASSETYPISCH und kein Vergroesserungsbeleg ("Athletenherz"). Ohne diese
    * Regel haette die Anwendung jedem gesunden Greyhound eine Herzvergroesserung angedeutet. */
+  { id:'jungtier-hf', name:'Jungtier – höhere Frequenz ist hier normal', stufe:'hinweis', art:'alle',
+    pruef:function(m){ return jungtierBand(m); },
+    hinweis:'{hf}/min liegt über dem Band des <b>erwachsenen</b> Tieres, aber im Bereich, der für ein Jungtier dieses Alters ({alterText}) beschrieben ist. Die Frequenz wird deshalb <b>nicht</b> als auffällig gemeldet. Bewertet wurde gegen die Jungtiergrenze, nicht gegen die Artgrenze.',
+    differenzial:'Aufregung, Schmerz, Hypovolämie – auch beim Jungtier gilt die obere Grenze nicht als Freibrief',
+    sicherheit:'Messung', quelle:'shared/ekg-befunde.js: Sinustachykardie Hund (Welpen bis 220/min), Katze' },
+
+  /* Der Rassehinweis wird zum BEFUND, wenn beides zusammenkommt: ein formfremder Schlag im
+   * Streifen UND eine Rasse, deren hinterlegte Herzerkrankung genau davon lebt, UND das
+   * passende Alter. Erst diese Verbindung macht aus "worauf man bei dieser Rasse schaut"
+   * eine Aussage ueber DIESES Tier - und genau dafuer ist das Alter da. */
+  { id:'rasse-ektopie', name:'Kammerextrasystole bei einer Rasse mit Screening-Empfehlung', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return (m.vorzeitig||m.formFremd) && m.rassePraedAktiv; },
+    hinweis:'Im Streifen ist mindestens ein formfremder Schlag zu sehen. Bei dieser Rasse ist das <b>kein Nebenbefund</b>: {rassePraedName}. {rassePraedTun}',
+    differenzial:'Auch beim gesunden Tier kommen vereinzelte Extrasystolen vor – die Zahl je 24 Stunden entscheidet, nicht der Kurzstreifen',
+    sicherheit:'Verdacht', quelle:'shared/rasse-herz.js über den Rassekatalog' },
+
   { id:'windhund-normal', name:'Sportrasse – hohe Ausschläge sind hier normal', stufe:'hinweis', art:'hund',
     pruef:function(m){ return m.windhund && m.kal && !m.filterAmp && m.rAmp!=null && m.rOben!=null && m.rAmp>m.rOben; },
     hinweis:'R-Amplitude {rAmp} mV liegt über dem allgemeinen Hundeband — bei einem Windhund oder einer ausdauertrainierten Rasse ist das <b>rassetypisch</b> und kein Beleg für eine Herzvergrößerung („Athletenherz"). Eine niedrige Ruhefrequenz gehört dort ebenfalls dazu.',
@@ -7493,6 +7667,28 @@ var BEFUNDREGELN=[
 ];
 
 /* Fuehrt alle passenden Regeln aus. Gibt eine nach Dringlichkeit sortierte Liste zurueck. */
+/* ==================================================================================
+ * JUNGTIERGRENZEN DER HERZFREQUENZ (09.08.2026)
+ *
+ * Die Baender in EKGNORM gelten fuer das ERWACHSENE Tier. Ein Welpe von sechs Wochen mit
+ * 190/min laege danach "ueber dem Normband" und ist unauffaellig.
+ *
+ * DIE ZAHLEN STAMMEN AUS DER WISSENSBASIS, nicht von mir: shared/ekg-befunde.js fuehrt bei
+ * der Sinustachykardie des Hundes ausdruecklich "Welpen bis 220/min". Fuer die Katze ist
+ * dort keine eigene Jungtiergrenze genannt - deshalb gibt es hier auch keine, und ein
+ * Kaetzchen wird weiter gegen das Artband bewertet. Lieber eine Meldung zu viel als eine
+ * Grenze, die ich erfunden habe.
+ *
+ * OHNE ALTERSANGABE GREIFT DIE AUSNAHME NICHT. Das ist Absicht: "wir wissen es nicht" darf
+ * nicht dazu fuehren, dass eine Tachykardie unterdrueckt wird.
+ * ================================================================================== */
+var JUNGTIER={ hund:{ bisJahre:0.5, hfOben:220 } };
+function jungtierBand(m){
+  if(!m||m.alterJahre==null||m.hf==null||!m.band) return false;
+  var j=JUNGTIER[m.sp];
+  if(!j) return false;
+  return (m.alterJahre < j.bisJahre) && (m.hf > m.band[1]) && (m.hf <= j.hfOben);
+}
 function befundHinweise(m){
   if(!m) return [];
   var raus=[];
@@ -7640,6 +7836,36 @@ function pMerken(){ try{ localStorage.setItem(PKEY, JSON.stringify(P)); }catch(e
  * Wer ein Geburtsdatum ERZWINGT, bekommt erfundene Datumsangaben - und die sehen hinterher
  * genauso genau aus wie die echten. Die Herkunft wird deshalb mitgefuehrt und angezeigt.
  * ================================================================================== */
+/* ==================================================================================
+ * PATIENTENWECHSEL LEERT DIE HANDEINTRAEGE (09.08.2026, Gegenpruefung)
+ *
+ * GEMESSENER FEHLER: P liegt in localStorage und ueberlebt jeden Neustart. Eine einmal von
+ * Hand gewaehlte Rasse schlug im Automodus IMMER die Rasse der laufenden Anwendung und wurde
+ * bei einem Patientenwechsel nirgends zurueckgesetzt. Das Geraet meldete "Dackel", in P stand
+ * noch "boxer" vom Vortag - angezeigt, gedruckt und bewertet wurde Boxer. Damit kehrt sich
+ * die Zusage aus Punkt 1 des Patientenblatts um: nicht das Geraet fuehrt, sondern eine alte
+ * Eingabe. Bei den rassebezogenen Herzhinweisen ist das keine Kosmetik.
+ *
+ * Was geleert wird, sind die Angaben zu DIESEM Tier. Was stehen bleibt, sind die Angaben zur
+ * UNTERSUCHUNG: Lagerung, Kabelnorm, Untersucher - die gehoeren zum Arbeitsplatz, nicht zum
+ * Patienten, und sie jedes Mal neu einzutragen waere eine Zumutung.
+ * ================================================================================== */
+function patWechselPruefen(f){
+  if(!f) return;
+  var id=f.patId||'';
+  if(!id) return;                       // kein Geraet, keine Kennung: nichts zu entscheiden
+  if(P.zuPatId===undefined) P.zuPatId='';
+  if(P.zuPatId===id) return;
+  var hatte=(P.rasseId||P.rasse||P.name||P.besitzer||P.gebDatum||P.altJahre||P.altMonate);
+  P.zuPatId=id;
+  if(!hatte){ pMerken(); return; }
+  P.rasseId=''; P.rasse=''; P.name=''; P.besitzer=''; P.alter='';
+  P.gebDatum=''; P.altJahre=''; P.altMonate=''; P.frage='';
+  pMerken();
+  flash('🐾 Neuer Patient ('+id+') — die von Hand eingetragenen Angaben wurden geleert');
+  try{ if($('#ekgOverlay').dataset.seite==='pat') renderPatient(); }catch(e){}
+}
+
 function alterJetzt(){
   var VA=(window.VS&&VS.alter)?VS.alter:null;
   if(!VA) return null;
@@ -7662,23 +7888,64 @@ function alterJetzt(){
  * HIER gewaehlte hat auch dort Vorrang. Grund: die Anwendung fuehrt oft gar keine Rasse
  * (das Geraet sendet sie nicht), und dann soll der Untersucher sie fuer den Ausdruck und
  * die rassebezogenen Hinweise eintragen koennen, ohne dass etwas zurueckgeschrieben wird. */
-function patRasse(f){
+function patRasse(f, sp){
   var VBl=window.VETBREED||null;
   if(P.rasseId && VBl){
     var b=VBl.byId(P.rasseId);
+    /* ==================================================================================
+     * EINE RASSE GILT NUR FUER IHRE ART (Gegenpruefung 09.08.2026).
+     *
+     * Gemessen: gespeicherte Rasse "dobermann", danach in der Anwendung auf Katze gewechselt
+     * - Kopfzeile "Katze · 10 kg · Dobermann", Befundblock "Zur Rasse · Dobermann · DCM des
+     * Dobermanns", und ueber normFuer zusaetzlich das Achsenband des Dobermanns auf die Katze.
+     * Der Ausdruck, der in die Akte geht, trug damit eine Art-Rasse-Kombination, die es
+     * nicht gibt.
+     *
+     * Der Loeschzweig beim Artwechsel im Handmodus reichte nicht: er greift nur an EINEM
+     * Auswahlfeld. Wechselt die Art in der Anwendung oder sendet das Geraet keine
+     * Patientenkennung, blieb die alte Rasse stehen. Deshalb wird hier bei JEDEM Zugriff
+     * geprueft - eine Rasse fremder Art wird verworfen statt weitergereicht.
+     * ================================================================================== */
+    if(b && sp && b.sp && b.sp!==sp) b=null;
     if(b) return { id:b.id, name:b.name, breed:b, quelle:'hier gewählt' };
+    if(!b && P.rasseId) return { id:'', name:'', breed:null, quelle:'', artFremd:true };
   }
   if(P.modus==='hand'){
     return { id:'', name:P.rasse||'', breed:(P.rasse&&VBl)?VBl.resolve(P.rasse, P.sp):null, quelle:P.rasse?'hier eingetragen':'' };
   }
   var n=(f&&(f.breedName||f.breed))||'';
-  return { id:(f&&f.breed)||'', name:n, breed:(n&&VBl)?(VBl.byId(f.breed)||VBl.resolve(n, f.sp)):null,
-           quelle:n?'aus der Anwendung':'' };
+  if(n) return { id:(f&&f.breed)||'', name:n, breed:VBl?(VBl.byId(f.breed)||VBl.resolve(n, f.sp)):null,
+                 quelle:'aus der Anwendung' };
+  /* LIEFERT DIE ANWENDUNG KEINE RASSE, gilt auch im Automodus die hier eingetragene.
+   * Vorher las dieser Zweig nur f.breedName und liess P.rasse liegen - der Hinweis unter dem
+   * Feld sagte aber eine Uebernahme auf den Ausdruck zu, die nicht stattfand. Genau der Fall
+   * aus der Forderung: das Geraet sendet die Rasse nicht mit, der Untersucher traegt sie ein
+   * ("Terriermix"), und findet sie im Befund nicht wieder. (Gegenpruefung 09.08.2026) */
+  if(P.rasse) return { id:'', name:P.rasse, breed:VBl?VBl.resolve(P.rasse, f&&f.sp):null,
+                       quelle:'hier eingetragen' };
+  return { id:'', name:'', breed:null, quelle:'' };
 }
 function patDaten(){
   var f=M.feed||currentFeed()||{};
   var A2=alterJetzt();
-  var r=patRasse(f);
+  /* ==================================================================================
+   * DER HANDMODUS UEBERNIMMT, WAS DA IST (Gegenpruefung 09.08.2026)
+   *
+   * GEMESSENER FEHLER: Nach dem Klick auf "Von Hand" zeigte das Auswahlfeld "Hund" -
+   * gespeichert war aber sp='' , weil kein change-Ereignis entsteht, wenn niemand das
+   * bereits sichtbare "Hund" anfasst. Zwei stille Folgen:
+   *   (1) bewertungsArt() fiel auf die Art des FEEDS zurueck - also auf das, worauf die
+   *       Narkoseabteilung zufaellig stand. Der Tierarzt las "Hund" und bekam die Baender
+   *       einer anderen Art. Genau die Halbierung, die heute an zwei anderen Stellen
+   *       behoben wurde.
+   *   (2) Der Ausdruck trug als Tierart "Patient" (speciesName('')), waehrend daneben
+   *       "Hund" stand.
+   * Die Uebernahme geht ausdruecklich NUR in diese Richtung: das EKG liest, es schreibt
+   * nie in die Narkoseabteilung zurueck. */
+  var hSp=P.sp||f.sp||'';
+  var hWt=(P.wt!=='' && P.wt!=null)?P.wt:(f.wt!=null?f.wt:'');
+  var sp=(P.modus==='auto')?(f.sp||''):hSp;
+  var r=patRasse(f, sp);
   /* Das Alter des Geraets ist nur eine KLASSE (adult/pediatric/senior), kein Datum. Eine
    * hier eingetragene genaue Angabe ist deshalb immer die bessere und hat Vorrang - sie
    * wird auch im Automodus angeboten, weil die Anwendung gar kein Geburtsdatum kennt. */
@@ -7687,15 +7954,16 @@ function patDaten(){
     return { quelle:'vom Gerät übernommen', patId:(f.patId||P.patId||''),
       name:P.name||'', besitzer:P.besitzer||'',
       sp:f.sp||'', rasse:r.name, rasseId:r.id, breed:r.breed, rasseQuelle:r.quelle,
-      wt:(f.wt||''),
+      rasseArtFremd:!!r.artFremd,
+      wt:(f.wt!=null?f.wt:''),
       alter:(A2&&A2.gueltig)?A2.text:(klasse[f.age]||f.age||''),
       alterObj:(A2&&A2.gueltig)?A2:null, alterKlasse:(klasse[f.age]||''),
       frage:P.frage||'', untersucher:P.untersucher||'' };
   }
   return { quelle:'von Hand eingetragen', patId:(P.patId||''),
-    name:P.name||'', besitzer:P.besitzer||'', sp:P.sp||'',
-    rasse:r.name, rasseId:r.id, breed:r.breed, rasseQuelle:r.quelle,
-    wt:P.wt||'', alter:(A2&&A2.gueltig)?A2.text:(P.alter||''),
+    name:P.name||'', besitzer:P.besitzer||'', sp:hSp,
+    rasse:r.name, rasseId:r.id, breed:r.breed, rasseQuelle:r.quelle, rasseArtFremd:!!r.artFremd,
+    wt:hWt, alter:(A2&&A2.gueltig)?A2.text:(P.alter||''),
     alterObj:(A2&&A2.gueltig)?A2:null, alterKlasse:'',
     frage:P.frage||'', untersucher:P.untersucher||'' };
 }
@@ -7746,12 +8014,21 @@ function pBrZu(){ var p=$('#pRasPop'); if(p){ p.hidden=true; p.innerHTML=''; } p
 function pBrAuf(txt){
   var p=$('#pRasPop'), VBl=window.VETBREED; if(!p||!VBl) return;
   pBrTreffer=VBl.search(txt, pBrArt(), 60); pBrSel=-1;
+  var n=(VBl.speciesWithBreeds?(VBl.speciesWithBreeds()[pBrArt()]||0):0);
   if(!pBrTreffer.length){
-    p.innerHTML='<div class="bp-leer">Keine Rasse dieser Tierart im Katalog. Der Eintrag bleibt als Text stehen — '+
-      'die artspezifischen Normwerte gelten trotzdem.</div>';
+    /* ZWEI SEHR VERSCHIEDENE FAELLE, EINE MELDUNG - das war ein Fehler (Gegenpruefung
+     * 09.08.2026). Der Satz "Keine Rasse dieser Tierart im Katalog" erschien auch dann,
+     * wenn die Art 408 Rassen hat und nur die Schreibweise nicht traf. Der Tierarzt liest,
+     * es gebe fuer den Hund keine Rassen - und hoert auf zu suchen. */
+    p.innerHTML='<div class="bp-leer">'+(n
+      ? '<b>'+esc2(speciesName(pBrArt()))+'</b> hat '+n+' Rassen im Katalog, aber keine passt zu dieser '+
+        'Schreibweise. Weniger Buchstaben tippen oder anders schreiben. Der Eintrag bleibt sonst '+
+        'als Text stehen — die artspezifischen Normwerte gelten trotzdem.'
+      : 'Für <b>'+esc2(speciesName(pBrArt()))+'</b> führt der Katalog keine Rassen. Der Eintrag bleibt '+
+        'als Text stehen — die artspezifischen Normwerte gelten trotzdem, rassebezogene Hinweise gibt es dazu nicht.')+
+      '</div>';
     p.hidden=false; return;
   }
-  var n=(VBl.speciesWithBreeds?(VBl.speciesWithBreeds()[pBrArt()]||0):0);
   p.innerHTML=(txt?'':'<div class="bp-kopf">'+esc2(speciesName(pBrArt()))+' · '+n+' Rassen</div>')+
     pBrTreffer.map(function(t,ix){ var b=t.breed;
       /* Der Punkt links zeigt, ob fuer diese Rasse eine HERZbedingung hinterlegt ist -
@@ -7803,11 +8080,17 @@ function pRasseFeld(d){
   return '<div class="pf breed-box" style="position:relative">'+
     '<label>Rasse'+(n?' <span style="color:#6f8aa4;font-weight:400">· '+n+' im Katalog, tippen zum Suchen</span>':'')+'</label>'+
     '<input id="pRas" value="'+esc2(wert)+'" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list"'+
-      ' placeholder="'+(n?esc2(speciesName(art))+' – Rasse tippen…':'z. B. Maine Coon')+'">'+
+      /* Ohne Rassekatalog fuer diese Art KEINE Beispielrasse einer anderen Art vorschlagen -
+       * das Feld schlug fuer ein Pferd "z. B. Maine Coon" vor. Stattdessen sagen, wie die Lage ist. */
+      ' placeholder="'+(n?esc2(speciesName(art))+' – Rasse tippen…':'kein Rassekatalog für diese Tierart – als Text eintragen')+'">'+
     (P.rasseId?'<button class="ekg-btn" id="pRasClear" style="position:absolute;right:6px;top:26px;padding:2px 7px" title="Rasse löschen">✕</button>':'')+
     '<div class="breed-pop" id="pRasPop" role="listbox" hidden style="top:58px"></div>'+
     (uebernommen?'<div class="pf-hint">Aus der Anwendung übernommen. Eine hier gewählte Rasse gilt nur für das EKG und wird nicht zurückgeschrieben.</div>':'')+
     (P.rasse&&!P.rasseId?'<div class="pf-hint">Nicht im Katalog – der Text steht auf dem Ausdruck, rassebezogene Hinweise gibt es dazu nicht.</div>':'')+
+    /* Eine verworfene Rasse wird GESAGT. Sie still verschwinden zu lassen waere derselbe
+     * Fehler in der anderen Richtung: der Untersucher haette sie eingetragen und faende sie
+     * nirgends wieder, ohne zu erfahren warum. */
+    (d.rasseArtFremd?'<div class="pf-hint" style="color:#ffd166">Die zuvor gewählte Rasse gehört zu einer anderen Tierart und wurde deshalb entfernt. Bitte für '+esc2(speciesName(art))+' neu wählen.</div>':'')+
   '</div>';
 }
 /* Das Altersfeld: Geburtsdatum ODER Schaetzung, und die Umschaltung ist sichtbar.
@@ -8145,6 +8428,120 @@ function tierSVG(sp){
   if(b.schwanz) out+='<path d="'+b.schwanz+'" stroke="'+s+'" stroke-width="'+b.schwanzBreite+'" fill="none" stroke-linecap="round"/>';
   return out;
 }
+/* ==================================================================================
+ * DAS DREHBARE 3D-MODELL — Oberflaeche  (09.08.2026)
+ *
+ * Die Geometrie steht in ui/shared/tier3d.js und ist dort mit einem Node-Test abgesichert
+ * (tools/tier3d-test.js). HIER wird nur gezeichnet und bedient. Diese Trennung ist in
+ * diesem Projekt Regel und hat einen gemessenen Grund: die Browser-Vorschau drosselt den
+ * Bildtakt, wer eine canvas ausliest, misst alte Bilder. Geometrie, die stimmen MUSS,
+ * gehoert deshalb in eine reine Funktion mit Node-Test - nicht in eine Zeichenroutine.
+ * ================================================================================== */
+var M3D={ gier:0, nick:12, zieht:false, x0:0, y0:0, g0:0, n0:0, art:null, netz:null };
+/* Feste Blickrichtungen. "Von links" ist die Voreinstellung, weil das Tier in rechter
+ * Seitenlage liegt und der Untersucher dann auf die linke Seite sieht. */
+var M3D_SICHT=[
+  { t:'Linke Seite', g:0,   n:10 },
+  { t:'Rechte Seite',g:180, n:10 },
+  { t:'Von vorn',    g:90,  n:10 },
+  { t:'Von oben',    g:0,   n:72 }
+];
+function modell3dBlock(sp){
+  var T=(window.VS&&VS.tier3d)?VS.tier3d:null;
+  if(!T||!T.hatModell(sp)) return '';
+  return '<div class="m3d">'+
+    '<div class="m3d-kopf">🧊 3D-Modell · <b>'+esc2(speciesName(sp))+'</b>'+
+      '<span>ziehen zum Drehen</span></div>'+
+    '<canvas id="m3dCv" class="m3d-cv"></canvas>'+
+    '<div class="ekg-modus m3d-sicht">'+
+      M3D_SICHT.map(function(s,i){ return '<button data-s3="'+i+'">'+s.t+'</button>'; }).join('')+
+    '</div>'+
+    '<div class="m3d-fuss">Verdeckte Klemmen sind <b>ausgegraut</b> — was Sie nicht sehen, '+
+      'liegt auf der abgewandten Seite. Das Modell ist ein <b>stilisiertes</b> anatomisches '+
+      'Modell: es zeigt die Lage von Ellbogen und Knie, nicht das Aussehen eines bestimmten Tieres.</div>'+
+  '</div>';
+}
+function m3dZeichne(){
+  var T=(window.VS&&VS.tier3d)?VS.tier3d:null;
+  var cv=$('#m3dCv'); if(!T||!cv||!M3D.netz) return;
+  var dpr=Math.min(2,window.devicePixelRatio||1);
+  var b=cv.clientWidth||360, h=Math.round(b*0.62);
+  if(cv.width!==Math.round(b*dpr)||cv.height!==Math.round(h*dpr)){
+    cv.width=Math.round(b*dpr); cv.height=Math.round(h*dpr); cv.style.height=h+'px';
+  }
+  var ctx=cv.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,b,h);
+  var A=T.ansicht(M3D.netz,{ gierGrad:M3D.gier, nickGrad:M3D.nick, breite:b, hoehe:h });
+  var i,j,f;
+  for(i=0;i<A.flaechen.length;i++){
+    f=A.flaechen[i];
+    ctx.beginPath();
+    ctx.moveTo(f.eck[0].x,f.eck[0].y);
+    for(j=1;j<f.eck.length;j++) ctx.lineTo(f.eck[j].x,f.eck[j].y);
+    ctx.closePath();
+    ctx.fillStyle=abdunkeln(f.farbe,f.hell);
+    ctx.fill();
+    /* Duenne Kante in der Fuellfarbe: schliesst die Haarrisse zwischen benachbarten
+     * Vierecken, die beim Fuellen ohne Kantenglaettung entstehen. */
+    ctx.strokeStyle=ctx.fillStyle; ctx.lineWidth=0.6; ctx.stroke();
+  }
+  var N=kabelNorm(), K=KABEL[N];
+  for(i=0;i<A.marken.length;i++){
+    var s=A.marken[i], c=K[s.k];
+    ctx.globalAlpha=s.vorn?1:0.3;
+    ctx.beginPath(); ctx.arc(s.x,s.y,11,0,2*Math.PI);
+    ctx.fillStyle=c.f; ctx.fill();
+    ctx.lineWidth=2; ctx.strokeStyle=s.vorn?'#0b1017':'#3a4a5c'; ctx.stroke();
+    ctx.fillStyle=(N==='AHA'&&s.k==='RA')?'#111':'#fff';
+    ctx.font='700 9px Consolas,monospace'; ctx.textAlign='center';
+    ctx.fillText(s.k,s.x,s.y+3.5);
+    ctx.globalAlpha=1;
+  }
+}
+/* Eine Farbe um den Faktor abdunkeln - Flachschattierung ohne Farbraumrechnerei. */
+function abdunkeln(hex,f){
+  var r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return 'rgb('+Math.round(r*f)+','+Math.round(g*f)+','+Math.round(b*f)+')';
+}
+function m3dBinde(sp){
+  var T=(window.VS&&VS.tier3d)?VS.tier3d:null;
+  var cv=$('#m3dCv'); if(!T||!cv) return;
+  if(M3D.art!==sp){ M3D.art=sp; M3D.netz=T.netz(sp); M3D.gier=0; M3D.nick=12; }
+  m3dZeichne();
+  function stelle(e){
+    var t=(e.touches&&e.touches[0])||e;
+    return { x:t.clientX, y:t.clientY };
+  }
+  function los(e){
+    var p=stelle(e); M3D.zieht=true; M3D.x0=p.x; M3D.y0=p.y; M3D.g0=M3D.gier; M3D.n0=M3D.nick;
+    if(e.cancelable) e.preventDefault();
+  }
+  function zieh(e){
+    if(!M3D.zieht) return;
+    var p=stelle(e);
+    M3D.gier=M3D.g0+(p.x-M3D.x0)*0.6;
+    /* Der Nickwinkel wird begrenzt: ueber 80 Grad kippt das Modell und niemand erkennt
+     * mehr, wo vorn ist. Eine Drehung, die den Betrachter verliert, hilft nicht. */
+    M3D.nick=Math.max(-80,Math.min(80, M3D.n0+(p.y-M3D.y0)*0.5));
+    m3dZeichne();
+    if(e.cancelable) e.preventDefault();
+  }
+  function ende(){ M3D.zieht=false; }
+  cv.onmousedown=los; cv.ontouchstart=los;
+  window.addEventListener('mousemove',zieh); window.addEventListener('touchmove',zieh,{passive:false});
+  window.addEventListener('mouseup',ende);   window.addEventListener('touchend',ende);
+  var host=cv.parentNode;
+  host.querySelectorAll('[data-s3]').forEach(function(el){
+    el.onclick=function(){
+      var s=M3D_SICHT[+el.getAttribute('data-s3')];
+      M3D.gier=s.g; M3D.nick=s.n; m3dZeichne();
+    };
+  });
+  /* Beim Wechsel der Fensterbreite neu zeichnen: die Leinwand haengt an clientWidth. */
+  if(!M3D._resize){ M3D._resize=true; window.addEventListener('resize',function(){ try{ m3dZeichne(); }catch(e){} }); }
+}
+
 function renderAnlegen(){
   var side=$('#ekgSide'), ov=$('#ekgOverlay');
   ov.dataset.seite='anlegen';
@@ -8191,6 +8588,21 @@ function renderAnlegen(){
         'zeigen diesen Weg. Die Kurvenform ist dadurch eine andere — die Frontalachse sagt beim Pferd '+
         'ohnehin nichts über die Kammer aus.</div>'
       : '')+
+    /* ==================================================================================
+     * DAS DREHBARE MODELL HAT VORRANG, DER SEITENRISS BLEIBT DARUNTER (09.08.2026)
+     *
+     * WARUM UEBERHAUPT DREHBAR: Auf einem flachen Seitenriss sieht die rechte
+     * Vordergliedmasse genauso aus wie die linke - sie liegt nur dahinter. Damit laesst
+     * sich die eine Frage, an der beim EKG etwas haengt, gar nicht beantworten: WELCHE
+     * SEITE IST DAS? Wer RA und LA vertauscht, bekommt eine Kurve, die tadellos aussieht
+     * und in Ableitung I gespiegelt ist.
+     *
+     * WARUM DER SEITENRISS TROTZDEM BLEIBT: Er zeigt die LAGERUNG - rechte Seitenlage,
+     * Kopf links, Gliedmassen im rechten Winkel. Das 3D-Modell steht dagegen frei im Raum,
+     * damit man um es herumgehen kann. Beides zusammen beantwortet zwei verschiedene Fragen,
+     * und keine der beiden Antworten ist entbehrlich.
+     * ================================================================================== */
+    (vogelReptil ? '' : modell3dBlock(sp))+
     (vogelReptil ? '' :
     '<div class="ekg-svg"><svg viewBox="0 0 '+W+' '+H+'" width="100%">'+tierSVG(sp)+punkte+
       '<text x="'+(W/2)+'" y="18" text-anchor="middle" font-size="11" fill="#7fa6c8">'+
@@ -8222,6 +8634,10 @@ function renderAnlegen(){
   $('#aBack').onclick=function(){ ov.dataset.seite=''; rebuildSide(); updateMeasures(); };
   $('#aIEC').onclick=function(){ P.kabelnorm='IEC'; pMerken(); renderAnlegen(); };
   $('#aAHA').onclick=function(){ P.kabelnorm='AHA'; pMerken(); renderAnlegen(); };
+  /* Nach dem Neuzeichnen des Blattes ist die Leinwand eine neue - das Modell muss also
+   * jedes Mal neu gebunden werden. Der Drehwinkel bleibt dabei stehen (M3D lebt ausserhalb),
+   * damit ein Wechsel der Kabelnorm nicht die Ansicht zuruecksetzt, die man gerade gesucht hat. */
+  try{ m3dBinde(d.sp||''); }catch(e){}
 }
 
 /* ==================================================================================

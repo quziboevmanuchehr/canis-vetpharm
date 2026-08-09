@@ -47,10 +47,28 @@
    * stufe          : 'wichtig' steht oben im Befund, 'beachten' darunter, 'hintergrund' klappt zu.
    * beleg          : woher die EKG-Aussage stammt (die Krankheitsbeschreibung belegt der Katalog).
    * ========================================================================================== */
+  /* ==========================================================================================
+   * SCHLUESSEL DES KATALOGS, DIE ABSICHTLICH KEINE EKG-SCHICHT HABEN
+   *
+   * Diese Liste ist kein Beiwerk, sondern die Gegenprobe zur Vollstaendigkeit. Der Test
+   * verlangt, dass JEDE Herzbedingung des Katalogs entweder eine Schicht hat ODER hier mit
+   * Begruendung steht. Ohne diese zweite Richtung faellt eine neue Katalogbedingung STILL
+   * durch - genau so ist am 09.08.2026 die haeufigste Herzerkrankung des Hundes durchgefallen
+   * (mmvd-cavalier, 13 Rassen): der Test prueft nur, ob es jeden Eintrag HIER auch dort gibt,
+   * und war deshalb gruen ueber einer Luecke.
+   * ========================================================================================== */
+  var OHNE_SCHICHT = {
+    'boxer-ace': 'Arzneimittelempfindlichkeit, kein EKG-Befund. Sie gehoert in die Narkoseplanung, wo der Katalog sie auch fuehrt.',
+    'acepromazin-idiosynkrasie-boxer': 'wie boxer-ace: eine Reaktion auf ein Mittel, nichts, was ein Ruhestreifen zeigt.',
+    'hypothyreose': 'keine primaere Herzerkrankung. Bradykardie und flache Komplexe kommen vor - sie stehen als Differenzialdiagnose beim Perikarderguss, nicht als eigene Rassedisposition.',
+    'muskeldystrophie-dmd': 'die Herzbeteiligung ist beschrieben, ein rassebezogener EKG-Hinweis daraus ist es nicht.',
+    'atropin-limitierung': 'betrifft die Wirkung eines Mittels beim Reptil, nicht die Aufzeichnung.'
+  };
+
   var SCHICHT = [
     /* ---------------------------------------------------------------- Kardiomyopathien Hund */
     {
-      schluessel: 'dcm-dobermann', ekgSichtbar: true, stufe: 'wichtig',
+      schluessel: 'dcm-dobermann', thema: 'dcm', rang: 1, ekgSichtbar: true, stufe: 'wichtig',
       vonJahre: 3, altersGrund: 'Screening-Empfehlung ab dem dritten Lebensjahr, jaehrlich',
       ekg: 'Der Ruhestreifen ist in der okkulten Phase meistens unauffällig. Sichtbar werden können einzelne ventrikuläre Extrasystolen - ihr Fehlen sagt nichts.',
       /* DIE ZAHL, DIE DEN SATZ TRAEGT (Gegenpruefung 09.08.2026, JVIM 2010, PMID 20136711):
@@ -62,14 +80,45 @@
       vorgehen: 'Schon eine einzelne Kammerextrasystole ist bei dieser Rasse ein Anlass für ein 24-Stunden-EKG: der Kurzstreifen ist wenig empfindlich (64 %), aber sehr spezifisch (97 %). Umgekehrt entlastet ein sauberer Streifen nicht — bei Hunden mit über 100 Extrasystolen in 24 Stunden fand ein 5-Minuten-EKG in gut einem Drittel der Fälle gar nichts.',
       beleg: 'ACVIM-Konsens zur DCM des Dobermanns; JVIM 2010 (PMID 20136711): 5-min-EKG Sens. 64,2 %, Spez. 96,7 %'
     },
+    /* ==========================================================================================
+     * DIE HAEUFIGSTE HERZERKRANKUNG DES HUNDES - und sie hat hier zunaechst GEFEHLT.
+     *
+     * Gemessen bei der Gegenpruefung am 09.08.2026: der Katalogschluessel 'mmvd-cavalier'
+     * haengt an 13 Rassen, hatte aber keine EKG-Schicht. Dackel, Whippet und King Charles
+     * Spaniel bekamen dadurch NULL Hinweise - der Kasten "Zur Rasse" erschien gar nicht,
+     * und beim Cavalier stand nur die pulmonale Hypertonie da, nicht die Klappe.
+     * Ein Tierarzt, der einen Kasten "Zur Rasse" sieht und die Erkrankung NICHT liest,
+     * deretwegen diese Rasse beruehmt ist, zieht daraus den falschen Schluss.
+     * ========================================================================================== */
     {
-      schluessel: 'arvc-boxer', ekgSichtbar: true, stufe: 'wichtig',
+      schluessel: 'mmvd-cavalier', thema: 'mmvd', rang: 1, ekgSichtbar: true, stufe: 'wichtig',
+      /* KEIN Altersfenster: der Schluessel traegt 13 sehr verschiedene Rassen. Beim Cavalier
+       * treten Geraeusche oft schon im jungen Erwachsenenalter auf, bei den uebrigen kleinen
+       * Rassen erst spaeter. Eine gemeinsame Jahreszahl waere fuer beide Gruppen falsch -
+       * das Alter steht deshalb im Text und nicht als Schranke. */
+      ekg: 'Bei Vergrößerung des linken Vorhofs kann die P-Welle in Ableitung II verbreitert sein (P mitrale), dazu hohe R-Zacken. Im fortgeschrittenen Stadium supraventrikuläre Extrasystolen bis hin zu Vorhofflimmern. Ein unauffälliges EKG ist bei leichter Erkrankung die Regel und schließt nichts aus.',
+      vorgehen: 'Das Leitzeichen ist das systolische Herzgeräusch über der Mitralklappe, nicht das EKG. Bei Geräusch: Echokardiographie zur Stadieneinteilung; Röntgen für die Größe. Eine neu aufgetretene supraventrikuläre Tachykardie oder Vorhofflimmern bei bekannter Klappenerkrankung ist ein dringlicher Befund.',
+      beleg: 'ACVIM-Konsens zur myxomatösen Mitralklappenerkrankung; P mitrale und Vorhofflimmern bei linksatrialer Vergrößerung'
+    },
+    {
+      /* Zweiter, allgemeiner DCM-Schluessel des Katalogs (Dobermann, Deutsche Dogge,
+       * Neufundlaender). Er unterscheidet sich vom Schluessel des Dobermanns um EIN "n" -
+       * wer beim Pflegen den falschen setzt, erzeugt sonst genau den stillen Ausfall, den
+       * diese Datei verhindern soll. Ueber "thema" faellt er weg, wo ein genauerer Eintrag
+       * schon greift; allein steht er fuer die uebrigen Rassen. */
+      schluessel: 'dcm-doberman', thema: 'dcm', rang: 3, ekgSichtbar: true, stufe: 'wichtig',
+      ekg: 'Sichtbar ist die Rhythmusstörung, nicht der Muskelschaden: ventrikuläre Extrasystolen, bei fortgeschrittener Erkrankung Vorhofflimmern. Ein unauffälliger Ruhestreifen schließt eine dilatative Kardiomyopathie nicht aus.',
+      vorgehen: 'Bei ventrikulärer Ektopie oder Vorhofflimmern dieser Rassen: Echokardiographie und 24-Stunden-EKG.',
+      beleg: 'dilatative Kardiomyopathie des Hundes, allgemeiner Katalogschlüssel'
+    },
+    {
+      schluessel: 'arvc-boxer', thema: 'arvc', rang: 1, ekgSichtbar: true, stufe: 'wichtig',
       ekg: 'Kammerextrasystolen, typischerweise monomorph. Ihre Form lässt sich mit EINER aufgezeichneten Ableitung nicht sicher zuordnen - dafür braucht es echt abgeleitete II, III und aVF.',
       vorgehen: 'Ventrikuläre Ektopie beim Boxer gehört ins 24-Stunden-EKG, nicht auf den Kurzstreifen.',
       beleg: 'ARVC-Diagnosekriterien des Boxers (Holter-basiert)'
     },
     {
-      schluessel: 'dcm-riesenrassen', ekgSichtbar: true, stufe: 'wichtig',
+      schluessel: 'dcm-riesenrassen', thema:'dcm', rang:2, ekgSichtbar: true, stufe: 'wichtig',
       /* Der eine Fall dieser Gruppe, in dem ein KURZER Streifen wirklich etwas leistet - weil
        * Vorhofflimmern meist dauerhaft anliegt und kein Anfallsereignis ist. Die f-Wellen sind
        * beim Hund oft zu fein, um sichtbar zu sein; ihr Fehlen spricht deshalb NICHT dagegen. */
@@ -78,45 +127,53 @@
       beleg: 'Kleintierkardiologie, DCM der Riesen- und Großrassen; Vorhofflimmern als Erstmanifestation'
     },
     {
-      schluessel: 'dcm-juvenil', ekgSichtbar: true, stufe: 'wichtig',
+      schluessel: 'dcm-juvenil', thema:'dcm-juv', rang:1, ekgSichtbar: true, stufe: 'wichtig',
       bisJahre: 2, altersGrund: 'juvenile Form; betroffen sind Welpen und Junghunde',
       ekg: 'Beim Jungtier: Tachykardie, ventrikuläre Ektopie. Ein unauffälliger Streifen schließt nichts aus.',
       vorgehen: 'Bei einem Junghund dieser Rassen mit Rhythmusstörung oder Leistungsschwäche gehört das Echo an den Anfang, nicht ans Ende.',
       beleg: 'juvenile DCM des Portugiesischen Wasserhundes und des Toller'
     },
     {
-      schluessel: 'dcm-taurin', ekgSichtbar: false, stufe: 'beachten',
+      schluessel: 'dcm-taurin', thema:'dcm-taurin', rang:1, ekgSichtbar: false, stufe: 'beachten',
       ekg: 'Am EKG ist diese Form nicht von einer anderen DCM zu unterscheiden - es gibt kein eigenes Bild.',
       vorgehen: 'Der Punkt dieser Rassezuordnung liegt nicht im EKG: Taurin- und Carnitinspiegel bestimmen, denn diese Form ist teilweise rückläufig.',
       beleg: 'taurinresponsive DCM bei Cocker Spaniel und Golden Retriever'
     },
     /* ---------------------------------------------------------------- Kardiomyopathie Katze */
     {
-      schluessel: 'hcm-mybpc3-a31p', ekgSichtbar: false, stufe: 'beachten',
+      schluessel: 'hcm-mybpc3-a31p', thema:'hcm', rang:1, ekgSichtbar: false, stufe: 'beachten',
       ekg: 'Das EKG ist für die Erkennung einer HCM bei der Katze schlecht geeignet: ein völlig unauffälliger Streifen ist bei nachgewiesener HCM häufig.',
       vorgehen: 'Die Diagnose hängt am Echokardiogramm. Der Gentest prüft EINE Variante - ein negatives Ergebnis schließt eine HCM nicht aus.',
       beleg: 'MYBPC3-A31P der Maine Coon; unvollständige Penetranz'
     },
     {
-      schluessel: 'hcm-mybpc3-r820w', ekgSichtbar: false, stufe: 'beachten',
+      schluessel: 'hcm-mybpc3-r820w', thema:'hcm', rang:1, ekgSichtbar: false, stufe: 'beachten',
       ekg: 'Wie bei jeder HCM der Katze: das EKG kann völlig unauffällig sein.',
       vorgehen: 'Echokardiographie. Der Gentest prüft EINE Variante und schließt eine HCM nicht aus.',
       beleg: 'MYBPC3-R820W der Ragdoll'
     },
     {
-      schluessel: 'hcm-alms1', ekgSichtbar: false, stufe: 'beachten',
+      schluessel: 'hcm-alms1', thema:'hcm', rang:1, ekgSichtbar: false, stufe: 'beachten',
       ekg: 'Das EKG trägt zur Erkennung nichts Verlässliches bei.',
       vorgehen: 'Echokardiographie; beim Sphynx zusätzlich die Wärmeregulation im Blick behalten.',
       beleg: 'ALMS1-Variante des Sphynx'
     },
     {
-      schluessel: 'hcm-rasse', ekgSichtbar: false, stufe: 'beachten',
+      schluessel: 'hcm-rasse', thema:'hcm', rang:2, ekgSichtbar: false, stufe: 'beachten',
       ekg: 'Ein unauffälliger Streifen schließt eine HCM nicht aus. Was auffallen kann, sind Tachyarrhythmien und ventrikuläre Ektopie - beides unspezifisch.',
       vorgehen: 'Bei Herzgeräusch, Galopprhythmus oder Rhythmusstörung: Echokardiographie. Das EKG ersetzt sie nicht.',
       beleg: 'rassepräedisponierte HCM ohne bekannte Mutation'
     },
     {
-      schluessel: 'sam-lvoto', ekgSichtbar: false, stufe: 'hintergrund',
+      /* Zweiter HCM-Schluessel des Katalogs (4 Katzenrassen). Wie bei dcm-doberman: er faellt
+       * ueber "thema" weg, wo ein genauerer Eintrag greift, und traegt sonst allein. */
+      schluessel: 'hcm-cat', thema: 'hcm', rang: 3, ekgSichtbar: false, stufe: 'beachten',
+      ekg: 'Das EKG ist für die Erkennung einer HCM bei der Katze schlecht geeignet: ein völlig unauffälliger Streifen ist bei nachgewiesener Erkrankung häufig.',
+      vorgehen: 'Echokardiographie. Bei Herzgeräusch, Galopprhythmus oder Rhythmusstörung nicht auf das EKG warten.',
+      beleg: 'hypertrophe Kardiomyopathie der Katze, allgemeiner Katalogschlüssel'
+    },
+    {
+      schluessel: 'sam-lvoto', thema: 'sam', rang: 1, ekgSichtbar: false, stufe: 'hintergrund',
       ekg: 'Die dynamische Ausflusstraktobstruktion selbst ist im EKG nicht zu sehen.',
       vorgehen: 'Bedeutsam für die Narkose: Volumenmangel und Tachykardie verstärken die Obstruktion.',
       beleg: 'SAM/HOCM der Katze'
@@ -289,13 +346,22 @@
         name: kat ? kat.name : s.schluessel,
         kurz: kat ? kat.short : '',
         ekgSichtbar: s.ekgSichtbar, ekg: s.ekg, vorgehen: s.vorgehen,
-        stufe: s.stufe, beleg: s.beleg,
+        stufe: s.stufe, beleg: s.beleg, thema: s.thema || null, rang: s.rang || 9,
         vonJahre: (s.vonJahre == null ? null : s.vonJahre),
         bisJahre: (s.bisJahre == null ? null : s.bisJahre),
         altersGrund: s.altersGrund || '',
-        imFenster: null
+        /* DREI ZUSTAENDE, NICHT ZWEI (berichtigt 09.08.2026):
+         *   true  - der Eintrag gilt jetzt (kein Fenster, oder das Alter liegt darin)
+         *   false - das Alter liegt ausserhalb des Fensters
+         *   null  - es GIBT ein Fenster, aber kein Alter; also unbekannt
+         * Die erste Fassung liess "kein Fenster" ebenfalls auf null stehen. Damit waeren
+         * genau die Eintraege ohne Altersgrenze - darunter die Mitralklappenerkrankung und
+         * die ARVC des Boxers - fuer jede Regel dauerhaft unentschieden gewesen und haetten
+         * nie gegriffen. */
+        hatFenster: (s.vonJahre != null || s.bisJahre != null),
+        imFenster: true
       };
-      if (e.vonJahre != null || e.bisJahre != null) {
+      if (e.hatFenster) {
         if (!alter || !alter.gueltig) { e.imFenster = null; out.ohneAlter = true; }
         else {
           var j = alter.dezimalJahre;
@@ -304,6 +370,32 @@
       }
       out.praedispositionen.push(e);
     }
+    /* ==========================================================================================
+     * EIN THEMA, EIN EINTRAG (09.08.2026)
+     *
+     * Der Katalog fuehrt fuer dieselbe Erkrankung teils zwei Schluessel - "dcm-dobermann" und
+     * "dcm-doberman" unterscheiden sich um ein einziges "n", "hcm-rasse" und "hcm-cat" gar
+     * nicht inhaltlich. Ein Dobermann traegt beide DCM-Schluessel; ohne diese Zusammenlegung
+     * stuenden zwei fast gleichlautende Kaesten untereinander, und eine Britisch Kurzhaar
+     * bekaeme drei HCM-Eintraege.
+     *
+     * Das ist nicht nur unschoen: die Forderung an diesen Befundteil lautet, NUR zu zeigen,
+     * wo wirklich etwas ist. Wer dreimal dasselbe liest, liest beim vierten Kasten nicht mehr.
+     * Behalten wird der Eintrag mit dem kleinsten "rang" - also der genaueste.
+     * ========================================================================================== */
+    var beiThema = {}, gefiltert = [];
+    for (i = 0; i < out.praedispositionen.length; i++) {
+      var e2 = out.praedispositionen[i];
+      if (!e2.thema) { gefiltert.push(e2); continue; }
+      var alt = beiThema[e2.thema];
+      if (!alt) { beiThema[e2.thema] = e2; gefiltert.push(e2); continue; }
+      if ((e2.rang || 9) < (alt.rang || 9)) {
+        gefiltert[gefiltert.indexOf(alt)] = e2;
+        beiThema[e2.thema] = e2;
+      }
+    }
+    out.praedispositionen = gefiltert;
+
     /* Reihenfolge: was das EKG zeigen kann, zuerst - und darin das Wichtige zuerst.
      * Ein Eintrag, zu dem das EKG nichts beitraegt, gehoert nicht an den Anfang der Liste. */
     var rang = { wichtig: 0, beachten: 1, hintergrund: 2 };
@@ -338,7 +430,7 @@
   }
 
   return {
-    SCHICHT: SCHICHT, GRUPPEN: GRUPPEN,
+    SCHICHT: SCHICHT, GRUPPEN: GRUPPEN, OHNE_SCHICHT: OHNE_SCHICHT,
     hatHerz: hatHerz, fuerPatient: fuerPatient, rassenMitHerz: rassenMitHerz,
     schluessel: function () { return SCHICHT.map(function (s) { return s.schluessel; }); }
   };
