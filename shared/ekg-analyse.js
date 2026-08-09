@@ -659,6 +659,77 @@
   }
 
   /* ================================================================================ *
+   * 4f) HERZFREQUENZVARIABILITAET (HRV)  — 09.08.2026
+   *
+   * WARUM SIE HIER GUT AUFGEHOBEN IST: HRV braucht AUSSCHLIESSLICH die RR-Abstaende. Die
+   * hat diese Datei ohnehin schon. Anders als fast alles andere, was fremde Geraete mehr
+   * koennen als wir, verlangt sie KEINE zweite Ableitung - sie ist reine Arithmetik ueber
+   * vorhandene Daten. (Recherche 09.08.2026: Norav PC-ECG 1200 fuehrt HRV als
+   * lizenzpflichtige Zusatzoption; Televet 100 ebenso.)
+   *
+   * WAS BERECHNET WIRD (die Zeitbereichsmasse, die jedes System nennt):
+   *   SDNN   Standardabweichung ALLER RR-Abstaende. Mass fuer die Gesamtvariabilitaet.
+   *   RMSSD  Wurzel aus dem Mittel der quadrierten Unterschiede AUFEINANDERFOLGENDER RR.
+   *          Bildet die schnelle, atemgekoppelte Schwankung ab - beim Hund also genau das,
+   *          was die respiratorische Sinusarrhythmie erzeugt.
+   *   pNN50  Anteil benachbarter RR-Paare, die sich um mehr als 50 ms unterscheiden.
+   *
+   * WAS AUSDRUECKLICH NICHT GELIEFERT WIRD: eine BEWERTUNG. Fuer Hund, Katze und die
+   * uebrigen Arten sind keine belastbaren HRV-Normbereiche belegt, die diese Anwendung
+   * nennen duerfte - und HRV haengt zusaetzlich an Narkosetiefe, Alter und Rasse. Die Zahlen
+   * werden gemessen und angezeigt; ob sie hoch oder tief sind, sagt hier niemand.
+   *
+   * EINE HARTE SPERRE: Extrasystolen und Aussetzer verfaelschen jedes HRV-Mass massiv (ein
+   * einziger vorzeitiger Schlag erzeugt einen kurzen und einen langen RR). Deshalb wird
+   * gemeldet, wenn der Streifen formfremde Schlaege enthaelt - dann sind die Zahlen nur
+   * beschreibend und nicht mit einem Ruhewert vergleichbar.
+   * ================================================================================ */
+  var HRV_MIN_RR = 20;   // unter 20 Abstaenden ist SDNN Zufall, kein Mass
+
+  function hrv(rrMs, opts) {
+    opts = opts || {};
+    if (!rrMs || rrMs.length < HRV_MIN_RR) {
+      return { messbar: false, warum: 'zu wenige Herzschläge für die Variabilität (mindestens ' +
+        (HRV_MIN_RR + 1) + ' Schläge nötig)' };
+    }
+    var i, n = rrMs.length, summe = 0;
+    for (i = 0; i < n; i++) summe += rrMs[i];
+    var mittel = summe / n;
+
+    var abw = 0;
+    for (i = 0; i < n; i++) { var d = rrMs[i] - mittel; abw += d * d; }
+    /* Stichprobenstandardabweichung (n-1): die Abstaende sind eine Stichprobe aus dem
+     * laufenden Rhythmus, nicht die Grundgesamtheit. */
+    var sdnn = Math.sqrt(abw / (n - 1));
+
+    var quad = 0, ueber50 = 0;
+    for (i = 1; i < n; i++) {
+      var u = rrMs[i] - rrMs[i - 1];
+      quad += u * u;
+      if (Math.abs(u) > 50) ueber50++;
+    }
+    var rmssd = Math.sqrt(quad / (n - 1));
+    var pnn50 = (n > 1) ? (ueber50 / (n - 1) * 100) : 0;
+
+    return {
+      messbar: true,
+      schlaege: n + 1,
+      mittelRrMs: Math.round(mittel),
+      minRrMs: Math.round(Math.min.apply(null, rrMs)),
+      maxRrMs: Math.round(Math.max.apply(null, rrMs)),
+      sdnnMs: Math.round(sdnn * 10) / 10,
+      rmssdMs: Math.round(rmssd * 10) / 10,
+      pnn50: Math.round(pnn50 * 10) / 10,
+      /* Ohne diese Kennzeichnung waere die Zahl irrefuehrend: ein einziger vorzeitiger
+       * Schlag hebt SDNN und RMSSD deutlich an. */
+      durchEktopieVerfaelscht: !!opts.ektopie,
+      bewertet: false,
+      warum: 'Für Hund, Katze und die übrigen Arten sind keine belastbaren HRV-Normbereiche ' +
+        'belegt, die hier genannt werden dürften. Die Zahlen werden gemessen, nicht bewertet.',
+    };
+  }
+
+  /* ================================================================================ *
    * 4e) WECHSELVERDACHT: sprach die Erkennung abwechselnd auf P-WELLE und R-ZACKE an?
    *
    * WOHER DIESER FEHLERMODUS BEKANNT IST (Quellen, 08.08.2026):
@@ -1119,6 +1190,9 @@
     var kal = endlich(kurve.skala) && kurve.skala > 0 && /uv|µv|mv/i.test(String(opts.einheit || 'uV'));
     ergebnis.qrsForm = qrsForm(werte, zacken[Math.floor(zacken.length / 2)], hz, kal, kurve.skala, opts.einheit || 'uV');
     ergebnis.form = formVergleich(werte, zacken, hz);
+    /* HRV zuletzt: sie braucht die Formauswertung, um zu wissen, ob Extrasystolen die
+     * Zahlen verfaelschen. */
+    ergebnis.hrv = hrv(rrMs, { ektopie: !!(ergebnis.form && ergebnis.form.messbar && ergebnis.form.fremd > 0) });
     return ergebnis;
   }
 
@@ -1130,7 +1204,7 @@
     qrsBeginn: qrsBeginn, qrsEnde: qrsEnde, findeP: findeP, pAuswertung: pAuswertung, perzentil: perzentil,
     findeT: findeT, tAuswertung: tAuswertung,
     qrsForm: qrsForm, formVergleich: formVergleich, korrelation: korrelation,
-    wechselVerdacht: wechselVerdacht,
+    wechselVerdacht: wechselVerdacht, hrv: hrv, HRV_MIN_RR: HRV_MIN_RR,
     P_ART: P_ART, T_ART: T_ART,
     MIN_SEKUNDEN: MIN_SEKUNDEN, MIN_SCHLAEGE: MIN_SCHLAEGE,
     P_MIN_HZ: P_MIN_HZ, P_MIN_SCHLAEGE: P_MIN_SCHLAEGE, P_ANTEIL: P_ANTEIL,
