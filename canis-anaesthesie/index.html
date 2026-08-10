@@ -5067,8 +5067,17 @@ html[data-theme="light"] .rh-karte.normvar .rh-n{color:#0b6b45}
   .ekg-body{flex-direction:column}
   .ekg-main{min-width:0;width:100%;padding:6px 6px 5px}
   /* Die Messwerte-Spalte wird zur Zeile darunter. Hoehe begrenzt, damit die Kurve oben
-   * sichtbar bleibt - sie ist das, wofuer man das Fenster oeffnet. */
-  .ekg-side{flex:0 0 auto;width:100%;max-height:46vh;border-left:0;border-top:1px solid #1d2a3a;padding:10px 11px}
+   * sichtbar bleibt - sie ist das, wofuer man das Fenster oeffnet.
+   *
+   * 46vh -> 38vh, und das Kurvenfeld bekommt eine MINDESTHOEHE (10.08.2026): auf einem
+   * Telefon im Hochformat stehen die sechs Ableitungen seit heute untereinander (eine
+   * Spalte, sechs Zeilen - anders ist eine Kurve dort nicht zu beurteilen). Sechs Zeilen
+   * brauchen Hoehe; bei 46vh Seitenleiste plus Leiste plus Rhythmusstreifen blieben je
+   * Ableitung rund 30 Punkte, und darin ist eine R-Zacke ein Strich. Das Kurvenfeld darf
+   * jetzt ueber die Sichthoehe hinauswachsen - dann rollt die Seite, statt zu quetschen. */
+  .ekg-side{flex:0 0 auto;width:100%;max-height:38vh;border-left:0;border-top:1px solid #1d2a3a;padding:10px 11px}
+  .ekg-body{overflow-y:auto}
+  .ekg-screen{min-height:330px}
   .ekg-bar{min-width:0;gap:6px;padding:7px 9px}
   .ekg-bar .ekg-title{font-size:13.5px}
   /* nowrap sprengt auf einem schmalen Schirm die Zeile */
@@ -5192,6 +5201,10 @@ html[data-theme="light"] .m3d-cv{background:radial-gradient(ellipse at 50% 42%,#
       <button class="ekg-btn" data-gain="10" title="10 mm/mV – Standard; 1 mm = 0,1 mV">10</button>
       <button class="ekg-btn" data-gain="20" title="20 mm/mV – bei kleinen Ausschlägen (Katze, Niedervoltage)">20</button>
       <button class="ekg-btn" data-gain="40" title="40 mm/mV – für kleine P-Wellen">40</button></span>
+    <span class="ekg-grp"><span class="lbl">Streifen</span>
+      <button class="ekg-btn" data-slen="10" title="10 Sekunden – passt auf eine Seite">10 s</button>
+      <button class="ekg-btn" data-slen="30" title="30 Sekunden – Ausdruck über mehrere Seiten, Zeilen bleiben ganz">30 s</button>
+      <button class="ekg-btn" data-slen="60" title="60 Sekunden – der ganze Puffer; für Rhythmusereignisse, die selten sind">60 s</button></span>
     <span class="ekg-grp"><span class="lbl">Filter</span>
       <button class="ekg-btn" data-filt="musk" title="Muskelfilter (40 Hz) – glättet Zittern/EMG">EMG</button>
       <button class="ekg-btn" data-filt="netz" title="Netzfilter (50 Hz) gegen Störeinstreuung">50Hz</button></span>
@@ -5323,6 +5336,9 @@ function proj(leadAng,axis){return Math.cos((axis-leadAng)*Math.PI/180);}
 
 var M={
   open:false, freeze:false, speed:25, gain:10, musk:false, netz:false,
+  /* Wieviel Sekunden Streifen der Ausdruck traegt. 10 s passen auf eine Seite; darueber
+   * bekommt der Ausdruck Fortsetzungsseiten mit GANZEN Zeilen (siehe buildPDF). */
+  streifenS:10,
   axis:70, beatN:0, phE:0, rrJit:1, acc:0, last:0, raf:null,
   dpr:Math.min(2,window.devicePixelRatio||1),
   buf:null, strip:null, feed:null, lastMeas:0, lastFeedT:0,
@@ -5436,11 +5452,24 @@ function mmPx(){return Math.max(2,Math.round(2.2*M.dpr));}
  * 4 ms Schrittweite — feiner als jede Zahl, die ausgegeben wird.
  * ================================================================================== */
 var EKG_HZ=250;
-/* Wie weit der Puffer zurueckreicht. Die 20 s sind kein runder Wunsch, sondern die groesste
- * Strecke, die eine Ansicht bei 25 mm/s zeigen kann: eine 1400 Bildpunkte breite Zoomflaeche
- * sind bei 3 Punkten je Millimeter rund 466 mm, also 18,6 s. Ein kuerzerer Puffer haette in
- * der Zoomansicht dauerhaft ein graues "kein Signal" stehen lassen. */
-var PUFFER_S=20;
+/* ==================================================================================
+ * WIE WEIT DER PUFFER ZURUECKREICHT — 60 s (erweitert 10.08.2026)
+ *
+ * Zuerst waren es 20 s: die groesste Strecke, die eine Ansicht bei 25 mm/s zeigen kann
+ * (eine 1400 Bildpunkte breite Zoomflaeche sind bei 3 Punkten je Millimeter rund 466 mm,
+ * also 18,6 s). Der Nutzer braucht aber einen LAENGEREN Ausdruck: ein Rhythmusbefund
+ * entscheidet sich oft an einem Ereignis, das in zehn Sekunden nicht vorkommt.
+ * 60 s bei 250 Hz sind 15000 Werte je Bahn - im Browser nichts.
+ *
+ * DIE AUSWERTUNG LAEUFT TROTZDEM AUF 20 s (MESS_S), und der Grund ist Rechenzeit, nicht
+ * Fachlichkeit: grundlinieAbziehen() zieht fuer JEDEN Abtastwert den Median eines
+ * 51-Werte-Fensters ab. Bei 15000 Werten sind das Millionen Vergleiche - alle 400 ms, auf
+ * einem Praxis-PC, waehrend daneben Monitore laufen. Zwanzig Sekunden sind fuer jede
+ * Aussage dieser Datei mehr als genug; die laengste Mindestforderung ist die
+ * 6-Sekunden-Zaehlstrecke beim Hund.
+ * ================================================================================== */
+var PUFFER_S=60;
+var MESS_S=20;
 function pufferLaenge(){ return Math.round(EKG_HZ*PUFFER_S); }
 function hzJetzt(){ return EKG_HZ; }
 /* Der Vorschub ist seit dem 10.08.2026 nicht mehr immer ganzzahlig (12,5 mm/s gibt es am
@@ -5590,12 +5619,37 @@ function eichzackeAufSchirm(ctx,x,center,gain,mp){
   ctx.moveTo(x,center); ctx.lineTo(x,center-amp);
   ctx.lineTo(x+5*mp,center-amp); ctx.lineTo(x+5*mp,center); ctx.stroke();
 }
+/* ==================================================================================
+ * DAS RASTER FOLGT DER BREITE — SONST IST AUF DEM HANDY NICHTS ZU SEHEN (10.08.2026)
+ *
+ * Das 3x2-Feld stammt vom Papier: A4 quer ist 297 mm breit, da passen drei Spalten
+ * nebeneinander. Ein Telefon im Hochformat hat 360 bis 420 CSS-Punkte. Drei Spalten
+ * ergeben dort eine Zelle von rund 125 Punkten - abzueglich Eichzacke und Beschriftung
+ * bleiben gut 80 Punkte Kurve, bei 2 Punkten je Millimeter also 40 mm, und das sind bei
+ * 25 mm/s ganze 1,6 Sekunden. Auf so einem Streifen ist kein Rhythmus zu beurteilen.
+ *
+ * Deshalb entscheidet die BREITE ueber die Aufteilung, nicht das Papier:
+ *   unter 430 Punkten   1 Spalte, 6 Zeilen  - die Kurve bekommt die volle Breite
+ *   unter 760 Punkten   2 Spalten, 3 Zeilen
+ *   darueber            3 Spalten, 2 Zeilen (wie das Blatt)
+ * Der AUSDRUCK bleibt in jedem Fall 3x2 - er liegt auf Papier, nicht auf einem Telefon.
+ *
+ * Gemessen wird in CSS-Punkten, nicht in Geraetepunkten: ein Telefon mit dreifacher
+ * Pixeldichte hat 1125 Geraetepunkte und trotzdem nur einen Daumen breit Platz.
+ * ================================================================================== */
+function rasterAufteilung(breiteCss){
+  if(!(breiteCss>0)) return {cols:3,rows:2};
+  if(breiteCss<430) return {cols:1,rows:6};
+  if(breiteCss<760) return {cols:2,rows:3};
+  return {cols:3,rows:2};
+}
 function drawLeadCanvas(){
   var cv=$('#ekgCanvas'); if(!cv) return; var ctx=cv.getContext('2d');
   var W=cv.width,H=cv.height; if(!W||!H||!M.buf) return;
   var S=(window.VS&&window.VS.skala); if(!S) return;
   drawGrid(ctx,0,0,W,H);
-  var rows=2, colsN=3, cellW=W/colsN, cellH=H/rows, mp=mmPx();
+  var RA=rasterAufteilung(W/M.dpr);
+  var rows=RA.rows, colsN=RA.cols, cellW=W/colsN, cellH=H/rows, mp=mmPx();
   var Z0=S.zellAufteilung(cellW,mp);
   for(var li=0;li<LEADS.length;li++){
     var rr=Math.floor(li/colsN), cc=li%colsN;
@@ -6555,9 +6609,13 @@ function buildPDF(){
    * Das ist der Unterschied, an dem die Skala im 3x2-Feld frueher gescheitert ist: unterhalb
    * einer Zelle der oberen Reihe liegt die Kurve der unteren. Innen bleibt jede Zelle bei
    * sich. Gezeichnet wird VOR der Kurve, damit eine hohe R-Zacke oben liegt. */
-  function sekundenmarken(x,y,w,h,innen){
+  /* offsetSek: was die LINKE Kante dieser Zeile in der Gesamtaufzeichnung bedeutet. Bei einem
+   * mehrzeiligen Streifen laeuft die Zeit ueber die Zeilen weiter — dort waere eine Achse, die
+   * in jeder Zeile wieder bei 0 beginnt, eine Einladung zum Fehlmessen. (Anders als bei den
+   * drei NEBENeinander stehenden Ableitungsspalten: die sind drei unabhaengige Zeitachsen.) */
+  function sekundenmarken(x,y,w,h,innen,offsetSek){
     var S=window.VS&&window.VS.skala; if(!S||!(w>0)) return;
-    var zm=S.zeitMarken(w,1,M.speed);
+    var zm=S.zeitMarken(w,1,M.speed), off=offsetSek||0;
     doc.setDrawColor(120,120,120);
     doc.setFont('helvetica','normal'); doc.setFontSize(innen?5.5:6.5); doc.setTextColor(110,110,110);
     for(var i=0;i<zm.length;i++){
@@ -6565,9 +6623,13 @@ function buildPDF(){
       doc.setLineWidth(t.voll?0.35:0.18);
       if(innen) doc.line(x+t.x, y+h, x+t.x, y+h-(t.voll?2.2:1.1));
       else doc.line(x+t.x, y+h, x+t.x, y+h+(t.voll?1.6:0.8));
-      if(t.voll && t.x>0 && t.x<w-4){
-        if(innen) doc.text(Math.round(t.sek)+' s', x+t.x+0.6, y+h-2.8);
-        else doc.text(Math.round(t.sek)+' s', x+t.x+0.6, y+h+3.4);
+      /* Bei einer Fortsetzungszeile (off > 0) wird AUCH die Marke am linken Rand beschriftet:
+       * dort steht die Sekunde, bei der diese Zeile anfaengt, und genau die braucht man zum
+       * Anschluss an die vorige. Nur bei off = 0 bleibt sie weg - dort waere es die "0 s". */
+      if(t.voll && (t.x>0 || off>0) && t.x<w-4){
+        var txt=Math.round(t.sek+off)+' s';
+        if(innen) doc.text(txt, x+t.x+0.6, y+h-2.8);
+        else doc.text(txt, x+t.x+0.6, y+h+3.4);
       }
     }
   }
@@ -6609,13 +6671,22 @@ function buildPDF(){
    * dann nicht weiterlaufen. Frueher wurden die vorhandenen Werte ueber die volle Bahnbreite
    * verteilt (dxmm = w/(n-1)) - die Kurve war damit stillschweigend gedehnt und der Ausdruck
    * behauptete eine Dauer, die er nicht zeigt. */
-  function kurve(buf,x,y,w,h){
+  /* abIdx: ab welchem Wert des Puffers gezeichnet wird. Ohne Angabe der JUENGSTE Abschnitt
+   * (wie bisher). Mit Angabe zeichnet dieselbe Funktion eine Fortsetzungszeile - so kann ein
+   * langer Streifen ueber mehrere Zeilen und Seiten laufen, ohne dass irgendwo eine zweite
+   * Zeichenroutine entsteht, die anders rechnet. */
+  function kurve(buf,x,y,w,h,abIdx,maxN){
     if(!buf||!buf.length||!(w>0)) return 0;
     var S=window.VS&&window.VS.skala;
-    var A=S?S.kurvenAusschnitt(w,1,M.speed,hz,vorhandeneWerte()):null;
+    var verfuegbar=(abIdx!=null) ? Math.max(0, buf.length-abIdx) : vorhandeneWerte();
+    /* maxN begrenzt auf das GEDRUCKTE Zeitfenster. Ohne diese Grenze zoege die letzte Zeile
+     * eines mehrseitigen Streifens Signal heran, das nach dem gewaehlten Fenster liegt - der
+     * Ausdruck waere dann laenger als angeschrieben. */
+    if(maxN!=null && maxN<verfuegbar) verfuegbar=Math.max(0,maxN);
+    var A=S?S.kurvenAusschnitt(w,1,M.speed,hz,verfuegbar):null;
     if(!A||A.n<2) return 0;
     var n=A.n, dxmm=A.proWert;
-    var von=buf.length-n, mitte=y+h/2, clip=h/2-0.6;
+    var von=(abIdx!=null)?abIdx:(buf.length-n), mitte=y+h/2, clip=h/2-0.6;
     function yAt(i){
       var v=buf[von+i]; if(v==null) return null;
       var dy=v*M.gain; if(dy>clip)dy=clip; if(dy<-clip)dy=-clip;
@@ -6646,6 +6717,19 @@ function buildPDF(){
     doc.line(x,mitte,x+1.5,mitte); doc.line(x+1.5,mitte,x+1.5,mitte-amp);
     doc.line(x+1.5,mitte-amp,x+5,mitte-amp); doc.line(x+5,mitte-amp,x+5,mitte); doc.line(x+5,mitte,x+6.5,mitte);
   }
+  /* ==================================================================================
+   * DAS ZEITFENSTER DES GANZEN AUSDRUCKS (10.08.2026)
+   *
+   * Gedruckt werden die letzten M.streifenS Sekunden. Alles auf diesem Blatt beginnt an
+   * DERSELBEN Stelle: die sechs Ableitungen und die erste Rhythmuszeile. Frueher zeigte der
+   * Streifen den juengsten Abschnitt und die Ableitungen ebenfalls - solange beides gleich
+   * lang war, stimmte das zufaellig. Bei einem 60-s-Ausdruck waere es auseinandergelaufen,
+   * und dann stuenden auf einem Blatt zwei verschiedene Zeitpunkte nebeneinander.
+   * ================================================================================== */
+  var vorhandenN=vorhandeneWerte();
+  var fensterN=Math.min(vorhandenN, Math.round(hz*(M.streifenS||10)));
+  var startIdx=(M.strip?M.strip.length:0)-fensterN;
+  if(startIdx<0) startIdx=0;
   // 6 Ableitungen als 2x3-Feld
   var top=20, feldW=W-2*Mg, feldH=110;
   var spalten=3, reihen=2, zellW=feldW/spalten, zellH=feldH/reihen;
@@ -6670,8 +6754,8 @@ function buildPDF(){
     var zx=Mg+cc*zellW, zy=top+rr*zellH;
     if(ZP.achse) mvmarken(zx+ZP.kurveVon,zy,zellH);
     eichzacke(zx+ZP.eichX,zy,zellH);
-    var bZelle=kurve(M.buf&&M.buf[LEADS[li].id], zx+ZP.kurveVon, zy, ZP.kurveBreite, zellH);
-    sekundenmarken(zx+ZP.kurveVon,zy,bZelle,zellH,true);
+    var bZelle=kurve(M.buf&&M.buf[LEADS[li].id], zx+ZP.kurveVon, zy, ZP.kurveBreite, zellH, startIdx);
+    sekundenmarken(zx+ZP.kurveVon,zy,bZelle,zellH,true,0);
     doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(170,20,50);
     doc.text(LEADS[li].id, zx+0.8, zy+5);
   }
@@ -6695,10 +6779,14 @@ function buildPDF(){
    * geworden ist - deshalb wird sie nach ihr gezeichnet und nimmt deren Rueckgabewert. */
   if(ZS.achse) mvmarken(sMg+ZS.kurveVon,sy,sh);
   eichzacke(sMg+ZS.eichX,sy,sh);
-  var bStreifen=kurve(M.strip, sMg+ZS.kurveVon, sy, ZS.kurveBreite, sh);
-  sekundenmarken(sMg+ZS.kurveVon,sy,bStreifen,sh,false);
+  var bStreifen=kurve(M.strip, sMg+ZS.kurveVon, sy, ZS.kurveBreite, sh, startIdx);
+  sekundenmarken(sMg+ZS.kurveVon,sy,bStreifen,sh,false,0);
   doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(170,20,50);
   doc.text('II · Rhythmus', sMg+0.8, sy+5);
+  /* Wieviel Signal diese erste Zeile aufgenommen hat - daran haengt, wo die Fortsetzung
+   * beginnt. Aus der WIRKLICH gezeichneten Breite gerechnet, nicht aus der Absicht. */
+  var jeZeileS=bStreifen>0 ? (bStreifen/M.speed) : 0;
+  var verbrauchtN=Math.round(jeZeileS*hz);
   // Befundzeile + Haftungshinweis
   var by=sy+sh+6;
   doc.setTextColor(33,41,51); doc.setFont('helvetica','bold'); doc.setFontSize(9);
@@ -6759,6 +6847,76 @@ function buildPDF(){
   }
 
   /* ==================================================================================
+   * FORTSETZUNGSSEITEN FUER EINEN LANGEN STREIFEN (10.08.2026, Nutzerwunsch)
+   *
+   * "Es muss auch bei der Ausdrucken halbe Rhythmus muss nicht in naechste Seite drauf
+   * kommen." Genau daran haengt die ganze Aufteilung: eine Zeile wird NIE ueber eine
+   * Seitengrenze gebrochen. Es passt eine ganze Zahl von Zeilen auf eine Seite, oder es
+   * kommt eine neue Seite - Papier bleibt lieber leer, als dass eine Kurve mitten im
+   * Kammerkomplex abreisst und auf dem naechsten Blatt weitergeht.
+   *
+   * DIE ZEIT LAEUFT UEBER DIE ZEILEN WEITER. Zeile 2 beginnt dort, wo Zeile 1 aufhoert,
+   * und ihre Sekundenachse zaehlt weiter (10 s, 11 s, ...). Wer den Streifen zusammenlegt,
+   * liest eine durchgehende Aufzeichnung. Das ist etwas anderes als die drei NEBENeinander
+   * stehenden Ableitungsspalten auf Seite 1 - die sind drei unabhaengige Zeitachsen und
+   * bekommen deshalb ausdruecklich jede ihre eigene Null.
+   *
+   * MASSE: von 210 mm Blatthoehe gehen oben 22 mm (Kopfband und Luft) und unten 12 mm
+   * (Haftungshinweis, Seitenzahl) ab, es bleiben 176 mm. Eine Zeile ist 38 mm hoch, dazu
+   * 4 mm fuer die Sekundenbeschriftung darunter - 42 mm je Zeile. 176/42 = 4 GANZE Zeilen
+   * je Seite (168 mm, letzte Zeile endet bei 186 mm). Die fuenfte passt nicht mehr, also
+   * kommt sie auf die naechste Seite - nicht zur Haelfte auf diese.
+   * Nachgemessen am erzeugten PDF: Zeilen bei y = 41, 83, 125, 167 mm.
+   * ================================================================================== */
+  var restN=fensterN-verbrauchtN;
+  if(restN>Math.round(hz*0.5) && verbrauchtN>0){
+    var zeilenH=38, zeilenLuft=4, obenF=22, untenF=12;
+    var proSeite=Math.floor((H-obenF-untenF)/(zeilenH+zeilenLuft));
+    if(proSeite<1) proSeite=1;
+    var zIdx=startIdx+verbrauchtN;            // hier geht es weiter
+    var zeitOffset=jeZeileS;                  // und so spaet ist es dann
+    var seiteNr=1;
+    var wieVieleZeilen=Math.ceil(restN/verbrauchtN);
+    var seitenGesamt=1+Math.ceil(wieVieleZeilen/proSeite);
+    while(zIdx < startIdx+fensterN-Math.round(hz*0.5)){
+      doc.addPage(); seiteNr++;
+      doc.setFillColor(18,110,120); doc.rect(0,0,W,14,'F');
+      doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+      doc.text('Rhythmusstreifen II — Fortsetzung', Mg, 6.5);
+      doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      doc.text(kopf.join('  ·  '), Mg, 11.5);
+      doc.text(speedTxt(M.speed)+' mm/s · '+M.gain+' mm/mV', W-Mg, 6.5, {align:'right'});
+      doc.text('die Zeitachse läuft über die Zeilen weiter', W-Mg, 11.5, {align:'right'});
+      for(var zz=0; zz<proSeite; zz++){
+        if(zIdx >= startIdx+fensterN-Math.round(hz*0.5)) break;
+        var zy2=obenF+zz*(zeilenH+zeilenLuft);
+        raster(Mg,zy2,feldW,zeilenH);
+        var ZF=(window.VS&&window.VS.skala)
+          ? window.VS.skala.zellAufteilung(feldW,1)
+          : {achse:false,eichX:1.5,kurveVon:9,kurveBreite:feldW-10};
+        if(ZF.achse) mvmarken(Mg+ZF.kurveVon,zy2,zeilenH);
+        eichzacke(Mg+ZF.eichX,zy2,zeilenH);
+        /* NIE UEBER DAS FENSTER HINAUS: kurve() bekommt nur so viele Werte angeboten, wie
+         * zum gewaehlten Streifen gehoeren - sonst zoege die letzte Zeile Signal heran, das
+         * nach dem gedruckten Zeitfenster liegt. */
+        var restHier=(startIdx+fensterN)-zIdx;
+        var bZ=(restHier>1) ? kurve(M.strip, Mg+ZF.kurveVon, zy2, ZF.kurveBreite, zeilenH, zIdx, restHier) : 0;
+        sekundenmarken(Mg+ZF.kurveVon,zy2,bZ,zeilenH,false,zeitOffset);
+        doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(170,20,50);
+        doc.text('II', Mg+0.8, zy2+4.4);
+        var zsek=bZ/M.speed;
+        zIdx+=Math.round(zsek*hz); zeitOffset+=zsek;
+        if(!(zsek>0.1)) break;                 // kein Fortschritt -> nicht endlos weiter
+      }
+      doc.setFont('helvetica','italic'); doc.setFontSize(7); doc.setTextColor(150,80,80);
+      doc.text('Entscheidungs-/Trainingshilfe — kein zugelassener Patientenmonitor-Ersatz. Der Tierarzt entscheidet und handelt.', Mg, H-6);
+      doc.setTextColor(120,130,140); doc.setFont('helvetica','normal');
+      doc.text('Fortsetzung von Seite 1 · Zeitbasis '+speedTxt(M.speed)+' mm/s · '+M.gain+' mm/mV', W-Mg, H-6, {align:'right'});
+      if(seiteNr>12) break;                    // Notbremse gegen eine Endlosschleife
+    }
+  }
+
+  /* ==================================================================================
    * ZWEITE SEITE: DER BEFUNDBERICHT (10.08.2026)
    *
    * WARUM ES SIE GIBT: Das Kurvenblatt ist ein BILD. Was der Untersucher am Bildschirm an
@@ -6781,7 +6939,7 @@ function buildPDF(){
     doc.setFont('helvetica','normal'); doc.setFontSize(8);
     doc.text(kopf.join('  ·  '), Mg, 11.5);
     doc.text(new Date().toLocaleString(), W-Mg, 6.5, {align:'right'});
-    doc.text('Seite 2 von 2 — Seite 1 trägt die Kurven', W-Mg, 11.5, {align:'right'});
+    doc.text('Die Kurven stehen auf den Seiten davor', W-Mg, 11.5, {align:'right'});
 
     /* --- linke Spalte: die Messwerte mit ihrem Normband --- */
     var spL=Mg, spR=W/2+2, sp2=W-Mg;
@@ -6909,6 +7067,23 @@ function buildPDF(){
     doc.text('Bewertet nach: '+speciesName(bewertungsArt())+(NB&&NB.angepasst&&NB.angepasst.length?' · '+NB.angepasst.join(' · '):''), Mg, H-4);
   }
 
+  /* ==================================================================================
+   * SEITENZAHL AUF JEDE SEITE — ERST GANZ ZUM SCHLUSS (10.08.2026)
+   *
+   * Sie kann nicht beim Zeichnen entstehen: waehrend Seite 1 gebaut wird, weiss niemand,
+   * wieviele Fortsetzungsseiten noch kommen und ob es einen Befundbericht gibt. Frueher
+   * stand deshalb woertlich "Seite 2 von 2" auf dem Bericht - falsch, sobald ein langer
+   * Streifen dazwischenliegt. Ein Stapel Papier ohne richtige Seitenzahl ist in der Akte
+   * ein Problem: man sieht ihm nicht an, ob ein Blatt fehlt.
+   * ================================================================================== */
+  try{
+    var gesamtSeiten=doc.getNumberOfPages();
+    for(var sp=1; sp<=gesamtSeiten; sp++){
+      doc.setPage(sp);
+      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(140,150,160);
+      doc.text('Seite '+sp+' von '+gesamtSeiten, W/2, H-2.5, {align:'center'});
+    }
+  }catch(e){}
   var datei='EKG_'+(f.rhythm||'streifen')+'_'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.pdf';
   _pdfLast={doc:doc,datei:datei,meta:{sp:f.sp,wt:f.wt,rhythm:f.rhythm,name:(f.def&&f.def.name)||f.rhythm,hr:f.hr,speed:M.speed,gain:M.gain,hz:Math.round(hz)}};
   return _pdfLast;
@@ -6948,7 +7123,24 @@ function closePDF(){ var b=$('#ekgPdfView'); if(b){ b.classList.remove('open'); 
  * Zweig, ohne Regelaenderung und ohne Kontingentrisiko. Weniger Code, der mehr leistet. */
 
 /* ---- Drucken ---- */
-function doPrint(){
+/* ==================================================================================
+ * DRUCKEN IST JETZT DASSELBE WIE PDF (10.08.2026, Nutzerwunsch)
+ *
+ * "Bei der Ausdruck muss auch genau so wie bei PDF drauf kommen." Bisher waren es ZWEI
+ * Wege: das PDF wurde vektoriell gezeichnet, der Direktdruck als Bild auf einer Leinwand.
+ * Zwei Zeichenwege fuer dasselbe Blatt laufen frueher oder spaeter auseinander - und genau
+ * das war am 10.08.2026 messbar der Fall (das Blatt lief mit 165 statt 25 mm/s). Ein Bild
+ * hat ausserdem keine Seiten: ein 60-Sekunden-Streifen liesse sich damit gar nicht drucken.
+ *
+ * Gedruckt wird deshalb das ERZEUGTE PDF, ueber denselben Weg, den der Knopf in der
+ * PDF-Ansicht schon immer genommen hat. Das Blatt im Drucker ist damit Zeichen fuer Zeichen
+ * dasselbe wie die Datei in der Akte.
+ *
+ * DER LEINWAND-WEG BLEIBT ALS RUECKFALL. Kann der Browser das PDF nicht drucken (kein
+ * eingebauter Betrachter), waere sonst gar kein Ausdruck moeglich. Dann kommt das Bild -
+ * massstabsgetreu wie das PDF, aber ohne Fortsetzungsseiten; das steht dann auch dabei.
+ * ================================================================================== */
+function druckeLeinwand(){
   var cv=renderSheet();
   var sheet=$('#ekgPrintSheet'); sheet.innerHTML='';
   var img=new Image(); img.src=cv.toDataURL('image/png'); sheet.appendChild(img);
@@ -6957,6 +7149,21 @@ function doPrint(){
   window.addEventListener('afterprint',clean);
   // dem Bild Zeit zum Dekodieren geben
   setTimeout(function(){ window.print(); setTimeout(clean,1500); },120);
+}
+function doPrint(){
+  var p=buildPDF();
+  if(!p){ druckeLeinwand(); return; }
+  var box=$('#ekgPdfView'), fr=$('#pdfFrame');
+  var url=null; try{ url=p.doc.output('bloburl'); }catch(e){ url=null; }
+  if(!url){ druckeLeinwand(); return; }
+  fr.src=url; box.classList.add('open');
+  var sn=$('#pdfScaleNote'); if(sn) sn.textContent=speedTxt(M.speed)+' mm/s · '+M.gain+' mm/mV (1 mV = '+M.gain+' mm auf dem Papier)';
+  /* Dem eingebauten PDF-Betrachter Zeit zum Aufbauen geben - vorher hat contentWindow noch
+   * kein Dokument, und print() wuerde ein leeres Blatt schicken. */
+  setTimeout(function(){
+    try{ fr.contentWindow.focus(); fr.contentWindow.print(); }
+    catch(e){ flash('Der Browser kann das PDF nicht direkt drucken — bitte in der Ansicht auf „Drucken" tippen.'); }
+  }, 700);
 }
 
 /* ---- Archiv (localStorage) ---- */
@@ -9540,7 +9747,11 @@ function istAusgeklammert(i){
  * Oeffnen wurden damit bis zu 20 s Nichts als Signal mitgemessen. */
 function streifenFuerMessung(){
   if(!M.strip) return [];
-  var v=vorhandeneWerte(); if(v<2) return [];
+  /* HOECHSTENS MESS_S SEKUNDEN. Der Puffer haelt seit dem 10.08.2026 60 s fuer den langen
+   * Ausdruck; die Auswertung braucht sie nicht und wuerde dafuer viermal so lange rechnen
+   * (siehe Begruendung bei MESS_S). Gemessen wird auf dem JUENGSTEN Abschnitt - das ist der,
+   * den der Untersucher gerade vor sich hat. */
+  var v=Math.min(vorhandeneWerte(), Math.round(EKG_HZ*MESS_S)); if(v<2) return [];
   var off=M.strip.length-v, out=M.strip.slice(off);
   if(Z.aus.length){
     /* Z.aus zaehlt in Indizes von M.strip — beim Ausschneiden mitverschieben, sonst wuerde
@@ -9798,8 +10009,12 @@ function leadUnterPunkt(cv,ev){
   var r=cv.getBoundingClientRect();
   var x=(ev.clientX-r.left)/r.width, y=(ev.clientY-r.top)/r.height;
   if(x<0||x>1||y<0||y>1) return null;
-  var sp=Math.min(2,Math.floor(x*3)), re=Math.min(1,Math.floor(y*2));
-  var idx=re*3+sp;
+  /* DIESELBE Aufteilung wie beim Zeichnen. Vorher standen die 3 und die 2 hier fest -
+   * seit das Raster der Breite folgt (Handy), haette ein Tippen auf dem Telefon die
+   * falsche Ableitung geoeffnet: getroffen wird, was man sieht. */
+  var RA=rasterAufteilung(r.width);
+  var sp=Math.min(RA.cols-1,Math.floor(x*RA.cols)), re=Math.min(RA.rows-1,Math.floor(y*RA.rows));
+  var idx=re*RA.cols+sp;
   return LEADS[idx]?LEADS[idx].id:null;
 }
 
@@ -9813,6 +10028,7 @@ function syncBtns(){
   var ov=$('#ekgOverlay'); if(!ov) return;
   ov.querySelectorAll('[data-speed]').forEach(function(b){ b.classList.toggle('on', +b.getAttribute('data-speed')===M.speed); });
   ov.querySelectorAll('[data-gain]').forEach(function(b){ b.classList.toggle('on', +b.getAttribute('data-gain')===M.gain); });
+  ov.querySelectorAll('[data-slen]').forEach(function(b){ b.classList.toggle('on', +b.getAttribute('data-slen')===M.streifenS); });
   ov.querySelector('[data-filt="musk"]').classList.toggle('on',M.musk);
   ov.querySelector('[data-filt="netz"]').classList.toggle('on',M.netz);
   var fb=$('#ekgFreeze'); if(fb){ fb.classList.toggle('on',M.freeze); fb.innerHTML=M.freeze?'▶️ Weiter':'⏸️ Einfrieren'; }
@@ -9869,6 +10085,12 @@ function wire(){
   var ov=$('#ekgOverlay'); if(!ov) return;
   ov.querySelectorAll('[data-speed]').forEach(function(b){ b.onclick=function(){ setSpeed(+b.getAttribute('data-speed')); }; });
   ov.querySelectorAll('[data-gain]').forEach(function(b){ b.onclick=function(){ setGain(+b.getAttribute('data-gain')); }; });
+  ov.querySelectorAll('[data-slen]').forEach(function(b){ b.onclick=function(){
+    M.streifenS=+b.getAttribute('data-slen'); syncBtns();
+    var s=Math.round(vorhandeneWerte()/hzJetzt());
+    flash(M.streifenS<=10 ? 'Ausdruck: '+M.streifenS+' s auf einer Seite'
+      : 'Ausdruck: '+M.streifenS+' s über mehrere Seiten'+(s<M.streifenS?' — bisher '+s+' s aufgezeichnet':''));
+  }; });
   ov.querySelector('[data-filt="musk"]').onclick=function(){ M.musk=!M.musk; syncBtns(); };
   ov.querySelector('[data-filt="netz"]').onclick=function(){ M.netz=!M.netz; syncBtns(); };
   $('#ekgFreeze').onclick=function(){ M.freeze=!M.freeze; syncBtns(); };
