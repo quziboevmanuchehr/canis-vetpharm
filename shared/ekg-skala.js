@@ -262,6 +262,67 @@
     return { n: n, breite: Math.min(breite, (n - 1) * proWert), proWert: proWert };
   }
 
+  /* Dasselbe fuer das GROSSE Kaestchen (5 mm). Es ist die Einheit, in der am Streifen
+   * wirklich gezaehlt wird - "vier grosse Kaestchen" sagt man, nicht "zwanzig kleine". */
+  function rasterText(speed, gain, kal) {
+    var k = kaestchen(speed, gain);
+    if (!k) return '';
+    if (kal === false) {
+      return '1 mm = ' + k.ms + ' ms   ·   großes Kästchen (5 mm) = ' + (k.ms * 5) +
+        ' ms   ·   Höhe nicht kalibriert';
+    }
+    return '1 mm = ' + k.ms + ' ms · ' + k.mv + ' mV   ·   großes Kästchen (5 mm) = ' +
+      (k.ms * 5) + ' ms · ' + (Math.round(k.mv * 5 * 1000) / 1000) + ' mV';
+  }
+
+  /* --------------------------------------------------------------------------------------
+   * AUFTEILUNG EINER ABLEITUNGSZELLE:  [Beschriftung] [Eichzacke] [Kurve]
+   *
+   * WARUM ES DIESE FUNKTION GIBT (Nutzerbefund 10.08.2026, mit dem Stift auf dem Ausdruck
+   * angezeichnet): Das 3x2-Feld der sechs Extremitaetenableitungen trug bis dahin NUR das
+   * blanke Millimeterraster - keine Zeitachse, keine Amplitudenachse. Gemessen werden konnte
+   * deshalb nur am Rhythmusstreifen und in der Einzelansicht. Wer am Ausdruck eine QRS-Dauer
+   * in aVF abnehmen wollte, musste Kaestchen zaehlen und dabei im Kopf behalten, wieviel ein
+   * Kaestchen bei diesem Vorschub traegt.
+   *
+   * Der frueher hier notierte Einwand bleibt richtig und wird eingehalten: eine DURCHGEHENDE
+   * Skala unter dem ganzen Block waere falsch, weil die drei Spalten drei UNABHAENGIGE
+   * Zeitachsen sind. Deshalb bekommt jede Zelle ihre EIGENE, bei null beginnende Achse - und
+   * zwar innerhalb ihrer eigenen Flaeche, damit keine Beschriftung in die Nachbarzelle faellt.
+   *
+   * Alle drei Zeichenwege (Bildschirm, PDF, Direktdruck) holen die Aufteilung hier, damit sie
+   * nicht auseinanderlaufen koennen. Einheitenfrei wie der Rest der Datei: "pmm" ist, wieviel
+   * eine Zeichen-Einheit je Millimeter zaehlt.
+   *
+   * REIHENFOLGE VON LINKS:  Eichzacke (1 bis 6 mm) | Beschriftung | Kurve (ab 14 mm).
+   * Die Eichzacke steht GANZ links und nicht zwischen Beschriftung und Kurve. Zuerst war es
+   * umgekehrt, und dann stiess die laengste Amplitudenbeschriftung ("-0.5" misst bei 6-pt-
+   * Schrift 4,2 mm) mitten in den Eichzacken. Jetzt endet die Beschriftung 2,2 mm vor der
+   * Kurve, beginnt also fruehestens bei 7,6 mm - 1,6 mm hinter dem Eichzacken.
+   *   5 mm Eichzacke   - so breit wird der 1-mV-Impuls gezeichnet (Papierueblich).
+   *   1 mm Rand rechts - sonst laeuft die letzte Kurvenspitze auf die Zelltrennlinie.
+   *
+   * ZU SCHMALE ZELLEN BEKOMMEN KEINE AMPLITUDENACHSE (Rueckgabe achse:false). Auf einem
+   * schmalen Fenster gingen sonst 14 von 40 mm Zellbreite fuer eine Achse drauf, die dort
+   * ohnehin niemand ausmisst - und der Streifen zeigte weniger Signal als er koennte. Die
+   * Grenze ist "die Kurve muss mehr als die Haelfte der Zelle behalten".
+   * ------------------------------------------------------------------------------------ */
+  function zellAufteilung(breite, pmm, opts) {
+    var leer = { achse: false, achseX: 0, eichX: 0, kurveVon: 0, kurveBreite: 0 };
+    if (!endlich(breite) || !endlich(pmm) || breite <= 0 || pmm <= 0) return leer;
+    opts = opts || {};
+    var mitAchse = opts.achse !== false;
+    var eichX = 1 * pmm, randRechts = 1 * pmm;
+    var vonMitAchse = 14 * pmm, vonOhne = 7 * pmm;
+    if (mitAchse && (breite - vonMitAchse - randRechts) > breite * 0.5) {
+      return { achse: true, achseX: vonMitAchse, eichX: eichX,
+        kurveVon: vonMitAchse, kurveBreite: breite - vonMitAchse - randRechts };
+    }
+    if (breite - vonOhne - randRechts <= 0) return leer;
+    return { achse: false, achseX: vonOhne, eichX: eichX,
+      kurveVon: vonOhne, kurveBreite: breite - vonOhne - randRechts };
+  }
+
   /* Umrechnung, die Skala und Kurve GEMEINSAM benutzen. Steht hier, damit keine zweite
    * Stelle sie noch einmal aufschreibt: eine Skala, die neben der Kurve gerechnet wird
    * statt aus derselben Formel, waere schlimmer als gar keine. */
@@ -276,6 +337,8 @@
     mmSchritt: mmSchritt,
     kaestchen: kaestchen,
     kaestchenText: kaestchenText,
+    rasterText: rasterText,
+    zellAufteilung: zellAufteilung,
     kurvenAusschnitt: kurvenAusschnitt,
     xVonSekunde: xVonSekunde,
     yVonMv: yVonMv,

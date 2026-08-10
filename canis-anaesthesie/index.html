@@ -1081,6 +1081,10 @@ html[data-theme="light"] .assess-tr{color:#5a3c00;background:rgba(255,180,60,.16
 <!-- Wissensbasis: 203 belegte Befundregeln aus der Fachrecherche (Nachschlagewerk +
      Regelgrundlage). Reine Daten, keine Diagnosemaschine. -->
 <script src="../shared/ekg-befunde.js?v=1"></script>
+<!-- Nachschlagewerk aus den Fachbuechern des Nutzers (window.VS.literatur): ausgewertete
+     Einzelstellen mit Buch und Seite, durchsuchbar. Erzeugt von tools/ekg-literatur-bauen.js,
+     Quelldaten in docs/EKG-LITERATUR-2026-08.json. Loest nichts aus - reines Nachschlagen. -->
+<script src="../shared/ekg-literatur.js?v=1"></script>
 <!-- Beschriftete Achsen (window.VS.skala). Einheitenfrei, damit Bildschirm (Pixel/mm) und
      PDF (Punkte/mm) GENAU dieselben Marken bekommen. -->
 <script src="../shared/ekg-skala.js?v=1"></script>
@@ -5179,12 +5183,15 @@ html[data-theme="light"] .m3d-cv{background:radial-gradient(ellipse at 50% 42%,#
     <span class="ekg-pat" id="ekgPat">—</span>
     <span class="ekg-spacer"></span>
     <span class="ekg-grp"><span class="lbl">mm/s</span>
-      <button class="ekg-btn" data-speed="25">25</button>
-      <button class="ekg-btn" data-speed="50">50</button></span>
+      <button class="ekg-btn" data-speed="12.5" title="12,5 mm/s – langer Rhythmusüberblick; 1 mm = 80 ms">12,5</button>
+      <button class="ekg-btn" data-speed="25" title="25 mm/s – Standard beim Hund; 1 mm = 40 ms">25</button>
+      <button class="ekg-btn" data-speed="50" title="50 mm/s – Standard bei der Katze und für Zeitmessungen; 1 mm = 20 ms">50</button>
+      <button class="ekg-btn" data-speed="100" title="100 mm/s – feinste Zeitauflösung; 1 mm = 10 ms">100</button></span>
     <span class="ekg-grp"><span class="lbl">mm/mV</span>
-      <button class="ekg-btn" data-gain="5">5</button>
-      <button class="ekg-btn" data-gain="10">10</button>
-      <button class="ekg-btn" data-gain="20">20</button></span>
+      <button class="ekg-btn" data-gain="5" title="5 mm/mV – bei sehr hohen Ausschlägen">5</button>
+      <button class="ekg-btn" data-gain="10" title="10 mm/mV – Standard; 1 mm = 0,1 mV">10</button>
+      <button class="ekg-btn" data-gain="20" title="20 mm/mV – bei kleinen Ausschlägen (Katze, Niedervoltage)">20</button>
+      <button class="ekg-btn" data-gain="40" title="40 mm/mV – für kleine P-Wellen">40</button></span>
     <span class="ekg-grp"><span class="lbl">Filter</span>
       <button class="ekg-btn" data-filt="musk" title="Muskelfilter (40 Hz) – glättet Zittern/EMG">EMG</button>
       <button class="ekg-btn" data-filt="netz" title="Netzfilter (50 Hz) gegen Störeinstreuung">50Hz</button></span>
@@ -5231,6 +5238,7 @@ html[data-theme="light"] .m3d-cv{background:radial-gradient(ellipse at 50% 42%,#
       <span class="ekg-grp" id="zLeadBtns"></span>
       <span class="ekg-spacer"></span>
       <span class="ekg-grp"><span class="lbl">mm/s</span>
+        <button class="ekg-btn" data-zspeed="12.5">12,5</button>
         <button class="ekg-btn" data-zspeed="25">25</button>
         <button class="ekg-btn" data-zspeed="50">50</button>
         <button class="ekg-btn" data-zspeed="100">100</button></span>
@@ -5404,11 +5412,47 @@ function currentFeed(){
 
 /* ---- Zeichnen ---- */
 function mmPx(){return Math.max(2,Math.round(2.2*M.dpr));}
-/* Abtastrate des GEZEIGTEN Streifens. advance() setzt M.hz beim Zeichnen; war das Bild von
- * Anfang an angehalten, gaebe es sie nicht — und eine 0 an eine Auswertung oder an ein
- * KI-Modell zu uebergeben ist schlimmer als gar nichts (gemessen 07.08.2026: hz kam als 0
- * im KI-Vertrag an). Deshalb hier EINE Stelle mit dem rechnerisch richtigen Rueckfall. */
-function hzJetzt(){ return (M.hz && M.hz>0) ? M.hz : (mmPx()*M.speed); }
+
+/* ==================================================================================
+ * ABTASTRATE DES PUFFERS — FEST, UNABHAENGIG VON DER PAPIERGESCHWINDIGKEIT (10.08.2026)
+ *
+ * WAS WAR, im laufenden Browser nachgemessen: der Puffer wurde mit mmPx()*M.speed befuellt,
+ * also je nach Bildschirm mit 50 bis 100 Hz. Daraus folgten drei Fehler auf einmal:
+ *
+ *   1. SCHRITTWEITE. Bei 75 Hz ist ein Abtastschritt 13,3 ms. Eine Katzen-QRS-Dauer von
+ *      40 ms wird damit auf drei Stufen gerundet — jede Zeitangabe trug einen Fehler von
+ *      einem Drittel. Diese Datei sagte das an einer Stelle sogar selbst ("Wer bei 75 Hz
+ *      eine QRS-Dauer abnimmt, hat 13 ms Schrittweite"), zog daraus aber keine Folge.
+ *   2. DIE NETZERKENNUNG WAR STILL TOT. netzStoerung() verlangt hz >= 100 (Nyquist fuer
+ *      50 Hz) und gibt darunter null zurueck. Bei 25 mm/s kam der Puffer je nach Geraet auf
+ *      50 oder 75 Hz — die Regel "Netzeinstreuung (50 Hz)" konnte gar nicht ausloesen, ohne
+ *      dass irgendetwas darauf hindeutete.
+ *   3. UMSCHALTEN VERBOG DIE ZEIT. Wer waehrend der Aufzeichnung von 25 auf 50 mm/s stellte,
+ *      aenderte damit die Abtastrate. Die aelteren Werte im Puffer stammten aus der alten
+ *      Rate und wurden mit der neuen gezeichnet und gemessen.
+ *
+ * Die Papiergeschwindigkeit ist eine Einstellung der DARSTELLUNG. Sie darf die Aufzeichnung
+ * nicht anfassen. 250 Hz liegt bei der Rate des angeschlossenen Geraets (256 Hz) und ergibt
+ * 4 ms Schrittweite — feiner als jede Zahl, die ausgegeben wird.
+ * ================================================================================== */
+var EKG_HZ=250;
+/* Wie weit der Puffer zurueckreicht. Die 20 s sind kein runder Wunsch, sondern die groesste
+ * Strecke, die eine Ansicht bei 25 mm/s zeigen kann: eine 1400 Bildpunkte breite Zoomflaeche
+ * sind bei 3 Punkten je Millimeter rund 466 mm, also 18,6 s. Ein kuerzerer Puffer haette in
+ * der Zoomansicht dauerhaft ein graues "kein Signal" stehen lassen. */
+var PUFFER_S=20;
+function pufferLaenge(){ return Math.round(EKG_HZ*PUFFER_S); }
+function hzJetzt(){ return EKG_HZ; }
+/* Der Vorschub ist seit dem 10.08.2026 nicht mehr immer ganzzahlig (12,5 mm/s gibt es am
+ * Geraet und ist der uebliche Wert fuer den langen Rhythmusueberblick). In deutschen Texten
+ * gehoert davor ein Komma, nicht der englische Punkt - auf einem Blatt, das in die Akte
+ * wandert, liest sich "12.5" sonst wie eine Tausendertrennung. */
+function speedTxt(v){ return String(v).replace('.',','); }
+/* Wieviel des Puffers ist WIRKLICH aufgezeichnet? Direkt nach dem Oeffnen ist er leer.
+ * Frueher stand dort eine Reihe Nullen — also eine flache Linie, die die Auswertung als
+ * Signal las (und im Grenzfall "bei flacher Linie an Asystolie denken" meldete). Gezeichnet
+ * und gemessen wird deshalb nur der Teil, der schon Werte hat. */
+function vorhandeneWerte(){ return Math.max(0,Math.min(M.gefuellt||0, pufferLaenge())); }
 function sizeCanvas(cv){
   var r=cv.getBoundingClientRect();
   var w=Math.max(2,Math.floor(r.width*M.dpr)), h=Math.max(2,Math.floor(r.height*M.dpr));
@@ -5417,12 +5461,17 @@ function sizeCanvas(cv){
 }
 function ensureBuffers(){
   var cv=$('#ekgCanvas'), sc=$('#ekgStripCv'); if(!cv||!sc) return;
-  var rz=sizeCanvas(cv), rz2=sizeCanvas(sc);
-  var cols=Math.max(60,cv.width), scols=Math.max(60,sc.width);
-  if(!M.buf||M.buf.__cols!==cols){
-    M.buf={__cols:cols}; for(var i=0;i<LEADS.length;i++) M.buf[LEADS[i].id]=new Array(cols).fill(0);
+  sizeCanvas(cv); sizeCanvas(sc);
+  /* DIE PUFFERLAENGE HAENGT NICHT MEHR AN DER LEINWANDBREITE. Vorher wurde bei jeder
+   * Fenstergroessenaenderung der ganze aufgezeichnete Streifen verworfen — mitten in einer
+   * laufenden Aufzeichnung, ohne Hinweis. */
+  var n=pufferLaenge(), i, j;
+  if(!M.buf||M.buf.__n!==n){
+    M.buf={__n:n};
+    for(i=0;i<LEADS.length;i++){ var a=new Array(n); for(j=0;j<n;j++) a[j]=null; M.buf[LEADS[i].id]=a; }
+    M.gefuellt=0;
   }
-  if(!M.strip||M.strip.length!==scols){ M.strip=new Array(scols).fill(0); }
+  if(!M.strip||M.strip.length!==n){ M.strip=new Array(n); for(j=0;j<n;j++) M.strip[j]=null; M.gefuellt=0; }
 }
 function drawGrid(ctx,x,y,w,h){
   var mp=mmPx(), i;
@@ -5441,82 +5490,177 @@ function drawGrid(ctx,x,y,w,h){
 }
 /* Ein Signalwert -> y in Pixeln innerhalb einer Bahn (Verstärkung in mm/mV). */
 function yOf(mv,center,gain){ return center - mv*gain*mmPx()/M.dpr*M.dpr; }
-function drawTrace(ctx,buf,cx,cyCenter,laneH,gain,col){
-  var W=buf.length, mp=mmPx();
+
+/* ==================================================================================
+ * KURVE ZEICHNEN — MASSSTABSGETREU, EINE EINZIGE STELLE (10.08.2026)
+ *
+ * WAS WAR, im laufenden Browser nachgemessen (nicht ueberlegt):
+ *   6-Kanal-Bild        25 mm/s eingestellt, 80,5 mm/s gezeichnet  (3,22-fach gestaucht)
+ *   Direktdruck 6 Kanal 25 mm/s eingestellt, 165  mm/s gezeichnet  (6,61-fach)
+ *   Direktdruck Rhythmus25 mm/s eingestellt, 49,6 mm/s gezeichnet  (1,98-fach)
+ *   PDF                 richtig — es benutzt als einziges VS.skala.kurvenAusschnitt()
+ *
+ * Ursache ueberall dieselbe: die vorhandenen Abtastwerte wurden ueber die GANZE Flaeche
+ * verteilt (dx = breite/(n-1)), statt jedem Wert die Breite zu geben, die ihm beim
+ * eingestellten Vorschub zusteht. Der Puffer war so lang wie die Uebersichts-Leinwand, die
+ * Zelle nur ein Drittel davon breit — also wurde durch drei geteilt.
+ *
+ * Das ist kein Schoenheitsfehler: der Bildschirm ist die Vorlage fuer den Zeit-Messzirkel
+ * und fuer die Frage "sieht das regelmaessig aus?". Bei 80 statt 25 mm/s wirkt jeder
+ * Rhythmus schneller und jede Pause kuerzer, und eine an der Uebersicht abgeschaetzte
+ * QRS-Dauer ist um den Faktor drei zu klein.
+ *
+ * Ab jetzt holen ALLE Zeichenwege ihren Ausschnitt aus derselben Funktion. spurZeichnen()
+ * gibt zurueck, wieviel Flaeche wirklich Signal traegt — der Rest wird als "kein Signal"
+ * gekennzeichnet und nicht stillschweigend mit Kurve gefuellt.
+ * ================================================================================== */
+function spurZeichnen(ctx,buf,x,y,breite,hoehe,speed,gain,col,mp){
+  var S=(window.VS&&window.VS.skala); if(!S||!buf) return 0;
+  var A=S.kurvenAusschnitt(breite,mp,speed,hzJetzt(),vorhandeneWerte());
+  if(!A||A.n<2) return 0;
+  var n=A.n, dx=A.proWert, von=buf.length-n;
+  var mitte=y+hoehe/2, clip=hoehe*0.46;
   ctx.strokeStyle=col; ctx.lineWidth=Math.max(1.1,1.4*M.dpr); ctx.beginPath();
-  var clip=laneH*0.46;
-  for(var i=0;i<W;i++){
-    var x=i*(cx/(W-1));
-    var dy=buf[i]*gain*mp; if(dy>clip)dy=clip; if(dy<-clip)dy=-clip;
-    var y=cyCenter-dy;
-    if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  var offen=false;
+  for(var i=0;i<n;i++){
+    var v=buf[von+i];
+    /* Eine Luecke wird NICHT ueberbrueckt. Eine durchgezogene Linie ueber eine Sendepause
+     * behauptet ein Signal, das es nicht gab — und genau daran misst hinterher jemand. */
+    if(v==null){ offen=false; continue; }
+    var dy=v*gain*mp; if(dy>clip)dy=clip; if(dy<-clip)dy=-clip;
+    var px=x+i*dx, py=mitte-dy;
+    if(!offen){ ctx.moveTo(px,py); offen=true; } else ctx.lineTo(px,py);
   }
   ctx.stroke();
+  return A.breite;
+}
+/* Der noch nicht aufgezeichnete Teil einer Bahn. Er wird benannt, nicht gefuellt. */
+function keinSignalFeld(ctx,x,y,breite,hoehe){
+  if(breite<=6*M.dpr) return;                 // ein paar Punkte Rest sind ein Abtastwert, kein Loch
+  ctx.save();
+  ctx.fillStyle='rgba(7,11,17,.55)'; ctx.fillRect(x,y,breite,hoehe);
+  ctx.strokeStyle='rgba(127,166,200,.30)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x,y+hoehe); ctx.stroke();
+  if(breite>60*M.dpr){
+    ctx.fillStyle='rgba(127,166,200,.7)'; ctx.font=(10*M.dpr)+'px Consolas,monospace';
+    ctx.fillText('kein Signal', x+6*M.dpr, y+14*M.dpr);
+  }
+  ctx.restore();
+}
+/* Zeit- und Amplitudenachse EINER Bahn. Die Zeitachse beginnt dort, wo die Kurve beginnt —
+ * jede Zelle zaehlt ihre eigene Zeit ab null (die drei Spalten sind drei unabhaengige
+ * Zeitachsen, eine durchgehende Achse waere eine Zeitbehauptung ueber sie hinweg). */
+function bahnSkala(ctx,x,y,breite,hoehe,speed,gain,mp,klein){
+  var S=(window.VS&&window.VS.skala); if(!S||breite<=0) return;
+  var i, sf=(klein?8.5:10)*M.dpr;
+  ctx.save(); ctx.font=sf+'px Consolas,monospace'; ctx.textBaseline='alphabetic';
+  var zm=S.zeitMarken(breite,mp,speed);
+  ctx.strokeStyle='rgba(0,216,255,.45)'; ctx.fillStyle='rgba(159,196,220,.85)'; ctx.lineWidth=1;
+  for(i=0;i<zm.length;i++){
+    var t=zm[i];
+    ctx.beginPath(); ctx.moveTo(x+t.x,y+hoehe); ctx.lineTo(x+t.x,y+hoehe-(t.voll?8:4)*M.dpr); ctx.stroke();
+    if(t.voll && t.x>1 && t.x<breite-16*M.dpr) ctx.fillText(Math.round(t.sek)+' s', x+t.x+2*M.dpr, y+hoehe-10*M.dpr);
+  }
+  /* Amplitude: in Millivolt nur bei bekannter Verstaerkung, sonst in Millimetern Ausschlag
+   * — dieselbe Regel wie im Messzirkel und in der PDF-Fusszeile. */
+  var rand={oben:(klein?14:12)*M.dpr,unten:(klein?16:14)*M.dpr,minAbstand:(sf+4)};
+  ctx.strokeStyle='rgba(255,159,69,.40)'; ctx.fillStyle='rgba(255,190,140,.85)';
+  var am=M.kal?S.mvMarken(hoehe,mp,gain,rand):S.mmMarken(hoehe,mp,rand);
+  /* Marken und Beschriftung stehen LINKS der Kurve, in der dafuer vorgesehenen Spalte
+   * (VS.skala.zellAufteilung). Sie in die Kurvenflaeche zu zeichnen hiesse, den Streifen
+   * genau dort zu verdecken, wo der erste Schlag beginnt. */
+  for(i=0;i<am.length;i++){
+    var a=am[i], wert=M.kal?a.mv:a.mm, txt=(wert>0?'+':'')+wert;
+    ctx.beginPath(); ctx.moveTo(x-1.6*mp,y+a.y); ctx.lineTo(x,y+a.y); ctx.stroke();
+    var br=ctx.measureText(txt).width;
+    ctx.fillText(txt, x-2.2*mp-br, y+a.y+3*M.dpr);
+  }
+  if(am.length){
+    ctx.font=(sf*0.85)+'px Consolas,monospace';
+    var eh=M.kal?'mV':'mm';
+    ctx.fillText(eh, x-2.2*mp-ctx.measureText(eh).width, y+10*M.dpr);
+  }
+  ctx.strokeStyle='rgba(255,255,255,.24)'; ctx.lineWidth=1.1*M.dpr;
+  ctx.beginPath(); ctx.moveTo(x,y+hoehe/2); ctx.lineTo(x+breite,y+hoehe/2); ctx.stroke();
+  ctx.restore();
+}
+function eichzackeAufSchirm(ctx,x,center,gain,mp){
+  var amp=1*gain*mp;
+  ctx.strokeStyle='rgba(255,255,255,.55)'; ctx.lineWidth=1.2*M.dpr; ctx.beginPath();
+  ctx.moveTo(x,center); ctx.lineTo(x,center-amp);
+  ctx.lineTo(x+5*mp,center-amp); ctx.lineTo(x+5*mp,center); ctx.stroke();
 }
 function drawLeadCanvas(){
   var cv=$('#ekgCanvas'); if(!cv) return; var ctx=cv.getContext('2d');
-  var W=cv.width,H=cv.height; if(!W||!H) return;
+  var W=cv.width,H=cv.height; if(!W||!H||!M.buf) return;
+  var S=(window.VS&&window.VS.skala); if(!S) return;
   drawGrid(ctx,0,0,W,H);
   var rows=2, colsN=3, cellW=W/colsN, cellH=H/rows, mp=mmPx();
+  var Z0=S.zellAufteilung(cellW,mp);
   for(var li=0;li<LEADS.length;li++){
     var rr=Math.floor(li/colsN), cc=li%colsN;
     var x0=cc*cellW, y0=rr*cellH, center=y0+cellH*0.5;
     var buf=M.buf[LEADS[li].id];
-    // Kalibrierimpuls 1 mV am linken Rand
-    ctx.strokeStyle='rgba(255,255,255,.5)'; ctx.lineWidth=1.2*M.dpr; ctx.beginPath();
-    var calH=1*M.gain*mp, cx0=x0+6*M.dpr;
-    ctx.moveTo(cx0,center); ctx.lineTo(cx0,center-calH); ctx.lineTo(cx0+8*M.dpr,center-calH); ctx.lineTo(cx0+8*M.dpr,center); ctx.stroke();
-    // Kurve (in eigener Zelle, links um den Kalibrierimpuls versetzt)
     ctx.save(); ctx.beginPath(); ctx.rect(x0,y0,cellW,cellH); ctx.clip();
-    ctx.strokeStyle=LEADS[li].col; ctx.lineWidth=Math.max(1.1,1.4*M.dpr); ctx.beginPath();
-    var innerX0=x0+18*M.dpr, innerW=cellW-22*M.dpr, clip=cellH*0.44, N=buf.length;
-    for(var i=0;i<N;i++){
-      var x=innerX0+i*(innerW/(N-1));
-      var dy=buf[i]*M.gain*mp; if(dy>clip)dy=clip; if(dy<-clip)dy=-clip;
-      var y=center-dy; if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    /* Skala VOR der Kurve: so liegt die Kurve oben und eine Beschriftung, die eine hohe
+     * R-Zacke kreuzt, verdeckt sie nicht. */
+    if(Z0.kurveBreite>0){
+      if(Z0.achse) bahnSkala(ctx,x0+Z0.kurveVon,y0,Z0.kurveBreite,cellH,M.speed,M.gain,mp,true);
+      eichzackeAufSchirm(ctx,x0+Z0.eichX,center,M.gain,mp);
+      var breiteMitSignal=spurZeichnen(ctx,buf,x0+Z0.kurveVon,y0,Z0.kurveBreite,cellH,
+                                       M.speed,M.gain,LEADS[li].col,mp);
+      keinSignalFeld(ctx,x0+Z0.kurveVon+breiteMitSignal,y0,Z0.kurveBreite-breiteMitSignal,cellH);
     }
-    ctx.stroke(); ctx.restore();
+    ctx.restore();
     /* GEMESSEN ODER GERECHNET — das gehoert an die Ableitung selbst.
      * Nur Ableitung II kommt als Abtastkurve vom Geraet; die uebrigen fuenf sind daraus
      * abgeleitet. Wer das nicht am Bild sieht, haelt sechs gerechnete Kurven fuer sechs
      * gemessene und traut ihrer Morphologie mehr zu, als sie hergibt (Forderung aus der
      * Fachrecherche 08.08.2026). */
-    ctx.fillStyle=LEADS[li].col; ctx.font=(12*M.dpr)+'px Consolas,monospace';
-    ctx.fillText(LEADS[li].id, x0+8*M.dpr, y0+16*M.dpr);
+    ctx.fillStyle=LEADS[li].col; ctx.font='bold '+(12*M.dpr)+'px Consolas,monospace';
+    ctx.fillText(LEADS[li].id, x0+2*M.dpr, y0+14*M.dpr);
     if(M.echt){
       var gemessen=(LEADS[li].id==='II');
       ctx.fillStyle=gemessen?'rgba(127,224,168,.95)':'rgba(159,182,204,.75)';
       ctx.font=(9.5*M.dpr)+'px Consolas,monospace';
-      ctx.fillText(gemessen?'gemessen':'gerechnet', x0+8*M.dpr+(LEADS[li].id.length*8+6)*M.dpr, y0+16*M.dpr);
+      ctx.fillText(gemessen?'gemessen':'gerechnet', x0+2*M.dpr+(LEADS[li].id.length*8+6)*M.dpr, y0+14*M.dpr);
     }
     // Zell-Trennlinie
     ctx.strokeStyle='rgba(120,150,180,.14)'; ctx.lineWidth=1;
     ctx.beginPath(); ctx.moveTo(x0,y0+0.5); ctx.lineTo(x0,y0+cellH); ctx.moveTo(x0+0.5,y0+cellH-0.5); ctx.lineTo(x0+cellW,y0+cellH-0.5); ctx.stroke();
   }
+  /* Was ein Kaestchen traegt, EINMAL gross ins Bild — die haeufigste Frage am Streifen. */
+  ctx.fillStyle='rgba(127,166,200,.9)'; ctx.font=(10*M.dpr)+'px Consolas,monospace';
+  ctx.fillText(S.rasterText(M.speed,M.gain,!!M.kal), 4*M.dpr, H-5*M.dpr);
 }
 function drawStripCanvas(){
   var cv=$('#ekgStripCv'); if(!cv) return; var ctx=cv.getContext('2d');
   var W=cv.width,H=cv.height; if(!W||!H||!M.strip) return;
+  var S=(window.VS&&window.VS.skala); if(!S) return;
   drawGrid(ctx,0,0,W,H);
-  drawTrace(ctx,M.strip,W,H*0.5,H,M.gain,'#28e07a');
-  ctx.fillStyle='#7fe0a8'; ctx.font=(12*M.dpr)+'px Consolas,monospace';
-  ctx.fillText('II · Rhythmus', 8*M.dpr, 16*M.dpr);
+  var mp=mmPx(), Z0=S.zellAufteilung(W,mp);
+  if(Z0.kurveBreite<=0) return;
+  if(Z0.achse) bahnSkala(ctx,Z0.kurveVon,0,Z0.kurveBreite,H,M.speed,M.gain,mp,false);
+  eichzackeAufSchirm(ctx,Z0.eichX,H*0.5,M.gain,mp);
+  var b=spurZeichnen(ctx,M.strip,Z0.kurveVon,0,Z0.kurveBreite,H,M.speed,M.gain,'#28e07a',mp);
+  keinSignalFeld(ctx,Z0.kurveVon+b,0,Z0.kurveBreite-b,H);
+  ctx.fillStyle='#7fe0a8'; ctx.font='bold '+(12*M.dpr)+'px Consolas,monospace';
+  ctx.fillText('II · Rhythmus', 2*M.dpr, 14*M.dpr);
 }
 
 function advance(dt){
   var f=M.feed||currentFeed();
   var W=(f.def&&f.def.w)||{};
   ensureBuffers(); if(!M.buf) return;
-  var cols=M.buf.__cols, mp=mmPx();
-  /* ZEITBASIS — mp ist bereits Geraetepixel JE MILLIMETER (2,2*dpr). Die Vorschubrate ist
-   * also mm/s * px/mm = M.speed * mp; ein zusaetzliches *dpr (erste Fassung) machte den
-   * Vorschub um den Geraetefaktor zu schnell und damit die Papierskala falsch. Genau diese
-   * Zahl bestimmt, ob "25 mm/s" auf dem Ausdruck 25 mm/s SIND — sie darf nicht geschaetzt sein.
-   * Eine Spalte = eine Abtastung, daher ist pxPerSec zugleich die Abtastrate. */
-  var pxPerSec=mp*M.speed;       // Abtastspalten je Sekunde
-  M.hz=pxPerSec;                 // fuer Ausdruck und Auswertung
-  M.acc+=pxPerSec*dt; var k=Math.floor(M.acc); if(k>90)k=90; M.acc-=k;
-  var colT=1/pxPerSec;           // Sekunden je Spalte
+  /* ZEITBASIS — FEST. Aufgezeichnet wird mit EKG_HZ, unabhaengig davon, was gerade als
+   * Vorschub eingestellt ist (Begruendung ausfuehrlich bei EKG_HZ). Der Vorschub entscheidet
+   * erst beim ZEICHNEN, wieviel Millimeter ein Abtastwert bekommt — dort und nur dort. */
+  var hz=EKG_HZ;
+  M.hz=hz;                       // fuer Ausdruck und Auswertung
+  /* Deckel: bei einem langen Bildaussetzer sollen nicht Sekunden auf einmal nachgeschoben
+   * werden, sonst springt die Kurve. 0,25 s ist grosszuegig und bleibt unauffaellig. */
+  M.acc+=hz*dt; var k=Math.floor(M.acc), kMax=Math.round(hz*0.25); if(k>kMax)k=kMax; M.acc-=k;
+  var colT=1/hz;                 // Sekunden je Abtastwert
   var per=f.hr>0?60/f.hr:9999;
   for(var j=0;j<k;j++){
     var prev=M.phE;
@@ -5546,6 +5690,10 @@ function advance(dt){
     var mvII=ech?base:(base*proj(60,M.axis));
     M.strip.push(mvII); M.strip.shift();
   }
+  /* Wieviel des Puffers wirklich aufgezeichnet ist. Ohne diesen Zaehler waere der noch nicht
+   * beschriebene Anfang eine Reihe von Nullen — also eine flache Linie, die jede Auswertung
+   * als Signal liest. */
+  if(k>0) M.gefuellt=Math.min(pufferLaenge(),(M.gefuellt||0)+k);
 }
 
 function tick(ts){
@@ -5621,6 +5769,10 @@ function zeigeHinweise(B,f,N,mea){
     rUnten:(N&&N.rAmp?N.rAmp[0]:null), rOben:(N&&N.rAmp?N.rAmp[1]:null),
     rrMax:(rr.maxMs!=null?rr.maxMs:null), rrMittel:(rr.mittelMs!=null?rr.mittelMs:null),
     rhythmusId:(B.rhythmus&&B.rhythmus.id)||null,
+    /* Ist der Rhythmus ektop? Davon haengt ab, ob die GEZAEHLTE Frequenz auch die WIRKSAME
+     * ist - bei Bigeminus, Salve und Vorhofflimmern ist sie es nicht. */
+    ektopischerRhythmus:/^(ves|vtach|bigeminus|trigeminus|couplet|aivr|vhf)$/.test(
+      (B.rhythmus&&B.rhythmus.id)||''),
     rhythmusGrund:(B.rhythmus&&B.rhythmus.begruendung)?(B.rhythmus.begruendung+'.'):'',
     netzStoerung:netzStoerung(streifenFuerMessung(),hzJetzt()),
     /* P-Welle und PQ - erst damit werden AV-Block-Typ und fehlende P pruefbar. */
@@ -5647,6 +5799,25 @@ function zeigeHinweise(B,f,N,mea){
     formFremd:(B.form&&B.form.messbar?B.form.fremd:null),
     formFremdAnteil:(B.form&&B.form.messbar?B.form.fremdAnteil:null),
     formen:(B.form&&B.form.messbar?B.form.formen:null),
+    /* ==================================================================================
+     * DIE NEUEN MESSGROESSEN (10.08.2026) — Muster, Pausen und Hoehenwechsel.
+     *
+     * Sie werden seit heute in ekg-analyse.js erhoben; ohne sie im Regelkontext waeren sie
+     * genau das, wovor die Kartei dieses Projekts warnt: gemessen, aber von keiner Regel
+     * gelesen. Eine Groesse, die niemand liest, taeuscht eine Beruecksichtigung vor.
+     * ================================================================================== */
+    bigeminus:!!(B.muster&&B.muster.messbar&&B.muster.bigeminusLaeufe>=3),
+    trigeminus:!!(B.muster&&B.muster.messbar&&B.muster.trigeminusLaeufe>=3),
+    couplets:(B.muster&&B.muster.messbar?B.muster.couplets:null),
+    laengsterLauf:(B.muster&&B.muster.messbar?B.muster.laengsterLauf:null),
+    qrsFremd:(B.muster&&B.muster.messbar?B.muster.qrsFremdMs:null),
+    pausenMitP:(B.pausenP&&B.pausenP.messbar?B.pausenP.pausenMitP:null),
+    pausenOhneP:(B.pausenP&&B.pausenP.messbar?(B.pausenP.pausen-B.pausenP.pausenMitP):null),
+    pauseVerhaeltnis:(B.pausen&&B.pausen.messbar?B.pausen.verhaeltnis:null),
+    alternansVorhanden:!!(B.alternans&&B.alternans.vorhanden),
+    alternansProzent:(B.alternans&&B.alternans.messbar?B.alternans.unterschied:null),
+    tAmp:(B.t&&B.t.ampMv!=null?B.t.ampMv:null),
+    tAnteilVonR:(B.t&&B.t.anteilVonR!=null?B.t.anteilVonR:null),
     /* Windhunde und ausdauertrainierte Rassen: hohe Ausschlaege sind dort normal. Die
      * Rassekennung kommt aus der Anwendung; ohne sie greift die Ausnahme bewusst nicht. */
     /* Filter, die die Amplitude antasten (heute: der Muskelfilter). Der Netzfilter
@@ -5780,6 +5951,25 @@ function zeigeHinweise(B,f,N,mea){
     for(var v=0; v<verdacht.length; v++) html+=karte(verdacht[v]);
   }
 
+  /* ==================================================================================
+   * WAS ALS NAECHSTES ZU TUN IST — direkt unter dem Verdacht (10.08.2026)
+   *
+   * Die Stelle ist mit Bedacht gewaehlt: Der Vorschlag steht dort, wo der Untersucher nach
+   * dem Lesen des Befundes ohnehin weiterliest, und VOR der Einordnung. Er erscheint nur,
+   * wenn ein Befund ihn ausgeloest hat - eine Liste, die auf jedem Streifen gleich aussieht,
+   * wird nach dem dritten Mal ueberblaettert.
+   * ================================================================================== */
+  var schritte=naechsteSchritte(liste,m);
+  if(schritte.length){
+    html+='<div class="th2">Nächster Schritt</div>';
+    for(var sIdx=0; sIdx<schritte.length; sIdx++){
+      var S=schritte[sIdx], sc=S.dringend?'#ff4d4d':'#28e07a';
+      html+='<div class="tipp" style="border-left-color:'+sc+'">'+
+        '<div class="tn" style="color:'+sc+'">'+(S.dringend?'⚠️ ':'→ ')+esc2(S.was)+'</div>'+
+        '<div class="td">'+esc2(S.warum)+'</div></div>';
+    }
+  }
+
   if(einordnung.length){
     html+='<div class="th2">Einordnung</div>';
     for(var o=0; o<einordnung.length; o++) html+=karte(einordnung[o]);
@@ -5811,6 +6001,11 @@ function zeigeHinweise(B,f,N,mea){
    * zum Zeitpunkt der Aufnahme gesagt hat. */
   M.letzterBefund=B;
   M.letzteBefunde=liste;
+  /* Der ganze Regelkontext und die Normbaender wandern auf den AUSDRUCK (10.08.2026).
+   * Ein Blatt mit sechs Kurven ist ein Bild; erst die Zahlen daneben und die Frage
+   * "was folgt daraus" machen daraus einen Befund, den man in die Akte legen kann. */
+  M.letzterKontext=m;
+  M.letzteNorm=N;
   autoArchiv(B, liste);
   taktArchiv(B);
 }
@@ -5956,7 +6151,13 @@ function echtBefund(){
     var f=M.feed||{};
     var band=null;
     try{ if(window.grenzeOf){ var g=grenzeOf('hr'); if(g&&g.length===2) band=g; } }catch(e){}
-    var erg=VS.ekg.analysiere(kurve,{bandHr:band,einheit:(M.kal?'mV':null),art:(f.sp||null)});
+    /* Die Tierart der AUSWERTUNG kommt aus den Patientendaten - dieselbe Quelle wie die
+     * Normbaender und die Regeln (Berichtigung derselben Art wie am 09.08.2026 bei den
+     * Regeln: zwei Quellen fuer dieselbe Frage sind immer eine zu viel). Sie steuert in
+     * ekg-analyse.js das Grundlinienfenster, die P-Suchfenster und die Breitengrenze.
+     * filterAktiv sperrt die Befunde, die auf einer FEHLENDEN P-Welle beruhen. */
+    var erg=VS.ekg.analysiere(kurve,{bandHr:band,einheit:(M.kal?'mV':null),
+      art:(bewertungsArt()||f.sp||null), filterAktiv:!!M.musk});
     /* R-AMPLITUDE MITMESSEN.
      * Sie ist die Groesse, an der die meisten Befundregeln haengen (Niedervoltage,
      * Linksherzvergroesserung, das rassetypisch hohe R des Windhunds). ekg-analyse.js liefert
@@ -6126,11 +6327,31 @@ function updateMeasures(){
   zeigeHinweise(null,f,normAktuell(),null);
 }
 
-/* ---- Weißes Millimeterpapier für Druck/Speichern ---- */
-function renderSheet(scale){
-  scale=scale||2;
+/* ---- Weißes Millimeterpapier für Druck/Speichern ----
+ *
+ * MASSSTAB (berichtigt 10.08.2026). Dieses Blatt geht in den DIREKTDRUCK, in den PNG-Export
+ * und in die Archivvorschau. Es verteilte die Abtastwerte ueber die ganze Zelle statt jedem
+ * die ihm zustehende Breite zu geben — im Browser nachgemessen: die sechs Ableitungen liefen
+ * mit 165 statt 25 mm/s (6,6-fach gestaucht), der Rhythmusstreifen mit 49,6 statt 25 (2,0-fach).
+ * Ein Ausdruck, der "25 mm/s" behauptet und 165 zeigt, ist schlimmer als gar keiner: an ihm
+ * wird mit dem Lineal gemessen und die Zahl wandert in die Akte.
+ * Jetzt kommt die Geometrie aus VS.skala — derselben Stelle wie Bildschirm und PDF. */
+/* opts: {hz, anzahl} — Abtastrate und Zahl der gueltigen Werte des Streifens, der gerade in
+ * M.strip/M.buf liegt.
+ *
+ * WARUM DAS EIN PARAMETER SEIN MUSS (Befund beim Gegenlesen 10.08.2026): das ARCHIV legt
+ * einen gespeicherten Streifen nach M.strip und laesst dieses Blatt neu zeichnen. Nimmt die
+ * Funktion dann die Rate und die Fuellstandsmarke des LAUFENDEN Puffers, wird ein alter
+ * Eintrag falsch gezeichnet - Eintraege von vor dem 10.08.2026 stammen aus einem Puffer mit
+ * 50 bis 100 Hz und liefen sonst bis zu dreimal zu langsam, und ein kuerzerer Streifen waere
+ * nach rechts verrutscht. Beides faellt an einem Ausdruck aus der Akte niemandem mehr auf. */
+function renderSheet(opts){
+  opts=opts||{};
+  var hzBlatt=(opts.hz&&opts.hz>0)?opts.hz:hzJetzt();
+  var anzahl=(opts.anzahl!=null)?opts.anzahl:vorhandeneWerte();
   var mp=8; // Pixel je mm auf dem Blatt (hohe Auflösung)
   var f=M.feed||currentFeed();
+  var S=(window.VS&&window.VS.skala);
   // A4-quer-ähnlich: 6 Ableitungen (2x3) + Rhythmusstreifen
   var Wmm=250, Hmm=170;
   var w=Wmm*mp, h=Hmm*mp;
@@ -6144,39 +6365,116 @@ function renderSheet(scale){
     ctx.lineWidth=1.4; ctx.strokeStyle='rgba(230,70,70,.55)'; ctx.beginPath();
     for(i=0;i<=gw;i+=mp*5){ctx.moveTo(x+i,y);ctx.lineTo(x+i,y+gh);} for(i=0;i<=gh;i+=mp*5){ctx.moveTo(x,y+i);ctx.lineTo(x+gw,y+i);} ctx.stroke();
   }
+  /* Eichzacke: 1 mV so hoch wie die Verstaerkung, 5 mm breit — dasselbe Bild wie im PDF. */
+  function eich(x,center){
+    var amp=1*M.gain*mp;
+    ctx.strokeStyle='#111'; ctx.lineWidth=1.6; ctx.beginPath();
+    ctx.moveTo(x,center); ctx.lineTo(x,center-amp);
+    ctx.lineTo(x+5*mp,center-amp); ctx.lineTo(x+5*mp,center); ctx.stroke();
+  }
+  /* Massstabsgetreue Kurve; liefert zurueck, wieviel Breite wirklich Signal traegt. */
+  function kurve(buf,x,y,breite,hoehe){
+    if(!S||!buf||!buf.length) return 0;
+    /* Nie mehr Werte annehmen als der Puffer wirklich hat - sonst liefe der Anfang der
+     * Kurve ins Leere und der Zug saesse nach rechts verschoben. */
+    var A=S.kurvenAusschnitt(breite,mp,M.speed,hzBlatt,Math.min(anzahl,buf.length));
+    if(!A||A.n<2) return 0;
+    var von=buf.length-A.n, mitte=y+hoehe/2, clip=hoehe*0.46, offen=false;
+    ctx.strokeStyle='#111'; ctx.lineWidth=1.6; ctx.beginPath();
+    for(var i=0;i<A.n;i++){
+      var v=buf[von+i];
+      if(v==null){ offen=false; continue; }
+      var dy=v*M.gain*mp; if(dy>clip)dy=clip; if(dy<-clip)dy=-clip;
+      var px=x+i*A.proWert, py=mitte-dy;
+      if(!offen){ ctx.moveTo(px,py); offen=true; } else ctx.lineTo(px,py);
+    }
+    ctx.stroke();
+    return A.breite;
+  }
+  /* Zeit- und Amplitudenachse EINER Bahn — auf Papier in Schwarz/Grau. */
+  function skala(x,y,breite,hoehe){
+    if(!S||breite<=0) return;
+    var i;
+    ctx.font=(2.1*mp)+'px Consolas,monospace';
+    var zm=S.zeitMarken(breite,mp,M.speed);
+    ctx.strokeStyle='#555'; ctx.fillStyle='#555';
+    for(i=0;i<zm.length;i++){
+      var t=zm[i];
+      ctx.lineWidth=t.voll?1.4:0.9;
+      ctx.beginPath(); ctx.moveTo(x+t.x,y+hoehe); ctx.lineTo(x+t.x,y+hoehe-(t.voll?2.2:1.1)*mp); ctx.stroke();
+      if(t.voll && t.x>0.5*mp && t.x<breite-5*mp) ctx.fillText(Math.round(t.sek)+' s', x+t.x+0.6*mp, y+hoehe-2.9*mp);
+    }
+    var rand={oben:2.5*mp,unten:3.5*mp,minAbstand:3.0*mp};
+    var am=M.kal?S.mvMarken(hoehe,mp,M.gain,rand):S.mmMarken(hoehe,mp,rand);
+    ctx.strokeStyle='#a05a5a'; ctx.fillStyle='#a05a5a'; ctx.lineWidth=1.2;
+    for(i=0;i<am.length;i++){
+      var a=am[i], wert=M.kal?a.mv:a.mm, txt=(wert>0?'+':'')+wert;
+      ctx.beginPath(); ctx.moveTo(x-1.6*mp,y+a.y); ctx.lineTo(x,y+a.y); ctx.stroke();
+      ctx.fillText(txt, x-2.2*mp-ctx.measureText(txt).width, y+a.y+0.8*mp);
+    }
+    if(am.length){
+      ctx.font=(1.9*mp)+'px Consolas,monospace';
+      var eh=M.kal?'mV':'mm';
+      ctx.fillText(eh, x-2.2*mp-ctx.measureText(eh).width, y+2.4*mp);
+    }
+  }
   // Kopf
   var now=new Date();
   ctx.fillStyle='#111'; ctx.font='bold '+(3.4*mp)+'px Segoe UI,Arial';
   ctx.fillText('VetStation · Diagnostik-EKG', 4*mp, 5.5*mp);
   ctx.font=(2.4*mp)+'px Segoe UI,Arial'; ctx.fillStyle='#333';
-  var kopf=speciesName(f.sp)+(f.wt?' · '+f.wt+' kg':'')+'   |   '+M.speed+' mm/s · '+M.gain+' mm/mV'+
+  var pdS=patDaten();
+  var kopf=(pdS.name?pdS.name+' · ':'')+speciesName(pdS.sp||f.sp)+(pdS.wt||f.wt?' · '+(pdS.wt||f.wt)+' kg':'')+
+    '   |   '+speedTxt(M.speed)+' mm/s · '+M.gain+' mm/mV'+
     (M.musk?' · EMG':'')+(M.netz?' · 50Hz':'')+'   |   '+now.toLocaleString();
   ctx.fillText(kopf, 4*mp, 9.5*mp);
   ctx.fillText('Rhythmus: '+((f.def&&f.def.name)||f.rhythm)+'   HF '+(f.hr||'—')+'/min', 4*mp, 13*mp);
+  /* Was ein Kaestchen traegt — steht auf jedem Blatt, damit niemand nachrechnen muss. */
+  if(S){ ctx.font=(2.2*mp)+'px Consolas,monospace'; ctx.fillStyle='#666';
+    var rt=S.rasterText(M.speed,M.gain,!!M.kal);
+    ctx.fillText('Raster: '+rt, w-4*mp-ctx.measureText('Raster: '+rt).width, 13*mp); }
   // 6 Ableitungen 2x3
   var top=16*mp, gridW=(Wmm-8)*mp, gridH=(Hmm-16-40)*mp;
   grid(4*mp, top, gridW, gridH);
   var cols=3, rows=2, cellW=gridW/cols, cellH=gridH/rows;
-  for(var li=0;li<LEADS.length;li++){
-    var rr=Math.floor(li/cols), cc=li%cols;
-    var x0=4*mp+cc*cellW, y0=top+rr*cellH, center=y0+cellH*0.5, buf=M.buf[LEADS[li].id]||[];
-    ctx.strokeStyle='#111'; ctx.lineWidth=1.6;
-    // Kalibrierimpuls
-    var cal=1*M.gain*mp; ctx.beginPath(); ctx.moveTo(x0+2*mp,center); ctx.lineTo(x0+2*mp,center-cal); ctx.lineTo(x0+4*mp,center-cal); ctx.lineTo(x0+4*mp,center); ctx.stroke();
-    ctx.beginPath();
-    var ix0=x0+6*mp, iw=cellW-8*mp, N=buf.length, clip=cellH*0.44;
-    for(var i=0;i<N;i++){ var x=ix0+i*(iw/(N-1)); var dy=buf[i]*M.gain*mp; if(dy>clip)dy=clip; if(dy<-clip)dy=-clip; var y=center-dy; if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y); }
-    ctx.stroke();
-    ctx.fillStyle='#c0143c'; ctx.font='bold '+(2.8*mp)+'px Consolas,monospace'; ctx.fillText(LEADS[li].id, x0+1*mp, y0+3.4*mp);
+  var Z0=S?S.zellAufteilung(cellW,mp):{achse:false,eichX:1*mp,kurveVon:7*mp,kurveBreite:cellW-8*mp};
+  /* ==================================================================================
+   * ARCHIVSTREIFEN HABEN KEINE SECHS ABLEITUNGEN (Befund beim Gegenlesen 10.08.2026)
+   *
+   * Das Archiv speichert den RHYTHMUSSTREIFEN (Ableitung II) - die uebrigen fuenf Bahnen
+   * sind daraus gerechnete Projektionen und werden nicht abgelegt. Beim Wiederanzeigen
+   * legte die Ansicht bisher nur M.strip zurueck und liess das Blatt neu zeichnen; die
+   * sechs Zellen zogen ihre Kurven dabei aus dem LAUFENDEN Puffer. Auf dem Ausdruck eines
+   * Archiveintrags standen damit ein alter Rhythmusstreifen und die AKTUELLEN Ableitungen
+   * nebeneinander - zwei verschiedene Tiere auf einem Blatt sind moeglich, und man sieht es
+   * dem Papier nicht an. Beim Archiveintrag bleibt das Feld deshalb leer und sagt, warum.
+   * ================================================================================== */
+  if(opts.nurStreifen){
+    ctx.fillStyle='#8a6a30'; ctx.font='bold '+(3.2*mp)+'px Segoe UI,Arial';
+    ctx.fillText('Archivstreifen — gespeichert wurde Ableitung II (Rhythmusstreifen unten).', 8*mp, top+gridH*0.45);
+    ctx.font=(2.6*mp)+'px Segoe UI,Arial'; ctx.fillStyle='#7a6a5a';
+    ctx.fillText('Die übrigen fünf Extremitätenableitungen werden aus II gerechnet und nicht mitgespeichert;', 8*mp, top+gridH*0.45+4.4*mp);
+    ctx.fillText('die aktuellen Kurven hier abzudrucken hieße, zwei Aufnahmen auf ein Blatt zu setzen.', 8*mp, top+gridH*0.45+8.2*mp);
+  } else {
+    for(var li=0;li<LEADS.length;li++){
+      var rr=Math.floor(li/cols), cc=li%cols;
+      var x0=4*mp+cc*cellW, y0=top+rr*cellH, center=y0+cellH*0.5, buf=M.buf&&M.buf[LEADS[li].id];
+      if(Z0.achse) skala(x0+Z0.kurveVon, y0, Z0.kurveBreite, cellH);
+      eich(x0+Z0.eichX, center);
+      kurve(buf, x0+Z0.kurveVon, y0, Z0.kurveBreite, cellH);
+      ctx.fillStyle='#c0143c'; ctx.font='bold '+(2.8*mp)+'px Consolas,monospace';
+      ctx.fillText(LEADS[li].id, x0+0.5*mp, y0+3.4*mp);
+    }
   }
   // Rhythmusstreifen II
   var sy=top+gridH+3*mp, sh=34*mp;
   grid(4*mp, sy, gridW, sh);
-  ctx.strokeStyle='#111'; ctx.lineWidth=1.6; ctx.beginPath();
-  var sbuf=M.strip||[], sc=sy+sh*0.5, sN=sbuf.length, sclip=sh*0.44;
-  for(var s=0;s<sN;s++){ var xx=4*mp+s*(gridW/(sN-1)); var ddy=sbuf[s]*M.gain*mp; if(ddy>sclip)ddy=sclip; if(ddy<-sclip)ddy=-sclip; var yy=sc-ddy; if(s===0)ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);}
-  ctx.stroke();
-  ctx.fillStyle='#c0143c'; ctx.font='bold '+(2.8*mp)+'px Consolas,monospace'; ctx.fillText('II', 5*mp, sy+3.4*mp);
+  var Z1=S?S.zellAufteilung(gridW,mp):{achse:false,eichX:1*mp,kurveVon:7*mp,kurveBreite:gridW-8*mp};
+  if(Z1.achse) skala(4*mp+Z1.kurveVon, sy, Z1.kurveBreite, sh);
+  eich(4*mp+Z1.eichX, sy+sh*0.5);
+  kurve(M.strip, 4*mp+Z1.kurveVon, sy, Z1.kurveBreite, sh);
+  ctx.fillStyle='#c0143c'; ctx.font='bold '+(2.8*mp)+'px Consolas,monospace';
+  ctx.fillText('II · Rhythmus', 4.5*mp, sy+3.4*mp);
   return cv;
 }
 
@@ -6225,7 +6523,13 @@ function buildPDF(){
   if(pd.alter) kopf.push(pd.alter);
   doc.text(kopf.join('  ·  '), Mg, 12.5);
   doc.setFontSize(8); doc.text(new Date().toLocaleString(), W-Mg, 7, {align:'right'});
-  doc.text(M.speed+' mm/s · '+M.gain+' mm/mV'+(M.musk?' · EMG-Filter':'')+(M.netz?' · 50-Hz-Filter':''), W-Mg, 12.5, {align:'right'});
+  doc.text(speedTxt(M.speed)+' mm/s · '+M.gain+' mm/mV'+(M.musk?' · EMG-Filter':'')+(M.netz?' · 50-Hz-Filter':''), W-Mg, 12.5, {align:'right'});
+  /* WAS EIN KAESTCHEN TRAEGT, AUF JEDES BLATT. Am Papier wird in Kaestchen gezaehlt, und
+   * wieviel eines traegt, haengt am Vorschub: 40 ms bei 25 mm/s, 20 ms bei 50 mm/s. Wer das
+   * uebersieht, misst eine Katze mit doppelter QRS-Dauer. Die Zeile kostet 4 mm Kopfhoehe. */
+  var Sk=window.VS&&window.VS.skala;
+  if(Sk){ doc.setFontSize(7.2);
+    doc.text('Raster: '+Sk.rasterText(M.speed,M.gain,!!(M.echt&&M.kal)), Mg, 19); }
 
   var hz=hzJetzt();
   function raster(x,y,w,h){
@@ -6247,16 +6551,24 @@ function buildPDF(){
    * garantiert dasselbe wie am Schirm - zwei getrennte Rechnungen waeren irgendwann
    * auseinandergelaufen, ohne dass es jemandem auffaellt.
    */
-  function sekundenmarken(x,y,w,h){
-    var S=window.VS&&window.VS.skala; if(!S) return;
+  /* innen=true zeichnet die Marken NACH INNEN (nach oben in die Bahn hinein) statt darunter.
+   * Das ist der Unterschied, an dem die Skala im 3x2-Feld frueher gescheitert ist: unterhalb
+   * einer Zelle der oberen Reihe liegt die Kurve der unteren. Innen bleibt jede Zelle bei
+   * sich. Gezeichnet wird VOR der Kurve, damit eine hohe R-Zacke oben liegt. */
+  function sekundenmarken(x,y,w,h,innen){
+    var S=window.VS&&window.VS.skala; if(!S||!(w>0)) return;
     var zm=S.zeitMarken(w,1,M.speed);
     doc.setDrawColor(120,120,120);
-    doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(110,110,110);
+    doc.setFont('helvetica','normal'); doc.setFontSize(innen?5.5:6.5); doc.setTextColor(110,110,110);
     for(var i=0;i<zm.length;i++){
       var t=zm[i];
       doc.setLineWidth(t.voll?0.35:0.18);
-      doc.line(x+t.x, y+h, x+t.x, y+h+(t.voll?1.6:0.8));
-      if(t.voll && t.x>0 && t.x<w-4) doc.text(Math.round(t.sek)+' s', x+t.x+0.6, y+h+3.4);
+      if(innen) doc.line(x+t.x, y+h, x+t.x, y+h-(t.voll?2.2:1.1));
+      else doc.line(x+t.x, y+h, x+t.x, y+h+(t.voll?1.6:0.8));
+      if(t.voll && t.x>0 && t.x<w-4){
+        if(innen) doc.text(Math.round(t.sek)+' s', x+t.x+0.6, y+h-2.8);
+        else doc.text(Math.round(t.sek)+' s', x+t.x+0.6, y+h+3.4);
+      }
     }
   }
   /* Amplitudenmarken am linken Rand, von der Grundlinie (Bahnmitte) aus.
@@ -6298,23 +6610,34 @@ function buildPDF(){
    * verteilt (dxmm = w/(n-1)) - die Kurve war damit stillschweigend gedehnt und der Ausdruck
    * behauptete eine Dauer, die er nicht zeigt. */
   function kurve(buf,x,y,w,h){
-    if(!buf||!buf.length) return 0;
+    if(!buf||!buf.length||!(w>0)) return 0;
     var S=window.VS&&window.VS.skala;
-    var A=S?S.kurvenAusschnitt(w,1,M.speed,hz,buf.length):null;
+    var A=S?S.kurvenAusschnitt(w,1,M.speed,hz,vorhandeneWerte()):null;
     if(!A||A.n<2) return 0;
     var n=A.n, dxmm=A.proWert;
     var von=buf.length-n, mitte=y+h/2, clip=h/2-0.6;
     function yAt(i){
-      var v=buf[von+i]; if(v==null) v=0;
+      var v=buf[von+i]; if(v==null) return null;
       var dy=v*M.gain; if(dy>clip)dy=clip; if(dy<-clip)dy=-clip;
       return mitte-dy;
     }
     /* doc.lines() nimmt RELATIVE Schritte ab einem Startpunkt — der Startpunkt muss deshalb
-     * der erste Kurvenpunkt sein, nicht die Bahnmitte (sonst haengt der ganze Zug schief). */
-    var startY=yAt(0), px=x, py=startY, pts=[];
-    for(var i=1;i<n;i++){ var cx=x+i*dxmm, cy=yAt(i); pts.push([cx-px,cy-py]); px=cx; py=cy; }
+     * der erste Kurvenpunkt sein, nicht die Bahnmitte (sonst haengt der ganze Zug schief).
+     * LUECKEN BRECHEN DEN ZUG: eine durchgezogene Linie ueber eine Sendepause behauptet ein
+     * Signal, das es nicht gab — auf einem Blatt, an dem spaeter mit dem Lineal gemessen wird. */
     doc.setDrawColor(20,20,20); doc.setLineWidth(0.28);
-    if(pts.length) doc.lines(pts, x, startY, [1,1], 'S', false);
+    var i=0;
+    while(i<n){
+      while(i<n && yAt(i)==null) i++;
+      if(i>=n) break;
+      var startX=x+i*dxmm, startY=yAt(i), px=startX, py=startY, pts=[];
+      i++;
+      while(i<n){
+        var cy=yAt(i); if(cy==null) break;
+        var cx=x+i*dxmm; pts.push([cx-px,cy-py]); px=cx; py=cy; i++;
+      }
+      if(pts.length) doc.lines(pts, startX, startY, [1,1], 'S', false);
+    }
     return A.breite;
   }
   function eichzacke(x,y,h){   // 1-mV-Kalibrierimpuls: so hoch wie M.gain mm
@@ -6327,44 +6650,55 @@ function buildPDF(){
   var top=20, feldW=W-2*Mg, feldH=110;
   var spalten=3, reihen=2, zellW=feldW/spalten, zellH=feldH/reihen;
   raster(Mg,top,feldW,feldH);
-  /* HIER BEWUSST KEINE SEKUNDENSKALA (Befund beim Gegenlesen 08.08.2026):
-   * Die sechs Ableitungen stehen als 3x2-Feld NEBENEINANDER. Jede Zelle hat ihre EIGENE
-   * Zeitachse, die bei zx+9 neu beginnt. Eine durchgehende Skala unter dem ganzen Block
-   * behauptet einen Zeitverlauf ueber drei unabhaengige Felder hinweg - wer in der dritten
-   * Spalte misst, liest dann einen Versatz ab, der mit dieser Kurve nichts zu tun hat.
-   * Eine Skala je Zelle scheitert am Platz: die Beschriftung der oberen Reihe faellt in die
-   * Kurve der unteren. Das Feld behaelt deshalb sein blankes Millimeterraster - so wie am
-   * Bildschirm auch. Gemessen wird am Rhythmusstreifen und in der grossen Einzelansicht. */
+  /* SKALA IN JEDER ZELLE (Nutzerbefund 10.08.2026, mit dem Stift auf dem Ausdruck markiert).
+   *
+   * Der frueher hier notierte Einwand bleibt gueltig und wird eingehalten: eine DURCHGEHENDE
+   * Skala unter dem ganzen 3x2-Block waere falsch, weil die drei Spalten drei UNABHAENGIGE
+   * Zeitachsen sind - wer in der dritten Spalte abliest, laese einen Versatz ab, den es nicht
+   * gibt. Der zweite Einwand war der Platz: die Beschriftung der oberen Reihe fiel in die
+   * Kurve der unteren.
+   * Beides ist geloest, indem jede Zelle ihre eigene, bei null beginnende Achse bekommt und
+   * die Sekundenmarken NACH INNEN zeigen (sekundenmarken(...,true)) statt unter die Zelle.
+   * Damit bleibt jede Beschriftung in ihrer eigenen Flaeche.
+   * Die Aufteilung Eichzacke | Beschriftung | Kurve kommt aus VS.skala.zellAufteilung() -
+   * derselben Funktion, die Bildschirm und Direktdruck benutzen. */
+  var ZP=(window.VS&&window.VS.skala)
+    ? window.VS.skala.zellAufteilung(zellW,1)
+    : {achse:false,eichX:1.5,kurveVon:9,kurveBreite:zellW-10};
   for(var li=0;li<LEADS.length;li++){
     var rr=Math.floor(li/spalten), cc=li%spalten;
     var zx=Mg+cc*zellW, zy=top+rr*zellH;
-    eichzacke(zx+1.5,zy,zellH);
-    kurve(M.buf&&M.buf[LEADS[li].id], zx+9, zy, zellW-10, zellH);
+    if(ZP.achse) mvmarken(zx+ZP.kurveVon,zy,zellH);
+    eichzacke(zx+ZP.eichX,zy,zellH);
+    var bZelle=kurve(M.buf&&M.buf[LEADS[li].id], zx+ZP.kurveVon, zy, ZP.kurveBreite, zellH);
+    sekundenmarken(zx+ZP.kurveVon,zy,bZelle,zellH,true);
     doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(170,20,50);
-    doc.text(LEADS[li].id, zx+1.5, zy+5);
+    doc.text(LEADS[li].id, zx+0.8, zy+5);
   }
   // Rhythmusstreifen II über die volle Breite
   var sy=top+feldH+5, sh=42;
-  /* SPALTE FUER DIE AMPLITUDENSKALA (Befund der Freigabepruefung 08.08.2026):
-   * Der Streifen rueckt 6 mm nach rechts, links davon stehen die mV- bzw. mm-Marken.
-   * Ohne diese Spalte begann ihre Beschriftung 3,7 mm vom Blattrand - uebliche Drucker
-   * lassen 4 bis 5 mm unbedruckt. Eine angeschnittene "-160" liest sich als "160", und das
-   * auf einem Blatt, das in der Akte landet und spaeter nachgemessen wird.
-   * Der Streifen verliert dadurch 6 mm Breite, bei 25 mm/s also 0,24 Sekunden. */
-  var sMg=Mg+6, sW=feldW-6;
+  /* DIE AMPLITUDENSKALA LIEGT JETZT INNERHALB DES RASTERS (10.08.2026).
+   * Frueher stand sie links davon, und der Streifen musste dafuer 6 mm nach rechts ruecken,
+   * damit die Beschriftung nicht in den nicht bedruckbaren Rand ueblicher Drucker fiel
+   * (Befund der Freigabepruefung 08.08.2026 - eine angeschnittene "-160" liest sich als
+   * "160"). Mit der einheitlichen Zellaufteilung sitzt die Beschriftung zwischen Eichzacke
+   * und Kurvenbeginn, also weit im bedruckbaren Bereich - der Streifen bekommt die 6 mm
+   * zurueck, bei 25 mm/s ein Viertel einer Sekunde mehr Signal. */
+  var sMg=Mg, sW=feldW;
   raster(sMg,sy,sW,sh);
+  var ZS=(window.VS&&window.VS.skala)
+    ? window.VS.skala.zellAufteilung(sW,1)
+    : {achse:false,eichX:1.5,kurveVon:9,kurveBreite:sW-10};
   /* Der Rhythmusstreifen traegt die volle Skala: an ihm wird auf dem Ausdruck gemessen.
-   * Die Sekundenskala beginnt GENAU dort, wo die Kurve beginnt (sMg+9) - nicht am Rasterrand.
-   * Die Kurve ist um 9 mm eingerueckt, weil links der Eichzacken steht; eine Skala am
-   * Rasterrand haette ihre Null 9 mm vor dem Kurvenbeginn gehabt, bei 25 mm/s also 360 ms
-   * daneben. Und sie ist genau so BREIT wie die Kurve wirklich geworden ist - deshalb wird
-   * sie nach ihr gezeichnet und nimmt deren Rueckgabewert. */
-  mvmarken(sMg,sy,sh);
-  eichzacke(sMg+1.5,sy,sh);
-  var bStreifen=kurve(M.strip, sMg+9, sy, sW-10, sh);
-  sekundenmarken(sMg+9,sy,bStreifen,sh);
+   * Die Sekundenskala beginnt GENAU dort, wo die Kurve beginnt - nicht am Rasterrand (das
+   * waeren bei 25 mm/s 560 ms Versatz). Und sie ist genau so BREIT wie die Kurve wirklich
+   * geworden ist - deshalb wird sie nach ihr gezeichnet und nimmt deren Rueckgabewert. */
+  if(ZS.achse) mvmarken(sMg+ZS.kurveVon,sy,sh);
+  eichzacke(sMg+ZS.eichX,sy,sh);
+  var bStreifen=kurve(M.strip, sMg+ZS.kurveVon, sy, ZS.kurveBreite, sh);
+  sekundenmarken(sMg+ZS.kurveVon,sy,bStreifen,sh,false);
   doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(170,20,50);
-  doc.text('II · Rhythmus', sMg+1.5, sy+5);
+  doc.text('II · Rhythmus', sMg+0.8, sy+5);
   // Befundzeile + Haftungshinweis
   var by=sy+sh+6;
   doc.setTextColor(33,41,51); doc.setFont('helvetica','bold'); doc.setFontSize(9);
@@ -6412,7 +6746,168 @@ function buildPDF(){
   doc.setFont('helvetica','italic'); doc.setFontSize(7); doc.setTextColor(150,80,80);
   doc.text('Entscheidungs-/Trainingshilfe — kein zugelassener Patientenmonitor-Ersatz. Der Tierarzt entscheidet und handelt.', Mg, H-6);
   doc.setTextColor(120,130,140); doc.setFont('helvetica','normal');
-  doc.text('Zeitbasis '+M.speed+' mm/s · Verstärkung '+M.gain+' mm/mV · Abtastung '+Math.round(hz)+' Hz', W-Mg, H-6, {align:'right'});
+  /* WIEVIEL STREIFEN UEBERHAUPT DA IST. Seit dem 10.08.2026 wird nur der wirklich
+   * aufgezeichnete Teil gedruckt statt einer vorgefuellten Nullreihe; wer unmittelbar nach
+   * dem Oeffnen druckt, bekommt ein fast leeres Blatt. Dann muss auf dem Blatt stehen,
+   * WARUM — sonst haelt es jemand fuer eine flache Linie. */
+  var sekVorh=Math.round(vorhandeneWerte()/hz*10)/10;
+  doc.text('Zeitbasis '+speedTxt(M.speed)+' mm/s · Verstärkung '+M.gain+' mm/mV · Abtastung '+Math.round(hz)+' Hz'+
+    ' · Aufzeichnung '+sekVorh+' s', W-Mg, H-6, {align:'right'});
+  if(sekVorh<3){
+    doc.setFont('helvetica','bold'); doc.setTextColor(180,60,60);
+    doc.text('Nur '+sekVorh+' s aufgezeichnet — für eine Rhythmusaussage zu kurz. Fenster offen lassen und erneut drucken.', Mg, H-14);
+  }
+
+  /* ==================================================================================
+   * ZWEITE SEITE: DER BEFUNDBERICHT (10.08.2026)
+   *
+   * WARUM ES SIE GIBT: Das Kurvenblatt ist ein BILD. Was der Untersucher am Bildschirm an
+   * Zahlen, Normbaendern, Auffaelligkeiten und Vorschlaegen sieht, blieb bisher am
+   * Bildschirm — der Ausdruck, der in die Akte wandert oder zur Ueberweisung mitgeht,
+   * trug nur eine einzige Befundzeile. Wer ihn spaeter liest, hatte die Messwerte nicht.
+   *
+   * SIE ENTSTEHT NUR AUS DEM, WAS GEMESSEN WURDE. Fehlt eine Groesse, steht dort, WARUM
+   * sie fehlt - nicht ein Strich, den man fuer "unauffaellig" halten koennte. Und sie
+   * kommt nur bei einem ECHTEN Streifen: auf einer nachgebildeten Kurve waere jede Zahl
+   * die eigene Vorgabe, in Tabellenform als Befund verkleidet.
+   * ================================================================================== */
+  var BB=M.letzterBefund||null, MK=M.letzterKontext||null, NB=M.letzteNorm||null;
+  if(M.echt && BB && BB.brauchbar && MK){
+    doc.addPage();
+    var y=0;
+    doc.setFillColor(18,110,120); doc.rect(0,0,W,14,'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(12);
+    doc.text('Befundbericht zum Diagnostik-EKG', Mg, 6.5);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8);
+    doc.text(kopf.join('  ·  '), Mg, 11.5);
+    doc.text(new Date().toLocaleString(), W-Mg, 6.5, {align:'right'});
+    doc.text('Seite 2 von 2 — Seite 1 trägt die Kurven', W-Mg, 11.5, {align:'right'});
+
+    /* --- linke Spalte: die Messwerte mit ihrem Normband --- */
+    var spL=Mg, spR=W/2+2, sp2=W-Mg;
+    y=21;
+    doc.setTextColor(33,41,51); doc.setFont('helvetica','bold'); doc.setFontSize(9.5);
+    doc.text('Messwerte', spL, y);
+    y+=1.5;
+    doc.setDrawColor(180,190,200); doc.setLineWidth(0.3); doc.line(spL, y, spR-6, y);
+    y+=4.5;
+    doc.setFontSize(7.6);
+    function zeile(was, wert, norm, urteil){
+      doc.setFont('helvetica','normal'); doc.setTextColor(90,100,112);
+      doc.text(was, spL, y);
+      doc.setFont('helvetica','bold'); doc.setTextColor(33,41,51);
+      doc.text(String(wert==null?'—':wert), spL+42, y);
+      doc.setFont('helvetica','normal'); doc.setTextColor(120,130,140);
+      if(norm) doc.text(String(norm), spL+78, y);
+      if(urteil){
+        if(urteil.ok) doc.setTextColor(20,120,70); else doc.setTextColor(190,60,40);
+        doc.text(urteil.ok?'im Band':urteil.wie, spL+112, y);
+      }
+      y+=4.2;
+    }
+    /* EIN EINSEITIGES BAND MUSS ALS SOLCHES DASTEHEN. Bei der P-Dauer und der QRS-Breite gibt
+     * es nur eine OBERgrenze; "40 ms" allein liest sich in einer Normspalte wie ein Sollwert,
+     * den man auch unterschreiten koennte. "bis 40 ms" sagt, was gemeint ist. */
+    function bandTxt(b,e){
+      if(!b) return '';
+      var eh=e?' '+e:'';
+      if(b[0]!=null&&b[1]!=null) return b[0]+'–'+b[1]+eh;
+      if(b[1]!=null) return 'bis '+b[1]+eh;
+      if(b[0]!=null) return 'ab '+b[0]+eh;
+      return '';
+    }
+    zeile('Herzfrequenz', (BB.hf!=null?BB.hf+' /min':null), bandTxt(NB&&NB.hf,'/min'), normUrteil(NB&&NB.hf,BB.hf,'/min'));
+    zeile('RR-Abstand', BB.rr?(BB.rr.mittelMs+' ms ('+BB.rr.minMs+'–'+BB.rr.maxMs+')'):null, '', null);
+    zeile('P-Dauer', MK.pDauer!=null?MK.pDauer+' ms':null, bandTxt(NB&&NB.pDauer,'ms'), normUrteil(NB&&NB.pDauer,MK.pDauer,'ms'));
+    zeile('P-Amplitude', MK.pAmp!=null?MK.pAmp+' mV':null, bandTxt(NB&&NB.pAmp,'mV'), normUrteil(NB&&NB.pAmp,MK.pAmp,'mV'));
+    zeile('PQ / PR', MK.pq!=null?MK.pq+' ms'+(MK.pqVerlauf&&MK.pqVerlauf!=='konstant'?' ('+MK.pqVerlauf+')':''):null,
+      bandTxt(NB&&NB.pq,'ms'), normUrteil(NB&&NB.pq,MK.pq,'ms'));
+    zeile('QRS-Dauer', BB.qrsBreiteMs!=null?BB.qrsBreiteMs+' ms':null, bandTxt(NB&&NB.qrs,'ms'), normUrteil(NB&&NB.qrs,BB.qrsBreiteMs,'ms'));
+    zeile('R-Amplitude', MK.rAmp!=null?MK.rAmp+' mV':null, bandTxt(NB&&NB.rAmp,'mV'), normUrteil(NB&&NB.rAmp,MK.rAmp,'mV'));
+    zeile('QT', MK.qt!=null?MK.qt+' ms':null, bandTxt(NB&&NB.qt,'ms'), normUrteil(NB&&NB.qt,MK.qt,'ms'));
+    if(MK.qtc!=null) zeile('QTc (Van de Water)', MK.qtc+' ms', 'nur beim Hund belegt', null);
+    zeile('ST-Abweichung', (BB.st&&BB.st.messbar)?((BB.st.mv>0?'+':'')+BB.st.mv+' mV'):null,
+      (NB&&NB.stSenkung!=null)?('Orientierung ±'+NB.stSenkung+'/'+NB.stHebung):'', null);
+    zeile('T-Amplitude', MK.tAmp!=null?MK.tAmp+' mV'+(MK.tAnteilVonR!=null?' ('+Math.round(MK.tAnteilVonR*100)+' % der R)':''):null, '', null);
+    zeile('El. Achse', MK.achse!=null?MK.achse+'°':null, bandTxt(NB&&NB.achse,'°'), normUrteil(NB&&NB.achse,MK.achse,'°'));
+    if(BB.hrv&&BB.hrv.messbar) zeile('Variabilität', BB.hrv.sdnnMs+' ms SDNN / '+BB.hrv.rmssdMs+' RMSSD', 'gemessen, nicht bewertet', null);
+    zeile('Signalgüte', BB.guete!=null?BB.guete+'×':null, 'ab 5× belastbar', null);
+    zeile('Streifen', BB.sekunden+' s · '+Math.round(BB.hz)+' Hz · '+BB.schlaege+' Zacken', '', null);
+    /* WAS NICHT GEMESSEN WERDEN KONNTE — und warum. Ein Strich allein liest sich wie
+     * "unauffaellig"; genau das darf hier nicht passieren. */
+    var fehlt=[];
+    if(!(BB.p&&BB.p.vorhanden)) fehlt.push('P-Welle/PQ: '+((BB.p&&BB.p.warum)||'nicht abgrenzbar'));
+    if(!(BB.t&&BB.t.messbar)) fehlt.push('QT: '+((BB.t&&BB.t.warum)||'T-Ende nicht bestimmbar'));
+    if(MK.achse==null) fehlt.push('Elektrische Achse: nur '+MK.ablGemessen+' Ableitung gemessen — für die Achse sind zwei nötig');
+    if(!M.kal) fehlt.push('Alle Millivolt-Angaben: Verstärkung des Geräts unbekannt');
+    if(fehlt.length){
+      y+=2;
+      doc.setFont('helvetica','bold'); doc.setFontSize(7.6); doc.setTextColor(150,110,20);
+      doc.text('Nicht gemessen — und warum:', spL, y); y+=4;
+      doc.setFont('helvetica','normal'); doc.setTextColor(120,110,90);
+      for(var fq=0;fq<fehlt.length;fq++){
+        var fz=doc.splitTextToSize('· '+fehlt[fq], (spR-6)-spL);
+        doc.text(fz.slice(0,2), spL, y); y+=4.0*Math.min(2,fz.length);
+      }
+    }
+
+    /* --- rechte Spalte: Beurteilung, Auffaelligkeiten, naechster Schritt --- */
+    var yr=21;
+    function ueberschrift(t){
+      doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(33,41,51);
+      doc.text(t, spR, yr); yr+=1.5;
+      doc.setDrawColor(180,190,200); doc.setLineWidth(0.3); doc.line(spR, yr, sp2, yr); yr+=4.5;
+    }
+    function absatz(txt, farbe3, fett, groesse){
+      doc.setFont('helvetica', fett?'bold':'normal'); doc.setFontSize(groesse||7.6);
+      doc.setTextColor(farbe3[0],farbe3[1],farbe3[2]);
+      var z=doc.splitTextToSize(txt, sp2-spR);
+      for(var q=0;q<z.length;q++){
+        if(yr>H-18){ return false; }             // Platz zu Ende: lieber abbrechen als ueberschreiben
+        doc.text(z[q], spR, yr); yr+=3.6;
+      }
+      return true;
+    }
+    ueberschrift('Beurteilung');
+    var rh2=BB.rhythmus||{};
+    absatz(rh2.name||'—', [20,60,110], true, 9);
+    yr+=0.8;
+    if(rh2.begruendung) absatz(rh2.begruendung, [70,80,92]);
+    yr+=2;
+    var verd=[], eino=[];
+    var LB=M.letzteBefunde||[];
+    for(var lb=0; lb<LB.length; lb++){
+      if(LB[lb].technik) continue;
+      (LB[lb].stufe==='hinweis'?eino:verd).push(LB[lb]);
+    }
+    ueberschrift('Auffälligkeiten ('+(verd.length||'keine')+')');
+    if(!verd.length){
+      absatz('Alle gemessenen Größen liegen im Band dieser Tierart. Das schließt eine Herzerkrankung NICHT aus — ein EKG zeigt Rhythmus und Leitung, nicht die Pumpfunktion.', [70,80,92]);
+    }
+    for(var vb=0; vb<verd.length && vb<6; vb++){
+      var T=verd[vb];
+      absatz((T.stufe==='kritisch'?'! ':'· ')+T.name, T.stufe==='kritisch'?[190,40,40]:[190,110,20], true);
+      absatz(String(T.text).replace(/<[^>]+>/g,''), [70,80,92]);
+      if(T.differenzial) absatz('Auch möglich: '+T.differenzial, [130,140,150]);
+      absatz(T.sicherheit+' · '+T.quelle, [150,155,165]);
+      yr+=1.5;
+    }
+    var sch2=naechsteSchritte(LB, MK);
+    if(sch2.length){
+      ueberschrift('Nächster Schritt');
+      for(var s2=0; s2<sch2.length && s2<5; s2++){
+        absatz((sch2[s2].dringend?'! ':'-> ')+sch2[s2].was, sch2[s2].dringend?[190,40,40]:[20,110,70], true);
+        absatz(sch2[s2].warum, [110,120,132]);
+        yr+=1.2;
+      }
+    }
+    /* GRENZEN AUF DAS BLATT. Der gefaehrlichste Leser dieses Berichts ist der, der ihn fuer
+     * vollstaendig haelt. */
+    doc.setFont('helvetica','italic'); doc.setFontSize(7); doc.setTextColor(150,80,80);
+    doc.text(doc.splitTextToSize('Was dieser Streifen NICHT sagen kann: Pumpfunktion, Klappen und Kammergrößen (dafür Echokardiografie); Häufigkeit von Extrasystolen über den Tag (dafür Langzeit-EKG); Zuordnung eines Schenkelblocks (dafür mehrere GEMESSENE Ableitungen). Entscheidungs- und Trainingshilfe, kein zugelassener Patientenmonitor-Ersatz — der Tierarzt entscheidet und handelt.', W-2*Mg).slice(0,3), Mg, H-11);
+    doc.setTextColor(120,130,140); doc.setFont('helvetica','normal');
+    doc.text('Bewertet nach: '+speciesName(bewertungsArt())+(NB&&NB.angepasst&&NB.angepasst.length?' · '+NB.angepasst.join(' · '):''), Mg, H-4);
+  }
 
   var datei='EKG_'+(f.rhythm||'streifen')+'_'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.pdf';
   _pdfLast={doc:doc,datei:datei,meta:{sp:f.sp,wt:f.wt,rhythm:f.rhythm,name:(f.def&&f.def.name)||f.rhythm,hr:f.hr,speed:M.speed,gain:M.gain,hz:Math.round(hz)}};
@@ -6424,7 +6919,7 @@ function doPDF(){
   var url=null; try{ url=p.doc.output('bloburl'); }catch(e){ url=null; }
   if(!url){ try{ p.doc.save(p.datei); }catch(e2){ flash('⚠️ PDF konnte nicht erzeugt werden'); } return; }
   fr.src=url; box.classList.add('open');
-  var sn=$('#pdfScaleNote'); if(sn) sn.textContent=M.speed+' mm/s · '+M.gain+' mm/mV (1 mV = '+M.gain+' mm auf dem Papier)';
+  var sn=$('#pdfScaleNote'); if(sn) sn.textContent=speedTxt(M.speed)+' mm/s · '+M.gain+' mm/mV (1 mV = '+M.gain+' mm auf dem Papier)';
 }
 function closePDF(){ var b=$('#ekgPdfView'); if(b){ b.classList.remove('open'); var fr=$('#pdfFrame'); if(fr) fr.src='about:blank'; } }
 
@@ -6642,6 +7137,14 @@ function archDatensatz(anlass, befundListe){
   var f=M.feed||currentFeed(), d=patDaten();
   var roh=streifenFuerMessung();
   if(!roh||roh.length<10) return null;
+  /* HOECHSTENS 12 SEKUNDEN ANZEIGESTREIFEN IN DEN ARCHIVEINTRAG (10.08.2026).
+   * Seit der Puffer mit festen 250 Hz statt 50-100 Hz laeuft, waeren 20 s rund 13 KB
+   * Base64 je Eintrag - bei 150 Eintraegen 2 MB allein dafuer, in einem localStorage von
+   * ueblicherweise 5 MB, in dem schon der Rohstreifen liegt. 12 s decken den gedruckten
+   * Rhythmusstreifen (10,4 s bei 25 mm/s) vollstaendig ab; laenger braucht der Eintrag
+   * nicht zu sein, um zu zeigen, was der Tierarzt gesehen hat. */
+  var maxN=Math.round(EKG_HZ*12);
+  if(roh.length>maxN) roh=roh.slice(roh.length-maxN);
   var kod=samplesNachB64(roh);
   var hz=hzJetzt();
   var B=M.letzterBefund||null;
@@ -6972,7 +7475,7 @@ function renderArch(){
         : (r.hzGeraet?('# Das Geraet tastet mit '+r.hzGeraet+' Hz ab; hier liegt der durchgehende Anzeigestreifen,\n'+
                        '# an dem auch gemessen wurde.\n'):''))+
       '# Einheit: '+(r.kal?'mV':'unkalibriert (relative Auslenkung)')+'\n'+
-      '# Darstellung bei der Aufnahme: '+r.speed+' mm/s · '+r.gain+' mm/mV\n'+
+      '# Darstellung bei der Aufnahme: '+speedTxt(r.speed)+' mm/s · '+r.gain+' mm/mV\n'+
       '# Ableitung II · Kabelnorm '+(r.kabelnorm||'IEC')+(r.lagerung?' · '+r.lagerung:'')+'\n'+
       'sekunde;wert\n';
     var zeilen=new Array(s.length);
@@ -6992,7 +7495,11 @@ function renderArch(){
       var s=b64NachSamples(r.b64,r.faktor);
       var merk={ strip:M.strip, speed:M.speed, gain:M.gain };
       M.strip=s; M.speed=r.speed||M.speed; M.gain=r.gain||M.gain;
-      var cv=renderSheet();
+      /* Rate UND Laenge des GESPEICHERTEN Streifens mitgeben, nicht die des laufenden
+       * Puffers. Alte Eintraege stammen aus einer Zeit, in der die Abtastrate an der
+       * Papiergeschwindigkeit hing (50-100 Hz); mit der heutigen Rate gezeichnet liefen
+       * sie bis zu dreimal zu langsam. */
+      var cv=renderSheet({ hz:(r.hz&&r.hz>0)?r.hz:hzJetzt(), anzahl:s.length, nurStreifen:true });
       M.strip=merk.strip; M.speed=merk.speed; M.gain=merk.gain;
       var im=new Image(); im.src=cv.toDataURL('image/png'); sheet.appendChild(im);
     } else if(r.png){
@@ -7433,8 +7940,26 @@ var BEFUNDREGELN=[
    * ZWEI REGELN, WEIL ZWEI DINGE ZU TUN SIND: die Fehlmeldung unterdruecken UND sagen,
    * warum. Nur zu schweigen waere hier falsch - der Untersucher soll wissen, dass die
    * Bewertung eine andere Grenze benutzt hat. */
+  /* ==================================================================================
+   * DIE GEZAEHLTE FREQUENZ IST NICHT IMMER DIE WIRKSAME (10.08.2026)
+   *
+   * Gemessen im laufenden Browser an einem synthetischen Bigeminus: die Anwendung meldete
+   * "231/min ... spricht fuer eine Sinustachykardie - Schmerz, zu flache Narkose ..." und
+   * darunter im selben Feld den Bigeminus. Beides stimmte fuer sich, zusammen war es falsch:
+   * gezaehlt wurden Kammerkomplexe, und jeder zweite davon war eine Extrasystole. Der
+   * eingeschobene Schlag erzeugt oft KEINEN tastbaren Puls - der wirksame Auswurf lag also
+   * eher bei der Haelfte. Wer die Zahl als Sinustachykardie liest, vertieft die Narkose oder
+   * gibt ein Analgetikum gegen etwas, das es nicht gibt.
+   * Bei ektopem Rhythmus tritt deshalb eine EIGENE Regel an die Stelle der Frequenzmeldung.
+   * ================================================================================== */
+  { id:'hf-hoch-ektopie', name:'Gezählte Frequenz enthält die formfremden Schläge', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.band && m.hf!=null && m.hf>m.band[1] && m.ektopischerRhythmus; },
+    hinweis:'Gezählt sind {hf} Kammerkomplexe je Minute — darin stecken die formfremden Schläge. Ein vorzeitiger Schlag füllt die Kammer nicht vollständig und erzeugt häufig <b>keinen tastbaren Puls</b>; die wirksame Frequenz kann deutlich niedriger sein. <b>Puls am Tier zählen und mit der Anzeige vergleichen</b> — die Differenz ist das Pulsdefizit.',
+    differenzial:'echte Tachykardie zusätzlich zur Ektopie',
+    sicherheit:'Messung', quelle:'Zackenzählung + Formvergleich; Pulsdefizit als Auskultationsbefund' },
+
   { id:'hf-hoch', name:'Herzfrequenz über dem Normband', stufe:'auffaellig', art:'alle',
-    pruef:function(m){ return m.band && m.hf!=null && m.hf>m.band[1] && !jungtierBand(m); },
+    pruef:function(m){ return m.band && m.hf!=null && m.hf>m.band[1] && !jungtierBand(m) && !m.ektopischerRhythmus; },
     hinweis:'{hf}/min liegt über dem Normband {band} dieser Tierart. Bei gleichmäßigen Abständen und schmalem QRS spricht das für eine Sinustachykardie — Schmerz, zu flache Narkose, Hypovolämie, Hyperkapnie, Fieber und Katecholamine kommen als Ursache in Frage.',
     differenzial:'supraventrikuläre Tachykardie (dann meist starr regelmäßig und höher)',
     sicherheit:'Messung', quelle:'Tierartband nach Tilley' },
@@ -7510,9 +8035,20 @@ var BEFUNDREGELN=[
 
   { id:'filter-amplitude', technik:true, name:'Muskelfilter verfälscht die Amplituden', stufe:'hinweis', art:'alle',
     pruef:function(m){ return m.filterAmp; },
-    hinweis:'Der Muskelfilter (Tiefpass) ist eingeschaltet. Er <b>senkt die R-Amplitude</b> — deshalb werden Amplituden-Befunde (Niedervoltage, hohes R) so lange nicht ausgegeben. Für Amplitudenmessungen den Filter ausschalten und neu aufzeichnen.',
+    hinweis:'Der Muskelfilter (Tiefpass) ist eingeschaltet. Er <b>verkleinert alle Ausschläge</b> — Amplituden-Befunde (Niedervoltage, hohes R) werden deshalb nicht ausgegeben, und weil kleine <b>P-Wellen dabei ganz verschwinden können</b>, auch keine Aussage über fehlende P-Wellen (Vorhofflimmern, Vorhofstillstand). Für diese Fragen den Filter ausschalten und neu aufzeichnen; besser als der Filter ist ein guter Elektrodenkontakt.',
     differenzial:null,
-    sicherheit:'gesichert', quelle:'GE HealthCare, Guide to ECG Signal Filtering; Physiol Meas 31(1) 2010' },
+    sicherheit:'gesichert', quelle:'GE HealthCare, Guide to ECG Signal Filtering; Physiol Meas 31(1) 2010; Anfertigung des EKGs (Filter unterdrücken kleine P-Wellen)' },
+
+  /* ZAEHLSTRECKE FUER DIE FREQUENZ (Fachliteratur, Anfertigung des EKGs):
+   * "Wegen der respiratorischen Sinusarrhythmie muessen beim Hund die Herzschlaege ueber
+   * mindestens sechs aufeinander folgende Sekunden gezaehlt werden." Beim Hund schwankt die
+   * Frequenz atemabhaengig um bis zu 50 %; aus zwei Sekunden gerechnet ist sie damit Zufall.
+   * Eine volle Minute lehnt dieselbe Quelle ausdruecklich ab (Artefakte). */
+  { id:'zaehlstrecke-kurz', technik:true, name:'Streifen für eine Frequenzangabe noch zu kurz', stufe:'hinweis', art:'hund',
+    pruef:function(m){ return m.sekunden!=null && m.sekunden<6; },
+    hinweis:'Der Streifen ist erst {sekunden} s lang. Beim Hund schwankt die Frequenz atemabhängig; für eine Frequenzangabe sollen <b>mindestens sechs aufeinanderfolgende Sekunden</b> gezählt werden. Fenster offen lassen — die Angabe wird von selbst belastbarer.',
+    differenzial:null,
+    sicherheit:'gesichert', quelle:'Anfertigung des EKGs: Mindestzählstrecke 6 s beim Hund (respiratorische Sinusarrhythmie)' },
 
   { id:'lagerung', technik:true, name:'Normwerte gelten nur in rechter Seitenlage', stufe:'hinweis', art:'alle',
     pruef:function(m){ return m.lagerungAbweichend; },
@@ -7538,8 +8074,13 @@ var BEFUNDREGELN=[
 
   /* ===== REGELN, DIE ERST DIE P-WELLEN-ERKENNUNG MOEGLICH MACHT (08.08.2026) ===== */
 
+  /* DIE FILTERSPERRE GILT AUCH FUER DIE P-WELLE (10.08.2026).
+   * Aus der Fachliteratur: ein zugeschalteter Filter "verkleinert die P-QRS-T-Ausschlaege,
+   * sodass kleine P-Wellen unterdrueckt und nicht mehr sichtbar sind". Eine Meldung "keine
+   * P abgrenzbar" waere dann eine Feststellung ueber den FILTER, nicht ueber das Tier - und
+   * sie fuehrt geradewegs zum Verdacht auf Vorhofflimmern oder Vorhofstillstand. */
   { id:'keine-p', name:'Keine P-Wellen abgrenzbar', stufe:'auffaellig', art:'alle',
-    pruef:function(m){ return m.pMessbar===false && m.pAnteil!=null && m.pAnteil<40 && m.guete>=5; },
+    pruef:function(m){ return m.pMessbar===false && m.pAnteil!=null && m.pAnteil<40 && m.guete>=5 && !m.filterAmp; },
     hinweis:'In nur {pAnteil} % der Schläge ist eine P-Welle abgrenzbar. Bei <b>unregelmäßigem</b> Rhythmus passt das zu Vorhofflimmern, bei <b>regelmäßigem</b> und langsamem eher zu einem Vorhofstillstand (an Hyperkaliämie denken). Auch eine Überlagerung durch die T-Welle oder eine sehr kleine P (Katze) kann der Grund sein — zur Abgrenzung hilft eine Brustwandableitung.',
     differenzial:'Vorhofflimmern, Vorhofstillstand/Hyperkaliämie, P in der T verborgen, zu kleine P, Störung',
     sicherheit:'Verdacht', quelle:'P-Wellen-Auswertung; Tilley; LMU Tierkardiologie' },
@@ -7654,6 +8195,83 @@ var BEFUNDREGELN=[
     differenzial:'Vagotonus, Sinusarrest, AV-Block II/III, Vorhofstillstand bei Hyperkaliämie',
     sicherheit:'Verdacht', quelle:'Rhythmusrecherche 08.08.2026' },
 
+  /* ===== RHYTHMUSBEFUNDE DER ERWEITERTEN AUSWERTUNG (10.08.2026) =====
+   * Die Auswertung (ui/shared/ekg-analyse.js) benennt seit heute Vorhofflimmern, AV-Block II,
+   * Sinusarrest, Bigeminus/Trigeminus, gruppierte Extrasystolen und den idioventrikulaeren
+   * Rhythmus. Diese Regeln bringen die Befunde in die geordnete Liste — mit Differenzial,
+   * Sicherheit und Quelle, so wie jeder andere Befund auch. Sie BEHAUPTEN nichts Neues,
+   * sie reichen weiter, was dort schon streng geprueft wurde. */
+
+  { id:'vhf-verdacht', name:'Verdacht auf Vorhofflimmern', stufe:'kritisch', art:'alle',
+    pruef:function(m){ return m.rhythmusId==='vhf'; },
+    hinweis:'{rhythmusGrund} Vorhofflimmern ist beim Hund die häufigste anhaltende Rhythmusstörung mit Krankheitswert; es tritt meist bei bereits vergrößertem linken Vorhof auf (dilatative Kardiomyopathie, fortgeschrittene Mitralklappenendokardiose) und selten als isolierter Befund. <b>Auskultation und Puls vergleichen</b> — ein Pulsdefizit gehört zum Bild.',
+    differenzial:'Vorhofflattern, häufige SVES, Sinusarrhythmie mit nicht erkennbaren P-Wellen, Artefakt bei unruhigem Tier',
+    sicherheit:'Verdacht', quelle:'EKG-Interpretation in der Kleintierpraxis (sehr unregelmäßig, keine P, HF oft > 180/min)' },
+
+  { id:'avblock2-erkannt', name:'AV-Block II. Grades (P ohne Kammerkomplex)', stufe:'kritisch', art:'alle',
+    pruef:function(m){ return m.rhythmusId==='avblock2'; },
+    hinweis:'{rhythmusGrund} Klinisch stammen die meisten AV-Blockierungen beim Tier aus einer <b>extrakardialen</b> Ursache, allen voran ein gesteigerter Vagotonus (brachyzephale Rassen, Erkrankungen des Verdauungstrakts, Hirndruck, Hypothermie, Vagusreiz am Hals). Ob sie atropinempfindlich ist, entscheidet über das weitere Vorgehen.',
+    differenzial:'blockierte supraventrikuläre Extrasystole (dann vorzeitige P), Sinusarrest, Artefakt',
+    sicherheit:'Verdacht', quelle:'EKG-Interpretation in der Kleintierpraxis (AV-Block II, Mobitz I/II)' },
+
+  { id:'sinusarrest-erkannt', name:'Sinusarrest / SA-Block', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.rhythmusId==='sinusarrest'; },
+    hinweis:'{rhythmusGrund} Bei hohem Vagotonus (brachyzephale Rassen) kommen Pausen ohne Krankheitswert vor; wiederkehrende lange Pausen mit Schwäche, Taumeln oder Synkopen gehören dagegen abgeklärt (Sick-Sinus-Syndrom, besonders bei Zwergschnauzer und West Highland White Terrier).',
+    differenzial:'AV-Block II (dann P in der Pause), Vorhofstillstand, blockierte SVES',
+    sicherheit:'Verdacht', quelle:'Pausenmessung mit P-Wellen-Suche in der Pause; EKG-Interpretation in der Kleintierpraxis' },
+
+  { id:'bigeminus-erkannt', name:'Bigeminus / Trigeminus', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.rhythmusId==='bigeminus' || m.rhythmusId==='trigeminus'; },
+    hinweis:'{rhythmusGrund} Ein fester Kopplungstakt spricht für einen einzelnen, regelmäßig einfallenden Ursprungsort. Entscheidend für die Bedeutung ist, ob der eingeschobene Schlag einen tastbaren Puls erzeugt.',
+    differenzial:'supraventrikuläre Extrasystolen mit aberranter Überleitung, Erkennung zählt abwechselnd die P mit (bei hoher P-Welle beschrieben)',
+    sicherheit:'Verdacht', quelle:'Formvergleich über Kreuzkorrelation + Taktanalyse' },
+
+  { id:'gruppierte-es', name:'Gehäufte Extrasystolen (Paare/Dreiergruppen)', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.rhythmusId==='couplet'; },
+    hinweis:'{rhythmusGrund} Gruppierte Extrasystolen wiegen schwerer als vereinzelte — sie stehen der Salve und damit der ventrikulären Tachykardie näher.',
+    differenzial:'Artefakt bei unruhigem Signal, aberrant übergeleitete SVES',
+    sicherheit:'Verdacht', quelle:'Laufanalyse der formfremden Schläge' },
+
+  { id:'aivr-erkannt', name:'Idioventrikulärer Rhythmus (breite Komplexe ohne P)', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.rhythmusId==='aivr'; },
+    hinweis:'{rhythmusGrund} Der akzelerierte idioventrikuläre Rhythmus wird typischerweise nach stumpfem Trauma, Magendrehung, Milztorsion und bei Sepsis gesehen. Er ist häufig selbstlimitierend; behandelt wird die Grundkrankheit, nicht die Kurve — es sei denn, der Kreislauf leidet.',
+    differenzial:'ventrikuläre Tachykardie (dann schneller), Schenkelblock mit Sinusrhythmus, Hyperkaliämie',
+    sicherheit:'Verdacht', quelle:'Breite + fehlende P bei nicht-tachykarder Frequenz' },
+
+  /* ===== ELEKTRISCHER ALTERNANS UND HYPERKALIAEMIE (10.08.2026) =====
+   * Zwei Muster, die aus mehreren Einzelgroessen ZUSAMMEN entstehen und deshalb bisher
+   * durchfielen — jede Groesse fuer sich blieb im Band. */
+
+  { id:'alternans', name:'Elektrischer Alternans', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.alternansVorhanden===true; },
+    hinweis:'Die Höhe der Kammerkomplexe wechselt von Schlag zu Schlag um {alternansProzent} %, während der Rhythmus gleichmäßig bleibt. Dieses Muster („swinging heart") entsteht, wenn das Herz in einem <b>Perikarderguss</b> schwingt. Auch ein Herzbasistumor, eine supraventrikuläre Tachykardie und ein alternierender Schenkelblock kommen in Frage. <b>Bei der Katze kann ein Alternans auch physiologisch sein.</b>',
+    differenzial:'Perikarderguss, Herzbasistumor, supraventrikuläre Tachykardie, alternierender Schenkelblock, bei der Katze Normvariante, Atembewegung',
+    sicherheit:'Verdacht', quelle:'Steckbrief elektrischer Alternans: wechselnde Amplituden bei festem Rhythmus, alle Komplexe vom selben Schrittmacher' },
+
+  /* DIE GEFAEHRLICHSTE KOMBINATION, DIE EIN EKG ZEIGEN KANN.
+   * Sie verlangt bewusst DREI Merkmale gleichzeitig und Kalibrierung: eine hohe T-Welle
+   * allein ist unspezifisch (sie wechselt mit Lage, Atmung und Frequenz), und eine
+   * Hyperkaliaemie-Meldung, die zu Kalzium und Insulin verleitet, darf nicht auf einem
+   * einzelnen Merkmal beruhen. */
+  { id:'hyperkaliaemie-muster', name:'Muster passend zu Hyperkaliämie', stufe:'kritisch', art:'alle',
+    pruef:function(m){
+      if(!m.kal || m.filterAmp) return false;
+      var tHoch = (m.tAnteilVonR!=null && m.tAnteilVonR>0.25);
+      var pWeg  = (m.pMessbar===false && m.pAnteil!=null && m.pAnteil<40);
+      var langsam = (m.band && m.hf!=null && m.hf<m.band[0]);
+      var breitQrs = (m.qrsGrenze && m.qrs!=null && m.qrs>m.qrsGrenze);
+      return tHoch && pWeg && (langsam || breitQrs);
+    },
+    hinweis:'Die T-Welle erreicht {tAnteilVonR} der R-Höhe (Faustmaß: über ein Viertel ist auffällig), gleichzeitig ist in nur {pAnteil} % der Schläge eine P-Welle abgrenzbar. Diese Kombination ist das Bild einer <b>Hyperkaliämie</b>: das Ruhepotenzial der Vorhofmuskulatur sinkt so weit, dass keine Depolarisation mehr zustande kommt (Vorhofstillstand). <b>Kalium sofort bestimmen.</b> Häufige Ursachen: Harnabflussstörung, Hypoadrenokortizismus (Addison-Krise), Nierenversagen, Reperfusion nach Thrombembolie.',
+    differenzial:'Vorhofflimmern (dann unregelmäßig), Sinusarrest, Digitalisintoxikation, hereditäre Muskelerkrankung',
+    sicherheit:'Verdacht', quelle:'Vorhofstillstand-Fallbeschreibung (T > 25 % der R-Höhe, fehlende P, ST-Hebung 0,2 mV); Hyperkaliämie und Ruhepotenzial der Vorhofmuskulatur' },
+
+  { id:'brady-qt-lang', name:'Langsam UND lange QT-Zeit — an Elektrolyte denken', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.band && m.hf!=null && m.hf<m.band[0] && m.tMessbar && m.qt!=null && m.qtBand && m.qt>m.qtBand[1]; },
+    hinweis:'Niedrige Frequenz ({hf}/min) zusammen mit verlängerter QT-Zeit ({qt} ms). Diese Kombination ist als typischer Befund bei <b>Hypokalzämie</b> (Hypoparathyreoidismus, chronische Niereninsuffizienz, Eklampsie, Pankreatitis, Alkalose) und bei <b>Hypokaliämie</b> (Cushing-Syndrom, Diuretikagabe) beschrieben.',
+    differenzial:'Hypothermie, Medikamente (Sotalol, Amiodaron), zentralnervöse Erkrankung, vagale Bradykardie ohne QT-Bezug',
+    sicherheit:'Verdacht', quelle:'EKG-Interpretation in der Kleintierpraxis: Bradykardie mit verlängertem QT bei Hypokalzämie/Hypokaliämie' },
+
   /* --- Achse --- */
   /* Diese Regel verlangt ausdruecklich MEHR ALS EINE gemessene Ableitung. Ohne die Bedingung
    * haette sie aus einer zurueckgerechneten Annahme einen Achsenbefund gemacht — also eine
@@ -7706,6 +8324,107 @@ function befundHinweise(m){
   raus.sort(function(a,b){ return (rang[a.stufe]||9)-(rang[b.stufe]||9); });
   return raus;
 }
+/* ==================================================================================
+ * WAS ALS NAECHSTES ZU TUN IST — der Schritt von "auffaellig" zu "und nun?" (10.08.2026)
+ *
+ * WARUM DAS DAZUGEHOERT: Die Anwendung konnte bisher sagen, WAS ihr auffaellt. Was sie
+ * nicht sagen konnte, ist die Frage, die der Tierarzt als naechstes stellt - welche
+ * Untersuchung klaert das jetzt? Genau diese Verbindung steht in den Lehrbuechern immer
+ * dabei ("das EKG kann eine Vergroesserung nicht beweisen, dafuer ist der Herzultraschall
+ * zustaendig"), fehlte hier aber.
+ *
+ * DIE REGELN SIND STRENG AN AUSGELOESTE BEFUNDE GEBUNDEN. Es gibt keinen Vorschlag ohne
+ * ausloesenden Befund - sonst stuende auf jedem Blatt dieselbe Liste, und eine Liste, die
+ * immer gleich ist, liest niemand. Jeder Eintrag nennt den Grund mit.
+ *
+ * ES SIND VORSCHLAEGE, KEINE ANORDNUNGEN. Diese Station ist eine Entscheidungshilfe; sie
+ * stellt keine Diagnose und verordnet nichts. Deshalb die Form "erwaegen", "prüfen",
+ * "ausschließen" - und deshalb steht die Dringlichkeit dabei, statt sie zu behaupten.
+ * ================================================================================== */
+var NAECHSTE_SCHRITTE=[
+  { id:'echo-erguss', dringend:true,
+    wenn:function(ids,m){ return ids['alternans'] || (ids['niedervoltage'] && m.alternansVorhanden); },
+    was:'Echokardiografie zeitnah — Perikarderguss ausschließen.',
+    warum:'Ein elektrischer Alternans — erst recht zusammen mit kleinen Kammerkomplexen — ist die klassische Kombination beim Perikarderguss; das Herz schwingt dabei im Erguss. Bei der Katze kommt der Alternans allerdings auch ohne Krankheitswert vor.' },
+  { id:'kalium', dringend:true,
+    wenn:function(ids,m){ return ids['hyperkaliaemie-muster'] || (ids['keine-p'] && m.band && m.hf!=null && m.hf<m.band[0]); },
+    was:'Kalium (und Nierenwerte) sofort bestimmen.',
+    warum:'Fehlende P-Wellen bei langsamem Rhythmus sind das Bild des Vorhofstillstands — an Hyperkaliämie denken (Harnabflussstörung, Addison-Krise, Nierenversagen, Reperfusion).' },
+  { id:'notfall-check', dringend:true,
+    wenn:function(ids){ return ids['vtach-verdacht'] || ids['ektopie-multiform']; },
+    was:'Puls und Blutdruck AM TIER prüfen, Sauerstoffversorgung, Narkosetiefe, Elektrolyte (Kalium, Magnesium) und Schmerz kontrollieren.',
+    warum:'Bei breiten, schnellen oder multiformen Kammerkomplexen entscheidet der Kreislauf, nicht die Kurve.' },
+  { id:'holter',
+    wenn:function(ids){ return ids['extrasystolen'] || ids['ektopie-uniform'] || ids['ektopie-multiform'] ||
+      ids['rasse-ektopie'] || ids['schlag-ausgefallen'] || ids['pause-lang'] || ids['rhythmus-ektopie'] ||
+      ids['vhf-verdacht'] || ids['bigeminus-erkannt'] || ids['gruppierte-es'] ||
+      ids['sinusarrest-erkannt'] || ids['avblock2-erkannt'] || ids['aivr-erkannt']; },
+    was:'Langzeit-EKG über 24 Stunden erwägen.',
+    warum:'Über Häufigkeit, Tageszeitbindung und Komplexität von Extrasystolen und Pausen entscheidet die Zahl je 24 Stunden — ein Kurzstreifen kann das nicht.' },
+  { id:'echo-groesse',
+    wenn:function(ids){ return ids['r-hoch'] || ids['p-breit'] || ids['p-hoch'] || ids['achse-ausserhalb'] ||
+      ids['vhf-verdacht']; },
+    was:'Echokardiografie zur Beurteilung von Vorhof- und Kammergröße.',
+    warum:'Das EKG kann eine Vergrößerung nahelegen, aber nicht beweisen; die Maße liefert der Herzultraschall.' },
+  { id:'elektrolyte',
+    wenn:function(ids){ return ids['qt-lang'] || ids['qt-kurz'] || ids['brady-qt-lang']; },
+    was:'Kalzium, Kalium und Körpertemperatur bestimmen, Medikamentenliste durchsehen.',
+    warum:'Eine veränderte QT-Zeit ist selten primär kardial — Elektrolyte, Hypothermie und Arzneimittel stehen davor.' },
+  { id:'vagus',
+    wenn:function(ids){ return ids['pq-lang'] || ids['pq-zunehmend'] || ids['hf-tief'] ||
+      ids['avblock2-erkannt'] || ids['sinusarrest-erkannt']; },
+    was:'Vagale Ursache prüfen (Atropintest erwägen), Elektrolyte und Schilddrüse kontrollieren, α₂-Agonisten und Opioide bedenken.',
+    warum:'Verzögerte Überleitung und niedrige Frequenz sind beim Tier meist vagal oder medikamentös bedingt und dann atropinempfindlich.' },
+  { id:'kardiologe',
+    wenn:function(ids){ return ids['pq-konstant-ausfall']; },
+    was:'Vorstellung beim Kardiologen erwägen.',
+    warum:'Ein Ausfall bei konstanter PQ-Zeit sitzt unterhalb des AV-Knotens, spricht kaum auf Atropin an und kann in einen totalen Block übergehen.' },
+  { id:'mehrkanal',
+    wenn:function(ids){ return ids['block-nicht-klassifizierbar']; },
+    was:'Echtes Mehrkanal-EKG schreiben (mindestens I, II, III, aVF).',
+    warum:'Die Zuordnung eines Schenkelblocks vergleicht mehrere Ableitungen; hier ist nur Ableitung II gemessen.' },
+  { id:'wiederholen',
+    wenn:function(ids){ return ids['guete-niedrig'] || ids['netzeinstreuung']; },
+    was:'Aufnahme wiederholen: Elektrodenkontakt (Alkohol/Gel), Klemmen, Kabellage und Erdung prüfen.',
+    warum:'Ein gestörter Streifen erzeugt Zacken, die jede Auswertung als Schläge zählt — daraus wird sonst ein Rhythmusbefund, den es nicht gibt.' },
+  { id:'kalibrieren',
+    wenn:function(ids){ return ids['unkalibriert'] || ids['filter-amplitude']; },
+    was:'Für Amplitudenfragen mit bekannter Verstärkung und ohne Muskelfilter neu aufzeichnen.',
+    warum:'Ohne belegte Verstärkung — oder mit einem Tiefpass, der die R-Zacke senkt — ist keine Aussage in Millivolt zu halten.' },
+  { id:'lagerung',
+    wenn:function(ids){ return ids['lagerung']; },
+    was:'Für Amplituden- und Achsenfragen in rechter Seitenlage wiederholen.',
+    warum:'Sämtliche veröffentlichten Normwerte für Amplituden und elektrische Achse wurden in rechter Seitenlage erhoben.' },
+  { id:'katze-vorschub',
+    wenn:function(ids){ return ids['katze-vorschub']; },
+    was:'Vorschub auf 50 mm/s stellen und erneut aufzeichnen.',
+    warum:'Ein Katzen-Kammerkomplex misst bei 25 mm/s einen Millimeter Papier — daran ist nichts auszumessen.' }
+];
+function naechsteSchritte(liste,m){
+  if(!liste||!liste.length||!m) return [];
+  var ids={}, i;
+  for(i=0;i<liste.length;i++) ids[liste[i].id]=true;
+  /* Der Rhythmusbefund der Auswertung zaehlt mit — die neuen Rhythmusarten (Vorhofflimmern,
+   * AV-Block II, Sinusarrest, Bigeminus, Salve) kommen von dort und nicht aus einer Regel. */
+  if(m.rhythmusId){
+    ids['rhythmus-'+m.rhythmusId]=true;
+    if(/^(bigeminus|trigeminus|couplet|ves|vtach|aivr)$/.test(m.rhythmusId)) ids['rhythmus-ektopie']=true;
+    if(m.rhythmusId==='vtach') ids['vtach-verdacht']=true;
+    if(m.rhythmusId==='sinusarrest'||m.rhythmusId==='pause') ids['pause-lang']=true;
+    if(m.rhythmusId==='avblock2') ids['schlag-ausgefallen']=true;
+    if(m.rhythmusId==='vhf') ids['rhythmus-ektopie']=true;
+  }
+  var aus=[];
+  for(i=0;i<NAECHSTE_SCHRITTE.length;i++){
+    var S=NAECHSTE_SCHRITTE[i], trifft=false;
+    try{ trifft=!!S.wenn(ids,m); }catch(e){ trifft=false; }
+    if(trifft) aus.push({ id:S.id, dringend:!!S.dringend, was:S.was, warum:S.warum });
+  }
+  /* Dringliches zuerst — wer drei Zeilen liest, soll die richtigen drei lesen. */
+  aus.sort(function(a,b){ return (b.dringend?1:0)-(a.dringend?1:0); });
+  return aus;
+}
+
 /* Platzhalter im Hinweistext durch die tatsaechlichen Messwerte ersetzen. */
 function fuelle(txt,m){
   return String(txt).replace(/\{(\w+)\}/g,function(_,k){
@@ -7713,6 +8432,9 @@ function fuelle(txt,m){
     if(v==null) return '—';
     if(k==='band'||k==='achseBand') return Array.isArray(v)?(v[0]+'–'+v[1]):String(v);
     if(k==='rrSchwankung') return Math.round(v*100)+' %';
+    /* Verhaeltnisse gehoeren als Prozent in den Text. "0.31 der R-Hoehe" liest sich wie ein
+     * Messwert in Millivolt; gemeint ist ein Anteil. */
+    if(k==='tAnteilVonR') return Math.round(v*100)+' %';
     return String(v);
   });
 }
@@ -8662,6 +9384,67 @@ function wissenListe(){
   if(WISSEN.nurAuto) liste=liste.filter(function(r){ return VS.befunde.machbar(r,MESSGROESSEN_HEUTE); });
   return liste;
 }
+/* ==================================================================================
+ * FACHLITERATUR IM FENSTER — die Buecher, ohne das Buch zu holen (10.08.2026)
+ *
+ * WARUM: Die Wissensbasis (ui/shared/ekg-befunde.js) fuehrt 203 REGELN — "wenn X, dann
+ * denke an Y". Was sie nicht enthaelt, ist der Rest: Aufnahmetechnik, Eichung, wie man
+ * Artefakte von Arrhythmien trennt, Fallbeispiele, Referenzwerte, Antiarrhythmika.
+ * Genau das steht in den Buechern des Nutzers, und genau danach fragt man am Streifen.
+ *
+ * Die Stellen sind AUSGEWERTET, nicht abgeschrieben (tools/ekg-literatur-bauen.js), und
+ * jede traegt Buch und Seite. Sie loesen NICHTS aus: die Anwendung behauptet weiterhin
+ * nur, was sie selbst misst. Wer mehr will, schlaegt hier nach.
+ * ================================================================================== */
+var LIT={ suche:'', thema:null };
+function renderLiteratur(){
+  var side=$('#ekgSide'), ov=$('#ekgOverlay');
+  ov.dataset.seite='lit';
+  var L=(window.VS&&VS.literatur)||null;
+  var kopf='<h4>📖 Fachliteratur <span style="float:right"><button class="ekg-btn" id="lZur">← Regeln</button> <button class="ekg-btn" id="lBack">← Messwerte</button></span></h4>';
+  if(!L){
+    side.innerHTML=kopf+'<div class="ekg-empty">Literaturauszug nicht geladen.</div>';
+    var b0=$('#lBack'); if(b0) b0.onclick=function(){ ov.dataset.seite=''; rebuildSide(); updateMeasures(); };
+    var z0=$('#lZur'); if(z0) z0.onclick=function(){ renderWissen(); };
+    return;
+  }
+  var themen=L.themenMitTreffern(LIT.suche);
+  var treffer=L.suche(LIT.suche, LIT.thema);
+  var html=kopf+
+    '<div class="ekg-patbox"><div class="pf"><input id="lSuche" value="'+esc2(LIT.suche)+'" placeholder="suchen: Eichzacke, Wenckebach, Kalium, Lagerung …"></div></div>'+
+    '<div class="ekg-modus" style="flex-wrap:wrap">'+
+    '<button id="lAlle" class="'+(LIT.thema?'':'on')+'">alle '+L.suche(LIT.suche,null).length+'</button>';
+  for(var t=0;t<themen.length;t++){
+    html+='<button class="litT'+(LIT.thema===themen[t].id?' on':'')+'" data-thema="'+esc2(themen[t].id)+'">'+
+      esc2(themen[t].name)+' '+themen[t].n+'</button>';
+  }
+  html+='</div><div class="tb" style="font-size:11px;color:#7fa6c8;margin-bottom:8px">'+
+    treffer.length+' Stelle'+(treffer.length===1?'':'n')+' aus den Fachbüchern. '+
+    'Nachschlagewerk mit Buch und Seite — es löst keine Meldung aus.</div>';
+  var max=Math.min(treffer.length,60);
+  for(var i=0;i<max;i++){
+    var s=treffer[i];
+    html+='<div class="tipp" style="border-left-color:#7fa6c8">'+
+      '<div class="tn" style="color:#9fc0dd">'+esc2(L.themenName(s.thema))+'</div>'+
+      '<div class="tt">'+esc2(s.text)+'</div>'+
+      (s.zahlen?'<div class="td" style="color:#ffd166">'+esc2(s.zahlen)+'</div>':'')+
+      '<div class="tq">'+esc2(s.werk)+(s.seite?' · '+esc2(s.seite):'')+'</div></div>';
+  }
+  if(treffer.length>max) html+='<div class="ekg-empty">… und '+(treffer.length-max)+' weitere. Suchbegriff eingeben oder ein Thema wählen.</div>';
+  if(!treffer.length) html+='<div class="ekg-empty">Kein Treffer.</div>';
+  html+='<div class="tf">Auszüge aus den Werken des Nutzers, in eigenen Worten zusammengefasst. Sie ersetzen weder das Buch noch die klinische Untersuchung.</div>';
+  side.innerHTML=html;
+  $('#lBack').onclick=function(){ ov.dataset.seite=''; rebuildSide(); updateMeasures(); };
+  $('#lZur').onclick=function(){ renderWissen(); };
+  $('#lAlle').onclick=function(){ LIT.thema=null; renderLiteratur(); };
+  side.querySelectorAll('[data-thema]').forEach(function(b){
+    b.onclick=function(){ LIT.thema=b.getAttribute('data-thema'); renderLiteratur(); };
+  });
+  var su=$('#lSuche');
+  if(su){ su.oninput=function(){ LIT.suche=su.value; var pos=su.selectionStart; renderLiteratur();
+    var neu=$('#lSuche'); if(neu){ neu.focus(); try{ neu.setSelectionRange(pos,pos); }catch(e){} } }; }
+}
+
 function renderWissen(){
   var side=$('#ekgSide'), ov=$('#ekgOverlay');
   ov.dataset.seite='wissen';
@@ -8673,7 +9456,7 @@ function renderWissen(){
   }
   var f=M.feed||{}, liste=wissenListe();
   var farbe={gesichert:'#28e07a',wahrscheinlich:'#ffd166',Verdacht:'#ff9f45'};
-  var html='<h4>📚 Befunde <span style="float:right"><button class="ekg-btn" id="wBack">← Messwerte</button></span></h4>'+
+  var html='<h4>📚 Befunde <span style="float:right"><button class="ekg-btn" id="wLit" title="Auszüge aus den Fachbüchern, nach Thema und Suchwort">📖 Literatur</button> <button class="ekg-btn" id="wBack">← Messwerte</button></span></h4>'+
     '<div class="ekg-patbox"><div class="pf"><input id="wSuche" value="'+esc2(WISSEN.suche)+'" placeholder="suchen: Vorhofflimmern, Dobermann, Perikard …"></div></div>'+
     '<div class="ekg-modus"><button id="wAlle" class="'+(WISSEN.nurAuto?'':'on')+'">Alle '+VS.befunde.fuerArt(f.sp||null).length+'</button>'+
     '<button id="wAuto" class="'+(WISSEN.nurAuto?'on':'')+'" title="Nur Regeln, die die Station selbst prüfen kann">automatisch geprüft</button></div>'+
@@ -8696,6 +9479,7 @@ function renderWissen(){
   html+='<div class="tf">Diese Sammlung ersetzt kein Lehrbuch und keine klinische Untersuchung. Jede Zeile nennt ihre Quelle.</div>';
   side.innerHTML=html;
   $('#wBack').onclick=function(){ ov.dataset.seite=''; rebuildSide(); updateMeasures(); };
+  var wl=$('#wLit'); if(wl) wl.onclick=function(){ renderLiteratur(); };
   $('#wAlle').onclick=function(){ WISSEN.nurAuto=false; renderWissen(); };
   $('#wAuto').onclick=function(){ WISSEN.nurAuto=true; renderWissen(); };
   var su=$('#wSuche');
@@ -8738,7 +9522,7 @@ function zIndexVon(xCss,breiteCss){
   var buf=zBuf(); if(!buf.length) return null;
   var mp=mmPx(), hz=hzJetzt();
   var breiteMm=(breiteCss*M.dpr)/mp;
-  var n=Math.min(buf.length, Math.max(4, Math.round(breiteMm/Z.speed*hz)));
+  var n=Math.min(vorhandeneWerte()||buf.length, Math.max(4, Math.round(breiteMm/Z.speed*hz)));
   var von=buf.length-n;
   var anteil=Math.max(0,Math.min(1,xCss/breiteCss));
   return Math.round(von+anteil*(n-1));
@@ -8747,12 +9531,22 @@ function istAusgeklammert(i){
   for(var k=0;k<Z.aus.length;k++){ if(i>=Z.aus[k].von&&i<=Z.aus[k].bis) return true; }
   return false;
 }
-/* Der Streifen, auf dem GEMESSEN wird: ausgeklammerte Stellen als null. */
+/* Der Streifen, auf dem GEMESSEN wird: ausgeklammerte Stellen als null.
+ *
+ * NUR DER WIRKLICH AUFGEZEICHNETE TEIL (10.08.2026). Vorher ging der ganze Puffer in die
+ * Auswertung, auch der noch gar nicht beschriebene Anfang. Der bestand aus Nullen, war also
+ * eine flache Linie — und eine flache Linie IST fuer eine EKG-Auswertung eine Aussage
+ * ("keine QRS-Zacken erkennbar — bei flacher Linie an Asystolie denken"). Direkt nach dem
+ * Oeffnen wurden damit bis zu 20 s Nichts als Signal mitgemessen. */
 function streifenFuerMessung(){
   if(!M.strip) return [];
-  if(!Z.aus.length) return M.strip.slice();
-  var out=M.strip.slice();
-  for(var i=0;i<out.length;i++){ if(istAusgeklammert(i)) out[i]=null; }
+  var v=vorhandeneWerte(); if(v<2) return [];
+  var off=M.strip.length-v, out=M.strip.slice(off);
+  if(Z.aus.length){
+    /* Z.aus zaehlt in Indizes von M.strip — beim Ausschneiden mitverschieben, sonst wuerde
+     * eine ausgeklammerte Stelle an einer anderen Stelle des Streifens landen. */
+    for(var i=0;i<out.length;i++){ if(istAusgeklammert(i+off)) out[i]=null; }
+  }
   return out;
 }
 
@@ -8856,7 +9650,7 @@ function zeichneZoom(){
    * Leinwand, war die Kurve im haeufigsten Fall um 17 % gedehnt — der Zeit-Messzirkel las
    * dann eine um 17 % zu lange QRS-Dauer ab. */
   var S=(window.VS&&window.VS.skala);
-  var A=S?S.kurvenAusschnitt(w,mp,Z.speed,hz,buf.length):null;
+  var A=S?S.kurvenAusschnitt(w,mp,Z.speed,hz,vorhandeneWerte()):null;
   if(!A||A.n<2){ zeichneSkala(ctx,w,h,Z.speed,Z.gain,mp); return; }
   var n=A.n, wK=A.breite;
   var von=buf.length-n, mitte=h/2, dx=A.proWert;
@@ -8898,11 +9692,15 @@ function zeichneZoom(){
   // Kurve
   ctx.strokeStyle=(Z.lead==='aVR'||Z.lead==='aVL'||Z.lead==='aVF')?'#ffd166':'#28e07a';
   ctx.lineWidth=Math.max(1.4,1.7*M.dpr); ctx.beginPath();
+  var offen=false;
   for(var i=0;i<n;i++){
-    var v=buf[von+i]; if(v==null)v=0;
+    var v=buf[von+i];
+    /* Luecke NICHT ueberbruecken: eine durchgezogene Linie ueber eine Sendepause behauptet
+     * ein Signal, das es nicht gab — und in genau dieser Ansicht wird ausgemessen. */
+    if(v==null){ offen=false; continue; }
     var y=mitte - v*Z.gain*mp;
     if(y<2)y=2; if(y>h-2)y=h-2;
-    if(i===0) ctx.moveTo(0,y); else ctx.lineTo(i*dx,y);
+    if(!offen){ ctx.moveTo(i*dx,y); offen=true; } else ctx.lineTo(i*dx,y);
   }
   ctx.stroke();
   // Messzirkel
@@ -8951,7 +9749,7 @@ function zZeigeMesswerte(){
   if(m.mv==null) mvEl.textContent='–';
   else if(M.echt&&M.kal) mvEl.textContent=(Math.round(m.mv*1000)/1000)+' mV';
   else mvEl.textContent=(Math.round(m.mv*Z.gain*10)/10)+' mm (unkalibriert)';
-  $('#zScale').textContent=Z.speed+' mm/s · '+Z.gain+' mm/mV';
+  $('#zScale').textContent=speedTxt(Z.speed)+' mm/s · '+Z.gain+' mm/mV';
   /* AUS DER GEMESSENEN STRECKE WIRD EIN BEFUND.
    * Wer mit dem Zeit-Messzirkel eine QT-Strecke abnimmt, will nicht die Rohzahl, sondern die
    * frequenzkorrigierte — sonst ist sie zwischen zwei Frequenzen nicht vergleichbar. Die
@@ -9184,7 +9982,9 @@ function wire(){
   });
   $('#ekgWissenBtn').addEventListener('click',function(){
     var ov=$('#ekgOverlay');
-    if(ov.dataset.seite==='wissen'){ ov.dataset.seite=''; rebuildSide(); updateMeasures(); }
+    /* Auch die Literaturseite gehoert zu diesem Knopf — sonst bliebe man dort haengen und
+     * muesste den Umweg ueber "Regeln" nehmen, um das Nachschlagewerk wieder zu schliessen. */
+    if(ov.dataset.seite==='wissen'||ov.dataset.seite==='lit'){ ov.dataset.seite=''; rebuildSide(); updateMeasures(); }
     else renderWissen();
   });
   $('#ekgSave').onclick=doSave;

@@ -615,7 +615,7 @@
    * Wertet die T-Wellen ueber alle Schlaege aus. Wie bei der P-Welle gilt: erst ab einem
    * Mindestanteil auswertbarer Schlaege wird ueberhaupt etwas gesagt.
    */
-  function tAuswertung(werte, zacken, hz, rausch, rAmp, art, hf) {
+  function tAuswertung(werte, zacken, hz, rausch, rAmp, art, hf, skala, einheit) {
     if (!hz || hz < P_MIN_HZ) {
       return { messbar: false, warum: 'Abtastrate zu niedrig für die T-Welle' };
     }
@@ -648,6 +648,18 @@
     if (art === 'hund' && hf > 0) {
       qtc = Math.round((qtMed / 1000 - 0.087 * ((60 / hf) - 1)) * 1000);
     }
+    /* T-HOEHE IN MILLIVOLT (10.08.2026) - und zwar nur bei bekannter Verstaerkung, dieselbe
+     * Regel wie bei P und ST. Gebraucht wird sie fuer EINEN belegten Zusammenhang: die
+     * hohe, zeltfoermige T-Welle der Hyperkaliaemie. Ohne die Zahl blieb dieser Befund
+     * unpruefbar, obwohl er der einzige EKG-Befund ist, der unmittelbar lebensbedrohlich
+     * werden kann. Ausserdem als VERHAELTNIS zur R-Zacke: die Werke nennen "T groesser als
+     * ein Viertel der R" als Faustmass, und das ist von der Verstaerkung unabhaengig. */
+    var kalT = endlich(skala) && skala > 0 && /uv|µv|mv/i.test(String(einheit || ''));
+    var tAmpMv = null;
+    var betrAmp = [];
+    for (i = 0; i < amps.length; i++) betrAmp.push(Math.abs(amps[i]));
+    var tBetrag = median(betrAmp);
+    if (kalT) tAmpMv = Math.round(tBetrag * skala * (/mv/i.test(String(einheit)) ? 1 : 0.001) * 1000) / 1000;
     return {
       messbar: true, anteil: Math.round(anteil * 100), schlaege: funde.length,
       qtMs: Math.round(qtMed),
@@ -655,6 +667,8 @@
       qtMaxMs: Math.round(Math.max.apply(null, qts)),
       qtcMs: qtc, qtcFormel: qtc != null ? 'Van de Water' : null,
       negativ: median(amps) < 0,
+      ampMv: tAmpMv,
+      anteilVonR: (rAmp > 0) ? Math.round(tBetrag / rAmp * 100) / 100 : null,
     };
   }
 
@@ -939,7 +953,7 @@
     return za / Math.sqrt(na * nb);
   }
 
-  function formVergleich(werte, zacken, hz) {
+  function formVergleich(werte, zacken, hz, breitenJe) {
     var vor = Math.round(hz * 0.06), nach = Math.round(hz * 0.08);
     var breite = vor + nach + 1;
     var bloecke = [], i, j;
@@ -951,11 +965,65 @@
       bloecke.push({ idx: i, r: r, w: b });
     }
     if (bloecke.length < 3) return { messbar: false, warum: 'zu wenige vollständige Komplexe für einen Formvergleich' };
-    // Vorlage: punktweiser Median
+    /* ---------------------------------------------------------------------------------
+     * DIE VORLAGE IST DIE GROESSTE FORMKLASSE, NICHT DER MEDIAN ALLER SCHLAEGE
+     * (Befund beim Schreiben von tools/rhythmus-test.js, 10.08.2026)
+     *
+     * Vorher war die Vorlage der punktweise Median ueber ALLE Schlaege. Bei einem BIGEMINUS
+     * ist aber jeder zweite Schlag ektop - der Median lief damit genau zwischen den beiden
+     * Formen hindurch, und BEIDE korrelierten mit ihm ueber 0,95. Gemessen an einem
+     * synthetischen Bigeminus mit 10 schmalen und 10 breiten Komplexen: kleinste Korrelation
+     * 0,956, also NULL formfremde Schlaege. Der haeufigste und klinisch bedeutsamste Fall
+     * von Ektopie war der einzige, den der Formvergleich nicht sehen konnte.
+     *
+     * Jetzt werden zuerst ALLE Schlaege in Formklassen sortiert; die groesste ist die
+     * Vorlage. Bei zwei etwa gleich grossen Klassen (genau der 50:50-Fall des Bigeminus)
+     * entscheidet die QRS-BREITE: der schmalere Komplex ist der uebergeleitete, der breitere
+     * der ventrikulaere. Das ist keine Bequemlichkeit, sondern das Kriterium selbst.
+     * --------------------------------------------------------------------------------- */
+    var klassenAlle = [];
+    for (i = 0; i < bloecke.length; i++) {
+      var trifft = -1;
+      for (j = 0; j < klassenAlle.length; j++) {
+        if (korrelation(bloecke[i].w, klassenAlle[j].w) >= 0.95) { trifft = j; break; }
+      }
+      if (trifft < 0) klassenAlle.push({ w: bloecke[i].w, mitglieder: [i] });
+      else klassenAlle[trifft].mitglieder.push(i);
+    }
+    function breiteDerKlasse(kl) {
+      if (!breitenJe) return null;
+      var b = [];
+      for (var q = 0; q < kl.mitglieder.length; q++) {
+        var bw = breitenJe[bloecke[kl.mitglieder[q]].idx];
+        if (endlich(bw)) b.push(bw);
+      }
+      return b.length ? median(b) : null;
+    }
+    klassenAlle.sort(function (a, b) { return b.mitglieder.length - a.mitglieder.length; });
+    var domIdx = 0;
+    if (klassenAlle.length > 1 &&
+        klassenAlle[1].mitglieder.length >= klassenAlle[0].mitglieder.length * 0.8) {
+      var b0 = breiteDerKlasse(klassenAlle[0]), b1 = breiteDerKlasse(klassenAlle[1]);
+      if (b0 != null && b1 != null && b1 < b0) domIdx = 1;
+    }
+    var dom = klassenAlle[domIdx];
+    /* WENN KEINE FORM UEBERWIEGT, GIBT ES KEINE VORLAGE — und dann auch keine Aussage.
+     * Bei einem stark gestoerten Streifen aehnelt kein Schlag dem anderen; jeder wird zu
+     * seiner eigenen Klasse, die groesste haette einen einzigen Schlag, und alle uebrigen
+     * waeren "formfremd". Daraus wuerde eine multiforme Ektopie mit 95 % Anteil - der
+     * gefaehrlichste denkbare Fehlbefund aus reinem Rauschen. Ein Drittel ist die Grenze:
+     * ein Bigeminus (50 %) bleibt darueber, ein zerfallener Streifen nicht. */
+    if (dom.mitglieder.length < 2 || dom.mitglieder.length / bloecke.length <= 0.34) {
+      return { messbar: false, schlaege: bloecke.length,
+        warum: 'kein Schlag gleicht dem anderen (größte Formgruppe nur ' + dom.mitglieder.length +
+          ' von ' + bloecke.length + ') — für einen Formvergleich braucht es eine überwiegende Form. ' +
+          'Meist ist der Streifen gestört; Elektrodensitz und Kontakt prüfen.' };
+    }
+    // Vorlage: punktweiser Median INNERHALB der dominanten Klasse
     var vorlage = [];
     for (j = 0; j < breite; j++) {
       var spalte = [];
-      for (i = 0; i < bloecke.length; i++) spalte.push(bloecke[i].w[j]);
+      for (i = 0; i < dom.mitglieder.length; i++) spalte.push(bloecke[dom.mitglieder[i]].w[j]);
       vorlage.push(median(spalte));
     }
     var fremd = [], konform = 0, rWerte = [];
@@ -977,15 +1045,279 @@
       if (passt < 0) klassen.push({ w: fremd[i].w, n: 1 });
       else klassen[passt].n++;
     }
+    /* WELCHE Schlaege fremd sind, nicht nur wieviele (10.08.2026). Ohne die Indizes laesst
+     * sich das MUSTER nicht bestimmen - und ob die fremden Schlaege einzeln liegen, jeden
+     * zweiten treffen (Bigeminus) oder vier hintereinander stehen (Salve), ist genau der
+     * Unterschied, an dem die klinische Bedeutung haengt. */
+    var fremdIdx = [];
+    for (i = 0; i < fremd.length; i++) fremdIdx.push(fremd[i].idx);
     return {
       messbar: true,
       schlaege: bloecke.length,
       konform: konform,
       fremd: fremd.length,
+      fremdIdx: fremdIdx,
       fremdAnteil: Math.round(fremd.length / bloecke.length * 100),
       formen: klassen.length,                       // Zahl verschiedener fremder Formen
       rMin: Math.min.apply(null, rWerte),
       vorlage: vorlage,
+    };
+  }
+
+  /* ================================================================================ *
+   * 4e) MUSTER IM SCHLAGVERBAND  (10.08.2026)
+   *
+   * WARUM ES DIESEN ABSCHNITT GIBT: Bis hierher konnte die Station sagen "es gibt
+   * vorzeitige, formfremde Schlaege" und "sie haben eine oder mehrere Formen". Was sie
+   * NICHT sagen konnte, ist genau das, woran sich die klinische Bedeutung entscheidet:
+   * WIE die fremden Schlaege im Streifen liegen. Ein Einzelner alle paar Sekunden ist
+   * etwas anderes als jeder zweite Schlag (Bigeminus) und wieder etwas anderes als vier
+   * hintereinander (Salve). Die Lehrbuecher gliedern genau danach.
+   *
+   * ALLE FUNKTIONEN HIER SIND REINE RECHNUNGEN AUF DEN ZACKEN-INDIZES. Sie behaupten
+   * nichts, sie zaehlen - die Deutung passiert eine Ebene hoeher und traegt dort ihre
+   * Sicherheit und ihre Quelle.
+   * ================================================================================ */
+
+  /* Artabhaengige Schwellen der Rhythmusdeutung.
+   *
+   * qrsBreit: ab wann ein Kammerkomplex als VERBREITERT gilt. Vorher stand hier EINE feste
+   * Zahl (80 ms) fuer alle Arten - beim Hund liegt die Artgrenze bei 60-65 ms, bei der
+   * Katze bei 40. Ein Katzen-QRS von 60 ms ist um die Haelfte zu breit und waere mit der
+   * festen Grenze als schmal durchgegangen; damit waere eine ventrikulaere Tachykardie der
+   * Katze als supraventrikulaer eingestuft worden. Genommen ist jeweils die Artgrenze mit
+   * einem Zuschlag, damit eine Messunschaerfe von 4 ms (250 Hz) nicht schon reicht.
+   *
+   * pauseS: ab welcher absoluten Pausenlaenge von einer "langen Pause" gesprochen wird.
+   * Die Katze hat die kuerzeren Grundabstaende, dort faellt eine Pause frueher ins Gewicht. */
+  var R_ART = {
+    hund:     { qrsBreit: 70,  pauseS: 2.0 },
+    katze:    { qrsBreit: 50,  pauseS: 1.6 },
+    pferd:    { qrsBreit: 180, pauseS: 4.0 },
+    standard: { qrsBreit: 70,  pauseS: 2.0 }
+  };
+  function rArt(art) { return R_ART[art] || R_ART.standard; }
+
+  /*
+   * PAUSEN. Zwei Groessen entscheiden: das VERHAELTNIS zum uebrigen Abstand (ein
+   * ausgefallener Kammerkomplex ergibt etwa das Doppelte) und die ABSOLUTE Laenge (ab
+   * einigen Sekunden ist eine Pause unabhaengig vom Verhaeltnis bedeutsam).
+   * "etwa doppelt" ist bewusst ein Band (1,8 bis 2,4) und keine Zahl: die Sinusfrequenz
+   * schwankt atemabhaengig, ein exaktes 2,0 gibt es am lebenden Tier nicht.
+   */
+  function pausen(rrMs, art) {
+    if (!rrMs || rrMs.length < 2) return { messbar: false };
+    var A = rArt(art);
+    var mittel = median(rrMs), i;
+    if (!(mittel > 0)) return { messbar: false };
+    var maxMs = rrMs[0], maxIdx = 0;
+    for (i = 1; i < rrMs.length; i++) if (rrMs[i] > maxMs) { maxMs = rrMs[i]; maxIdx = i; }
+    var verhaeltnis = maxMs / mittel;
+    var doppelt = 0, ueberlang = 0;
+    for (i = 0; i < rrMs.length; i++) {
+      var v = rrMs[i] / mittel;
+      if (v >= 1.8 && v <= 2.4) doppelt++;
+      if (rrMs[i] >= A.pauseS * 1000) ueberlang++;
+    }
+    return {
+      messbar: true,
+      mittelMs: Math.round(mittel),
+      maxMs: Math.round(maxMs), maxIndex: maxIdx,
+      verhaeltnis: Math.round(verhaeltnis * 100) / 100,
+      ausfallAehnlich: doppelt,        // Pausen von etwa doppelter Laenge
+      ueberlang: ueberlang,            // Pausen ueber der artabhaengigen Sekundengrenze
+      grenzeS: A.pauseS
+    };
+  }
+
+  /*
+   * MUSTER DER FORMFREMDEN SCHLAEGE.
+   *   fremdIdx  Indizes (in der Zackenreihe) der Schlaege, die formfremd sind
+   *   n         Zahl der verglichenen Schlaege
+   * Erkannt wird, was ohne weitere Annahme aus der REIHENFOLGE folgt:
+   *   Bigeminus   jeder zweite Schlag fremd
+   *   Trigeminus  jeder dritte
+   *   Couplet     zwei fremde unmittelbar hintereinander
+   *   Triplett    drei
+   *   Salve       vier oder mehr in Folge  (ab hier sprechen die Werke von einer Salve
+   *               bzw. bei entsprechender Frequenz von einer ventrikulaeren Tachykardie)
+   * Ein Muster wird nur benannt, wenn es sich WIEDERHOLT (mindestens zwei Perioden) - ein
+   * einzelnes "fremd, normal, fremd" ist noch kein Bigeminus.
+   */
+  function ektopieMuster(fremdIdx, n, opts) {
+    if (!fremdIdx || !fremdIdx.length || !n) return { messbar: false };
+    opts = opts || {};
+    var ist = {}, i;
+    for (i = 0; i < fremdIdx.length; i++) ist[fremdIdx[i]] = true;
+    /* Laufen: aufeinanderfolgende fremde Schlaege zusammenfassen. */
+    var laeufe = [], k = 0;
+    var sortiert = fremdIdx.slice().sort(function (a, b) { return a - b; });
+    while (k < sortiert.length) {
+      var von = sortiert[k], laenge = 1;
+      while (k + 1 < sortiert.length && sortiert[k + 1] === sortiert[k] + 1) { k++; laenge++; }
+      laeufe.push({ von: von, laenge: laenge });
+      k++;
+    }
+    var couplets = 0, tripletts = 0, salven = [], einzeln = 0, laengste = 0;
+    for (i = 0; i < laeufe.length; i++) {
+      var L = laeufe[i].laenge;
+      if (L > laengste) laengste = L;
+      if (L === 1) einzeln++;
+      else if (L === 2) couplets++;
+      else if (L === 3) tripletts++;
+      else salven.push(laeufe[i]);
+    }
+    /* Bigeminus/Trigeminus: die Abstaende ZWISCHEN den fremden Schlaegen sind konstant 2
+     * bzw. 3. Verlangt werden mindestens drei fremde Schlaege in diesem Takt, also zwei
+     * vollstaendige Perioden - sonst ist jede zufaellige Folge ein "Bigeminus". */
+    function taktreihe(schritt) {
+      var beste = 0, lauf, j;
+      for (i = 0; i < sortiert.length; i++) {
+        lauf = 1;
+        for (j = i; j + 1 < sortiert.length; j++) {
+          if (sortiert[j + 1] - sortiert[j] === schritt) lauf++; else break;
+        }
+        if (lauf > beste) beste = lauf;
+      }
+      return beste;
+    }
+    var bi = taktreihe(2), tri = taktreihe(3);
+    return {
+      messbar: true,
+      fremd: fremdIdx.length, verglichen: n,
+      anteil: Math.round(fremdIdx.length / n * 100),
+      einzeln: einzeln, couplets: couplets, tripletts: tripletts,
+      salven: salven.length, laengsterLauf: laengste,
+      bigeminusLaeufe: bi >= 3 ? bi : 0,
+      trigeminusLaeufe: tri >= 3 ? tri : 0,
+      /* DIE BREITE DER FREMDEN SCHLAEGE, nicht die des ganzen Streifens (Befund beim
+       * Schreiben des Selbsttests 10.08.2026): eine Salve von vier breiten Komplexen in
+       * einem sonst schmalen Sinusstreifen laesst den MEDIAN der QRS-Breite schmal - genau
+       * die Salve, um die es geht, waere damit als "schmal" durchgegangen und nicht als
+       * ventrikulaer erkannt worden. Beurteilt werden muss der fremde Schlag selbst. */
+      qrsFremdMs: endlich(opts.qrsFremdMs) ? opts.qrsFremdMs : null,
+      qrsNormalMs: endlich(opts.qrsNormalMs) ? opts.qrsNormalMs : null
+    };
+  }
+
+  /*
+   * ELEKTRISCHER ALTERNANS: die Hoehe des Kammerkomplexes wechselt von Schlag zu Schlag,
+   * waehrend der Rhythmus regelmaessig bleibt. Das ist ein belegtes Zeichen eines
+   * Perikardergusses (das Herz schwingt im Erguss).
+   *
+   * DREI BEDINGUNGEN, und alle drei sind noetig:
+   *   1. REGELMAESSIGER Rhythmus. Bei wechselnden Abstaenden wechselt die Hoehe ohnehin
+   *      (unterschiedliche Fuellung) - dann waere jede Sinusarrhythmie ein Alternans.
+   *   2. Der Wechsel muss ABWECHSELN, nicht nur schwanken: mindestens 80 % der Uebergaenge
+   *      wechseln die Richtung.
+   *   3. Der Unterschied muss deutlich sein. Die Werke nennen ~10 % Hoehenunterschied als
+   *      Schwelle; hier wird 15 % verlangt, weil eine einkanalige Messung mit Atmung
+   *      allein schon einige Prozent schwankt.
+   * Ohne diese Zurueckhaltung meldete die Anwendung bei jedem atmenden Hund einen
+   * Perikarderguss-Verdacht.
+   */
+  function alternans(werte, zacken, rrMs) {
+    if (!zacken || zacken.length < 6 || !rrMs || rrMs.length < 5) {
+      return { messbar: false, warum: 'zu wenige Schläge für einen Höhenvergleich' };
+    }
+    var mittelRR = median(rrMs), i;
+    if (!(mittelRR > 0)) return { messbar: false };
+    var kleinste = rrMs[0], groesste = rrMs[0];
+    for (i = 1; i < rrMs.length; i++) {
+      if (rrMs[i] < kleinste) kleinste = rrMs[i];
+      if (rrMs[i] > groesste) groesste = rrMs[i];
+    }
+    var schwankung = (groesste - kleinste) / mittelRR;
+    if (schwankung > 0.15) {
+      return { messbar: false, warum: 'Rhythmus zu unregelmäßig (' + Math.round(schwankung * 100) +
+        ' %) — Höhenunterschiede sind dann nicht als Alternans zu deuten' };
+    }
+    var hoehen = [];
+    for (i = 0; i < zacken.length; i++) {
+      var w = werte[zacken[i]];
+      hoehen.push(w == null ? 0 : Math.abs(w));
+    }
+    var mh = 0;
+    for (i = 0; i < hoehen.length; i++) mh += hoehen[i];
+    mh /= hoehen.length;
+    if (!(mh > 0)) return { messbar: false };
+    var wechselN = 0;
+    for (i = 0; i + 1 < hoehen.length; i++) {
+      var a = hoehen[i] - mh, b = hoehen[i + 1] - mh;
+      if ((a < 0 && b > 0) || (a > 0 && b < 0)) wechselN++;
+    }
+    var gerade = [], ungerade = [];
+    for (i = 0; i < hoehen.length; i++) (i % 2 === 0 ? gerade : ungerade).push(hoehen[i]);
+    var hg = median(gerade), hu = median(ungerade);
+    var gross = Math.max(hg, hu), klein = Math.min(hg, hu);
+    var unterschied = gross > 0 ? (gross - klein) / gross : 0;
+    var wechselAnteil = wechselN / (hoehen.length - 1);
+    return {
+      messbar: true,
+      vorhanden: (wechselAnteil >= 0.8 && unterschied >= 0.15),
+      unterschied: Math.round(unterschied * 100),
+      wechselAnteil: Math.round(wechselAnteil * 100),
+      regelmaessig: Math.round(schwankung * 100)
+    };
+  }
+
+  /*
+   * P-WELLEN IN DER PAUSE — der einzige Weg, "ausgefallener Kammerkomplex" von
+   * "Sinusarrest" zu trennen, und die Grundlage jeder Aussage ueber einen AV-Block.
+   *
+   *   Vorhof schlaegt, Kammer nicht   -> P in der Pause  -> AV-Blockierung
+   *   Vorhof schlaegt auch nicht      -> keine P         -> Sinusarrest / SA-Block
+   *
+   * Gesucht wird NUR in Pausen, die deutlich laenger sind als der uebrige Abstand
+   * (>= 1,5-fach). Das ist Absicht: eine Suche ueber den ganzen Streifen wuerde T-Wellen
+   * mitzaehlen, und dann stuende hier eine Vorhoffrequenz, die es nicht gibt.
+   *
+   * WAS DIESE FUNKTION NICHT KANN und was deshalb dabeisteht: eine P-Welle, die IN einer
+   * T-Welle verborgen liegt, findet sie nicht. Ein negativer Befund heisst also
+   * "nicht nachweisbar", nicht "nicht vorhanden".
+   */
+  function pausenP(werte, zacken, hz, schwelle, art, rrMs) {
+    if (!zacken || zacken.length < 3 || !rrMs || rrMs.length < 2 || !hz) {
+      return { messbar: false, warum: 'zu wenige Schläge' };
+    }
+    var mittel = median(rrMs);
+    if (!(mittel > 0)) return { messbar: false };
+    var A = pArt(art);
+    var pausenGefunden = 0, mitP = 0, pGesamt = 0, i;
+    for (i = 0; i < rrMs.length; i++) {
+      if (rrMs[i] < mittel * 1.5) continue;
+      pausenGefunden++;
+      /* Fenster: vom Ende des T-Fensters des vorigen Schlages bis kurz vor den naechsten
+       * QRS. Der Anfang laesst die T-Welle aus, das Ende die naechste regulaere P. */
+      var von = zacken[i] + Math.round(hz * 0.20);
+      var bis = zacken[i + 1] - Math.round(hz * A.wHinten);
+      if (bis - von < Math.round(hz * 0.05)) continue;
+      /* Auslenkungen zaehlen, die ueber der P-Schwelle liegen und die Dauer einer P haben. */
+      var n = 0, j = von;
+      while (j <= bis) {
+        var v = werte[j];
+        if (v != null && Math.abs(v) >= schwelle) {
+          var gi = j, beste = Math.abs(v);
+          while (j <= bis && werte[j] != null && Math.abs(werte[j]) >= schwelle) {
+            if (Math.abs(werte[j]) > beste) { beste = Math.abs(werte[j]); gi = j; }
+            j++;
+          }
+          var dauer = 0, b = gi, e = gi, schw = beste * 0.2, k2;
+          for (k2 = gi; k2 >= von && werte[k2] != null && Math.abs(werte[k2]) >= schw; k2--) b = k2;
+          for (k2 = gi; k2 <= bis && werte[k2] != null && Math.abs(werte[k2]) >= schw; k2++) e = k2;
+          dauer = (e - b) / hz * 1000;
+          if (dauer >= A.dauer[0] && dauer <= A.dauer[1]) n++;
+        } else j++;
+      }
+      if (n > 0) { mitP++; pGesamt += n; }
+    }
+    if (!pausenGefunden) return { messbar: false, warum: 'keine Pause im Streifen' };
+    return {
+      messbar: true,
+      pausen: pausenGefunden,
+      pausenMitP: mitP,
+      pWellen: pGesamt,
+      deutung: mitP > 0 ? 'vorhof-schlaegt-weiter' : 'keine-p-nachweisbar'
     };
   }
 
@@ -1040,42 +1372,234 @@
       vorzeitig++;
     }
 
-    var breit = endlich(qrsMs) && qrsMs > 80;   // fuer Hund/Katze bereits deutlich verbreitert
+    /*
+     * "VERBREITERT" IST ARTABHAENGIG (berichtigt 10.08.2026).
+     * Hier stand eine feste Grenze von 80 ms fuer jede Tierart. Beim Hund liegt die Artgrenze
+     * bei 60-65 ms, bei der Katze bei 40 - ein Katzen-Kammerkomplex von 60 ms ist also um die
+     * Haelfte zu breit und waere mit der festen Grenze als SCHMAL durchgegangen. Damit haette
+     * die Anwendung eine ventrikulaere Tachykardie der Katze als supraventrikulaer eingeordnet;
+     * das ist genau die Verwechslung, an der die Behandlung haengt.
+     */
+    var A = rArt(opts && opts.art);
+    var breit = endlich(qrsMs) && qrsMs > A.qrsBreit;
 
+    var guete = (opts && endlich(opts.guete)) ? opts.guete : 99;
+    var p = (opts && opts.p) || null;                    // pAuswertung
+    var muster = (opts && opts.muster) || null;          // ektopieMuster
+    var pau = (opts && opts.pausen) || null;             // pausen()
+    var pP = (opts && opts.pausenP) || null;             // pausenP()
+    var pSicher = !!(p && p.messbar && p.vorhanden);
+    /* ==================================================================================
+     * EIN ZUGESCHALTETER FILTER DARF KEINE FEHLENDE P-WELLE ERZEUGEN (10.08.2026)
+     *
+     * Aus der Fachliteratur: "Filter sind grundsaetzlich nicht zu empfehlen: sie
+     * unterdruecken zwar Stoerungen, verkleinern aber gleichzeitig die P-QRS-T-Ausschlaege,
+     * sodass kleine P-Wellen unterdrueckt und nicht mehr sichtbar sind." Genau darauf
+     * beruhen aber die schwersten Aussagen dieser Datei: Vorhofflimmern und der
+     * idioventrikulaere Rhythmus werden ueber das FEHLEN der P begruendet. Ohne diese
+     * Sperre koennte die Anwendung ein Vorhofflimmern melden, das ihr eigener Filter
+     * erzeugt hat - dieselbe Falle, die bei den Amplituden schon einmal zugeschlagen hat.
+     * ================================================================================== */
+    var filterAktiv = !!(opts && opts.filterAktiv);
+    var pFehlt = !filterAktiv && !!(p && p.messbar === false && endlich(p.anteil) && p.anteil < 40);
+    var sauber = guete >= 5;
+
+    /* ---------------------------------------------------------------------------------
+     * REIHENFOLGE: das Dringlichste zuerst, und in jeder Stufe nur, was der Streifen
+     * WIRKLICH hergibt. Jede neue Stufe traegt ihre Bedingung im Text mit - der
+     * Untersucher soll nachvollziehen koennen, WORAUF sich die Aussage stuetzt.
+     * --------------------------------------------------------------------------------- */
+
+    /* (1) SALVE / VENTRIKULAERE TACHYKARDIE.
+     * Vier und mehr formfremde Schlaege in Folge sind eine Salve; haelt sie ueber 30 s an,
+     * spricht man von anhaltender ventrikulaerer Tachykardie - das kann ein 10-s-Streifen
+     * nicht entscheiden, und genau das steht dann da. */
+    /* Beurteilt wird die Breite der FREMDEN Schlaege, nicht der Median des Streifens -
+     * sonst faellt eine kurze Salve in einem sonst schmalen Sinusstreifen durch. */
+    var fremdBreit = !!(muster && endlich(muster.qrsFremdMs) && muster.qrsFremdMs > A.qrsBreit);
+    if (sauber && muster && muster.messbar && muster.laengsterLauf >= 4 && (fremdBreit || breit)) {
+      return { id: 'vtach', name: 'Salve breiter Kammerkomplexe (ventrikuläre Tachykardie)',
+        sicherheit: 'Verdacht',
+        begruendung: muster.laengsterLauf + ' formfremde, verbreiterte Komplexe (' +
+          (muster.qrsFremdMs != null ? muster.qrsFremdMs : qrsMs) +
+          ' ms) unmittelbar hintereinander' +
+          '. Ob sie ANHALTEND ist (über 30 s), lässt dieser Streifen nicht entscheiden — ' +
+          'Puls und Blutdruck am Tier prüfen.' };
+    }
     if (hf != null && bandHr && hf > bandHr[1] && breit) {
       return { id: 'vtach', name: 'Verdacht auf ventrikuläre Tachykardie', sicherheit: 'Verdacht',
         begruendung: 'schnelle Folge (' + hf + '/min) mit verbreitertem QRS (' + qrsMs + ' ms)' };
     }
+
+    /* (2) BREITE KOMPLEXE OHNE TACHYKARDIE = AKZELERIERTER IDIOVENTRIKULAERER RHYTHMUS.
+     * Der klassische Fall nach Trauma, Milztorsion und Magendrehung. Er wird oft uebersehen,
+     * weil die Frequenz unauffaellig ist - nur die BREITE und die fehlende P verraten ihn.
+     * Verlangt werden: verbreiterter QRS, regelmaessige Abstaende, keine P vor den Komplexen
+     * und eine Frequenz unter der Tachykardiegrenze. */
+    if (sauber && breit && pFehlt && schwankung <= 0.25 && hf != null &&
+        bandHr && hf <= bandHr[1] && hf >= 50) {
+      return { id: 'aivr', name: 'Breite Kammerkomplexe ohne P — idioventrikulärer Rhythmus möglich',
+        sicherheit: 'Verdacht',
+        begruendung: 'regelmäßige Folge verbreiterter Komplexe (' + qrsMs + ' ms) mit ' + hf +
+          '/min, ohne abgrenzbare P-Welle. Das Muster passt zu einem akzelerierten ' +
+          'idioventrikulären Rhythmus (typisch nach Trauma, Magendrehung, Milzerkrankung) — ' +
+          'er ist oft selbstlimitierend und wird nicht allein wegen der Kurve behandelt.' };
+    }
+
+    /* (3) PAUSE MIT ODER OHNE VORHOFTAETIGKEIT — der Unterschied, an dem alles haengt.
+     * P in der Pause  = die Vorhoefe schlagen weiter, die Ueberleitung faellt aus (AV-Block).
+     * Keine P         = auch der Vorhof schweigt (Sinusarrest / SA-Block).
+     * Ohne diese Unterscheidung konnte die Station nur "ausgefallener Kammerkomplex" sagen.
+     *
+     * DIE SPERRE DAVOR IST DER WICHTIGERE TEIL (Befund im eigenen Selbsttest, 10.08.2026).
+     * Ein BIGEMINUS erzeugt lauter kurz-lang-Paare. Der Median der RR-Abstaende faellt dabei
+     * auf den KURZEN Wert (bei zehn kurzen und neun langen Abstaenden liegt die Mitte der
+     * sortierten Reihe im kurzen Block), und die kompensatorische Pause steht dann rechnerisch
+     * mit dem 2,3-fachen des "mittleren" Abstands da. Der erste Entwurf meldete an einem
+     * sauberen synthetischen Bigeminus prompt einen SINUSARREST - eine erfundene, klinisch
+     * schwerwiegende Diagnose aus einem harmlosen Rechenartefakt.
+     * wechselVerdacht() erkennt genau dieses kurz-lang-Muster (gleichbleibende Paarsummen)
+     * und wird hier zum Vetorecht: solange die Abstaende regelmaessig zwischen kurz und lang
+     * wechseln, ist die lange Strecke die Pause NACH einem vorgezogenen Schlag und nicht der
+     * Ausfall eines erwarteten. */
+    var wechselMuster = !!(opts && opts.wechsel);
+    if (sauber && !wechselMuster && pau && pau.messbar && pau.verhaeltnis >= 1.8 && pP && pP.messbar) {
+      if (pP.deutung === 'vorhof-schlaegt-weiter') {
+        var typ = (p && p.pqVerlauf === 'zunehmend')
+          ? 'Die PQ-Zeit nimmt vor dem Ausfall zu — das ist das Muster des Typs Mobitz I (Wenckebach), meist vagal und gutartig.'
+          : ((p && p.pqVerlauf === 'konstant')
+            ? 'Die PQ-Zeit bleibt dabei konstant — das ist das Muster des Typs Mobitz II. Er sitzt unterhalb des AV-Knotens, spricht kaum auf Atropin an und kann in einen totalen Block übergehen.'
+            : 'Welcher Typ vorliegt, ist aus dem PQ-Verlauf dieses Streifens nicht zu entscheiden.');
+        return { id: 'avblock2', name: 'P-Welle ohne folgenden Kammerkomplex (AV-Block II°)',
+          sicherheit: 'Verdacht',
+          begruendung: 'In ' + pP.pausenMitP + ' von ' + pP.pausen + ' Pausen ist eine P-Welle ' +
+            'nachweisbar, der KEIN Kammerkomplex folgt (längste Pause ' + pau.maxMs + ' ms gegen ' +
+            pau.mittelMs + ' ms im Mittel). ' + typ };
+      }
+      return { id: 'sinusarrest', name: 'Pause ohne nachweisbare Vorhoftätigkeit (Sinusarrest/SA-Block)',
+        sicherheit: 'Verdacht',
+        begruendung: 'Pause von ' + pau.maxMs + ' ms gegen ' + pau.mittelMs + ' ms im Mittel, ' +
+          'und in der Pause ist KEINE P-Welle nachweisbar. Das trennt den Sinusarrest von der ' +
+          'AV-Blockierung. Achtung: eine in der T-Welle verborgene P findet diese Messung nicht — ' +
+          '"nicht nachweisbar" ist nicht dasselbe wie "nicht vorhanden".' };
+    }
+
+    /* (4) VORHOFFLIMMERN. Die Werke nennen drei Merkmale zusammen: sehr unregelmaessig,
+     * KEINE abgrenzbaren P-Wellen, schmaler Kammerkomplex. Sind P-Wellen zu sehen, ist es
+     * KEIN Vorhofflimmern - deshalb ist pFehlt Bedingung und nicht bloss ein Zusatz. */
+    if (sauber && pFehlt && !breit && schwankung > 0.30 &&
+        !(muster && muster.messbar && muster.bigeminusLaeufe)) {
+      return { id: 'vhf', name: 'Unregelmäßig ohne abgrenzbare P — Vorhofflimmern möglich',
+        sicherheit: 'Verdacht',
+        begruendung: 'Die Abstände schwanken um ' + Math.round(schwankung * 100) + ' % ohne ' +
+          'erkennbares Muster, in nur ' + p.anteil + ' % der Schläge ist eine P-Welle abgrenzbar, ' +
+          'und der Kammerkomplex ist schmal (' + qrsMs + ' ms). Das ist die Merkmalskombination ' +
+          'des Vorhofflimmerns' + (hf != null ? ' (hier ' + hf + '/min)' : '') + '. Zur Sicherung ' +
+          'gehört ein längerer Streifen und die Auskultation (Pulsdefizit).' };
+    }
+
     // Ein vorzeitiger Schlag zaehlt fuer sich - er darf NICHT zusaetzlich von einer hohen
     // Gesamtschwankung abhaengen, sonst faellt die einzelne Extrasystole wieder durch.
     // Eine Extrasystolen-Aussage nur bei sauberem Signal. Bei maessiger Guete bleibt es bei der
     // reinen Messung "unregelmaessig" - das ist wahr und verleitet zu keiner Behandlung.
-    var guete = (opts && endlich(opts.guete)) ? opts.guete : 99;
     if (vorzeitig > 0 && guete < 5) {
       return { id: null, name: 'unregelmäßig, Signal nur mäßig', sicherheit: 'Messung',
         begruendung: 'Abstände schwanken, aber der Ausschlag liegt nur ' + guete + '-fach über der ' +
           'Grundlinie — für die Aussage "Extrasystole" ist das zu unsicher. Elektrodensitz prüfen.' };
     }
+
+    /* (5) BIGEMINUS / TRIGEMINUS — dasselbe Ereignis, aber in einem Takt, der klinisch
+     * schwerer wiegt als vereinzelte Extrasystolen. */
+    if (sauber && muster && muster.messbar && muster.bigeminusLaeufe >= 3) {
+      return { id: 'bigeminus', name: 'Bigeminus — jeder zweite Schlag ist formfremd',
+        sicherheit: 'Verdacht',
+        begruendung: muster.bigeminusLaeufe + ' Schläge im Zweiertakt (' + muster.fremd + ' von ' +
+          muster.verglichen + ' Schlägen formfremd, ' + muster.anteil + ' %)' +
+          (breit ? ', dabei verbreiterter QRS ' + qrsMs + ' ms — ventrikulärer Ursprung' : '') +
+          '. Ein Bigeminus halbiert den wirksamen Auswurf, wenn der eingeschobene Schlag keinen ' +
+          'Puls erzeugt — deshalb den Puls am Tier zählen, nicht am Monitor.' };
+    }
+    if (sauber && muster && muster.messbar && muster.trigeminusLaeufe >= 3) {
+      return { id: 'trigeminus', name: 'Trigeminus — jeder dritte Schlag ist formfremd',
+        sicherheit: 'Verdacht',
+        begruendung: muster.trigeminusLaeufe + ' Schläge im Dreiertakt (' + muster.fremd + ' von ' +
+          muster.verglichen + ' Schlägen formfremd)' +
+          (breit ? ', dabei verbreiterter QRS ' + qrsMs + ' ms' : '') + '.' };
+    }
+    if (sauber && muster && muster.messbar && (muster.couplets > 0 || muster.tripletts > 0)) {
+      return { id: 'couplet', name: 'Formfremde Schläge in Paaren' + (muster.tripletts ? ' und Dreiergruppen' : ''),
+        sicherheit: 'Verdacht',
+        begruendung: muster.couplets + ' Paar(e)' + (muster.tripletts ? ' und ' + muster.tripletts + ' Dreiergruppe(n)' : '') +
+          ' formfremder Schläge. Gehäufte und gruppierte Extrasystolen wiegen schwerer als ' +
+          'vereinzelte; über Häufigkeit und Verlauf entscheidet das Langzeit-EKG, nicht der Kurzstreifen.' };
+    }
+
     if (vorzeitig > 0) {
       return { id: 'ves', name: 'unregelmäßig mit vorzeitigen Schlägen', sicherheit: 'Verdacht',
         begruendung: vorzeitig + ' vorzeitige(r) Schlag/Schläge (kürzester Abstand ' + Math.round(kleinste) +
           ' ms gegen ' + Math.round(mittel) + ' ms im Mittel)' +
           (breit ? ', dabei verbreiterter QRS ' + qrsMs + ' ms — ventrikulärer Ursprung möglich' : '') };
     }
+    /* (6) LANGE PAUSE OHNE AUSFALLMUSTER: benennen, aber nicht deuten. Auch hier gilt das
+     * Veto des kurz-lang-Musters — sonst waere die kompensatorische Pause eines Bigeminus
+     * eine "lange Pause zwischen zwei Schlaegen". */
+    if (sauber && !wechselMuster && pau && pau.messbar && pau.ueberlang > 0) {
+      return { id: 'pause', name: 'Lange Pause zwischen zwei Schlägen', sicherheit: 'Messung',
+        begruendung: 'Längster Abstand ' + pau.maxMs + ' ms (über der Grenze von ' + pau.grenzeS +
+          ' s für diese Tierart). Sinusarrest, Vorhofstillstand und höhergradige AV-Blockierung ' +
+          'kommen in Frage; bei hohem Vagotonus (brachyzephale Rassen) auch ohne Krankheitswert.' };
+    }
     if (schwankung > 0.25) {
       return { id: null, name: 'unregelmäßig, Ursache offen', sicherheit: 'Messung',
-        begruendung: 'Schwankung der Abstände ' + Math.round(schwankung * 100) + ' % — für die Unterscheidung (z. B. Vorhofflimmern) ist die P-Wellen-Beurteilung nötig, die dieser Streifen nicht hergibt' };
+        begruendung: 'Schwankung der Abstände ' + Math.round(schwankung * 100) + ' %' +
+          (p && p.messbar === false
+            ? ' — und in nur ' + p.anteil + ' % der Schläge ist eine P-Welle abgrenzbar. Für ' +
+              'die Unterscheidung (Vorhofflimmern, Vorhofstillstand) braucht es einen längeren, ' +
+              'ruhigeren Streifen oder eine Brustwandableitung.'
+            : ' bei erhaltenen P-Wellen — beim Hund ist eine atemabhängige Sinusarrhythmie ' +
+              'physiologisch, bei der Katze nicht.') };
     }
+    /* ---------------------------------------------------------------------------------
+     * REGELMAESSIG — UND ERST DIE P-WELLE MACHT DARAUS "SINUS" (10.08.2026)
+     *
+     * Bis hierher hiess ein regelmaessiger Streifen schlicht "regelmaessig". Das war
+     * ehrlich, aber es liess die wichtigste Zusatzinformation liegen, die inzwischen
+     * gemessen wird: liegt vor JEDEM Kammerkomplex eine P-Welle? Genau das ist die
+     * Definition des Sinusrhythmus, und genau daran trennt sich eine Sinustachykardie von
+     * einer supraventrikulaeren Tachykardie (dort verschmilzt die P mit der vorangehenden
+     * T oder fehlt). Steht keine P zur Verfuegung, bleibt es beim alten, zurueckhaltenden
+     * Wortlaut - eine Sinusaussage ohne P waere eine Behauptung.
+     * --------------------------------------------------------------------------------- */
+    var mitP = pSicher ? ', vor jedem Kammerkomplex eine P-Welle' : '';
+    var ohneP = (!pSicher && p && p.messbar === false)
+      ? ' — eine P-Welle ist nicht sicher abgrenzbar, deshalb bleibt offen, ob der Rhythmus vom Sinusknoten ausgeht'
+      : '';
     if (hf != null && bandHr && hf < bandHr[0]) {
-      return { id: 'sinusbrady', name: 'regelmäßig, langsam', sicherheit: 'Messung',
-        begruendung: hf + '/min bei gleichmäßigen Abständen' };
+      return { id: 'sinusbrady', name: pSicher ? 'Sinusbradykardie' : 'regelmäßig, langsam',
+        sicherheit: 'Messung',
+        begruendung: hf + '/min bei gleichmäßigen Abständen' + mitP + ohneP };
     }
     if (hf != null && bandHr && hf > bandHr[1]) {
+      /* Die Abgrenzung, die ohne P-Welle unmoeglich war: bei erhaltener P vor jedem Komplex
+       * ist es eine Sinustachykardie, ohne P eher supraventrikulaer. Behauptet wird nur die
+       * erste Richtung; die zweite wird als Moeglichkeit genannt. */
+      if (pSicher) {
+        return { id: 'sinustachy', name: 'Sinustachykardie', sicherheit: 'Messung',
+          begruendung: hf + '/min bei gleichmäßigen Abständen, vor jedem Kammerkomplex eine ' +
+            'P-Welle. Schmerz, zu flache Narkose, Hypovolämie, Hyperkapnie, Fieber und ' +
+            'Katecholamine kommen als Ursache in Frage.' };
+      }
       return { id: 'sinustachy', name: 'regelmäßig, schnell', sicherheit: 'Messung',
-        begruendung: hf + '/min bei gleichmäßigen Abständen' };
+        begruendung: hf + '/min bei gleichmäßigen Abständen' +
+          (p && p.messbar === false
+            ? '. Eine P-Welle ist nicht abgrenzbar — bei dieser Frequenz kann sie in der ' +
+              'vorangehenden T-Welle verborgen liegen. Damit ist eine supraventrikuläre ' +
+              'Tachykardie nicht auszuschließen; sie ist typischerweise starr regelmäßig ' +
+              'und beginnt/endet abrupt.'
+            : '') };
     }
-    return { id: 'sinus', name: 'regelmäßig', sicherheit: 'Messung',
-      begruendung: 'gleichmäßige Abstände' + (hf != null ? ', ' + hf + '/min' : '') };
+    return { id: 'sinus', name: pSicher ? 'Sinusrhythmus' : 'regelmäßig', sicherheit: 'Messung',
+      begruendung: 'gleichmäßige Abstände' + (hf != null ? ', ' + hf + '/min' : '') + mitP + ohneP };
   }
 
   /* ------------------------------------------------------------------ *
@@ -1153,9 +1677,14 @@
 
     var rrMs = [];
     for (i = 1; i < zacken.length; i++) rrMs.push((zacken[i] - zacken[i - 1]) / hz * 1000);
-    var breiten = [];
+    /* Die Breite JE SCHLAG bleibt erhalten (10.08.2026) - nicht nur ihr Median. Ohne die
+     * Zuordnung Schlag -> Breite laesst sich nicht sagen, ob die FORMFREMDEN Schlaege breit
+     * sind; und genau das unterscheidet die ventrikulaere von der supraventrikulaeren
+     * Extrasystole. Der Index zaehlt wie in zacken, damit beides zusammenpasst. */
+    var breiten = [], breitenJe = [];
     for (i = 0; i < zacken.length; i++) {
       var b = qrsBreiteMs(werte, zacken[i], hz);
+      breitenJe.push(endlich(b) ? b : null);
       if (endlich(b)) breiten.push(b);
     }
     var qrsM = breiten.length ? Math.round(median(breiten)) : null;
@@ -1169,7 +1698,6 @@
       minMs: Math.round(Math.min.apply(null, rrMs)),
       maxMs: Math.round(Math.max.apply(null, rrMs)),
     };
-    ergebnis.rhythmus = rhythmus(rrMs, qrsM, opts.bandHr || null, { guete: ergebnis.guete });
     /* Vor jeder Rhythmusaussage: koennte das Wechselmuster von der Erkennung selbst stammen?
      * Siehe Kopf von wechselVerdacht() - zwei Dissertationen beschreiben genau diesen Ausfall. */
     ergebnis.wechsel = wechselVerdacht(werte, zacken, rrMs);
@@ -1183,13 +1711,45 @@
     /* Rauschmass fuer die P-Suche: das 25. PERZENTIL der Ruhestrecken, NICHT ihr Median.
      * Der Median liegt mitten in der T-Welle (siehe Kommentar bei perzentil()). */
     var pRausch = perzentil(ruhe, 0.25);
+    var pSchwelle = Math.max(pRausch * 3, spitze * 0.04);
     ergebnis.p = pAuswertung(werte, zacken, hz, pRausch, spitze, kurve.skala, opts.einheit || 'uV', art);
-    ergebnis.t = tAuswertung(werte, zacken, hz, pRausch, spitze, art, ergebnis.hf);
+    ergebnis.t = tAuswertung(werte, zacken, hz, pRausch, spitze, art, ergebnis.hf,
+      kurve.skala, opts.einheit || 'uV');
     /* QRS-Form am REPRAESENTATIVEN Schlag (mittlerer der Reihe) und der Formvergleich ueber
      * alle Schlaege. Beides einkanalig zulaessig - im Gegensatz zur Schenkelblock-Zuordnung. */
     var kal = endlich(kurve.skala) && kurve.skala > 0 && /uv|µv|mv/i.test(String(opts.einheit || 'uV'));
     ergebnis.qrsForm = qrsForm(werte, zacken[Math.floor(zacken.length / 2)], hz, kal, kurve.skala, opts.einheit || 'uV');
-    ergebnis.form = formVergleich(werte, zacken, hz);
+    ergebnis.form = formVergleich(werte, zacken, hz, breitenJe);
+    /* ---------------------------------------------------------------------------------
+     * DIE REIHENFOLGE IST DER EIGENTLICHE ZUGEWINN (10.08.2026)
+     *
+     * Bis hierher wurde rhythmus() VOR der P-Wellen-Auswertung aufgerufen. Die P-Erkennung
+     * lief also, ihr Ergebnis erschien in der Messwertspalte - aber die Rhythmusdeutung
+     * bekam es nie zu sehen. Deshalb stand dort woertlich "fuer die Unterscheidung (z. B.
+     * Vorhofflimmern) ist die P-Wellen-Beurteilung noetig, die dieser Streifen nicht
+     * hergibt", obwohl er sie zwei Zeilen weiter unten sehr wohl hergab. Vorhofflimmern,
+     * AV-Block II, Sinusarrest und die Trennung Sinus-/supraventrikulaere Tachykardie
+     * haengen alle an genau dieser Information.
+     * Jetzt laufen erst alle Messungen, dann die Deutung.
+     * --------------------------------------------------------------------------------- */
+    var fremdIdx = (ergebnis.form && ergebnis.form.messbar && ergebnis.form.fremdIdx) || [];
+    var brFremd = [], brNormal = [];
+    for (i = 0; i < breitenJe.length; i++) {
+      if (breitenJe[i] == null) continue;
+      (fremdIdx.indexOf(i) >= 0 ? brFremd : brNormal).push(breitenJe[i]);
+    }
+    ergebnis.muster = ektopieMuster(fremdIdx,
+      (ergebnis.form && ergebnis.form.schlaege) || zacken.length,
+      { qrsFremdMs: brFremd.length ? Math.round(median(brFremd)) : null,
+        qrsNormalMs: brNormal.length ? Math.round(median(brNormal)) : null });
+    ergebnis.pausen = pausen(rrMs, art);
+    ergebnis.pausenP = pausenP(werte, zacken, hz, pSchwelle, art, rrMs);
+    ergebnis.alternans = alternans(werte, zacken, rrMs);
+    ergebnis.rhythmus = rhythmus(rrMs, qrsM, opts.bandHr || null, {
+      guete: ergebnis.guete, art: art, p: ergebnis.p, muster: ergebnis.muster,
+      pausen: ergebnis.pausen, pausenP: ergebnis.pausenP, wechsel: ergebnis.wechsel,
+      filterAktiv: !!opts.filterAktiv
+    });
     /* HRV zuletzt: sie braucht die Formauswertung, um zu wissen, ob Extrasystolen die
      * Zahlen verfaelschen. */
     ergebnis.hrv = hrv(rrMs, { ektopie: !!(ergebnis.form && ergebnis.form.messbar && ergebnis.form.fremd > 0) });
@@ -1205,7 +1765,8 @@
     findeT: findeT, tAuswertung: tAuswertung,
     qrsForm: qrsForm, formVergleich: formVergleich, korrelation: korrelation,
     wechselVerdacht: wechselVerdacht, hrv: hrv, HRV_MIN_RR: HRV_MIN_RR,
-    P_ART: P_ART, T_ART: T_ART,
+    pausen: pausen, ektopieMuster: ektopieMuster, alternans: alternans, pausenP: pausenP,
+    P_ART: P_ART, T_ART: T_ART, R_ART: R_ART,
     MIN_SEKUNDEN: MIN_SEKUNDEN, MIN_SCHLAEGE: MIN_SCHLAEGE,
     P_MIN_HZ: P_MIN_HZ, P_MIN_SCHLAEGE: P_MIN_SCHLAEGE, P_ANTEIL: P_ANTEIL,
   };
