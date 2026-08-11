@@ -1078,6 +1078,10 @@ html[data-theme="light"] .assess-tr{color:#5a3c00;background:rgba(255,180,60,.16
      liefert. Gleiche Datei wie bridge/ui-engine — in shared/, damit Station und Web-App
      dieselbe verwenden. -->
 <script src="../shared/ekg-analyse.js?v=1"></script>
+<!-- Geeichte Vorgabe des VIRTUELLEN Geraets (window.VS.modell): EKG in mV/ms je Tierart und
+     das Plethysmogramm mit Zeiten in Millisekunden. Muss VOR dem Monitorblock stehen - er
+     zeichnet daraus. Ohne diese Datei zeichnet das Geraet KEINE Kurve statt einer erfundenen. -->
+<script src="../shared/ekg-modell.js?v=1"></script>
 <!-- Wissensbasis: 203 belegte Befundregeln aus der Fachrecherche (Nachschlagewerk +
      Regelgrundlage). Reine Daten, keine Diagnosemaschine. -->
 <script src="../shared/ekg-befunde.js?v=1"></script>
@@ -1608,6 +1612,12 @@ function renderInfo(){
 
 /* ---------- MONITOR + KAPNOGRAF ---------- */
 var mon = { scen:'normal', raf:null, running:false, last:0, W:0, H:0, dpr:1, acc:0, phE:0, phR:0, buf:null, beatN:0, rrJit:1 };
+/* Abtastrate des virtuellen Geraets — FEST, unabhaengig von der Fensterbreite.
+ * Vorher war eine Bildspalte ein Abtastwert; damit lief die Kurve auf einem breiten Schirm
+ * mit 317 Hz und auf einem schmalen mit 100 Hz, und beim Ziehen des Fensters aenderte sie
+ * sich mitten im Betrieb. 250 Hz entsprechen der Rate der angeschlossenen Geraete (256 Hz)
+ * und ergeben 4 ms Schrittweite - fein genug fuer einen Katzen-Kammerkomplex von 35 ms. */
+var MON_HZ = 250;
 
 /* =====================================================================================
  * DAS UNIVERSELLE VIRTUELLE GERAET (05.08.2026)
@@ -2774,32 +2784,62 @@ function showMonParam(id){
 
 /* waveform sample functions → return 0..1 (1 = up) */
 function gauss(x,mu,s){ var d=(x-mu)/s; return Math.exp(-0.5*d*d); }
-function wEkg(ph,type){
-  var W=ekgDef(type).w||{};
-  if(W.flat) return 0.5+(Math.random()-0.5)*0.02;                      // Asystolie
-  if(W.chaos) return 0.5+0.26*Math.sin(ph*38+mon.beatN)+0.15*Math.sin(ph*67+2)+(Math.random()-0.5)*0.14; // Kammerflimmern
-  var beat=mon.beatN||0, y=0.5;
-  var wide=(W.qrs>1.5), hasP=(W.p&&W.pq!=='diss'), drop=false, tSign=1, ampR=0.42;
-  if(W.drop==='wenckebach'){ var r1=W.ratio||4; if(beat%r1===r1-1) drop=true; }   // gedroppter QRS
-  if(W.drop==='mobitz2'){ var r2=W.ratio||3; if(beat%r2===r2-1) drop=true; }
-  if(W.ectopic && beat%4===3){ if(W.ectopic==='ves'){ wide=true; hasP=false; tSign=-1; ampR=0.5; } else { hasP=true; wide=false; } }
-  var pq=(typeof W.pq==='number')?(W.pq-1)*0.05:(W.pq==='inc'?(beat%(W.ratio||4))*0.028:0); // PQ-Verlängerung
-  if(hasP) y+=0.07*gauss(ph,0.16+pq*0.3,0.028);
-  if(!drop){ var qc=0.335+pq;
-    if(wide){ y+=ampR*gauss(ph,qc+0.02,0.030)-0.13*gauss(ph,qc-0.04,0.02)-0.16*gauss(ph,qc+0.08,0.026)+0.17*(-tSign)*gauss(ph,0.62,0.05); }
-    else { y+=-0.05*gauss(ph,qc-0.03,0.010)+ampR*gauss(ph,qc,0.010)-0.12*gauss(ph,qc+0.03,0.012)+0.13*tSign*gauss(ph,0.55,0.045); }
-  }
-  if(W.flutter) y+=0.06*(2*((ph*4)%1)-1);        // Sägezahn
-  if(W.irregular) y+=(Math.random()-0.5)*0.03;   // Flimmer-Grundlinie
-  if(W.pq==='diss') y+=0.06*gauss((ph*2)%1,0.5,0.05); // unabhängige P (AV-Dissoziation)
-  return y;
+
+/* ==================================================================================
+ * EKG UND PLETH DES VIRTUELLEN GERAETS — GEEICHT (11.08.2026)
+ *
+ * WAS WAR, am laufenden Programm nachgemessen: beide Kurven wurden ueber die PHASE des
+ * Herzschlags gebaut. Die Phase laeuft in jedem Schlag von 0 bis 1; ihre Breite in Sekunden
+ * haengt damit an der Frequenz.
+ *      EKG  Halbwertsbreite des Kammerkomplexes:  60/min 23 ms  ->  240/min 6 ms (Faktor 3,8)
+ *      Pleth systolischer Anstieg:                60/min 100 ms ->  200/min 30 ms
+ * Beides ist falsch: ein Kammerkomplex ist eine Eigenschaft der Kammer, und der systolische
+ * Anstieg der Pulswelle bleibt bei steigender Frequenz nahezu gleich lang - kuerzer wird die
+ * Diastole. Ein Uebungsmonitor, der das anders zeigt, bringt genau das Falsche bei.
+ *
+ * JETZT: ui/shared/ekg-modell.js ist die Vorgabe, in Millivolt und Millisekunden, und die
+ * Kurve wird aus der ZEIT seit Zyklusbeginn gebaut. Die Umrechnung auf die Bahnhoehe steht
+ * unten und NUR dort - eine Verstaerkung, die an zwei Stellen gerechnet wird, laeuft
+ * auseinander.
+ *
+ * DIE VERSTAERKUNG DER EKG-BAHN: 1 mV nimmt EKG_BAHN_MV_PRO_HOEHE der halben Bahn ein. Bei
+ * 0,35 fuellt eine 3-mV-R-Zacke - der obere Rand des Hundebandes - die Bahn gerade aus, ohne
+ * anzustossen. Daraus folgt der 1-mV-Eichbalken, der links an der Bahn steht: er ist genau
+ * so hoch wie ein Millivolt, damit man die Hoehe am Bild ablesen kann statt sie zu schaetzen.
+ * ================================================================================== */
+/* 0,32 und nicht 0,35: bei 0,35 lag eine 3-mV-R-Zacke - der obere Rand des Hundebandes -
+ * mit 1,025 knapp AUSSERHALB der Bahn und waere abgeschnitten worden. Gerade die hohe R-Zacke
+ * ist aber der Befund, um den es dabei geht (Linksherzvergroesserung). Mit 0,32 endet sie bei
+ * 0,98 und bleibt vollstaendig sichtbar. */
+var EKG_BAHN_MV_PRO_HOEHE=0.32;         // Anteil der HALBEN Bahnhoehe je Millivolt
+function monArt(){
+  /* Dieselbe Tierart wie die Bewertung. Das virtuelle Geraet soll das Tier zeigen, das
+   * eingestellt ist - ein Hundekomplex bei einer Katze waere eine falsche Uebung. */
+  try{ var sp=state&&state.species; if(sp&&window.VS&&window.VS.modell&&window.VS.modell.EKG[sp]) return sp; }catch(e){}
+  return 'hund';
 }
-function wPleth(ph,type){
-  if(type==='flat') return 0.5;
-  var amp=type==='weak'?0.14:0.34;
-  var pulse; if(ph<0.10){ pulse=ph/0.10; } else { var d=(ph-0.10)/0.90; pulse=Math.exp(-d*3.2)*(1+0.22*Math.cos(d*13)); }
-  pulse=Math.max(0,Math.min(1.15,pulse));
-  return 0.22 + amp*pulse;
+function wEkg(ph,type,rrSek){
+  var M=window.VS&&window.VS.modell;
+  var W=ekgDef(type).w||{};
+  if(!M){ return 0.5; }                                    // ohne Modell keine erfundene Kurve
+  var mv=M.ekgMv(ph*(rrSek||0.6), rrSek||0.6, W, mon.beatN||0, monArt());
+  /* Rauschen NUR dort, wo es zum Bild gehoert: Asystolie (Grundlinienunruhe) und
+   * Kammerflimmern sind ohne es nicht wiederzuerkennen. Auf einen geordneten Rhythmus wird
+   * nichts hinzugefuegt - sonst waere die Kurve nicht mehr die Vorgabe. */
+  if(W.flat) mv+=(Math.random()-0.5)*0.04;
+  else if(W.chaos) mv+=(Math.random()-0.5)*0.28;
+  else if(W.irregular) mv+=(Math.random()-0.5)*0.06;
+  return 0.5 + mv*EKG_BAHN_MV_PRO_HOEHE*0.5;
+}
+/* Der Wert 0..1 einer bestimmten Millivoltzahl auf der EKG-Bahn — fuer den Eichbalken.
+ * EINE Umrechnung fuer Kurve und Massstab. */
+function ekgBahnY(mv){ return 0.5 + mv*EKG_BAHN_MV_PRO_HOEHE*0.5; }
+function wPleth(ph,type,rrSek){
+  var M=window.VS&&window.VS.modell;
+  if(!M) return 0.5;
+  /* Der Fusspunkt liegt bei 0,22 der Bahn, die volle Pulswelle nimmt 0,34 ein - wie bisher,
+   * damit sich das gewohnte Bild nicht aendert. Neu ist, WORAUS die Welle entsteht. */
+  return 0.22 + 0.34*M.plethAnteil(ph*(rrSek||0.6), rrSek||0.6, type||'normal');
 }
 /*
  * wCapno(ph, type, etco2, fico2) — Kapnogramm.
@@ -3140,15 +3180,36 @@ function monFrame(ts){
   var W=mon.W,H=mon.H; if(!W||!H){return;}
   var cols=Math.max(60,Math.floor(W));
   var bahnen=aktiveBahnen(), nB=bahnen.length||1;
-  if(!mon.buf||mon.buf.__cols!==cols||mon.buf.__sig!==bahnen.join(',')){
-    mon.buf={__cols:cols,__sig:bahnen.join(',')};
-    bahnen.forEach(function(id){ mon.buf[id]=new Array(cols).fill(id==='capno'?0.12:(id==='paw'?0.14:0.5)); });
-    mon.buf.__pawM=new Array(cols).fill(1);
+  /* Die PUFFERLAENGE haengt an der festen Rate und der Vorschubzeit, NICHT an der Fensterbreite.
+   * Vorher wurde bei jeder Groessenaenderung der ganze Streifen verworfen — mitten im Betrieb
+   * und ohne Hinweis. Jetzt bleibt die Aufzeichnung stehen und wird nur anders breit gezeichnet. */
+  var pufN=Math.round(MON_HZ*6.0);
+  if(!mon.buf||mon.buf.__n!==pufN||mon.buf.__sig!==bahnen.join(',')){
+    mon.buf={__n:pufN,__sig:bahnen.join(',')};
+    bahnen.forEach(function(id){ mon.buf[id]=new Array(pufN).fill(id==='capno'?0.12:(id==='paw'?0.14:0.5)); });
+    mon.buf.__pawM=new Array(pufN).fill(1);
   }
   var dt=(ts-mon.last)/1000; mon.last=ts; if(dt>0.08)dt=0.033; if(dt<0)dt=0;
   var r=monResolve();
-  var sweep=6.0; var pxPerSec=cols/sweep; mon.acc+=pxPerSec*dt; var k=Math.floor(mon.acc); if(k>60)k=60; mon.acc-=k;
-  var colT=1/pxPerSec;
+  /* ==================================================================================
+   * DIE ABTASTRATE HING AN DER FENSTERBREITE (Befund 11.08.2026)
+   *
+   * pxPerSec = cols/sweep — eine Spalte war ein Abtastwert. Auf einem breiten Bildschirm
+   * (1900 Spalten) lief die Kurve mit 317 Hz, auf einem schmalen (600) mit 100 Hz, und beim
+   * Ziehen des Fensters aenderte sie sich mitten im Betrieb. Fuer ein Bild genuegt das; fuer
+   * eine Kurve, an der jemand eine QRS-Breite abliest oder die ausgewertet wird, nicht:
+   * bei 100 Hz ist ein Abtastschritt 10 ms, und ein Katzen-Kammerkomplex besteht dann aus
+   * dreieinhalb Punkten.
+   *
+   * Jetzt ist die Rate FEST. Der Vorschub (6 s ueber die Bahn) bleibt, was er war — er ist
+   * eine Darstellungsfrage; die Aufzeichnung ist es nicht. Beim Zeichnen wird die feste Rate
+   * auf die vorhandenen Spalten abgebildet.
+   * ================================================================================== */
+  var sweep=6.0;
+  var abtastHz=MON_HZ;
+  mon.acc+=abtastHz*dt; var k=Math.floor(mon.acc); var kMax=Math.round(abtastHz*0.25);
+  if(k>kMax)k=kMax; mon.acc-=k;
+  var colT=1/abtastHz;
   var perE=r.hr>0?60/r.hr:9999, perR=r.rr>0?60/r.rr:9999;
   var Wr=ekgDef(r.ekg||'normal').w||{};
   for(var j=0;j<k;j++){
@@ -3159,8 +3220,10 @@ function monFrame(ts){
     if(mon.phR<prevR){ mon.breathN=(mon.breathN||0)+1; mon.pawM=pawMandatorisch(); }
     for(var bi=0;bi<nB;bi++){
       var id=bahnen[bi], val;
-      if(id==='ekg')        val=realVal('ekg',colT,wEkg(mon.phE,r.ekg||'normal'));
-      else if(id==='pleth') val=realVal('pleth',colT,wPleth(mon.phE,r.pleth||'normal'));
+      /* Die Zyklusdauer MUSS mit — ohne sie kann die Kurve ihre Zeiten nicht in Millisekunden
+       * halten und haengt wieder an der Frequenz (siehe Kopf von wEkg). */
+      if(id==='ekg')        val=realVal('ekg',colT,wEkg(mon.phE,r.ekg||'normal',perE));
+      else if(id==='pleth') val=realVal('pleth',colT,wPleth(mon.phE,r.pleth||'normal',perE));
       else if(id==='capno') val=realVal('capno',colT,wCapno(mon.phR,r.capno||'normal',r.etco2,r.fico2));
       else if(id==='paw')   val=realVal('paw',colT,wPaw(mon.phR,r));
       else if(id==='flow')  val=realVal('flow',colT,wFlow(mon.phR,r));
@@ -3207,9 +3270,41 @@ function monFrame(ts){
       for(var i=0;i<b.length;i++){ var x=i*(WZ/(b.length-1)); if(i===0)ctx.moveTo(x,yv(i)); else ctx.lineTo(x,yv(i)); }
       ctx.stroke();
     }
+    /* ==================================================================================
+     * DER MASSSTAB AN DER BAHN (11.08.2026)
+     *
+     * Bisher stand an der EKG-Bahn nur ihr Name. Eine Kurve ohne Massstab ist ein Bild: man
+     * sieht, DASS ein Ausschlag da ist, aber nicht, wie hoch er ist - und genau daran haengen
+     * Niedervoltage, hohe R-Zacke und die Frage, ob eine Kammer vergroessert ist.
+     * Links steht deshalb jetzt ein 1-mV-Eichbalken, gezeichnet mit DERSELBEN Umrechnung wie
+     * die Kurve (ekgBahnY). Er ist so hoch wie ein Millivolt - man kann die Hoehe am Bild
+     * abgreifen statt sie zu schaetzen.
+     *
+     * Beim PLETH steht ausdruecklich "rel." dabei: ein Plethysmogramm hat KEINE absolute
+     * Einheit; jede Millivoltzahl daran waere erfunden. Der Zeitmassstab (6 s ueber die Bahn)
+     * gilt fuer alle Bahnen und steht einmal unten rechts.
+     * ================================================================================== */
+    if(key==='ekg'){
+      var y0=top+(1-ekgBahnY(0))*laneH*0.82+laneH*0.09;
+      var y1=top+(1-ekgBahnY(1))*laneH*0.82+laneH*0.09;
+      var bx=Math.round(3*mon.dpr);
+      ctx.strokeStyle='rgba(255,255,255,.45)'; ctx.lineWidth=Math.max(1,1.2*mon.dpr);
+      ctx.beginPath();
+      ctx.moveTo(bx,y0); ctx.lineTo(bx+5*mon.dpr,y0);
+      ctx.moveTo(bx+2.5*mon.dpr,y0); ctx.lineTo(bx+2.5*mon.dpr,y1);
+      ctx.moveTo(bx,y1); ctx.lineTo(bx+5*mon.dpr,y1);
+      ctx.stroke();
+      ctx.fillStyle='rgba(200,215,230,.75)'; ctx.font=(9*mon.dpr)+'px Consolas,monospace';
+      ctx.fillText('1 mV', bx+7*mon.dpr, (y0+y1)/2+3*mon.dpr);
+    }
     // Beschriftung
-    ctx.fillStyle=kdef.color||'#28e07a'; ctx.font=(11*mon.dpr)+'px Consolas,monospace'; ctx.fillText(beschriftung(key), 8*mon.dpr, top+14*mon.dpr);
+    ctx.fillStyle=kdef.color||'#28e07a'; ctx.font=(11*mon.dpr)+'px Consolas,monospace';
+    ctx.fillText(beschriftung(key)+(key==='pleth'?' · rel.':''), 8*mon.dpr, top+14*mon.dpr);
   }
+  /* Der Zeitmassstab gilt fuer alle Bahnen — einmal, unten rechts, wie am Geraet. */
+  ctx.fillStyle='rgba(127,166,200,.7)'; ctx.font=(9.5*mon.dpr)+'px Consolas,monospace';
+  var mt=sweep+' s · '+MON_HZ+' Hz';
+  ctx.fillText(mt, WZ-ctx.measureText(mt).width-4*mon.dpr, H-4*mon.dpr);
 }
 function capnoSVG(shape,etco2){
   var W=200,H=64,base=54,top=8,N=210,breaths=2.6,e=parseFloat(etco2)||40, pts=[];

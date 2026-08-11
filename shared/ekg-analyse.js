@@ -1094,13 +1094,58 @@
     return za / Math.sqrt(na * nb);
   }
 
+  /* ==================================================================================
+   * SCHLAEGE MUESSEN VOR DEM VERGLEICH AUSGERICHTET WERDEN (Befund 11.08.2026)
+   *
+   * Die Zackensuche trifft die R-Spitze auf einen Abtastwert genau - und der liegt bei jedem
+   * Schlag ein bisschen anders im Raster, weil Herzzyklus und Abtasttakt nicht aufgehen.
+   * Bei 250 Hz sind das bis zu 4 ms Versatz. Auf einem SCHMALEN Komplex (Katze, 35 ms) ist
+   * das ein Achtel der Breite, und die Kreuzkorrelation faellt dadurch unter 0,95, obwohl
+   * die Form dieselbe ist.
+   *
+   * Gemessen an einem vollkommen regelmaessigen Katzenstreifen mit 180/min: die Auswertung
+   * meldete einen TRIGEMINUS - jeder dritte Schlag galt als formfremd, weil die Schwebung
+   * zwischen Zyklus und Abtasttakt gerade jeden dritten traf. Ein erfundener Rhythmusbefund
+   * aus reiner Abtastung; auf einem echten Streifen passiert dasselbe.
+   *
+   * Deshalb wird jeder Schlag gegen die Vorlage in einem Fenster von +-2 Abtastwerten
+   * verschoben und die BESTE Uebereinstimmung genommen. Das ist das uebliche Vorgehen beim
+   * Schlagvergleich und aendert an einer wirklich anderen Form nichts: ein ventrikulaerer
+   * Komplex passt auch verschoben nicht.
+   * ================================================================================== */
+  /* DIE VERSCHIEBUNG MUSS FEINER SEIN ALS EIN ABTASTWERT (nachgemessen 11.08.2026).
+   * Mit ganzzahligen Schritten blieb der Fehlbefund bestehen: 16 von 48 Katzenschlaegen
+   * galten weiter als formfremd, kleinste Korrelation 0,894, bei identischer QRS-Breite.
+   * Der Grund ist ein UNTERabtastiger Versatz - Herzzyklus und Abtasttakt gehen nicht auf,
+   * die R-Spitze liegt mal auf, mal zwischen zwei Rasterpunkten. Ein ganzzahliger Schritt
+   * kann das nicht ausgleichen. Deshalb wird in Vierteln eines Abtastwerts verschoben und
+   * zwischen den Nachbarwerten geradlinig gemittelt. */
+  var FORM_SCHIEBUNG = 2;
+  var FORM_SCHRITT = 0.25;
+  function korrelationVerschoben(werte, r, vorlage, vor, nach) {
+    var beste = -2, s, j2;
+    for (s = -FORM_SCHIEBUNG; s <= FORM_SCHIEBUNG + 1e-9; s += FORM_SCHRITT) {
+      var a = r + s - vor, b2 = r + s + nach;
+      if (a < 1 || b2 >= werte.length - 1) continue;
+      var blk = [];
+      for (j2 = 0; j2 < vorlage.length; j2++) {
+        var pos = a + j2, i0 = Math.floor(pos), f = pos - i0;
+        var v0 = werte[i0] == null ? 0 : werte[i0];
+        var v1 = werte[i0 + 1] == null ? 0 : werte[i0 + 1];
+        blk.push(v0 + (v1 - v0) * f);
+      }
+      var k = korrelation(blk, vorlage);
+      if (k > beste) beste = k;
+    }
+    return beste;
+  }
   function formVergleich(werte, zacken, hz, breitenJe) {
     var vor = Math.round(hz * 0.06), nach = Math.round(hz * 0.08);
     var breite = vor + nach + 1;
     var bloecke = [], i, j;
     for (i = 0; i < zacken.length; i++) {
       var r = zacken[i];
-      if (r - vor < 0 || r + nach >= werte.length) continue;
+      if (r - vor - FORM_SCHIEBUNG < 0 || r + nach + FORM_SCHIEBUNG >= werte.length) continue;
       var b = [];
       for (j = r - vor; j <= r + nach; j++) b.push(werte[j] == null ? 0 : werte[j]);
       bloecke.push({ idx: i, r: r, w: b });
@@ -1126,7 +1171,7 @@
     for (i = 0; i < bloecke.length; i++) {
       var trifft = -1;
       for (j = 0; j < klassenAlle.length; j++) {
-        if (korrelation(bloecke[i].w, klassenAlle[j].w) >= 0.95) { trifft = j; break; }
+        if (korrelationVerschoben(werte, bloecke[i].r, klassenAlle[j].w, vor, nach) >= 0.95) { trifft = j; break; }
       }
       if (trifft < 0) klassenAlle.push({ w: bloecke[i].w, mitglieder: [i] });
       else klassenAlle[trifft].mitglieder.push(i);
@@ -1169,7 +1214,7 @@
     }
     var fremd = [], konform = 0, rWerte = [];
     for (i = 0; i < bloecke.length; i++) {
-      var rk = korrelation(bloecke[i].w, vorlage);
+      var rk = korrelationVerschoben(werte, bloecke[i].r, vorlage, vor, nach);
       rWerte.push(Math.round(rk * 1000) / 1000);
       if (rk >= 0.95) konform++; else fremd.push(bloecke[i]);
     }
@@ -1181,7 +1226,7 @@
     for (i = 0; i < fremd.length; i++) {
       var passt = -1;
       for (j = 0; j < klassen.length; j++) {
-        if (korrelation(fremd[i].w, klassen[j].w) >= 0.95) { passt = j; break; }
+        if (korrelationVerschoben(werte, fremd[i].r, klassen[j].w, vor, nach) >= 0.95) { passt = j; break; }
       }
       if (passt < 0) klassen.push({ w: fremd[i].w, n: 1 });
       else klassen[passt].n++;
