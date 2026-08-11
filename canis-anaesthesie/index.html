@@ -5108,6 +5108,10 @@ html[data-theme="light"] .rh-karte.normvar .rh-n{color:#0b6b45}
 .ekg-zoom .zfoot{display:flex;gap:14px;flex-wrap:wrap;padding:7px 12px;background:#0a1018;border-top:1px solid #1d2a3a;font-size:12px;color:#9fb6cc}
 .ekg-zoom .zfoot b{color:#eaf4ff;font-family:Consolas,monospace;font-size:14px}
 .ekg-zoom .zfoot .hint{color:#6f8aa4;font-size:11px}
+table.ekg-eich{width:100%;border-collapse:collapse;font-size:11.5px;margin:2px 0 6px}
+table.ekg-eich td{padding:3px 4px;border-bottom:1px solid rgba(120,150,180,.14)}
+table.ekg-eich td.s{color:#7fa6c8;text-align:right;font-family:Consolas,monospace}
+table.ekg-eich td.i{color:#eaf4ff;text-align:right;font-family:Consolas,monospace;font-weight:700}
 .ekg-mess{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.04);border:1px solid #22303f;border-radius:8px;padding:4px 10px}
 .ekg-mess i{font-style:normal;color:#7fa6c8;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px}
 /* Doppelklick-Hinweis auf der Uebersicht */
@@ -5237,6 +5241,7 @@ html[data-theme="light"] .m3d-cv{background:radial-gradient(ellipse at 50% 42%,#
       <div class="ekg-mrow" id="mHrvRow" style="display:none"><span class="k">Variabilität <small style="color:#6f8aa4">SDNN / RMSSD</small></span><span class="v" id="mHrv">–</span></div>
       <div class="ekg-dx" id="ekgDx"></div>
       <div class="ekg-tipps" id="ekgTipps"></div>
+      <div class="ekg-eich" id="ekgEich"></div>
       <div class="ekg-ki" id="ekgKI"></div>
       <div class="ekg-note" id="ekgNote"></div>
     </aside>
@@ -5297,27 +5302,90 @@ html[data-theme="light"] .m3d-cv{background:radial-gradient(ellipse at 50% 42%,#
 var $=function(s,r){return (r||document).querySelector(s);};
 function gauss(x,mu,s){var d=(x-mu)/s;return Math.exp(-0.5*d*d);}
 
-/* Reine EKG-Wellenform mit ÜBERGEBENEM Schlagzähler (unabhängig vom Monitor-mon.beatN),
- * inhaltsgleich zu wEkg()/waveforms.js. So bleibt das Fenster von der Monitor-Schleife
- * vollständig entkoppelt: eigener Zähler, eigener Rhythmus-Jitter. */
-function ekgWave(ph,W,beatN){
+/* ==================================================================================
+ * DAS NACHGEBILDETE EKG IST JETZT GEEICHT — IN MILLIVOLT UND MILLISEKUNDEN (10.08.2026)
+ *
+ * WAS WAR, NACHGEMESSEN STATT VERMUTET: Die Wellenform wurde ueber die PHASE des Herzschlags
+ * gebaut (gauss(ph, 0.335, 0.010) und so fort). Die Phase laeuft in jedem Schlag von 0 bis 1 —
+ * ihre Breite in SEKUNDEN haengt damit an der Herzfrequenz. Ausgemessen an der alten Fassung:
+ *
+ *      60/min  -> QRS 23 ms      140/min -> QRS 10 ms
+ *     100/min  -> QRS 14 ms      200/min -> QRS  7 ms
+ *
+ * Ein Kammerkomplex ist aber eine Eigenschaft der Kammer, nicht der Frequenz. Die Nachbildung
+ * zeigte bei 200/min einen 7-ms-Komplex, den es an keinem Tier gibt, und bei 60/min einen von
+ * 23 ms. Wer daran den Messzirkel anlegt oder den Ausdruck nachmisst, misst die Frequenz, nicht
+ * das Herz. Fuer ein Trainingsblatt ist das genau der falsche Lerneffekt.
+ *
+ * WAS JETZT GILT: Die Kurve wird aus der ZEIT seit der R-Zacke gebaut, mit Vorgaben in echten
+ * Einheiten je Tierart (MODELL). Damit ist die Nachbildung EICHFAEHIG: was das Modell vorgibt,
+ * muss die Auswertung wiederfinden. Genau das prueft tools/virtuelles-geraet-test.js und zeigt
+ * die Oberflaeche als "Eichpruefung" an.
+ *
+ * BRAUCHT ES DAFUER EIN ANGESCHLOSSENES GERAET? NEIN. Geeicht wird gegen eine BEKANNTE Vorgabe,
+ * und die kommt aus dem Modell. Ein echtes Geraet braucht man, um ein echtes TIER zu messen —
+ * und sobald eines anliegt, hat sein Signal ohnehin Vorrang (echtEkg() vor der Nachbildung).
+ * ================================================================================== */
+var MODELL={
+  /* Alle Werte in Millivolt bzw. Millisekunden, an den Normbaendern in EKGNORM ausgerichtet.
+   * QT ergibt sich als qrsMs + stMs + tMs und liegt damit im Band der Art (Hund 230 von
+   * 150-250, Katze 170 von 120-180). */
+  hund:     { rAmp:1.00, qAmp:0.10, sAmp:0.25, qrsMs:50, pAmp:0.15, pMs:40, pqMs:110, stMs:60, tAmp:0.25, tMs:120 },
+  katze:    { rAmp:0.70, qAmp:0.05, sAmp:0.15, qrsMs:35, pAmp:0.10, pMs:30, pqMs:70,  stMs:45, tAmp:0.18, tMs:90 },
+  pferd:    { rAmp:1.20, qAmp:0.15, sAmp:0.60, qrsMs:110, pAmp:0.30, pMs:120, pqMs:300, stMs:120, tAmp:0.40, tMs:220 },
+  standard: { rAmp:1.00, qAmp:0.10, sAmp:0.25, qrsMs:50, pAmp:0.15, pMs:40, pqMs:110, stMs:60, tAmp:0.25, tMs:120 }
+};
+function modellFuer(sp){ return MODELL[sp]||MODELL.standard; }
+/* Erhoehter Kosinus mit EXAKTEM Traeger [t0, t0+dauer]. Anders als eine Gauss-Kurve hat er
+ * einen definierten Anfang und ein definiertes Ende — nur dann ist eine Dauer ueberhaupt eine
+ * Vorgabe, gegen die man eichen kann. */
+function mWelle(t,t0,dauer){
+  if(!(dauer>0)) return 0;
+  if(t<t0||t>t0+dauer) return 0;
+  return 0.5*(1-Math.cos(2*Math.PI*(t-t0)/dauer));
+}
+/* Liefert MILLIVOLT (nicht mehr 0..1). tSek = Zeit seit dem Beginn des Herzzyklus,
+ * rrSek = Dauer dieses Zyklus. */
+function ekgWaveMv(tSek,rrSek,W,beatN,sp){
   W=W||{};
-  if(W.flat) return 0.5+(Math.random()-0.5)*0.02;
-  if(W.chaos) return 0.5+0.26*Math.sin(ph*38+beatN)+0.15*Math.sin(ph*67+2)+(Math.random()-0.5)*0.14;
-  var beat=beatN||0,y=0.5;
-  var wide=(W.qrs>1.5),hasP=(W.p&&W.pq!=='diss'),drop=false,tSign=1,ampR=0.42;
-  if(W.drop==='wenckebach'){var r1=W.ratio||4;if(beat%r1===r1-1)drop=true;}
-  if(W.drop==='mobitz2'){var r2=W.ratio||3;if(beat%r2===r2-1)drop=true;}
-  if(W.ectopic&&beat%4===3){if(W.ectopic==='ves'){wide=true;hasP=false;tSign=-1;ampR=0.5;}else{hasP=true;wide=false;}}
-  var pq=(typeof W.pq==='number')?(W.pq-1)*0.05:(W.pq==='inc'?(beat%(W.ratio||4))*0.028:0);
-  if(hasP)y+=0.07*gauss(ph,0.16+pq*0.3,0.028);
-  if(!drop){var qc=0.335+pq;
-    if(wide){y+=ampR*gauss(ph,qc+0.02,0.030)-0.13*gauss(ph,qc-0.04,0.02)-0.16*gauss(ph,qc+0.08,0.026)+0.17*(-tSign)*gauss(ph,0.62,0.05);}
-    else{y+=-0.05*gauss(ph,qc-0.03,0.010)+ampR*gauss(ph,qc,0.010)-0.12*gauss(ph,qc+0.03,0.012)+0.13*tSign*gauss(ph,0.55,0.045);}
+  var Mm=modellFuer(sp);
+  if(W.flat) return (Math.random()-0.5)*0.02;
+  if(W.chaos){
+    var f=tSek/(rrSek||0.6);
+    return 0.55*Math.sin(f*38+beatN)+0.32*Math.sin(f*67+2)+(Math.random()-0.5)*0.3;
   }
-  if(W.flutter)y+=0.06*(2*((ph*4)%1)-1);
-  if(W.irregular)y+=(Math.random()-0.5)*0.03;
-  if(W.pq==='diss')y+=0.06*gauss((ph*2)%1,0.5,0.05);
+  var beat=beatN||0, y=0;
+  var wide=(W.qrs>1.5), hasP=(W.p&&W.pq!=='diss'), drop=false, tSign=1;
+  var rAmp=Mm.rAmp, qrsMs=Mm.qrsMs;
+  if(W.drop==='wenckebach'){ var r1=W.ratio||4; if(beat%r1===r1-1) drop=true; }
+  if(W.drop==='mobitz2'){ var r2=W.ratio||3; if(beat%r2===r2-1) drop=true; }
+  if(W.ectopic&&beat%4===3){
+    if(W.ectopic==='ves'){ wide=true; hasP=false; tSign=-1; rAmp=Mm.rAmp*1.3; }
+    else { hasP=true; wide=false; }
+  }
+  if(wide) qrsMs=Mm.qrsMs*2.2;                       // ventrikulaer/Schenkelblock: deutlich breiter
+  /* PQ-Verlaengerung: als Faktor (AV-Block I) oder von Schlag zu Schlag wachsend (Wenckebach). */
+  var pqMs=Mm.pqMs;
+  if(typeof W.pq==='number') pqMs=Mm.pqMs*W.pq;
+  else if(W.pq==='inc') pqMs=Mm.pqMs+(beat%(W.ratio||4))*30;
+  /* Die R-Zacke liegt bei tR. Davor Platz fuer P und PQ, danach fuer ST und T. */
+  var tR=(pqMs+qrsMs*0.5)/1000+0.02;
+  var t=tSek-tR;                                     // Sekunden relativ zur R-Zacke
+  var qrsS=qrsMs/1000, q0=-0.35*qrsS;
+  if(hasP){
+    var pStart=q0-(pqMs/1000);
+    y+=Mm.pAmp*mWelle(t,pStart,Mm.pMs/1000);
+  }
+  if(!drop){
+    y+=-Mm.qAmp*mWelle(t,q0,0.20*qrsS);
+    y+= rAmp  *mWelle(t,q0+0.20*qrsS,0.45*qrsS);
+    y+=-Mm.sAmp*mWelle(t,q0+0.65*qrsS,0.35*qrsS);
+    var tStart=q0+qrsS+(Mm.stMs/1000);
+    y+= tSign*Mm.tAmp*(wide?1.4:1)*mWelle(t,tStart,Mm.tMs/1000);
+  }
+  if(W.flutter) y+=0.15*(2*(((tSek/(rrSek||0.6))*4)%1)-1);
+  if(W.irregular) y+=(Math.random()-0.5)*0.07;
+  if(W.pq==='diss') y+=Mm.pAmp*mWelle((tSek*2)%(rrSek||0.6),0.05,Mm.pMs/1000);
   return y;
 }
 
@@ -5414,6 +5482,12 @@ function kalOf(R){
   if(!R) return false;
   var sk=R.skala, eh=String(R.einheit||'');
   return typeof sk==='number' && isFinite(sk) && sk>0 && /uv|µv|mv/i.test(eh);
+}
+/* Nach welcher Art wird die NACHBILDUNG gebaut? Dieselbe Quelle wie die Bewertung — sonst
+ * zeichnete die Anwendung einen Hundekomplex und bewertete ihn gegen Katzengrenzen. */
+function modellArt(){
+  try{ var a=bewertungsArt(); if(a&&MODELL[a]) return a; }catch(e){}
+  var f=M.feed||{}; return (f.sp&&MODELL[f.sp])?f.sp:'hund';
 }
 function currentFeed(){
   var f=(window.__ekgFeed&&window.__ekgFeed())||null;
@@ -5727,7 +5801,11 @@ function advance(dt){
     var base, ech=echtEkg();   // M.echt/M.kal stehen bereits aus currentFeed() fest
     if(ech){ base=echtNaechster(ech,colT); }
     else {
-      base=(ekgWave(M.phE,W,M.beatN)-0.5)/0.42;   // ~mV, R-Zacke ~1 mV in Ableitung II
+      /* NACHBILDUNG IN ECHTEN MILLIVOLT. Die Phase mal der Zyklusdauer ergibt die Zeit seit
+       * Zyklusbeginn - erst damit sind QRS-Breite, PQ und QT Vorgaben in Millisekunden und
+       * nicht mehr Bruchteile eines Herzschlags (siehe Kopf von ekgWaveMv). */
+      var rrJetzt=per*(M.rrJit||1);
+      base=ekgWaveMv(M.phE*rrJetzt, rrJetzt, W, M.beatN, modellArt());
       if(M.musk){ base=base*0.85; }               // EMG-Filter daempft den Rauschanteil
     }
     for(var li=0;li<LEADS.length;li++){
@@ -6232,6 +6310,91 @@ function echtBefund(){
   }catch(e){ return null; }
 }
 
+/* ==================================================================================
+ * EICHPRUEFUNG — DIE NACHBILDUNG ALS PRUEFSIGNAL (10.08.2026)
+ *
+ * DIE FRAGE DAHINTER, und sie ist die richtige: "muss das an einem Monitorgeraet haengen,
+ * damit es kalibriert wird?" NEIN. Geeicht wird gegen eine BEKANNTE Vorgabe, und die liefert
+ * seit heute das Modell selbst (MODELL, in Millivolt und Millisekunden). Ein Geraet braucht
+ * man, um ein TIER zu messen - nicht, um den Messweg zu pruefen.
+ *
+ * Auf der Nachbildung wird deshalb weiterhin NICHT BEFUNDET (das waere ein Zirkelschluss:
+ * die Regel faende die eigene Vorgabe wieder). Stattdessen laeuft derselbe Messweg wie am
+ * echten Streifen und wird gegen die Vorgabe gehalten. Was dabei herauskommt, ist keine
+ * Aussage ueber ein Tier, sondern ueber das PROGRAMM: stimmt die Kette aus Zeitbasis,
+ * Abtastrate, Grundlinie, Zackensuche und Ausmessung noch?
+ *
+ * Genau diese Pruefung haette den Massstabsfehler vom 10.08.2026 sofort gezeigt: bei
+ * dreifach gestauchter Darstellung waere die gemessene QRS-Breite ein Drittel der Vorgabe.
+ * ================================================================================== */
+function eichPruefung(){
+  if(M.echt) return null;                      // am echten Signal gibt es keine Vorgabe
+  if(!window.VS||!VS.ekg||!M.strip) return null;
+  var v=vorhandeneWerte(); if(v<Math.round(EKG_HZ*4)) return null;
+  var f=M.feed||{}, W=(f.def&&f.def.w)||{};
+  /* Nur am schlichten Sinusmodell eichen. Ein Modell mit Ausfaellen, Extrasystolen oder
+   * Flimmern hat keine EINE Vorgabe, gegen die man messen koennte. */
+  if(W.flat||W.chaos||W.drop||W.ectopic||W.irregular||W.flutter||W.pq==='diss') return null;
+  var sp=modellArt(), Mm=modellFuer(sp);
+  var soll={ hf:(f.hr||0), qrs:Mm.qrsMs, pq:(typeof W.pq==='number'?Math.round(Mm.pqMs*W.pq):Mm.pqMs),
+             qt:Mm.qrsMs+Mm.stMs+Mm.tMs, rAmp:Mm.rAmp };
+  try{
+    var erg=VS.ekg.analysiere(
+      { samples:streifenFuerMessung(), hz:hzJetzt(), skala:1, einheit:'mV' },
+      { art:sp, einheit:'mV', bandHr:[1,999], filterAktiv:!!M.musk });
+    if(!erg||!erg.brauchbar) return null;
+    /* Ein Band statt einer Toleranz: die Schwellenmessung von DAUERN liest systematisch zu
+     * KURZ (nachgemessen: QRS Hund -20 %, Katze -43 %, P-Dauer -40 %), und das ist bekannt
+     * und gewollt - die Gegenrichtung waere gefaehrlich. Fuer Zeitpunkte (PQ, QT) und die
+     * Frequenz gilt das nicht, dort ist die Messung eng. */
+    function zeile(name,sollWert,istWert,einheit,unten,oben){
+      if(istWert==null||sollWert==null||!isFinite(sollWert)||sollWert===0) return null;
+      var v=istWert/sollWert;
+      return { name:name, soll:sollWert, ist:istWert, einheit:einheit,
+               prozent:Math.round((v-1)*1000)/10, ok:(v>=unten&&v<=oben) };
+    }
+    var z=[];
+    /* Die Baender sind nicht gegriffen, sondern gemessen (tools/virtuelles-geraet-test.js):
+     * bei 250 Hz ist ein Abtastschritt 4 ms, ein Intervall hat zwei Enden. */
+    z.push(zeile('Herzfrequenz',soll.hf,erg.hf,'/min',0.95,1.05));
+    z.push(zeile('QRS-Breite',soll.qrs,erg.qrsBreiteMs,'ms',0.50,1.15));
+    if(erg.p&&erg.p.vorhanden){
+      z.push(zeile('PQ-Zeit',soll.pq,erg.p.pqMs,'ms',0.80,1.20));
+      z.push(zeile('P-Dauer',Mm.pMs,erg.p.dauerMs,'ms',0.50,1.20));
+    }
+    if(erg.t&&erg.t.messbar) z.push(zeile('QT-Zeit',soll.qt,erg.t.qtMs,'ms',0.80,1.20));
+    if(erg.rAmpMv!=null) z.push(zeile('R-Amplitude',soll.rAmp,erg.rAmpMv,'mV',0.80,1.10));
+    z=z.filter(function(x){ return !!x; });
+    if(!z.length) return null;
+    var schlecht=0; for(var i=0;i<z.length;i++) if(!z[i].ok) schlecht++;
+    return { art:sp, zeilen:z, ok:(schlecht===0), schlecht:schlecht };
+  }catch(e){ return null; }
+}
+function renderEich(){
+  var host=$('#ekgEich'); if(!host) return;
+  var E=eichPruefung();
+  if(!E){ if(host.innerHTML!==''){ host.innerHTML=''; } return; }
+  var farbe=E.ok?'#28e07a':'#ff9f45';
+  var h='<div class="th2" style="color:'+farbe+'">🎯 Eichprüfung des Messwegs</div>'+
+    '<div class="tb" style="font-size:11px;color:#7fa6c8;margin-bottom:6px">'+
+    'Kein Gerät angeschlossen — die Kurve ist eine <b>Vorgabe in mV und ms</b> ('+speciesName(E.art)+'-Modell). '+
+    'Gemessen wird sie mit demselben Weg wie ein echter Streifen. Das ist <b>kein Befund über ein Tier</b>, '+
+    'sondern die Probe, ob die Messkette stimmt.</div><table class="ekg-eich">';
+  for(var i=0;i<E.zeilen.length;i++){
+    var r=E.zeilen[i];
+    h+='<tr><td>'+r.name+'</td><td class="s">'+r.soll+' '+r.einheit+'</td>'+
+       '<td class="i">'+r.ist+' '+r.einheit+'</td>'+
+       '<td style="color:'+(r.ok?'#28e07a':'#ff9f45')+'">'+(r.prozent>0?'+':'')+r.prozent+' %</td></tr>';
+  }
+  h+='</table>'+
+    '<div class="td">Die Breite von Wellen wird über eine Schwelle bestimmt und fällt deshalb ' +
+    'systematisch <b>zu kurz</b> aus (QRS beim Hund rund −20 %, bei der Katze −40 %; P-Dauer ähnlich). ' +
+    'Das gilt für echte Streifen genauso und ist die vorsichtige Richtung: die Anwendung meldet ' +
+    'eher zu selten „verbreitert" als zu oft. Zeitpunkte wie PQ und QT sind davon kaum betroffen.</div>';
+  if(!E.ok) h+='<div class="td" style="color:#ff9f45">Eine Abweichung außerhalb dieser Bänder ist ein Hinweis auf das PROGRAMM, nicht auf den Patienten — Vorschub, Verstärkung und Filter prüfen.</div>';
+  if(host.innerHTML!==h) host.innerHTML=h;
+}
+
 /* ---- Messwerte + Deutung (gemessen wenn echt, sonst aus dem Rhythmusmodell) ---- */
 function updateMeasures(){
   /* NUR SCHREIBEN, WENN DAS MESSFELD AUCH DASTEHT.
@@ -6341,6 +6504,9 @@ function updateMeasures(){
       ' Ableitung II ist gemessen, die übrigen sind daraus abgeleitet.';
     var sub=$('#ekgSub'); if(sub) sub.textContent='6-Kanal · ECHTES Gerätesignal';
     zeigeHinweise(B,f,N,mea);
+    /* Am ECHTEN Signal gibt es keine Vorgabe - der Kasten wird geleert, statt eine alte
+     * Eichzeile stehen zu lassen. */
+    try{ renderEich(); }catch(e){}
     return;
   }
   var sub0=$('#ekgSub'); if(sub0) sub0.textContent='6-Kanal · Extremitätenableitungen';
@@ -6379,6 +6545,8 @@ function updateMeasures(){
    * mit dem Anschein einer Messung. Gezeigt wird deshalb nur, was auch ohne Signal gilt
    * (Bedienhinweise), und der Grund, warum sonst nichts dasteht. */
   zeigeHinweise(null,f,normAktuell(),null);
+  /* Statt eines Befundes, den es hier nicht geben darf: die Probe auf den Messweg. */
+  try{ renderEich(); }catch(e){}
 }
 
 /* ---- Weißes Millimeterpapier für Druck/Speichern ----
@@ -7724,7 +7892,9 @@ function rebuildSide(){
     '<div class="ekg-mrow"><span class="k">QT (geschätzt)</span><span class="v" id="mQt">–</span></div>'+
     '<div class="ekg-mrow"><span class="k">El. Achse</span><span class="v" id="mAxis">–</span></div>'+
     '<div class="ekg-mrow" id="mHrvRow" style="display:none"><span class="k">Variabilität <small style="color:#6f8aa4">SDNN / RMSSD</small></span><span class="v" id="mHrv">–</span></div>'+
-    '<div class="ekg-dx" id="ekgDx"></div><div class="ekg-tipps" id="ekgTipps"></div><div class="ekg-ki" id="ekgKI"></div><div class="ekg-note" id="ekgNote"></div>';
+    '<div class="ekg-dx" id="ekgDx"></div><div class="ekg-tipps" id="ekgTipps"></div>'+
+    '<div class="ekg-eich" id="ekgEich"></div>'+
+    '<div class="ekg-ki" id="ekgKI"></div><div class="ekg-note" id="ekgNote"></div>';
   renderKI();
 }
 

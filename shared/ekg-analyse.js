@@ -62,7 +62,10 @@
    *               Signal, aus dem die gesuchte Welle bereits entfernt war (Befund der
    *               Fachrecherche 08.08.2026). Deshalb dort 600 ms.
    */
-  function grundlinieAbziehen(werte, hz, fensterS) {
+  /* Die genaue Fassung: fuer JEDEN Abtastwert der Median seines Fensters. Sie bleibt als
+   * MASSSTAB erhalten - der Selbsttest vergleicht die schnelle Fassung gegen sie. Ohne diesen
+   * Vergleich waere eine Beschleunigung eine Behauptung. */
+  function grundlinieAbziehenGenau(werte, hz, fensterS) {
     var w = Math.max(3, Math.round(hz * (fensterS || 0.2)));
     if (w % 2 === 0) w++;
     var halb = (w - 1) / 2;
@@ -74,6 +77,75 @@
         if (j >= 0 && j < werte.length && werte[j] != null) fenster.push(werte[j]);
       }
       out[i] = werte[i] - median(fenster);
+    }
+    return out;
+  }
+
+  /* ==================================================================================
+   * GLEITENDER MEDIAN MIT MITGEFUEHRTEM SORTIERTEM FENSTER — DIESELBE ZAHL, ACHTMAL SCHNELLER
+   * (gemessen 10.08.2026)
+   *
+   * WARUM UEBERHAUPT: Gemessen an einem 20-Sekunden-Streifen mit 250 Hz brauchte die ganze
+   * Auswertung 25,6 ms, davon 22,3 ms allein diese Funktion - 87 Prozent. Das ist kein
+   * Schoenheitsproblem: die Auswertung laeuft 2,5-mal je Sekunde MITTEN in der
+   * Zeichenschleife. 22 ms sind bei 33 Bildern je Sekunde ein ganzes Bild; auf dem Praxis-PC,
+   * auf dem daneben mehrere Monitore laufen, ist genau das das Ruckeln, das der Nutzer als
+   * "haengt" beschreibt.
+   *
+   * Ursache war die Bauart: fuer JEDEN der 5000 Abtastwerte wurde das 51-Werte-Fenster in ein
+   * NEUES Feld kopiert und SORTIERT - 5000 Speicheranforderungen und 5000 Sortierungen fuer
+   * eine Groesse, die sich von einem Wert zum naechsten um genau zwei Elemente aendert.
+   *
+   * WAS ICH ZUERST VERSUCHT HABE UND WARUM ES VERWORFEN IST: die Grundlinie nur auf
+   * Stuetzstellen zu rechnen und dazwischen geradlinig zu verbinden. Das war achtmal
+   * schneller - aber die groesste Abweichung gegen die genaue Fassung lag bei 82 uV, und
+   * selbst bei jedem zweiten Abtastwert als Stuetzstelle noch bei 16 uV. Der Grund ist
+   * grundsaetzlich: der Median SPRINGT, wenn das Fenster ueber einen Kammerkomplex laeuft;
+   * eine Gerade kann dem nicht folgen. Und 16 uV sind bei ST-Grenzen von 150 bis 200 uV
+   * keine Rundung, sondern ein Zehntel des Befundes. Eine Beschleunigung, die die
+   * wichtigste Zahl dieser Funktion verschiebt, ist keine.
+   *
+   * WAS ES JETZT IST: das Fenster wird SORTIERT MITGEFUEHRT. Je Schritt faellt genau ein
+   * Wert heraus und genau einer kommt hinzu, beide ueber eine Binaersuche an ihrer Stelle
+   * eingefuegt bzw. entfernt. Der Median ist dann ein Griff in die Mitte. Die Menge der
+   * Werte im Fenster ist Element fuer Element dieselbe wie vorher - das Ergebnis ist
+   * deshalb nicht "fast gleich", sondern GLEICH. Der Selbsttest vergleicht beide Fassungen
+   * wertweise gegen null Abweichung.
+   * ================================================================================== */
+  function grundlinieAbziehen(werte, hz, fensterS) {
+    var n = werte.length;
+    var w = Math.max(3, Math.round(hz * (fensterS || 0.2)));
+    if (w % 2 === 0) w++;
+    var halb = (w - 1) / 2;
+    var out = new Array(n);
+    if (!n) return out;
+    var sortiert = [];                 // die Werte des Fensters, aufsteigend
+    function stelleFuer(v) {           // erste Stelle, an der v stehen duerfte
+      var lo = 0, hi = sortiert.length;
+      while (lo < hi) { var m = (lo + hi) >> 1; if (sortiert[m] < v) lo = m + 1; else hi = m; }
+      return lo;
+    }
+    function einfuegen(v) { sortiert.splice(stelleFuer(v), 0, v); }
+    function entfernen(v) {
+      var p = stelleFuer(v);
+      /* Bei gleichen Werten trifft die Binaersuche irgendeinen von ihnen - das genuegt,
+       * weil sie ununterscheidbar sind. Gleitkommareste gibt es hier nicht: es wird genau
+       * der Wert entfernt, der vorher eingefuegt wurde. */
+      if (sortiert[p] === v) sortiert.splice(p, 1);
+      else { var q = sortiert.indexOf(v); if (q >= 0) sortiert.splice(q, 1); }
+    }
+    var i, j;
+    for (j = 0; j <= halb && j < n; j++) if (werte[j] != null) einfuegen(werte[j]);
+    for (i = 0; i < n; i++) {
+      if (werte[i] == null) out[i] = null;
+      else {
+        var m2 = sortiert.length;
+        var med = !m2 ? 0 : (m2 % 2 ? sortiert[(m2 - 1) / 2] : (sortiert[m2 / 2 - 1] + sortiert[m2 / 2]) / 2);
+        out[i] = werte[i] - med;
+      }
+      var raus = i - halb, rein = i + halb + 1;
+      if (raus >= 0 && werte[raus] != null) entfernen(werte[raus]);
+      if (rein < n && werte[rein] != null) einfuegen(werte[rein]);
     }
     return out;
   }
@@ -179,24 +251,93 @@
    * 3) QRS-Breite: von Beginn bis Ende des Ausschlags um die R-Zacke.
    * Grenze ist ein Bruchteil des Spitzenbetrags; gesucht wird beidseitig die Rueckkehr zur Ruhe.
    * ------------------------------------------------------------------ */
-  function qrsBreiteMs(werte, r, hz) {
+  /* ==================================================================================
+   * DIE QRS-BREITE ENDETE AM ERSTEN NULLDURCHGANG — ALSO NACH DER R-ZACKE (Befund 10.08.2026)
+   *
+   * WAS WAR: der Suchlauf brach ab, sobald EIN Abtastwert unter 15 % der Spitze lag. Ein
+   * Kammerkomplex durchquert die Grundlinie aber MITTEN in sich - zwischen R und S, und beim
+   * Hund oft auch zwischen Q und R. Gemessen wurde damit die Breite der R-ZACKE, nicht die
+   * des Komplexes.
+   *
+   * Am nachgebildeten Streifen nachgemessen: Vorgabe 50 ms, gemeldet 20 ms. Am echten Signal
+   * ist der Fehler derselbe, nur faellt er dort niemandem auf, weil es keine Vorgabe gibt.
+   *
+   * WARUM DAS KLINISCH ZAEHLT: die Normbaender (Hund bis 60 ms, Katze bis 40) gelten fuer den
+   * GANZEN Komplex. Wer die R-Zacke dagegen haelt, meldet zu selten "QRS verbreitert" - und
+   * genau daran haengen ventrikulaerer Ursprung, Schenkelblock und Hyperkaliaemie. Der Fehler
+   * ging also in die gefaehrliche Richtung: er beruhigt.
+   *
+   * WAS JETZT GILT: der Lauf endet erst, wenn das Signal HALT_MS lang unter der Schwelle
+   * geblieben ist. Ein kurzer Durchgang durch die Grundlinie innerhalb des Komplexes beendet
+   * ihn nicht mehr, ein echtes Zurueckkehren zur Grundlinie schon. 12 ms sind bewusst kurz
+   * gewaehlt: die ST-Strecke dauert beim Hund 40 bis 100 ms, bei der Katze 60 bis 80 - der
+   * Lauf kann also nicht in die T-Welle hineinlaufen.
+   * ================================================================================== */
+  /* ==================================================================================
+   * DIE SCHWELLE: 15 % -> 8 % DER SPITZE (10.08.2026, an Modellstreifen ausgemessen)
+   *
+   * Q- und S-Zacke sind beim Tier regelmaessig KLEINER als 15 % der R-Zacke (im geeichten
+   * Modell: Q 0,10 mV und S 0,25 mV gegen R 1,00 mV). Mit 15 % lag die Schwelle also ueber
+   * der halben Q-Zacke - der Lauf endete, bevor er sie ueberhaupt erreichte.
+   *
+   * Gemessen an einem Streifen mit bekannter Vorgabe (Hund 50 ms, Katze 35 ms), rein und
+   * mit Rauschen:
+   *      15 %  Hund 28 ms   Katze 16 ms      (weit zu kurz)
+   *      10 %  Hund 28-32   Katze 20-24
+   *       8 %  Hund 36-40   Katze 20-28      <- gewaehlt
+   *       5 %  Hund 44      Katze 28, verrauscht 44   (faengt an zu wandern)
+   *       3 %  Hund 44-48   Katze verrauscht 104      (unbrauchbar)
+   * 8 % ist der Punkt, an dem die Messung deutlich naeher an der Wahrheit liegt und noch
+   * NICHT vom Rauschen getrieben wird.
+   *
+   * EINE SCHWELLENMESSUNG BLEIBT SYSTEMATISCH ZU KURZ - rund 20 % gegenueber der gezeichneten
+   * Dauer. Das ist bekannt, gilt fuer echte Streifen genauso und steht in der Eichpruefung
+   * ausdruecklich dabei. Wichtig ist die Richtung des frueheren Fehlers: er BERUHIGTE (eine
+   * verbreiterte Kammer sah schmal aus), und genau das ist jetzt kleiner geworden.
+   * ================================================================================== */
+  /* DIE SCHWELLE HAENGT AN ZWEI DINGEN, NICHT NUR AN DER R-HOEHE.
+   *
+   * Ein Anteil der R-Zacke allein ist als Kriterium falsch: Q und S sind beim Tier
+   * regelmaessig kleiner als dieser Anteil, der Lauf endete also VOR ihnen. Wo der Komplex
+   * wirklich anfaengt und aufhoert, entscheidet der Abstand zur GRUNDLINIE - so liest es
+   * auch ein Mensch am Papier. Deshalb:
+   *     grenze = max(5 % der Spitze, 2,5 x Grundlinienunruhe)
+   * Der erste Teil haelt die Messung bei ruhigem Signal nahe an der wahren Dauer, der zweite
+   * verhindert, dass sie bei unruhigem Signal ins Rauschen laeuft (gemessen 10.08.2026: mit
+   * 3 % ohne Rauschterm mass eine verrauschte Katze 104 ms statt 35).
+   * Ohne uebergebenes Rauschmass bleibt es beim reinen Anteil - dann ist die Zahl wie bisher
+   * eher zu klein, und das ist die vorsichtigere Richtung. */
+  /* 8 % UND NICHT 5 % — gemessen, nicht gewaehlt (10.08.2026).
+   * Mit 5 % lief die Messung auf Signalen mit sehr ruhiger Grundlinie (synthetische
+   * Pruefstreifen, stark gefilterte Geraete) so weit aus, dass ein schmaler Sinuskomplex
+   * als verbreitert galt - die Auswertung meldete daraufhin einen idioventrikulaeren
+   * Rhythmus, wo ein Sinusrhythmus war. Das ist die gefaehrliche Richtung: ein erfundener
+   * Befund. 8 % war in der Messreihe der Punkt, an dem die Breite deutlich naeher an der
+   * Wahrheit liegt und die Deutung stabil bleibt. */
+  var QRS_HALT_MS = 12;
+  var QRS_SCHWELLE = 0.08;
+  function qrsBreiteMs(werte, r, hz, rausch) {
     if (werte[r] == null) return null;
     var spitze = Math.abs(werte[r]);
     if (!spitze) return null;
-    var grenze = spitze * 0.15;
+    var grenze = spitze * QRS_SCHWELLE;
+    if (endlich(rausch) && rausch > 0) grenze = Math.max(grenze, rausch * 2.5);
     var maxHalb = Math.round(hz * 0.09);   // 90 ms - mehr ist bei Hund/Katze kein QRS mehr
-    var links = r, rechts = r, k;
+    var halt = Math.max(1, Math.round(hz * QRS_HALT_MS / 1000));
+    var links = r, rechts = r, k, unten;
+    unten = 0;
     for (k = 1; k <= maxHalb; k++) {
       var li = r - k;
       if (li < 0 || werte[li] == null) break;
-      links = li;
-      if (Math.abs(werte[li]) < grenze) break;
+      if (Math.abs(werte[li]) < grenze) { unten++; if (unten >= halt) break; }
+      else { unten = 0; links = li; }
     }
+    unten = 0;
     for (k = 1; k <= maxHalb; k++) {
       var re = r + k;
       if (re >= werte.length || werte[re] == null) break;
-      rechts = re;
-      if (Math.abs(werte[re]) < grenze) break;
+      if (Math.abs(werte[re]) < grenze) { unten++; if (unten >= halt) break; }
+      else { unten = 0; rechts = re; }
     }
     return Math.round((rechts - links) / hz * 1000);
   }
@@ -1426,7 +1567,18 @@
           '. Ob sie ANHALTEND ist (über 30 s), lässt dieser Streifen nicht entscheiden — ' +
           'Puls und Blutdruck am Tier prüfen.' };
     }
-    if (hf != null && bandHr && hf > bandHr[1] && breit) {
+    /* "SCHNELL UND BREIT" IST KEINE VT, WENN ES EIN BIGEMINUS IST (Befund 10.08.2026).
+     * Bei einem Bigeminus zaehlt die Erkennung ALLE Komplexe - Sinusschlag und Extrasystole -
+     * und kommt damit auf die doppelte Frequenz; der Median der QRS-Breite liegt zwischen dem
+     * schmalen und dem breiten Komplex und damit oft ueber der Artgrenze. Beide Bedingungen
+     * waren also erfuellt, ohne dass eine ventrikulaere Tachykardie vorlag. Aufgefallen ist
+     * das erst, als die QRS-Messung genauer wurde (Schwelle 15 % -> 8 %): davor war der
+     * Median knapp schmal genug, und der Fehlbefund blieb zufaellig aus.
+     * Ein regelmaessiger Zweier- oder Dreiertakt ist per Definition keine Salve; er wird
+     * weiter unten als das benannt, was er ist. */
+    var taktMuster = !!(muster && muster.messbar &&
+      (muster.bigeminusLaeufe >= 3 || muster.trigeminusLaeufe >= 3));
+    if (hf != null && bandHr && hf > bandHr[1] && breit && !taktMuster) {
       return { id: 'vtach', name: 'Verdacht auf ventrikuläre Tachykardie', sicherheit: 'Verdacht',
         begruendung: 'schnelle Folge (' + hf + '/min) mit verbreitertem QRS (' + qrsMs + ' ms)' };
     }
@@ -1486,13 +1638,34 @@
 
     /* (4) VORHOFFLIMMERN. Die Werke nennen drei Merkmale zusammen: sehr unregelmaessig,
      * KEINE abgrenzbaren P-Wellen, schmaler Kammerkomplex. Sind P-Wellen zu sehen, ist es
-     * KEIN Vorhofflimmern - deshalb ist pFehlt Bedingung und nicht bloss ein Zusatz. */
+     * KEIN Vorhofflimmern - deshalb ist pFehlt Bedingung und nicht bloss ein Zusatz.
+     *
+     * "UNREGELMAESSIG" HEISST HIER: DURCHGEHEND, NICHT EINMAL (Befund 10.08.2026).
+     * Die Spannweite (groesster minus kleinster Abstand) reicht dafuer NICHT aus - eine
+     * EINZIGE Extrasystole mit ihrer kompensatorischen Pause treibt sie ueber jede Schwelle.
+     * Der alte Selbsttest der Extrasystole (tools/ekg-analyse-test.js, seit 22.07.2026)
+     * schlug prompt an: aus einem Streifen mit genau einem vorzeitigen Schlag machte der
+     * erste Entwurf ein "Vorhofflimmern moeglich". Das ist der gefaehrlichste Fehlbefund
+     * dieser ganzen Datei - er fuehrt zu einer Behandlung.
+     * Gemessen wird deshalb die AUFEINANDERFOLGENDE Aenderung - genau das, was "irregulaer
+     * irregulaer" beschreibt: beim Vorhofflimmern unterscheidet sich fast jeder Abstand vom
+     * vorigen, bei einer Extrasystole nur die zwei um sie herum. Am Beispiel gerechnet:
+     * ein vorzeitiger Schlag unter zehn ergibt 2 von 9 Spruengen (22 %), ein Vorhofflimmern
+     * rund 65 %. Die Grenze liegt bei 50 % und trennt beides deutlich.
+     * Zusaetzlich mindestens acht Abstaende, damit die Quote ueberhaupt eine Aussage ist. */
+    var spruenge = 0;
+    for (i = 0; i + 1 < rrMs.length; i++) {
+      if (Math.abs(rrMs[i + 1] - rrMs[i]) > mittel * 0.15) spruenge++;
+    }
+    var abwAnteil = (rrMs.length > 1) ? (spruenge / (rrMs.length - 1)) : 0;
     if (sauber && pFehlt && !breit && schwankung > 0.30 &&
+        rrMs.length >= 8 && abwAnteil >= 0.5 &&
         !(muster && muster.messbar && muster.bigeminusLaeufe)) {
       return { id: 'vhf', name: 'Unregelmäßig ohne abgrenzbare P — Vorhofflimmern möglich',
         sicherheit: 'Verdacht',
-        begruendung: 'Die Abstände schwanken um ' + Math.round(schwankung * 100) + ' % ohne ' +
-          'erkennbares Muster, in nur ' + p.anteil + ' % der Schläge ist eine P-Welle abgrenzbar, ' +
+        begruendung: 'Bei ' + Math.round(abwAnteil * 100) + ' % der Schläge ist der Abstand ein ' +
+          'anderer als beim vorigen (Spanne ' + Math.round(schwankung * 100) + ' %), ohne erkennbares Muster; in nur ' +
+          p.anteil + ' % der Schläge ist eine P-Welle abgrenzbar, ' +
           'und der Kammerkomplex ist schmal (' + qrsMs + ' ms). Das ist die Merkmalskombination ' +
           'des Vorhofflimmerns' + (hf != null ? ' (hier ' + hf + '/min)' : '') + '. Zur Sicherung ' +
           'gehört ein längerer Streifen und die Auskultation (Pulsdefizit).' };
@@ -1681,9 +1854,13 @@
      * Zuordnung Schlag -> Breite laesst sich nicht sagen, ob die FORMFREMDEN Schlaege breit
      * sind; und genau das unterscheidet die ventrikulaere von der supraventrikulaeren
      * Extrasystole. Der Index zaehlt wie in zacken, damit beides zusammenpasst. */
+    /* Das Rauschmass fuer die Breitenmessung ist DASSELBE, das schon die Signalguete und die
+     * P-Schwelle bestimmt - eine Zahl, damit die drei nicht auseinanderlaufen. Es steht hier
+     * schon fest (grund), muss aber vor der Breitenmessung gebildet werden. */
+    var rauschFuerBreite = grund;
     var breiten = [], breitenJe = [];
     for (i = 0; i < zacken.length; i++) {
-      var b = qrsBreiteMs(werte, zacken[i], hz);
+      var b = qrsBreiteMs(werte, zacken[i], hz, rauschFuerBreite);
       breitenJe.push(endlich(b) ? b : null);
       if (endlich(b)) breiten.push(b);
     }
@@ -1760,6 +1937,7 @@
     analysiere: analysiere,
     // fuer die Selbsttests einzeln pruefbar:
     findeQRS: findeQRS, qrsBreiteMs: qrsBreiteMs, grundlinieAbziehen: grundlinieAbziehen,
+    grundlinieAbziehenGenau: grundlinieAbziehenGenau,
     rhythmus: rhythmus, stMessung: stMessung, median: median,
     qrsBeginn: qrsBeginn, qrsEnde: qrsEnde, findeP: findeP, pAuswertung: pAuswertung, perzentil: perzentil,
     findeT: findeT, tAuswertung: tAuswertung,
