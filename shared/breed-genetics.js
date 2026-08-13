@@ -357,10 +357,28 @@
     if (!_breedIx) { _breedIx = {}; for (var i = 0; i < BREEDS.length; i++) _breedIx[BREEDS[i].id] = BREEDS[i]; }
     return _breedIx[id] || null;
   }
+  /* ---------------------------------------------------------------------------
+     resolve(text, sp) — einen getippten Text zu EINER Rasse machen.
+
+     MIT MINDESTPUNKTZAHL, und das ist keine Feinheit (Gegenpruefung 09.08.2026).
+     Vorher nahm resolve() kommentarlos den ersten Treffer - auch einen, der nur ueber den
+     ERKRANKUNGStext zustande kam (Punktzahl 12). Ein Wort, das zufaellig in einem
+     Krankheitsnamen vorkommt, wurde damit beim Verlassen des Feldes zu einer konkreten
+     Rasse. Diese Rasse steuert danach die rassebezogenen Herzhinweise und geht ueber
+     normFuer() in die Bewertung ein: die Anwendung haette eine Praedisposition eines Tieres
+     angezeigt, das der Untersucher nie eingegeben hat.
+
+     60 ist die Schwelle zwischen "der Name faengt so an" (Wortanfang, 60) und "kommt
+     irgendwo vor" (40). Nur ein Namens- oder Aliastreffer setzt also selbsttaetig eine
+     Rasse. Die schwaecheren Treffer bleiben in search() und damit in der Auswahlliste -
+     dort waehlt ein Mensch, und der sieht, was er nimmt.
+     --------------------------------------------------------------------------- */
+  var RESOLVE_MIN = 60;
   function resolve(text, sp) {
     if (!text) return null;
     var tr = search(text, sp, 1);
-    return tr.length ? tr[0].breed : null;
+    if (!tr.length) return null;
+    return (tr[0].score >= RESOLVE_MIN) ? tr[0].breed : null;
   }
   /* ---------------------------------------------------------------------------
      search(text, sp, limit) — Sofortsuche fuer das Rassefeld.
@@ -388,8 +406,20 @@
     return false;
   }
   function search(text, sp, limit) {
-    var pool = bySpecies(sp), t = norm(text || ''), max = limit || 40, out = [];
+    var pool = bySpecies(sp), roh = String(text == null ? '' : text), t = norm(roh), max = limit || 40, out = [];
+    /* ==========================================================================
+     * LEERE EINGABE UND UNLESBARE EINGABE SIND ZWEIERLEI (Gegenpruefung 09.08.2026).
+     *
+     * norm() wirft alles weg, was nicht a-z0-9 ist. Eine Eingabe aus reinen Satzzeichen
+     * ("?", "-", "/", "(?)") wurde dadurch zum leeren Suchtext - und der leere Suchtext
+     * liefert die ALPHABETISCHE GESAMTLISTE. resolve() nahm davon Platz 1. Die Anwendung
+     * setzte also eine Rasse, die niemand eingegeben hatte, und speicherte sie dauerhaft.
+     *
+     * Wer nichts tippt, will die Liste sehen. Wer etwas tippt, das keine Buchstaben enthaelt,
+     * hat keine Rasse gemeint - dann sind null Treffer die richtige Antwort.
+     * ========================================================================== */
     if (!t) {
+      if (roh.trim()) return [];
       out = pool.slice().sort(function (a, z) { return norm(a.name) < norm(z.name) ? -1 : 1; });
       return out.slice(0, max).map(function (b) { return { breed: b, score: 0 }; });
     }
