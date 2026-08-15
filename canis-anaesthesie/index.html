@@ -1091,8 +1091,19 @@ html[data-theme="light"] .assess-tr{color:#5a3c00;background:rgba(255,180,60,.16
 <script src="../shared/ekg-befunde.js?v=1"></script>
 <!-- Nachschlagewerk aus den Fachbuechern des Nutzers (window.VS.literatur): ausgewertete
      Einzelstellen mit Buch und Seite, durchsuchbar. Erzeugt von tools/ekg-literatur-bauen.js,
-     Quelldaten in docs/EKG-LITERATUR-2026-08.json. Loest nichts aus - reines Nachschlagen. -->
+     Quelldaten in docs/EKG-LITERATUR-2026-08.json. Loest nichts aus - reines Nachschlagen.
+     DIESES script src IST KEINE ZUSICHERUNG: seit 1.18.1 liegt die Datei weder in der
+     oeffentlichen Web-App noch im Update-Paket, sie kommt allein ueber die Setup-Datei. Sie
+     darf also fehlen; renderLiteratur() sagt dann, warum. -->
 <script src="../shared/ekg-literatur.js?v=1"></script>
+<!-- Richtigstellungen zum Nachschlagewerk (window.VS.dosisWarnungen, 15.08.2026).
+     GETRENNT VON DER DATEI, DIE SIE KOMMENTIEREN, UND DAS IST DER GANZE ZWECK: ekg-literatur.js
+     geht seit 1.18.1 nicht mehr ins oeffentliche Update-Paket, der Updater loescht aber nichts
+     (robocopy /E ohne /MIR). Eine laufende Station behaelt also ihre ALTE Fassung - und die
+     kennt die Warnungen nicht (1.12.0-1.17.0 tragen nachgemessen null davon). Ohne diese
+     Datei saehe sie die tausendfach zu hohe Dauertropfdosis wieder ungewarnt.
+     Enthaelt kein Buchwissen, nur eigene Korrekturen mit oeffentlichen Gegenquellen. -->
+<script src="../shared/dosis-warnungen.js?v=1"></script>
     <!-- Kardiologie-Regeln (window.VS.kardio, 14.08.2026): Zahlen, Schwellen und
          Entscheidungswege aus Killich, Kleintierkardiologie (Thieme 2019), 593 Buchseiten.
          KEINE abgeschriebenen Saetze — nur Werte in eigener Formulierung, jeder mit Kapitel
@@ -10498,21 +10509,44 @@ function wissenListe(){
  * nur, was sie selbst misst. Wer mehr will, schlaegt hier nach.
  * ================================================================================== */
 var LIT={ suche:'', thema:null };
+/*
+ * WARUM DIE WARNUNG NICHT MEHR AUS DER STELLE SELBST KOMMT (15.08.2026)
+ *
+ * ekg-literatur.js geht seit 1.18.1 nicht mehr ins oeffentliche Update-Paket. Der Updater
+ * loescht nichts (kiosk\launch-kiosk.ps1: robocopy /E, ohne /MIR), eine laufende Station
+ * behaelt also ihre ALTE Datendatei. Gemessen an den ausgelieferten Paketen: 1.12.0 bis
+ * 1.17.0 tragen NULL Warnungen, erst 1.18.0 zwei. Wer s.warnung liest, zeigt einer ueber den
+ * Kanal aktualisierten Station die tausendfach zu hohe Dauertropfdosis also wieder ungewarnt.
+ *
+ * Deshalb steht die Warnung in ui/shared/dosis-warnungen.js — wenige KB, kein Buchwissen,
+ * wird ueberall ausgeliefert. Der Rueckfall auf s.warnung bleibt, damit eine neuere
+ * Datendatei auch ohne die Karte noch warnt.
+ */
+function warnungZu(s){
+  var W=(window.VS&&VS.dosisWarnungen)||null;
+  return (W?W.fuer(s):'')||(s&&s.warnung)||'';
+}
 function renderLiteratur(){
   var side=$('#ekgSide'), ov=$('#ekgOverlay');
   ov.dataset.seite='lit';
   var L=(window.VS&&VS.literatur)||null;
   var kopf='<h4>📖 Fachliteratur <span style="float:right"><button class="ekg-btn" id="lZur">← Regeln</button> <button class="ekg-btn" id="lBack">← Messwerte</button></span></h4>';
   if(!L){
-    /* ZWEI LAGEN, ZWEI SAETZE (14.08.2026). "nicht geladen" ist in der Fern-App eine
-     * Falschauskunft: dort fehlt nichts, dort steht es ABSICHTLICH nicht. Der Platzhalter aus
-     * tools/web-app-bauen.js setzt VS.literaturNurLokal; daran ist der Unterschied erkennbar.
-     * Ohne diese Unterscheidung sucht der Tierarzt einen Fehler, den es nicht gibt - und das
-     * ist genau die Sorte Fehlmeldung, die diese Anwendung sich nicht leisten darf. */
+    /* DREI LAGEN, ZWEI SAETZE (14.08.2026, erweitert 15.08.2026). "nicht geladen" waere in
+     * der Fern-App eine Falschauskunft: dort fehlt nichts, dort steht es ABSICHTLICH nicht.
+     * Der Platzhalter aus tools/web-app-bauen.js setzt VS.literaturNurLokal; daran ist der
+     * Unterschied erkennbar. Seit 1.18.1 gibt es eine dritte Lage: auch AN DER STATION darf
+     * die Datei fehlen, weil sie nicht mehr im Update-Paket liegt - dafuer steht der zweite
+     * Satz, der auf die Setup-Datei verweist. Ohne diese Unterscheidungen sucht der Tierarzt
+     * einen Fehler, den es nicht gibt - genau die Sorte Fehlmeldung, die diese Anwendung
+     * sich nicht leisten darf. */
     var nurLokal=!!(window.VS&&VS.literaturNurLokal);
     side.innerHTML=kopf+'<div class="ekg-empty">'+(nurLokal
       ? 'Das Nachschlagewerk steht nur an der Station. Es ist ein Auszug aus den Fachbüchern der Praxis und wird bewusst nicht veröffentlicht. Messung, Befundregeln und Herzmodell arbeiten hier unverändert weiter.'
-      : 'Literaturauszug nicht geladen.')+'</div>';
+      /* DRITTER FALL, SEIT 1.18.1: an der Station selbst kann es jetzt ebenfalls fehlen — das
+       * Nachschlagewerk liegt nicht mehr im Update-Paket. Wer nur über den Kanal aktualisiert
+       * hat und es nie über die Setup-Datei bekam, sucht sonst einen Fehler, den es nicht gibt. */
+      : 'Das Nachschlagewerk ist auf dieser Station nicht installiert. Es ist ein Auszug aus den Fachbüchern der Praxis und liegt deshalb nicht im Update-Paket, das über das offene Netz geht — es kommt mit der Einrichtung über die Setup-Datei. Messung, Befundregeln, Narkoseplan und Herzmodell arbeiten ohne es unverändert weiter.')+'</div>';
     var b0=$('#lBack'); if(b0) b0.onclick=function(){ ov.dataset.seite=''; rebuildSide(); updateMeasures(); };
     var z0=$('#lZur'); if(z0) z0.onclick=function(){ renderWissen(); };
     return;
@@ -10535,18 +10569,20 @@ function renderLiteratur(){
     var s=treffer[i];
     /*
      * WARNUNG ZUERST UND IN ROT (14.08.2026). Sie steht nur an Stellen, wo die VORLAGE
-     * SELBST falsch ist — bisher genau eine: eine Dauertropf-Dosis, die im Buch in mg/kg/min
-     * statt µg/kg/min gedruckt ist, also tausendfach zu hoch. Der Satz darunter bleibt
-     * unveraendert, weil dieses Fenster ein ZITAT zeigt und kein Ratgeber ist. Wer hier
-     * nachschlaegt, steht aber unter Umstaenden am Patienten — deshalb muss die Warnung
-     * VOR dem Satz stehen und nicht darunter, und der ganze Kasten wechselt die Farbe.
+     * SELBST falsch ist — heute zwei: eine Dauertropf-Dosis, die im Buch in mg/kg/min statt
+     * µg/kg/min gedruckt ist (tausendfach zu hoch), und eine Bezugsgroesse, die nur fuer die
+     * Katze gilt. Der Satz darunter bleibt unveraendert, weil dieses Fenster ein ZITAT zeigt
+     * und kein Ratgeber ist. Wer hier nachschlaegt, steht aber unter Umstaenden am Patienten —
+     * deshalb muss die Warnung VOR dem Satz stehen und nicht darunter, und der ganze Kasten
+     * wechselt die Farbe. Woher der Text kommt, steht bei warnungZu() weiter oben.
      */
-    var warn=s.warnung?'<div class="td" style="color:#ff9d9d;font-weight:700">⚠ '+esc2(s.warnung)+'</div>':'';
-    html+='<div class="tipp" style="border-left-color:'+(s.warnung?'#ff6b6b':'#7fa6c8')+'">'+
+    var wtext=warnungZu(s);
+    var warn=wtext?'<div class="td" style="color:#ff9d9d;font-weight:700">⚠ '+esc2(wtext)+'</div>':'';
+    html+='<div class="tipp" style="border-left-color:'+(wtext?'#ff6b6b':'#7fa6c8')+'">'+
       '<div class="tn" style="color:#9fc0dd">'+esc2(L.themenName(s.thema))+'</div>'+
       warn+
       '<div class="tt">'+esc2(s.text)+'</div>'+
-      (s.zahlen?'<div class="td" style="color:'+(s.warnung?'#c9a0a0':'#ffd166')+'">'+esc2(s.zahlen)+'</div>':'')+
+      (s.zahlen?'<div class="td" style="color:'+(wtext?'#c9a0a0':'#ffd166')+'">'+esc2(s.zahlen)+'</div>':'')+
       '<div class="tq">'+esc2(s.werk)+(s.seite?' · '+esc2(s.seite):'')+'</div></div>';
   }
   if(treffer.length>max) html+='<div class="ekg-empty">… und '+(treffer.length-max)+' weitere. Suchbegriff eingeben oder ein Thema wählen.</div>';
