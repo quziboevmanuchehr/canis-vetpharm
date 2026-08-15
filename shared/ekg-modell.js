@@ -53,6 +53,29 @@
   };
   function ekgVorgabe(art) { return EKG[art] || EKG.standard; }
 
+  /* ------------------------------------------------------------------------------------
+   * DIE DREI ZEITANTEILE DES KAMMERKOMPLEXES — EINE STELLE, ZWEI VERBRAUCHER (13.08.2026)
+   *
+   * Q, R und S teilen sich die QRS-Dauer in dieser Reihenfolge auf. Bis heute standen die
+   * Zahlen nur als Literale in ekgMv(). Seit es das Herzmodell gibt (shared/herz3d.js), liest
+   * sie ein ZWEITER Verbraucher: das Modell faerbt Septum, Innen- und Aussenschicht genau in
+   * diesen Fenstern ein, damit Bild und Kurve denselben Augenblick zeigen.
+   *
+   * Zwei Kopien derselben Zahl laufen frueher oder spaeter auseinander, und der Fehler waere
+   * hier besonders heimtueckisch: Kurve und Herzbild saehen einzeln richtig aus und liefen
+   * nur gegeneinander versetzt. Deshalb steht die Aufteilung hier und nirgends sonst.
+   *
+   * WAS DIE FENSTER BEDEUTEN (Killich, Kleintierkardiologie 2019, S. 54):
+   *   q  Teile des Septums werden Richtung HERZBASIS erregt
+   *   r  die Masse der Kammermuskulatur von INNEN nach AUSSEN, Vektor Richtung HERZSPITZE
+   *   s  zuletzt kurz wieder Richtung HERZBASIS (basisnahe Anteile)
+   * ---------------------------------------------------------------------------------- */
+  var QRS_ANTEIL = { q: 0.20, r: 0.45, s: 0.35 };
+
+  /* Vorlauf vor der P-Welle. Steht HIER und nicht als Literal in ekgMv(), weil pBeginnSek()
+   * unten dieselbe Zahl braucht - siehe die Herleitung dort. */
+  var VORLAUF_SEK = 0.02;
+
   /* Erhoehter Kosinus mit EXAKTEM Traeger [t0, t0+dauer]. Anders als eine Gauss-Kurve hat er
    * einen definierten Anfang und ein definiertes Ende - nur dann ist eine Dauer ueberhaupt
    * eine Vorgabe, gegen die sich eichen laesst. */
@@ -78,6 +101,9 @@
       var f = tSek / (rrSek || 0.6);
       return 0.55 * Math.sin(f * 38 + (beatN || 0)) + 0.32 * Math.sin(f * 67 + 2);
     }
+    /* Der Vorlauf vor der P-Welle. Er steht hier als benannte Groesse, weil pBeginnSek()
+     * unten dieselbe Zahl braucht: das Herzmodell muss wissen, WANN im Zyklus die P-Welle
+     * anfaengt, sonst laeuft das Bild gegen die Kurve versetzt. */
     var beat = beatN || 0, y = 0;
     var breit = (W.qrs > 1.5), hatP = (W.p && W.pq !== 'diss'), faelltAus = false, tVz = 1;
     var rAmp = V.rAmp, qrsMs = V.qrsMs;
@@ -92,14 +118,14 @@
     if (typeof W.pq === 'number') pqMs = V.pqMs * W.pq;
     else if (W.pq === 'inc') pqMs = V.pqMs + (beat % (W.ratio || 4)) * 30;
     /* Die R-Zacke liegt bei tR: davor Platz fuer P und PQ, danach fuer ST und T. */
-    var tR = (pqMs + qrsMs * 0.5) / 1000 + 0.02;
+    var tR = (pqMs + qrsMs * 0.5) / 1000 + VORLAUF_SEK;
     var t = tSek - tR;
     var qrsS = qrsMs / 1000, q0 = -0.35 * qrsS;
     if (hatP) y += V.pAmp * welle(t, q0 - (pqMs / 1000), V.pMs / 1000);
     if (!faelltAus) {
-      y += -V.qAmp * welle(t, q0, 0.20 * qrsS);
-      y += rAmp * welle(t, q0 + 0.20 * qrsS, 0.45 * qrsS);
-      y += -V.sAmp * welle(t, q0 + 0.65 * qrsS, 0.35 * qrsS);
+      y += -V.qAmp * welle(t, q0, QRS_ANTEIL.q * qrsS);
+      y += rAmp * welle(t, q0 + QRS_ANTEIL.q * qrsS, QRS_ANTEIL.r * qrsS);
+      y += -V.sAmp * welle(t, q0 + (QRS_ANTEIL.q + QRS_ANTEIL.r) * qrsS, QRS_ANTEIL.s * qrsS);
       y += tVz * V.tAmp * (breit ? 1.4 : 1) * welle(t, q0 + qrsS + (V.stMs / 1000), V.tMs / 1000);
     }
     if (W.flutter) y += 0.15 * (2 * (((tSek / (rrSek || 0.6)) * 4) % 1) - 1);
@@ -161,9 +187,26 @@
     return amp * v;
   }
 
+  /* ------------------------------------------------------------------------------------
+   * WANN BEGINNT DIE P-WELLE IM ZYKLUS?
+   *
+   * ekgMv() legt die R-Zacke auf tR und setzt alles andere davor und danach ab. Wer die
+   * Kurve nur zeichnet, muss das nicht wissen. Das HERZMODELL muss: es faerbt Vorhof,
+   * AV-Knoten und Kammer in Fenstern, die am P-Beginn haengen. Rechnete es den Beginn
+   * selbst nach, staende die Formel zweimal da - und beim naechsten Eingriff an ekgMv()
+   * liefe das Bild lautlos gegen die Kurve.
+   *
+   * Herleitung, damit die Zahl nachvollziehbar bleibt:
+   *   tR      = pqMs/1000 + 0,5*qrsS + VORLAUF
+   *   QRS ab  = tR + q0             (q0 = -0,35*qrsS, siehe ekgMv)
+   *   P  ab   = QRS ab - pqMs/1000  = 0,15*qrsS + VORLAUF
+   * ---------------------------------------------------------------------------------- */
+  function pBeginnSek(art) { return 0.15 * (ekgVorgabe(art).qrsMs / 1000) + VORLAUF_SEK; }
+
   return {
-    EKG: EKG, PLETH: PLETH,
+    EKG: EKG, PLETH: PLETH, QRS_ANTEIL: QRS_ANTEIL, VORLAUF_SEK: VORLAUF_SEK,
     ekgVorgabe: ekgVorgabe, ekgMv: ekgMv, plethAnteil: plethAnteil, welle: welle,
+    pBeginnSek: pBeginnSek,
     /* QT ist keine eigene Vorgabe, sondern folgt aus den dreien - EINE Stelle, damit
      * Anzeige, Eichung und Test nicht verschieden rechnen. */
     qtMs: function (art) { var V = ekgVorgabe(art); return V.qrsMs + V.stMs + V.tMs; }

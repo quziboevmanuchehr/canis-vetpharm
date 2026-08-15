@@ -35,8 +35,16 @@
      Erbkrankheit unter „stabilisieren" gar nichts — ausgerechnet dort, wo im Ernstfall
      nachgesehen wird. Sie werden ZULETZT eingehaengt (siehe plan()), damit sie die
      rassespezifischen Wege nie aus der gedeckelten Liste draengen. */
+  /* 'myokardkontusion' kam am 15.08.2026 dazu - ein Thoraxtrauma ist keine Rassebedingung
+     und kann jedes Tier treffen, es gehoert also zu den Artwegen.
+     ES BRAUCHTE DAFUER EINE ZWEITE AENDERUNG: gemessen an sechs Rassen stand jede bereits
+     exakt am damaligen Deckel von 10, und Gruppenwege werden ZULETZT angehaengt - der
+     Eintrag fiel bei allen sechs heraus. Der Deckel in breed-genetics.js plan() steht
+     deshalb jetzt auf 12; die Begruendung dazu steht dort. Wer hier etwas ergaenzt, misst
+     mit VETBREED.plan() nach, ob es beim Patienten wirklich ankommt. */
   var ART_RETTUNG = ['nicht-aufwachen', 'hypothermie', 'hypoglykaemie', 'regurgitation',
-    'alpha2-ueberdosis', 'opioid-ueberhang', 'ace-hypotension', 'anaphylaxie', 'cpr'];
+    'alpha2-ueberdosis', 'opioid-ueberhang', 'ace-hypotension', 'anaphylaxie', 'cpr',
+    'myokardkontusion'];
   /* Fuer die Kleinnager dieselbe Ueberlegung, nur ohne die Wege, die es dort nicht gibt
      (Regurgitation kennt kein Nager - sie erbrechen nicht; Acepromazin wird nicht eingesetzt). */
   var NAGER_RETTUNG = ['nicht-aufwachen', 'hypothermie', 'hypoglykaemie',
@@ -743,6 +751,36 @@
       ],
       nicht: ['Kaliumhaltige Infusion weiterlaufen lassen', 'Kalzium ohne EKG geben'],
       sources: [Q_PLUMB, 'IRIS', Q_ACVAA]
+    },
+    /* ------------------------------------------------------------------------------------
+       NACHGETRAGEN AM 15.08.2026 aus Killich, Kleintierkardiologie (Thieme 2019), Kap. 11.3.5.
+
+       WARUM ALS RETTUNGSWEG UND NICHT ALS PROTOKOLL: ein Protokoll wird ueber
+       CONDITIONS[...].protocol erreicht, also ueber eine RASSEBEDINGUNG. Ein Thoraxtrauma ist
+       keine. Als Protokoll eingetragen waere der Eintrag nie aufgerufen worden — genau die
+       stille tote Stelle, vor der dieses Projekt an mehreren Stellen warnt. Rettungswege
+       haengen dagegen ueber ART_RETTUNG an JEDEM Hund und JEDER Katze, und getroffen werden
+       kann es jedes Tier.
+
+       WARUM KEIN EINTRAG ZUR MITRALKLAPPENSTENOSE: dieselbe Pruefung, anderes Ergebnis. Sie
+       ist eine Erkrankung ohne Rassebedingung im Katalog und kein Notfallablauf — beide Wege
+       fuehren ins Leere. Ihre haemodynamischen Ziele stehen im Regelwerk
+       (kardio-regeln.js: mitralstenose-ziele, narkosebeispiel-mitralstenose) und sind dort
+       durchsuchbar. Lieber auffindbar als unerreichbar eingebaut.
+       ------------------------------------------------------------------------------------ */
+    'myokardkontusion': {
+      name: 'Stumpfes Thoraxtrauma — myokardiale Kontusion („traumatische Myokarditis")',
+      zeichen: 'Vorbericht Autounfall, Sturz, Tritt oder Biss gegen den Brustkorb. Ventrikuläre Extrasystolen, ventrikuläre Tachykardie oder beschleunigter idioventrikulärer Rhythmus — typischerweise erst 24–48 h NACH dem Ereignis. Ein unauffälliges EKG am Unfalltag entlastet also nicht.',
+      schritte: [
+        'Vor jeder Narkose EKG schreiben, wenn ein Thoraxtrauma im Vorbericht steht — auch wenn das Tier munter wirkt.',
+        'Katecholamine senken statt Rhythmus jagen: konsequente Analgesie, Anxiolyse, Ruhe, wenig Handling, kreislaufstützende Infusion. Schmerz und Stress sind hier der Arrhythmietreiber.',
+        'Neuroleptanalgesie als Prämedikation — sie deckt Analgesie, Anxiolyse und antiarrhythmische Wirkung zugleich ab.',
+        'Bei ventrikulären Rhythmen Lidocain (Wirkstoff lidocain_iv, Dosis über den Dosisrechner). Erst die behebbare Ursache abarbeiten: Sauerstoff, Volumen, Schmerz, Kalium, Magnesium.',
+        'Beide Thoraxhälften beurteilen: bei Hund und Katze ist die Pleura kaudal dünner und durchlässiger als beim Menschen — Pneumothorax und Erguss bleiben nicht zwingend einseitig.',
+        'Elektive Eingriffe möglichst aus dem Fenster 24–48 h nach dem Trauma herausschieben.'
+      ],
+      nicht: ['Ketamin und alles andere, was den Sympathikus treibt', 'Narkose ohne vorheriges EKG bei Thoraxtrauma im Vorbericht', 'nur eine Thoraxhälfte beurteilen', 'Antiarrhythmikum, solange eine behebbare Ursache offen ist'],
+      sources: [Q_ACVAA, Q_RECOVER, 'Killich, Kleintierkardiologie (Thieme 2019), Kap. 11.3.5, S. 260 f. und Kap. 1.2, S. 22']
     },
     'regurgitation': {
       name: 'Regurgitation / Aspiration unter Narkose',

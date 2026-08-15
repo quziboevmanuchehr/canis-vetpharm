@@ -138,10 +138,17 @@ window.ANAES = {
         hund:{low:0.15,high:0.3,unit:'mEq/kg',route:'langsam IV über 5–15 min',conc:'500 mg/mL (50 %) = 4 mEq/mL — VERDÜNNEN',indication:'Lidocain-refraktäre ventrikuläre Arrhythmie, Torsade, Magnesiummangel',notes:'In NaCl 0,9 % oder Glukose 5 % verdünnen. Schoeller 2020 (16 Hunde) 0,2 mEq/kg über 5 min; Ranninger 2019 beschreibt die Konversion 20 min nach Magnesium, nachdem Lidocain-Boli und Dauertropf versagt hatten. Bei bekanntem Calciummangel Magnesiumchlorid statt -sulfat.',caution:'Zu schnell gegeben: Blutdruckabfall, AV-Block, Atemdepression. Nicht bei Anurie oder schwerer Niereninsuffizienz. Nicht mit Calcium in derselben Leitung.'},
         katze:{low:0.15,high:0.3,unit:'mEq/kg',route:'langsam IV über 5–15 min',conc:'500 mg/mL (50 %) — VERDÜNNEN',indication:'wie Hund',notes:'Kaum Katzendaten — vom Hund übertragen.',caution:'Wie Hund, noch langsamer geben.'}
       }},
+    /* VERFÜGBARKEIT IST KEINE PHARMAKOLOGIE (15.08.2026, beim Buchabgleich geprüft).
+       Killich, Kleintierkardiologie 2019, S. 227 schreibt, Klasse 1A werde "nicht mehr
+       eingesetzt und ist nicht mehr erhältlich". Merck 2024 führt die Dosis weiter — beides
+       ist richtig, es sind zwei verschiedene Fragen. Nachgesehen bei CliniPharm/vetpharm
+       (v_takwir/00000061): "Zur Zeit sind in der Schweiz keine Tierarzneimittel, welche
+       diesen Wirkstoff enthalten, zugelassen." Die Dosis bleibt deshalb stehen, aber der
+       Anwender erfährt es, BEVOR er nach der Ampulle greift, die er nicht hat. */
     { id:'procainamid', name:'Procainamid', icon:'💓', cls:'Antiarrhythmikum (Klasse Ia)',
-      sources:['Merck Veterinary Manual 2024'],
+      sources:['Merck Veterinary Manual 2024','CliniPharm/vetpharm.uzh.ch (Zulassungsstand)'],
       species:{
-        hund:{low:2,high:2,unit:'mg/kg',route:'langsam IV Bolus',conc:'100 mg/mL',indication:'Ventrikuläre Tachykardie, wenn Lidocain versagt',notes:'2 mg/kg als langsame Boli bis kumulativ höchstens 25 mg/kg über 10–15 min, danach Dauertropf 25–40 µg/kg/min. Alternativ 10–20 mg/kg IM/SC alle 6–8 h.',caution:'Negativ inotrop, Blutdruckabfall bei schneller Gabe — Blutdruck durchgehend messen. QT-Verlängerung. NICHT bei AV-Block oder ventrikulärem Ersatzrhythmus. Nicht mit einem zweiten Klasse-I-Mittel stapeln.'},
+        hund:{low:2,high:2,unit:'mg/kg',route:'langsam IV Bolus',conc:'100 mg/mL',indication:'Ventrikuläre Tachykardie, wenn Lidocain versagt',notes:'2 mg/kg als langsame Boli bis kumulativ höchstens 25 mg/kg über 10–15 min, danach Dauertropf 25–40 µg/kg/min. Alternativ 10–20 mg/kg IM/SC alle 6–8 h. VERFÜGBARKEIT PRÜFEN: als Tierarzneimittel im deutschsprachigen Raum nicht zugelassen (CliniPharm: in der Schweiz kein zugelassenes Präparat) — nur über Import oder Umwidmung eines Humanpräparats. Wer im Notfall damit rechnet, muss es vorher im Schrank haben.',caution:'Negativ inotrop, Blutdruckabfall bei schneller Gabe — Blutdruck durchgehend messen. QT-Verlängerung. NICHT bei AV-Block oder ventrikulärem Ersatzrhythmus. Nicht mit einem zweiten Klasse-I-Mittel stapeln.'},
         katze:{low:null,high:null,unit:'mg/kg',route:'',conc:'',indication:'',notes:'',caution:'Für die Katze gibt es keine belegte Antiarrhythmika-Dosis — nicht verwenden. Bei der Katze Amiodaron 5 mg/kg IV/IO (RECOVER 2024).'}
       }},
     { id:'esmolol', name:'Esmolol', icon:'💓', cls:'Antiarrhythmikum (β1-Blocker, ultrakurz)',

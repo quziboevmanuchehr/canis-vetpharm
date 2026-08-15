@@ -599,13 +599,27 @@
       if (c.monitor) { var mk = norm(c.monitor); if (!mGes['m' + mk]) { mGes['m' + mk] = 1; monitor.push({ text: c.monitor, von: c.name }); } }
       if (c.rescue) [].concat(c.rescue).forEach(function (r) { rescueAdd(r, c.name); });
     });
-    /* Gruppen-Rettungswege ZULETZT. Die der Art (Reanimation, Hypothermie, Unterzucker,
-     * Regurgitation, wacht nicht auf …) gelten fuer jedes Tier und duerfen deshalb nie die
-     * rassespezifischen aus der Liste draengen — die Liste ist gedeckelt. */
+    /*
+     * AB HIER DIE ARTWEGE — UND SIE WERDEN GETRENNT ZURUECKGEGEBEN (15.08.2026).
+     *
+     * Bis dahin wurden sie hinten an dieselbe, gedeckelte Liste gehaengt. Der Kommentar
+     * sagte, sie duerften die rassespezifischen nie verdraengen — gemessen ueber alle 747
+     * Rassen war es genau umgekehrt: SIE wurden verdraengt. Die Reanimation erreichte
+     * 497 von 747 Rassen, Anaphylaxie 442, der Weg fuers Thoraxtrauma 391. Immer bei den
+     * Rassen mit vielen eigenen Eintraegen, also bei den kranken. Kein Deckel loest das:
+     * bei 10 Artwegen und beliebig vielen Rassewegen passt beides nie zusammen, und eine
+     * laengere Liste wird im Notfall nicht besser gelesen, sondern schlechter.
+     *
+     * Deshalb zwei Listen. Die Artwege gelten OHNEHIN fuer jedes Tier — sie gegen die
+     * rassespezifischen antreten zu lassen war der Denkfehler. rettung bleibt gedeckelt und
+     * rassebezogen, rettungArt kommt vollstaendig und ungekuerzt dazu.
+     */
+    var artAb = rettung.length;
     (b.groups || []).forEach(function (k) {
       var g = GROUPS[k]; if (!g || !g.rescue) return;
       [].concat(g.rescue).forEach(function (r) { rescueAdd(r, g.name); });
     });
+    var rasseWege = rettung.slice(0, artAb), artWege = rettung.slice(artAb);
     /* Reihenfolge: erkrankungsspezifisches Protokoll → Einzelhinweis der Erkrankung →
      * Artgrundsatz (rang 9). Die Artgrundsätze gelten immer, aber wer eine BKH mit HCM vor sich
      * hat, will nicht zuerst „Katze — Narkosegrundsätze" lesen. Stabil sortiert (Index als
@@ -613,9 +627,13 @@
     erst.forEach(function (e, i) { e.__i = i; });
     erst.sort(function (a, z) { return (a.rang || 0) - (z.rang || 0) || a.__i - z.__i; });
     erst.forEach(function (e) { delete e.__i; });
+    /* Der Deckel gilt jetzt NUR fuer die rassespezifischen Wege — 12 statt frueher 10, weil
+     * 284 Rassen schon bei 10 standen und dort echte Eintraege abgeschnitten wurden. Die
+     * Artwege sind davon nicht mehr betroffen (Begruendung oben bei artAb). */
     return { breed: b, risk: riskOf(b),
       erstwahl: erst.slice(0, 8), meiden: meiden.slice(0, 24),
-      monitoring: monitor.slice(0, 12), rettung: rettung.slice(0, 10) };
+      monitoring: monitor.slice(0, 12),
+      rettung: rasseWege.slice(0, 12), rettungArt: artWege };
   }
 
   /* Rettungswege zu einem Schluessel oder zu einem Wirkstoff (fuer den Notfallknopf). */
