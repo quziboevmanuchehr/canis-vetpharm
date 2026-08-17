@@ -42,9 +42,22 @@
      Eintrag fiel bei allen sechs heraus. Der Deckel in breed-genetics.js plan() steht
      deshalb jetzt auf 12; die Begruendung dazu steht dort. Wer hier etwas ergaenzt, misst
      mit VETBREED.plan() nach, ob es beim Patienten wirklich ankommt. */
+  /* VIER WEGE KAMEN AM 15.08.2026 DAZU - sie waren geschrieben, geprueft und UNERREICHBAR.
+     Gemessen ueber alle 747 Rassen mit VETBREED.plan(): 17 der 195 Rettungswege erschienen
+     bei KEINER einzigen Rasse. Vier davon gehoeren offensichtlich hierher, weil sie an keiner
+     Rasse haengen, sondern am Verfahren:
+       benzo-ueberhang  - Midazolam steckt in nahezu jeder Praemedikation dieser Datei
+       propofol-apnoe   - Propofol ist das Standard-Einleitungsmittel
+       last             - dieselbe Datei empfiehlt durchgaengig "Lokalanaesthesie grosszuegig"
+       nsaid-ueberdosis - NSAID gehoeren zur Regelanalgesie
+     Ein Rettungsweg, den niemand zu sehen bekommt, ist derselbe Fehler wie ein fehlender -
+     nur schwerer zu bemerken, weil der Text ja dasteht. Die uebrigen 13 sind mit "r-"
+     praefixiert und haengen an Katalogbedingungen; sie brauchen eine eigene Klaerung.
+     ES GILT WEITER: wer hier etwas ergaenzt, misst mit VETBREED.plan() nach. Diese vier sind
+     nachgemessen - sie erscheinen jetzt in rettungArt, das seit dem 15.08.2026 ungedeckelt ist. */
   var ART_RETTUNG = ['nicht-aufwachen', 'hypothermie', 'hypoglykaemie', 'regurgitation',
     'alpha2-ueberdosis', 'opioid-ueberhang', 'ace-hypotension', 'anaphylaxie', 'cpr',
-    'myokardkontusion'];
+    'myokardkontusion', 'benzo-ueberhang', 'propofol-apnoe', 'last', 'nsaid-ueberdosis'];
   /* Fuer die Kleinnager dieselbe Ueberlegung, nur ohne die Wege, die es dort nicht gibt
      (Regurgitation kennt kein Nager - sie erbrechen nicht; Acepromazin wird nicht eingesetzt). */
   var NAGER_RETTUNG = ['nicht-aufwachen', 'hypothermie', 'hypoglykaemie',

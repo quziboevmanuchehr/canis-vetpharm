@@ -432,7 +432,7 @@
   "id": "ventrikulaere-tachykardie-katze",
   "name": "Ventrikulaere Tachykardie (Katze)",
   "art": "katze",
-  "bedingung": ">= 3 aufeinanderfolgende ventrikulaere Komplexe (QRS > 40 ms, formfremd, keine zugehoerige P) mit HF > 220/min. Einzelne Quellen setzen bereits ab > 180/min an",
+  "bedingung": ">= 3 aufeinanderfolgende ventrikulaere Komplexe (QRS > 40 ms, formfremd, keine zugehoerige P) mit HF > 220/min. DREI ZAHLEN, DIE NICHT GEGLAETTET WERDEN (15.08.2026): diese Karte nennt 220/min, die Karte 'kammertachykardie' 240/min, und Santilli 2018 (Buchseite 221, 226, 231, 232) setzt fuer Hund UND Katze 160/min an - dort ausdruecklich als WILLKUERLICH gesetzter Trennwert gegen den akzelerierten idioventrikulaeren Rhythmus bezeichnet. Einzelne Quellen beginnen bei 180/min. Der Ausloeser dieser Station bleibt bewusst bei 220/min: 160/min liegt UNTER dem normalen Sinusband der Katze, eine Schwelle dort wuerde ohne die volle Konjunktion (breit UND formfremd UND ohne zugehoerige P) jede Katze als VT melden",
   "mess": [
    "hf",
    "rr",
@@ -484,7 +484,7 @@
   "id": "aivr-katze",
   "name": "Akzelerierter idioventrikulaerer Rhythmus (Katze)",
   "art": "katze",
-  "bedingung": ">= 4 aufeinanderfolgende ventrikulaere Komplexe (QRS > 40 ms) mit HF 100-220/min; eine Quelle grenzt enger auf 100-159/min ein. Die Untergrenze liegt oberhalb der felinen Ersatzfrequenz (80-140/min)",
+  "bedingung": ">= 4 aufeinanderfolgende ventrikulaere Komplexe (QRS > 40 ms) mit HF 100-220/min; eine Quelle grenzt enger auf 100-159/min ein. Die Untergrenze liegt oberhalb der felinen Ersatzfrequenz (80-140/min). SCHWACH BELEGT UND KLINISCH FOLGENREICH (15.08.2026): Santilli 2018 (Buchseite 221, 226, 231, 232) wuerde eine Katze mit 200/min bereits als ventrikulaere Tachykardie fuehren, waehrend diese Karte sie als akzelerierten idioventrikulaeren Rhythmus einordnet - also als das gutartige, extrakardial verursachte, selbstlimitierende Bild. Am Narkosetisch ist das der Unterschied zwischen zusehen und eingreifen. Bei einer Katze zwischen 160 und 220/min deshalb BEIDE Deutungen pruefen und den Kreislauf entscheiden lassen, nicht die Zahl",
   "mess": [
    "hf",
    "rr",
@@ -1835,7 +1835,8 @@
   "hinweis": "Der Kammerkomplex ist breiter als der Referenzbereich. Möglich sind eine intraventrikuläre Leitungsstörung (Schenkelblock), eine Vergrößerung/Umbau der Kammer, ein ventrikulärer Ursprung des Schlages, Hyperkaliämie oder eine Wirkung natriumkanalblockierender Medikamente. Der humanmedizinische Grenzwert von 120 ms ist hier ohne Bedeutung — er wäre beim Hund doppelt so weit wie der Referenzbereich.",
   "dd": "Rechts-/Linksschenkelblock · ventrikulärer Ersatz-/Extrarhythmus (dann keine zugehörige P) · linksventrikuläre Vergrößerung · Hyperkaliämie (ab ca. 6,6 mmol/l) · Antiarrhythmika Klasse I · Präexzitation (dann PQ kurz) · Muskelzittern verwischt QRS-Ende und täuscht Verbreiterung vor",
   "sicher": "gesichert",
-  "quelle": "Tilley (Hund QRS ≤ 0,05 s klein / ≤ 0,06 s groß); Veterian Key, Electrocardiography; Tag & Day, JVECC 2008"
+  "hinweisZwei": "ZWEI GRENZEN, NICHT EINE (15.08.2026): Die Werte 50/60/65 ms sind die Referenzobergrenze der Größenklasse. Als BREIT im Sinne eines ventrikulären Ursprungs gilt beim Hund erst QRS ≥ 70 ms — Santilli, Electrocardiography of the Dog and Cat, 2. Aufl. 2018, Buchseite 105 und 122; bestätigt in Praxis der Kardiologie Buchseite 240. 44 der Regeln dieser Datei rechnen bereits mit 70 ms. Ein Wert zwischen Größengrenze und 70 ms ist erhöht, belegt aber keinen Kammerursprung.",
+  "quelle": "Tilley (Hund QRS ≤ 0,05 s klein / ≤ 0,06 s groß); Santilli 2018 S.105/122 (schmal/breit 70 ms); Veterian Key, Electrocardiography; Tag & Day, JVECC 2008"
  },
  {
   "id": "qrs-breit-katze",

@@ -1160,17 +1160,82 @@ var state = { sp: (A.species[0]&&A.species[0].id)||'hund', wt: 10, age:'adult', 
 function parseConc(s){ if(!s) return null; var m = String(s).replace(',','.').match(/([0-9]*\.?[0-9]+)\s*(mg|mcg|µg|g|iu|u|units?)\s*\/\s*ml/i); if(!m) return null; var v=parseFloat(m[1]); var u=m[2].toLowerCase(); if(u==='g') v=v*1000; if(u==='mcg'||u==='µg') v=v/1000; return v; /* mg per mL, bzw. U/mL für Einheiten-Präparate (vasopressin/insulin) */ }
 function fmt(n){ if(n==null||isNaN(n)) return '–'; if(n>=100) return Math.round(n).toString(); if(n>=10) return (Math.round(n*10)/10).toString(); if(n>=1) return (Math.round(n*100)/100).toString(); return (Math.round(n*1000)/1000).toString(); }
 function fmtRange(a,b){ a=fmt(a); b=fmt(b); return a===b? a : a+'–'+b; }
-/* returns {mgLo,mgHi,mlLo,mlHi,mgUnit} for a species dose object + weight */
+/*
+ * parseConcEinheit(text, einheit) — liest aus der Konzentrationsangabe die Zahl, die WIRKLICH
+ * zur Dosiseinheit gehoert.
+ *
+ * WARUM ES DIESE ZWEITE FUNKTION GIBT (Befund 17.08.2026, nachgerechnet):
+ * parseConc() liefert immer mg/mL. Bei Magnesiumsulfat steht in der Konzentration
+ * "500 mg/mL (50 %) = 4 mEq/mL", und parseConc nimmt die 500. Die Dosis ist aber in mEq/kg
+ * angegeben — 500/4 = 125. Die ausgerechnete Spritzenmenge war damit 125-fach zu klein:
+ * bei 20 kg standen 0,006-0,012 mL statt 0,75-1,5 mL. 0,006 mL sind nicht aufziehbar, und
+ * die einzige Indikation dieses Eintrags ist die lidocain-refraktaere Kammertachykardie.
+ *
+ * parseConc() bleibt ABSICHTLICH unveraendert: die Hoechstdosis-Kappung (LA_CAPS, weiter
+ * unten in doseLine) rechnet in mg und wuerde von einer Umstellung mitgerissen.
+ *
+ * FINDET SICH KEINE PASSENDE ANGABE, kommt null zurueck — dann steht KEINE Milliliterzahl
+ * da, und die Konzentration bleibt als Text sichtbar. Schweigen ist hier richtig: eine
+ * erfundene mL-Zahl geht in eine Spritze.
+ */
+function parseConcEinheit(s, einheit){
+  if(!s||!einheit) return null;
+  var re = new RegExp('([0-9]*\\.?[0-9]+)\\s*'+einheit+'\\s*\\/\\s*ml', 'i');
+  var m = String(s).replace(',','.').match(re);
+  return m? parseFloat(m[1]) : null;
+}
+/* returns {amtLo,amtHi,amtUnit,mlLo,mlHi,takt} for a species dose object + weight */
 function calc(d, w){
   if(!d||d.low==null) return null;
   var lo=d.low, hi=(d.high==null?d.low:d.high), unit=(d.unit||'mg/kg').toLowerCase();
-  var perKg = unit.indexOf('mcg')>=0||unit.indexOf('µg')>=0 ? 'mcg' : (/\b(iu|u|units?)\b|\bu\//.test(unit)? 'U':'mg');
+  /*
+   * ZEITBEZUG MITFUEHREN (17.08.2026): 10 von 213 Dosisangaben sind RATEN, keine Einzelgaben
+   * (8x mcg/kg/min, 2x mmol/kg/h). Bisher fiel das "/min" bzw. "/h" hier heraus, und die
+   * fette gerechnete Zahl stand danach in derselben Pillenform wie eine einmalige
+   * Gesamtmenge — Dopamin sah aus wie ein Bolus. Der Zusatz haengt an der Einheit UND an der
+   * Milliliterzahl, denn auch die gilt dann je Minute bzw. je Stunde.
+   */
+  var takt = /\/\s*min\b/.test(unit) ? '/min' : (/\/\s*(h|std)\b/.test(unit) ? '/h' : '');
+  /*
+   * mEq und mmol sind EIGENE Einheiten, nicht mg. Ohne diese zwei Zweige fielen sie in den
+   * mg-Zweig am Ende: die Zahl wurde als "mg" beschriftet und durch mg/mL geteilt.
+   * Reihenfolge beachten — "mcg" steckt auch in "mcg/kg/min", deshalb steht es zuerst.
+   */
+  var perKg = unit.indexOf('mcg')>=0||unit.indexOf('µg')>=0 ? 'mcg'
+            : unit.indexOf('meq')>=0 ? 'mEq'
+            : unit.indexOf('mmol')>=0 ? 'mmol'
+            : (/\b(iu|u|units?)\b|\bu\//.test(unit)? 'U':'mg');
   var amtLo=lo*w, amtHi=hi*w; // in perKg units
-  var conc = parseConc(d.conc); var mlLo=null,mlHi=null;
-  if(conc){ var amtMg = perKg==='mcg'? [amtLo/1000, amtHi/1000] : [amtLo,amtHi]; mlLo=amtMg[0]/conc; mlHi=amtMg[1]/conc; }
-  return { amtLo:amtLo, amtHi:amtHi, amtUnit:perKg, mlLo:mlLo, mlHi:mlHi };
+  var mlLo=null, mlHi=null;
+  if(perKg==='mEq'||perKg==='mmol'){
+    var cE = parseConcEinheit(d.conc, perKg);
+    if(cE){ mlLo=amtLo/cE; mlHi=amtHi/cE; }
+  } else {
+    var conc = parseConc(d.conc);
+    if(conc){
+      var amtMg = perKg==='mcg'? [amtLo/1000, amtHi/1000] : [amtLo,amtHi];
+      mlLo=amtMg[0]/conc; mlHi=amtMg[1]/conc;
+    }
+  }
+  return { amtLo:amtLo, amtHi:amtHi, amtUnit:perKg+takt, mlLo:mlLo, mlHi:mlHi, takt:takt };
 }
 function sp(){ return A.species.find(function(s){return s.id===state.sp;})||A.species[0]||{name:'—'}; }
+/*
+ * gewichtTxt() — das Gewicht als BESCHRIFTUNG, und zwar ehrlich (17.08.2026).
+ *
+ * state.wt startet mit 10, damit Regler, Bahnen und Vorbelegungen etwas anzuzeigen haben.
+ * Diese 10 stand bisher als "10 kg" in jeder Kopfzeile, im Protokollkopf und neben jeder
+ * gerechneten Dosis — als waere sie gemessen. Sie ist es nicht: sie ist ein Startwert.
+ * Solange state.wtGesetzt fehlt, sagt diese Funktion das auch.
+ *
+ * NUR FUER TEXT. Wer rechnet, nimmt weiter state.wt — die Rechenwege sind davon unberuehrt.
+ * Ob eine gerechnete Menge ueberhaupt angezeigt werden darf, entscheidet doseLine().
+ */
+/* Die Schreibweise mit Leerzeichen ist ABSICHT: bei der Umstellung der Beschriftungen wurde ein
+ * Sammelersatz auf "gewichtTxt()" gefahren, und der traf am 17.08.2026 zuerst den Rumpf
+ * dieser Funktion selbst — sie rief sich danach rekursiv auf, und die Anzeige fror bei
+ * "Gewicht fehlt" ein, sobald ein Gewicht eingetragen wurde. So kann das nicht wieder passieren. */
+function gewichtTxt(){ return state.wtGesetzt ? (fmt(state.wt) + ' kg') : 'Gewicht fehlt'; }
 
 /* ---------- patient bar ---------- */
 function renderSpecies(){
@@ -1182,7 +1247,7 @@ function renderSpecies(){
 function syncPatient(){
   renderSpecies();
   var s=sp(); $('#pSpecies')&&($('#pSpecies').textContent=s.name);
-  $('#pWt')&&($('#pWt').textContent=fmt(state.wt)+' kg');
+  $('#pWt')&&($('#pWt').textContent=gewichtTxt());
   var v=(A.vitals||{})[state.sp];
   $('#patNote').innerHTML = v? ('Normwerte Narkose · HF '+v.hr[0]+'–'+v.hr[1]+' · AF '+v.rr[0]+'–'+v.rr[1]+' · SpO₂ '+v.spo2[0]+'–'+v.spo2[1]+'% · EtCO₂ '+v.etco2[0]+'–'+v.etco2[1]+' · MAP '+v.map[0]+'–'+v.map[1]) : '';
   if(!breedSupported()) state.breed=null;
@@ -1465,11 +1530,30 @@ function doseLine(ref){
   if(ref.low==null && spd){ dd.low=spd.low; dd.high=spd.high; dd.unit=spd.unit; }
   if(ref.id==='adrenalin' && state.adrHigh){ dd.low=0.1; dd.high=0.1; }   // §7 Hochdosis-Adrenalin
   var c=calc(dd, state.wt);
+  /*
+   * KEINE MENGEN OHNE GEWICHT (17.08.2026).
+   *
+   * WARUM: die Anwendung startet mit state.wt = 10, damit Regler und Bahnen etwas anzuzeigen
+   * haben. Solange niemand ein Gewicht EINGETRAGEN hat (state.wtGesetzt) und auch kein Geraet
+   * eines gemeldet hat, ist jede daraus gerechnete Menge erfunden — und sie stand bisher ohne
+   * jede Kennzeichnung neben belegten Zahlen. Gemessen: bei einem 35-kg-Labrador las man
+   * 0,4-0,8 mL Atropin statt 1,4-2,8 mL; bei einer 3-kg-Katze das Dreifache zu viel.
+   *
+   * DIE ANGABE JE KILOGRAMM BLEIBT STEHEN (perkg, weiter unten). Sie ist die belegte Quelle
+   * und haengt nicht am Gewicht — weg ist nur die Zahl, die in eine Spritze ginge. Ebenso
+   * bleibt die Hoechstdosis in mg/kg stehen; nur ihre Umrechnung in mg entfaellt.
+   */
+  var ohneGewicht = !state.wtGesetzt;
   var capId=ref.id||(d&&d.id), capV=LA_CAPS[capId]&&LA_CAPS[capId][state.sp], capLine='';
-  if(capV){ var capMg=capV*state.wt, cc2=parseConc(conc), capMl=cc2?(' ≈ '+fmt(capMg/cc2)+' mL'):'', over=c&&c.amtHi!=null&&c.amtHi>capMg+0.001;
-    capLine='<div class="dose-caution"'+(over?' style="border-color:var(--red);background:rgba(255,77,77,.14);color:#ffb0b0"':'')+'>🧪 <b>Höchst-Gesamtdosis '+sp().name+': '+capV+' mg/kg = '+fmt(capMg)+' mg'+capMl+'</b>'+(over?' – ÜBERSCHRITTEN, Dosis kappen!':' – nicht überschreiten')+'</div>'; }
-  var mlTxt = c&&c.mlLo!=null ? '<span class="dpill ml">≈ <b>'+fmtRange(c.mlLo,c.mlHi)+' mL</b></span>' : (conc?'':'<span class="dpill">mL: Konz. angeben</span>');
-  var amtTxt = c ? '<span class="dpill mg"><b>'+fmtRange(c.amtLo,c.amtHi)+' '+c.amtUnit+'</b></span>' : '';
+  if(capV){ var capMg=capV*state.wt, cc2=parseConc(conc), capMl=cc2?(' ≈ '+fmt(capMg/cc2)+' mL'):'';
+    var over=!ohneGewicht&&c&&c.amtHi!=null&&c.amtHi>capMg+0.001;
+    var capZahl=ohneGewicht? '' : (' = '+fmt(capMg)+' mg'+capMl);
+    capLine='<div class="dose-caution"'+(over?' style="border-color:var(--red);background:rgba(255,77,77,.14);color:#ffb0b0"':'')+'>🧪 <b>Höchst-Gesamtdosis '+sp().name+': '+capV+' mg/kg'+capZahl+'</b>'+(over?' – ÜBERSCHRITTEN, Dosis kappen!':' – nicht überschreiten')+'</div>'; }
+  /* c.takt tragt "/min" bzw. "/h" — eine Rate darf nicht als Einzelmenge dastehen (17.08.2026). */
+  var mlTxt = ohneGewicht ? ''
+    : (c&&c.mlLo!=null ? '<span class="dpill ml">≈ <b>'+fmtRange(c.mlLo,c.mlHi)+' mL'+c.takt+'</b></span>' : (conc?'':'<span class="dpill">mL: Konz. angeben</span>'));
+  var amtTxt = ohneGewicht ? '<span class="dpill">Gewicht eintragen → dann mg und mL</span>'
+    : (c ? '<span class="dpill mg"><b>'+fmtRange(c.amtLo,c.amtHi)+' '+c.amtUnit+'</b></span>' : '');
   var perkg = (dd.low!=null)?('<span class="dose-cls">'+fmtRange(dd.low,dd.high)+' '+(dd.unit||'')+' '+(ref.route||(spd&&spd.route)||'')+'</span>'):'';
   return '<div class="dose-card"><div class="dose-top"><span class="dose-name">'+name+'</span>'+perkg+'</div>'+
     '<div class="dose-calc">'+amtTxt+mlTxt+(conc?'<span class="dpill">'+conc+'</span>':'')+'</div>'+
@@ -1482,12 +1566,12 @@ function renderProto(){
   if(!i){ box.innerHTML='<p class="muted">Wähle links einen Zwischenfall.</p>'; return; }
   var s=sp();
   var thr=(i.thresholds&&(i.thresholds[state.sp]||i.thresholds.all))||'';
-  var html='<div class="proto-head"><span class="ic">'+i.icon+'</span><div><h2 style="margin:0">'+i.name+'</h2><span class="dose-cls">'+(i.cls||i.cat||i.tag||'Zwischenfall')+' · Patient: '+s.name+' '+fmt(state.wt)+' kg</span></div><span class="badge" style="--c:'+(i.color||'var(--red)')+';margin-left:auto">'+(i.tag||i.cls||i.cat)+'</span></div>';
+  var html='<div class="proto-head"><span class="ic">'+i.icon+'</span><div><h2 style="margin:0">'+i.name+'</h2><span class="dose-cls">'+(i.cls||i.cat||i.tag||'Zwischenfall')+' · Patient: '+s.name+' '+gewichtTxt()+'</span></div><span class="badge" style="--c:'+(i.color||'var(--red)')+';margin-left:auto">'+(i.tag||i.cls||i.cat)+'</span></div>';
   if(thr) html+='<div class="thr">🎯 <b>Schwelle '+s.name+':</b> '+thr+'</div>';
   if(i.causes&&i.causes.length){ html+='<div class="sec-h">Häufige Ursachen</div><div class="chips">'+i.causes.map(function(c){return '<span class="chip" style="cursor:default">'+c+'</span>';}).join('')+'</div>'; }
   html+='<div class="sec-h">Sofort-Maßnahmen (Reihenfolge)</div><div class="steps">'+(i.steps||[]).map(function(s){return '<div class="step">'+s+'</div>';}).join('')+'</div>';
   if(i.machine) html+='<div class="mset">⚙️ <b>Gerät:</b> '+i.machine+'</div>';
-  if(i.drugs&&i.drugs.length){ html+='<div class="sec-h">Medikamente (für '+s.name+' '+fmt(state.wt)+' kg berechnet)</div>';
+  if(i.drugs&&i.drugs.length){ html+='<div class="sec-h">Medikamente (für '+s.name+' '+gewichtTxt()+' berechnet)</div>';
     if(i.drugs.some(function(x){return x.id==='adrenalin';})) html+='<div class="chips" style="margin-bottom:8px"><button class="chip" id="adrTog" style="border-color:'+(state.adrHigh?'var(--red)':'var(--line)')+';color:'+(state.adrHigh?'#ffb0b0':'var(--text)')+'">⚡ Adrenalin: '+(state.adrHigh?'HOCH 0.1':'Niedrig 0.01')+' mg/kg – umschalten (Hoch erst nach mehreren erfolglosen CPR-Zyklen)</button></div>';
     html+=i.drugs.map(doseLine).join(''); }
   var sn = i.speciesNotes && (i.speciesNotes[state.sp]||i.speciesNotes.all);
@@ -1576,7 +1660,7 @@ function renderLaCalc(){
   var capL=(LA_CAPS.lidocain_lok||{})[state.sp], capB=(LA_CAPS.bupivacain||{})[state.sp];
   if(capL==null&&capB==null){ box.innerHTML=''; return; }
   var s=sp();
-  box.innerHTML='<div class="la-calc"><h4>🧪 Lokalanästhetika-Gesamtdosis · '+s.name+' '+fmt(state.wt)+' kg</h4>'+
+  box.innerHTML='<div class="la-calc"><h4>🧪 Lokalanästhetika-Gesamtdosis · '+s.name+' '+gewichtTxt()+'</h4>'+
     '<div class="sub">Lidocain + Bupivacain wirken ADDITIV toxisch (Na-Kanal-Blocker). Dosis-Anteile summieren – die Summe muss ≤ 100 % bleiben, auch wenn jedes Mittel allein unter seiner Grenze liegt. Max: Lidocain '+(capL!=null?capL:'–')+' · Bupivacain '+(capB!=null?capB:'–')+' mg/kg.</div>'+
     '<div class="la-row">'+
     '<div class="la-f"><label>Lidocain mg/kg</label><input id="laLido" type="number" inputmode="decimal" step="0.5" min="0" value="'+(laVals.lido!=null?laVals.lido:'')+'" placeholder="0"></div>'+
@@ -1942,7 +2026,7 @@ function renderMonScenarios(){
   $$('#monScenarios .mon-sc').forEach(function(b){ b.onclick=function(){ mon.scen=b.dataset.s; renderMonScenarios(); renderMonValues(); }; });
 }
 function renderMonValues(){
-  var r=monResolve(), al=monAlarms(r); var g=curGeraet(); var mm=$('#mSpecies'); if(mm) mm.textContent=sp().name+' '+fmt(state.wt)+' kg'; var dsp=$('#devSpecies'); if(dsp) dsp.textContent=sp().name+' '+fmt(state.wt)+' kg';
+  var r=monResolve(), al=monAlarms(r); var g=curGeraet(); var mm=$('#mSpecies'); if(mm) mm.textContent=sp().name+' '+gewichtTxt(); var dsp=$('#devSpecies'); if(dsp) dsp.textContent=sp().name+' '+gewichtTxt();
   var abgel=(r.__abgeleitet||{});
   var fok=fokusMerken();
   var inBahn=renderLaneWerte(r,al);          // Werte, die schon IM Kurvenlauf stehen
@@ -1972,7 +2056,7 @@ function renderMonValues(){
      * Altersanpassung (geriatrisch: Untergrenze hoeher). Ohne sie waere die wichtigste
      * automatische Anpassung die einzige unsichtbare. */
     if(g&&g.grenzen){ var gr=grenzeOf(p);
-      if(gr.hi!=null||gr.lo!=null) lim='<i class="mt-lim" title="Alarmgrenzen automatisch: '+sp().name+' '+fmt(state.wt)+' kg'+(gr.grund.length?', angepasst fuer '+gr.grund.join(" + "):"")+'">'+
+      if(gr.hi!=null||gr.lo!=null) lim='<i class="mt-lim" title="Alarmgrenzen automatisch: '+sp().name+' '+gewichtTxt()+(gr.grund.length?', angepasst fuer '+gr.grund.join(" + "):"")+'">'+
         (gr.hi!=null?fmt(gr.hi):'–')+'/'+(gr.lo!=null?fmt(gr.lo):'–')+'</i>'; }
     /* Gerechnet statt gemessen wird gekennzeichnet (∗). Am narkotisierten Tier muss
      * erkennbar bleiben, welche Zahl aus einem Sensor kommt und welche aus einer Formel. */
@@ -2278,7 +2362,7 @@ function renderGeraetWahl(){
       (g.narkose?('<br><b>'+machName+'</b> — nachgebildet nach dem gewählten Modell'):'')+
       '<br>'+g.kanaele.length+' Werte · '+aktiveBahnen().length+' Kurven · '+macTxt+
       '<div class="sec-h">Alarmgrenzen · automatisch</div>'+
-      'Abgeleitet aus <b>'+sp().name+' '+fmt(state.wt)+' kg</b>, Alter <b>'+({adult:'adult',pediatric:'Jungtier/neonatal',senior:'geriatrisch'}[state.age]||state.age)+'</b>'+
+      'Abgeleitet aus <b>'+sp().name+' '+gewichtTxt()+'</b>, Alter <b>'+({adult:'adult',pediatric:'Jungtier/neonatal',senior:'geriatrisch'}[state.age]||state.age)+'</b>'+
       (an.length?(' und der Rasse.<br>'+an.map(function(a){return '• <b>'+a.txt+'</b>: '+a.regel;}).join('<br>')):'. Keine rassebedingte Anpassung nötig.')+
       (g.hinweise.length?('<div class="sec-h">Zum Gerät</div>'+g.hinweise.map(function(h){return '• '+h;}).join('<br>')):'');
   }
@@ -2792,7 +2876,7 @@ function loopPreview(){
   return line('MAP',r.nibp,expMap)+line('EtCO₂',r.etco2,expEt)+line('SpO₂',r.spo2,expSp)+line('AF',r.rr,expAf);
 }
 function renderDevCtrl(){
-  var box=$('#devCtrl'); if(!box) return; var t=devTarget(); var ds=$('#devSpecies'); if(ds) ds.textContent=sp().name+' '+fmt(state.wt)+' kg';
+  var box=$('#devCtrl'); if(!box) return; var t=devTarget(); var ds=$('#devSpecies'); if(ds) ds.textContent=sp().name+' '+gewichtTxt();
   var o2off = state.dev.o2 < t.o2[0]-0.2 || state.dev.o2 > t.o2[1]+1;
   var ir=(t.iso||'').split('–').map(parseFloat); var isoOff = (ir.length===2 && !isNaN(ir[0])) ? (state.dev.iso<ir[0]-0.4||state.dev.iso>ir[1]+0.6) : false;
   var modes=A.machine.ventModes||[]; var mn=modes.find(function(x){return x.id===state.dev.mode;})||modes[0]||{name:''};
@@ -2826,7 +2910,7 @@ function showMonParam(id){
   var links=[];
   if(p.lowInc) links.push('<a class="chip" style="cursor:pointer" data-inc="'+p.lowInc+'">↓ '+incName(p.lowInc)+'</a>');
   if(p.highInc) links.push('<a class="chip" style="cursor:pointer" data-inc="'+p.highInc+'">↑ '+incName(p.highInc)+'</a>');
-  var normTxt = band ? ('Normbereich '+sp().name+(p.art==='beatmung'?(' · '+fmt(state.wt)+' kg'):'')+': <b>'+fmt(band[0])+'–'+fmt(band[1])+' '+p.unit+'</b>')
+  var normTxt = band ? ('Normbereich '+sp().name+(p.art==='beatmung'?(' · '+gewichtTxt()):'')+': <b>'+fmt(band[0])+'–'+fmt(band[1])+' '+p.unit+'</b>')
                      : '<i style="color:var(--muted)">Für diesen Kanal ist kein Normband hinterlegt – er wird angezeigt, aber nicht bewertet.</i>';
   var grTxt = (band&&gr.grund.length) ? ('<br><span style="color:var(--amber)">Alarmgrenze automatisch enger gezogen ('+gr.grund.join(' + ')+'): '+fmt(gr.lo)+' – '+fmt(gr.hi)+' '+p.unit+'</span>') : '';
   $('#monDetail').innerHTML='<div class="mset" style="margin-top:12px"><b>'+p.name+'</b> · '+normTxt+grTxt+'<br>'+p.explain+
@@ -3815,7 +3899,7 @@ function applyVentSit(id){
 function ventScreenHTML(m){
   var cells=(m.params||[]).map(function(k){ var pd=(A.machine.ventParams||{})[k]||{}; return '<div class="vs-cell"><div class="vs-k">'+(pd.label||k)+'</div><div class="vs-v">'+ventVal(k)+'<small>'+(pd.unit||'')+'</small></div></div>'; }).join('');
   if(!cells) cells='<div class="vs-cell" style="flex:1"><div class="vs-v" style="font-size:15px">Handbeatmung – kein Automatik-Modus</div></div>';
-  return '<div class="vs-top"><span class="vs-mode">'+m.name+'</span><span class="vs-full">'+(m.full||'')+'</span><span class="vs-wt">'+sp().name+' '+fmt(state.wt)+' kg</span></div><div class="vs-row">'+cells+'</div>';
+  return '<div class="vs-top"><span class="vs-mode">'+m.name+'</span><span class="vs-full">'+(m.full||'')+'</span><span class="vs-wt">'+sp().name+' '+gewichtTxt()+'</span></div><div class="vs-row">'+cells+'</div>';
 }
 function renderVentReco(){
   var box=$('#ventReco'); if(!box) return;
@@ -3841,7 +3925,7 @@ function renderVentReco(){
 }
 function renderVentPanel(){
   var card=$('#ventCard'); if(!card) return; state.dev.vp=state.dev.vp||{};
-  var lbl=$('#ventPatLbl'); if(lbl) lbl.innerHTML=sp().name+' '+fmt(state.wt)+' kg'+(state.dev.live?(' <span class="vm-live" title="Zeigt exakt die am echten Gerät eingestellten Werte – Handänderung übernimmt wieder die manuelle Steuerung">🔗 live von '+geraetName()+' gespiegelt</span>'):'');
+  var lbl=$('#ventPatLbl'); if(lbl) lbl.innerHTML=sp().name+' '+gewichtTxt()+(state.dev.live?(' <span class="vm-live" title="Zeigt exakt die am echten Gerät eingestellten Werte – Handänderung übernimmt wieder die manuelle Steuerung">🔗 live von '+geraetName()+' gespiegelt</span>'):'');
   var m=curVentMode();
   var adv=ventAdvice();
   var bar=$('#ventModeBar');
@@ -4008,7 +4092,7 @@ function loadInjScenario(sc){
 function renderInjection(){
   var box=$('#injCombos'); if(!box) return; var s=sp();
   ['injSp','injSp2'].forEach(function(id){ var e=$('#'+id); if(e) e.textContent=s.name; });
-  var ip=$('#injPat'); if(ip) ip.textContent=s.name+' '+fmt(state.wt)+' kg';
+  var ip=$('#injPat'); if(ip) ip.textContent=s.name+' '+gewichtTxt();
   var ctx=drugContext(); var recEl=$('#injRecord');
   if(recEl){ recEl.innerHTML = ctx.any
     ? '<div class="mset" style="margin:0"><b>💉 Am Tier verabreicht:</b> '+(ctx.indName||'(keine Einleitung gewählt)')+(ctx.topNames.length?' &nbsp;·&nbsp; <b>Nachdosierung:</b> '+ctx.topNames.join(' + '):'')+(ctx.givenNames.length?' &nbsp;·&nbsp; <b>Weitere Medikamente:</b> '+ctx.givenNames.join(' + '):'')+' &nbsp; <button class="chip" id="injReset" style="cursor:pointer">✕ zurücksetzen</button><div style="margin-top:5px;font-size:11.5px;color:var(--muted)">Gerät, Analyse &amp; Coach berücksichtigen jetzt diese Wirkstoffe'+((ctx.respDep||ctx.barb)?' — <b style="color:#ffd7a8">Atemdepression: kontrolliert beatmen bereit</b>':'')+(ctx.antagResp?' — Antagonist an Bord: Atemantrieb kehrt zurück':'')+'.</div></div>'
@@ -4367,7 +4451,10 @@ function boot(){
   $('#dSearch').addEventListener('input',function(e){ state.q=e.target.value; renderDrugs(); });
   $('#btnPanic').addEventListener('click',function(){ var cpr=A.incidents.find(function(i){return i.id==='asystolie'||i.id==='cpr';}); if(cpr){ state.incident=cpr.id; switchTab('notfall'); renderIncidents(); renderProto(); window.scrollTo({top:0,behavior:'smooth'}); } });
   // deep link ?w=weight&s=species
-  try{ var q=new URLSearchParams(location.search); if(q.get('kg')){state.wt=parseFloat(q.get('kg'))||state.wt; $('#wt').value=state.wt;} if(q.get('sp')&&A.species.find(function(s){return s.id===q.get('sp');})){state.sp=q.get('sp');} if(q.get('breed')&&VB&&VB.byId(q.get('breed'))){ state.breed=q.get('breed'); } syncPatient(); rerender(); }catch(e){}
+  try{ var q=new URLSearchParams(location.search); /* Ein kg in der Adresse ist eine ABSICHT, kein Vorgabewert — also gilt das Gewicht als
+ * gesetzt. Ohne diese Zeile haette doseLine() bei einem Aufruf mit ?kg=35 keine Mengen
+ * ausgegeben, obwohl das Gewicht bekannt ist (17.08.2026). */
+if(q.get('kg')){var kgP=parseFloat(q.get('kg')); if(kgP>0){state.wt=kgP; state.wtGesetzt=true;} $('#wt').value=state.wt;} if(q.get('sp')&&A.species.find(function(s){return s.id===q.get('sp');})){state.sp=q.get('sp');} if(q.get('breed')&&VB&&VB.byId(q.get('breed'))){ state.breed=q.get('breed'); } syncPatient(); rerender(); }catch(e){}
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
 /* Bruecke fuer die VetStation-Shell (ui/vetstation-live.js drive()): das ECHTE Narkosegeraet
@@ -6517,7 +6604,35 @@ function echtBefund(){
     var kurve={ samples:streifenFuerMessung(), hz:hzJetzt(), skala:(M.kal?1:null), einheit:(M.kal?'mV':null) };
     var f=M.feed||{};
     var band=null;
-    try{ if(window.grenzeOf){ var g=grenzeOf('hr'); if(g&&g.length===2) band=g; } }catch(e){}
+    /*
+     * DAS HERZFREQUENZBAND KOMMT AUS normAktuell(), NICHT AUS grenzeOf() (Befund 17.08.2026).
+     *
+     * Hier stand: if(window.grenzeOf){ var g=grenzeOf('hr'); if(g&&g.length===2) band=g; }
+     * Das konnte nie greifen, aus drei voneinander unabhaengigen Gruenden:
+     *   1. grenzeOf() steht im ERSTEN Skriptblock dieser Datei, und der ist ein
+     *      (function(){...})(). Dieses Submodul ist der FUENFTE Block. window.grenzeOf gibt es
+     *      also gar nicht, der if wurde nie betreten.
+     *   2. grenzeOf() erwartet ein OBJEKT mit .id (es ruft bandOf(p) und a[p.id]) — die
+     *      Zeichenkette 'hr' ergibt dort undefined.
+     *   3. grenzeOf() gibt {lo,hi,grund} zurueck, niemals ein Array: g.length===2 ist nie wahr.
+     *
+     * WAS DAS GEKOSTET HAT (nachgemessen an einem 229/min-Streifen, Kammerkomplex 95 ms):
+     *      ohne Band -> "regelmaessig"
+     *      mit Band  -> "Verdacht auf ventrikulaere Tachykardie"
+     * Bei 38/min entsprechend "regelmaessig" statt "regelmaessig, langsam". Das ist kein
+     * Schweigen im Zweifel, sondern eine aktive Normalitaetsaussage auf genau dem Streifen,
+     * den man ausdruckt.
+     *
+     * normAktuell() liegt in DIESEM Block und ist dieselbe Quelle, aus der die Auswertung schon
+     * ihre Tierart bezieht. Fuer Arten ohne belegtes Band gibt normFuer() null zurueck (nur
+     * Hund, Katze und Pferd haben eines); dann bleibt band null und die Auswertung schweigt
+     * weiter wie bisher. BEIDE Grenzen muessen gesetzt sein: analysiere() vergleicht gegen
+     * bandHr[0] und bandHr[1], und ein null wuerde dort stillschweigend zu 0 werden.
+     */
+    try{
+      var nb=normAktuell();
+      if(nb&&nb.hf&&nb.hf.length===2&&nb.hf[0]!=null&&nb.hf[1]!=null) band=nb.hf;
+    }catch(e){}
     /* Die Tierart der AUSWERTUNG kommt aus den Patientendaten - dieselbe Quelle wie die
      * Normbaender und die Regeln (Berichtigung derselben Art wie am 09.08.2026 bei den
      * Regeln: zwei Quellen fuer dieselbe Frage sind immer eine zu viel). Sie steuert in
@@ -8241,10 +8356,33 @@ var RASSE_AUSNAHMEN=[
     achse:[-45,100],
     grund:'Beim Dobermann ist eine Linksverschiebung der elektrischen Achse auch beim GESUNDEN Tier häufig.',
     quelle:'41 gesunde Dobermänner: Median +45°, Spanne −45 bis +90°; bei 39 % Achsenabweichung, ausnahmslos nach links' },
+  /* PQ HIER MIT HINEIN, NICHT ALS ZWEITER EINTRAG (15.08.2026): die Schleife bricht nach dem
+   * ERSTEN Treffer ab. Eine eigene Brachyzephalen-Zeile haette der Franzoesischen Bulldogge
+   * je nach Reihenfolge ihre Achsen-Ausnahme weggenommen - ein stiller Rueckschritt an genau
+   * der Rasse, fuer die beide Ausnahmen gelten. */
   { id:'franzbulldogge', arten:['hund'], rassen:['franz-bulldogge'], muster:/franz(ö|oe)sische?\s*bulldogge|french\s*bulldog|bouledogue/i,
-    achse:[-20,100],
-    grund:'Bei der Französischen Bulldogge ist eine leichte Linksverschiebung beim gesunden Tier häufig.',
-    quelle:'80 gesunde Französische Bulldoggen: Median 43,5°, Spanne −18 bis +90°; 30 % linksverschoben' },
+    achse:[-20,100], pq:[60,150],
+    grund:'Bei der Französischen Bulldogge ist eine leichte Linksverschiebung beim gesunden Tier häufig; als brachyzephale Rasse kann sie zudem ein PQ über 130 ms haben, ohne dass ein AV-Block I° vorliegt.',
+    quelle:'80 gesunde Französische Bulldoggen: Median 43,5°, Spanne −18 bis +90°; 30 % linksverschoben. PQ: Santilli, Electrocardiography of the Dog and Cat, 2. Aufl. 2018, Buchseite 70' },
+  /* BRACHYZEPHALE: hoher Vagotonus, kein AV-Knotenleiden. Santilli Buchseite 70 sagt "ein
+   * PQ-Intervall UEBER 150 ms kann bei brachyzephalen Hunderassen physiologisch sein" - eine
+   * Obergrenze nennt er NICHT. Die 150 ms hier sind deshalb bewusst STRENGER als die Quelle:
+   * sie beenden den Fehlalarm ab 130 ms, ohne eine Grenze zu erfinden, die niemand gemessen
+   * hat. Betroffen sind die Rassen, die am haeufigsten zur Narkose kommen. */
+  { id:'brachy-pq', arten:['hund'], rassen:['mops','bulldogge','boston'],
+    muster:/^\s*(mops|pug|(englische?\s*)?bulldogge|boston\s*terrier)\s*$/i,
+    pq:[60,150],
+    grund:'Brachyzephale Rasse: ein PQ über 130 ms ist hier Ausdruck des hohen Vagotonus und nicht eines AV-Knotenleidens.',
+    quelle:'Santilli, Electrocardiography of the Dog and Cat, 2. Aufl. 2018, Buchseite 70 — dort ohne Obergrenze; die 150 ms dieser Station sind bewusst strenger gesetzt' },
+  /* GREYHOUND: BEWUSST OHNE ZAHLENFELD. Santilli Buchseite 102 sagt, P-Amplituden ueber
+   * 0,4 mV koennen beim Greyhound ohne jede Vorhofvergroesserung vorkommen - er nennt aber
+   * KEINE Obergrenze. Eine erfundene waere genau die Sorte Zahl, die diese Anwendung nicht
+   * behaupten darf. Der Eintrag laesst die Grenze deshalb stehen und haengt nur den Hinweis
+   * an: der Befund erscheint weiter, aber der Tierarzt liest daneben, dass er bei dieser
+   * Rasse haeufig ohne Krankheitswert ist. */
+  { id:'greyhound-p', arten:['hund'], rassen:['greyhound'], muster:/^\s*greyhound\s*$/i,
+    grund:'Beim Greyhound kommen P-Amplituden über 0,4 mV ohne jede Vorhofvergrößerung vor — die Rasse vor der Deutung berücksichtigen. Eine Obergrenze nennt die Quelle nicht, die Grenze bleibt deshalb unverändert.',
+    quelle:'Santilli, Electrocardiography of the Dog and Cat, 2. Aufl. 2018, Buchseite 102' },
   { id:'amstaff', arten:['hund'], rassen:['american-staffordshire-terrier'], muster:/american\s*staffordshire|amstaff|am\.?\s*staff/i,
     pDauer:[null,55], qrs:[null,75],
     grund:'Beim American Staffordshire Terrier liegen P- und QRS-Dauer regelhaft über der allgemeinen Artgrenze, ohne dass eine Erkrankung vorliegt.',
@@ -8337,6 +8475,13 @@ function normFuer(sp, wtKg, rasse, rasseId){
       if(A.pDauer) out.pDauer=A.pDauer.slice();
       if(A.qrs) out.qrs=A.qrs.slice();
       if(A.rAmp) out.rAmp=A.rAmp.slice();
+      /* pq und pAmp kamen am 15.08.2026 dazu. Sie fehlten hier, obwohl die Tabelle daneben
+       * beliebige Groessen tragen kann - eine Ausnahme mit pq waere also still wirkungslos
+       * geblieben. Ein Eintrag OHNE Zahlenfeld ist ausdruecklich erlaubt und gewollt: er
+       * hinterlaesst nur den Hinweistext, ohne eine Grenze zu verschieben. Genau das braucht
+       * es, wenn die Quelle zwar eine Ausnahme beschreibt, aber keinen Grenzwert nennt. */
+      if(A.pq) out.pq=A.pq.slice();
+      if(A.pAmp) out.pAmp=A.pAmp.slice();
       out.rasseAusnahme={ id:A.id, grund:A.grund, quelle:A.quelle };
       out.angepasst.push('Rasse berücksichtigt: '+A.grund);
       break;
@@ -8583,11 +8728,30 @@ var BEFUNDREGELN=[
     sicherheit:'Messung', quelle:'Tierartband nach Tilley' },
 
   /* --- Kammerkomplex --- */
+  /*
+   * ZWEI GROESSEN, DIE HIER BIS ZUM 15.08.2026 EINE WAREN - und das war ein echter
+   * Selbstwiderspruch der Anwendung, kein Schoenheitsfehler:
+   *
+   *   (a) REFERENZOBERGRENZE der Groessenklasse (normFuer(): 50 / 60 / 65 ms beim Hund).
+   *       Sie beantwortet "liegt der Wert ueber dem Normbereich?"
+   *   (b) GRENZE SCHMAL/BREIT fuer die Rhythmusdeutung: 70 ms beim Hund, 40 ms bei der Katze.
+   *       Sie beantwortet "ist der Komplex breit, spricht also fuer einen Kammerursprung?"
+   *
+   * Gemessen am 15.08.2026: 44 der 203 Regeln in ekg-befunde.js rechnen mit 70 ms, genau 2
+   * mit 50/60. Ein 25-kg-Hund mit QRS 62-68 ms bekam hier "spricht fuer einen ventrikulaeren
+   * Ursprung" und zaehlte gleichzeitig fuer jede Rhythmusregel derselben Anwendung als SCHMAL.
+   * Santilli, Electrocardiography of the Dog and Cat, 2. Aufl. 2018, Buchseite 105 und 122,
+   * loest das ausdruecklich auf; bestaetigt in Praxis der Kardiologie, Buchseite 240.
+   *
+   * WARUM NICHT EINFACH UEBERALL 70 ms: bei einem 6-kg-Hund sind 65 ms deutlich pathologisch.
+   * Eine einzige Grenze wuerde diesen Befund verlieren. Deshalb bleiben BEIDE - die Meldung
+   * sagt jetzt nur, welche von beiden gerissen ist.
+   */
   { id:'qrs-breit', name:'QRS verbreitert', stufe:'auffaellig', art:'alle',
     pruef:function(m){ return m.qrsGrenze && m.qrs!=null && m.qrs>m.qrsGrenze; },
-    hinweis:'QRS {qrs} ms über der Grenze dieser Tierart ({qrsGrenze} ms). Ein verbreiterter Kammerkomplex spricht für einen ventrikulären Ursprung oder eine Leitungsstörung (Schenkelblock). Die humanmedizinische Grenze von 120 ms gilt hier ausdrücklich NICHT.',
+    hinweis:'QRS {qrs} ms über der Referenzgrenze dieser Größenklasse ({qrsGrenze} ms). ACHTUNG, zwei verschiedene Fragen: über dem Referenzbereich zu liegen ist noch nicht "breit". Als BREIT — und damit als Hinweis auf einen ventrikulären Ursprung oder Schenkelblock — gilt beim Hund erst ab 70 ms, bei der Katze ab 40 ms (Santilli 2018, Buchseite 105 und 122; Praxis der Kardiologie Buchseite 240). Ein Wert dazwischen ist erhöht, belegt aber keinen Kammerursprung. Die humanmedizinische Grenze von 120 ms gilt hier ausdrücklich NICHT.',
     differenzial:'Schenkelblock, ventrikuläre Ektopie, Hyperkaliämie, Kammerersatzrhythmus',
-    sicherheit:'Messung', quelle:'Hund > 60 ms, Katze > 40 ms (Tilley)' },
+    sicherheit:'Messung', quelle:'Referenz nach Größenklasse (Tilley/Obi); schmal/breit 70 ms Hund bzw. 40 ms Katze (Santilli 2018, S.105/122)' },
 
   /* --- Rhythmus: die artabhaengige Umkehrung --- */
   { id:'sinusarrhythmie-hund', name:'Atemabhängige Sinusarrhythmie', stufe:'hinweis', art:'hund',

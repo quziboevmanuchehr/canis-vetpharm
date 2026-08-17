@@ -111,8 +111,14 @@ window.ANAES = {
     { id:'dobutamin', name:'Dobutamin', icon:'⚡', cls:'Inotropikum',
       sources:['ACVAA'],
       species:{
-        hund:{low:2,high:10,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'Myokard-Depression / niedriges HZV',notes:'CRI titrieren.',caution:'Kann ventrikulaere Extrasystolen verstaerken (β1) — bei bestehender Ektopie nur unter EKG und erst nach Behebung der Ursache. Bei Hypovolaemie wirkungslos: zuerst Volumen.'},
-        katze:{low:1,high:5,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'niedriges HZV',notes:'Niedriger dosieren.',caution:'Katze: Krampf-/Erregungsrisiko höher.'}
+        /* DIE DREI OBSTRUKTIONS-GEGENANZEIGEN, nachgetragen am 15.08.2026
+           (Praxis der Kardiologie S.436/437). Sie fehlten, und die Luecke lag genau auf dem
+           haeufigsten Weg: die HCM-Katze mit SAM, die unter Isofluran hypoton wird, ist der
+           Standardanlass fuer Dobutamin. Mehr Kontraktilitaet verengt bei ihr die Ausflussbahn
+           weiter - das Mittel verschlimmert, was es beheben soll. Es kostet nichts, die Sperre
+           zu setzen: Phenylephrin, Noradrenalin und Volumen stehen bereits im Katalog. */
+        hund:{low:2,high:10,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'Myokard-Depression / niedriges HZV',notes:'CRI titrieren.',caution:'VERBOTEN bei hypertroph-obstruktiver Kardiomyopathie, Aorten- und Pulmonalstenose — mehr Kontraktilität verengt die Ausflussbahn zusätzlich (Praxis der Kardiologie S.436/437). Kann ventrikuläre Extrasystolen verstärken (β1) — bei bestehender Ektopie nur unter EKG und erst nach Behebung der Ursache. Bei Hypovolämie wirkungslos: zuerst Volumen.'},
+        katze:{low:1,high:5,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'niedriges HZV',notes:'Niedriger dosieren.',caution:'VERBOTEN bei HOCM/SAM, Aorten- und Pulmonalstenose — mehr Kontraktilität verengt die Ausflussbahn zusätzlich (Praxis der Kardiologie S.436/437). Das betrifft gerade die HCM-Katze, die unter Isofluran hypoton wird. Katze: Krampf-/Erregungsrisiko höher.'}
       }},
     { id:'lidocain_iv', name:'Lidocain (i.v. Antiarrhythmikum)', icon:'💓', cls:'Antiarrhythmikum',
       sources:['Plumb’s','RECOVER'],
@@ -193,8 +199,17 @@ window.ANAES = {
         ratte:{low:1,high:4,unit:'mg/kg',route:'SC/IM/PO, q8-12h',conc:'10 mg/mL',indication:'Lungenoedem, Pleuraerguss bei Herzinsuffizienz',notes:'Fuer die Ratte liegt in den geprueften Quellen KEINE speziesspezifische Dosisangabe vor. Der Bereich ist aus der Kleintier-Herzinsuffizienztherapie (1-4 mg/kg/Tag Erhaltung, akut hoeher) auf die Ratte uebertragen; Fallberichte zu dilatativer Kardiomyopathie bei Heimtierratten (J ',caution:'EXTRAPOLIERT. Bei der Ratte bedeutet ein Dosierfehler von 0,1 ml schnell das Mehrfache der Dosis - unbedingt verduennen. Bei gleichzeitiger Nierenerkrankung Dehydratation und Azotaemie provozierbar.'},
         rennmaus:{low:1,high:4,unit:'mg/kg',route:'SC/IM/IV alle 8-12 h',conc:'10 mg/mL (verduennen)',indication:'Lungenoedem, Volumenueberladung',notes:'Quelle: Exoten-Notfalldosen fuer Kleinsaeuger 1-4 mg/kg. Keine rennmausspezifische Studie.',caution:'Wuestentier mit hoher Konzentrationsleistung und geringer Wasserreserve - Furosemid dehydriert die Rennmaus sehr schnell. Nur mit gleichzeitiger Fluessigkeitsbilanz.'},
         hamster:{low:1,high:4,unit:'mg/kg',route:'SC/IM/IV alle 8-12 h',conc:'1 mg/mL (aus 10 mg/mL verduennt)',indication:'Lungenoedem/Stauungsinsuffizienz beim alten Goldhamster mit Kardiomyopathie und Vorhofthro',notes:'Quelle: Exoten-Notfalldosen (LafeberVet/Veterian Key, Kaninchen und Kleinsaeuger 1-4 mg/kg IV/SC/IM); klinische Berichte zur Herzinsuffizienztherapie des Hamsters nennen Furosemid plus ACE-Hemmer als symptomatische Therapie.',caution:'Bei Amyloidose/Niereninsuffizienz und beim dehydrierten Tier vorsichtig - Hypovolaemie und Elektrolytentgleisung. Auf Kaliumverlust achten. Der Hamster mit Vorhofthrombose ist unter Narkose ohnehin hoechstgefaehrdet; Furosemid ersetzt keine'},
-        hund:{low:2,high:4,unit:'mg/kg',route:'IV/IM',conc:'50 mg/mL',indication:'Lungenödem / Volumenüberladung',notes:'Notfall bis 4 mg/kg, ggf. wiederholen/CRI. Dimazon 50 mg/mL.',caution:'Dehydratation/Hypokaliämie – mit NSAID Nierenperfusion beachten.'},
-        katze:{low:1,high:2,unit:'mg/kg',route:'IV/IM',conc:'50 mg/mL',indication:'Lungenödem',notes:'Katze empfindlicher – niedriger.',caution:'Hypokaliämie/Dehydratation.'}
+        /* GEGENANZEIGE NACHGETRAGEN AM 15.08.2026 (Praxis der Kardiologie S.422, dort zweimal).
+           Das Wort "Perikard" kam in dieser ganzen Datei vorher NICHT EIN EINZIGES MAL vor.
+           Der Punkt ist klinisch scharf: die dyspnoeische Katze mit Perikarderguss sieht aus
+           wie ein Lungenoedem, und die Station hat ihr bis hierher wortlos eine
+           Furosemid-Milliliterzahl ausgerechnet. Bei der Tamponade traegt die Fuellung den
+           Kreislauf - Entwaesserung nimmt genau das weg.
+           BEWUSST "Tamponade/Perikarderguss" und NICHT blosses "Erguss": sonst unterbliebe
+           Furosemid beim gleichzeitig bestehenden Linksherzversagen, und das waere der
+           Fehler in die andere Richtung. */
+        hund:{low:2,high:4,unit:'mg/kg',route:'IV/IM',conc:'50 mg/mL',indication:'Lungenödem / Volumenüberladung',notes:'Notfall bis 4 mg/kg, ggf. wiederholen/CRI. Dimazon 50 mg/mL.',caution:'ABSOLUT VERBOTEN bei Herzbeuteltamponade/Perikarderguss — dort ist die Füllung das Einzige, was den Kreislauf noch trägt (Praxis der Kardiologie S.422). Bei Mitralstenose droht Vorwärtsversagen (low output). Relativ: Nieren-/Leberinsuffizienz, Erbrechen/Durchfall, Diabetes. Dehydratation/Hypokaliämie – mit NSAID Nierenperfusion beachten.'},
+        katze:{low:1,high:2,unit:'mg/kg',route:'IV/IM',conc:'50 mg/mL',indication:'Lungenödem',notes:'Katze empfindlicher – niedriger. Die Praxis der Kardiologie nennt für das akute kongestive Herzversagen der Katze höhere Werte (S.377/423); dieser Station bleibt bewusst der niedrigere Bereich, weil das Buch sich an dieser Stelle selbst widerspricht.',caution:'ABSOLUT VERBOTEN bei Herzbeuteltamponade/Perikarderguss — dort ist die Füllung das Einzige, was den Kreislauf noch trägt (Praxis der Kardiologie S.422). Relativ: Nieren-/Leberinsuffizienz, Erbrechen/Durchfall, Diabetes. Hypokaliämie/Dehydratation.'}
       }},
     { id:'apomorphin', name:'Apomorphin', icon:'🤮', cls:'Emetikum',
       sources:['Plumb’s','Praxis'],
@@ -279,7 +294,15 @@ window.ANAES = {
         rennmaus:{low:40,high:200,unit:'mg/kg',route:'IM/IP',conc:'100 mg/mL (10 %)',indication:'Immobilisation/Narkose in Kombination; 40-60 mg/kg IM ergibt leichte, hoehere Dosen tiefe ',notes:'Quelle: Quesenberry/Carpenter Gerbils - Ketamin 100-200 mg/kg IM zur chemischen Immobilisation; Veterian Key Rodents - Ketamin 40-60 mg/kg IM leichte Sedierung; University of Kentucky DLAR - Ketamin 75 mg/kg IP + Medetomidin 0,5 mg/kg IP.',caution:'NIEMALS mit Acepromazin kombinieren - Acepromazin loest bei der Rennmaus Kraempfe aus und ist bei dieser Art kontraindiziert. Ketamin selbst senkt die Krampfschwelle nicht, das Handling zur Injektion aber schon.'},
         hamster:{low:40,high:200,unit:'mg/kg',route:'IM/IP (SC bei hoher Dosis)',conc:'100 mg/mL (10 %)',indication:'Immobilisation/Narkose, praktisch immer in Kombination. Solo 20-40 mg/kg IM ergibt nur ein',notes:'Quelle: Curl & Peters, Lab Anim 1983 - 50-200 mg/kg Ketamin + 10 mg/kg Xylazin IP war beim Goldhamster ein brauchbares Allgemeinanaesthetikum, wobei 50 mg/kg keine verlaessliche Immobilisation ergab und 150 mg/kg + 10 mg/kg Xylazin IP eine adaequate Narkose ohne Gewebeschaden lie',caution:'Ketamin 10 % ist gewebstoxisch - IM nur kleine Volumina, bei hoher Dosis SC oder IP. ZWERGHAMSTER: die hohen Goldhamsterdosen NICHT uebertragen - 200 mg/kg Ketamin + 10 mg/kg Xylazin toeteten 13 von 24 Dsungarischen Zwerghamstern. Ketamin a'},
         hund:{low:2,high:5,unit:'mg/kg',route:'IV (Kombi)',conc:'100 mg/mL',indication:'Einleitung/Kombi',notes:'Immer mit Benzodiazepin/α2. IM in Kombi 5–10. Analgesie-CRI (sub-anästhetisch, MAC-sparend): Bolus 0,25–0,5 mg/kg IV, dann intraop ~10 µg/kg/min (2–10), postop 1–2 µg/kg/min – NICHT mit der Anästhesie-Dosis verwechseln (µg vs mg).',caution:'Nicht als Monoanästhetikum.'},
-        katze:{low:2,high:10,unit:'mg/kg',route:'IV/IM (Kombi)',conc:'100 mg/mL',indication:'Einleitung/Kombi',notes:'Häufig mit Midazolam/Dexmedetomidin. Analgesie-CRI wie Hund: 0,25–0,5 mg/kg Bolus, dann ~2–10 µg/kg/min.',caution:'Renal-/HKM-Vorsicht.'},
+        /* AUS EINEM KUERZEL WIRD EINE ENTSCHEIDUNG (15.08.2026, Santilli 2018 S.318).
+           "HKM-Vorsicht" liest sich am OP-Tisch wie ein Nebensatz. Der Mechanismus dahinter ist
+           der Grund: Ketamin hebt den myokardialen Sauerstoffverbrauch, und die hoehere Frequenz
+           verkuerzt bei der HCM genau die Diastole, in der die Koronarperfusion stattfindet.
+           Dazu die Regel, die hinter allen Einzelverboten steht: beim kritisch kranken Tier
+           bleibt die sympathische Gegenregulation aus - dann ueberwiegt die negativ inotrope
+           Wirkung, und Herzzeitvolumen und Blutdruck FALLEN. Genau dort gilt Ketamin
+           gemeinhin als "kreislaufschonend". Es kommt keine Zahl hinzu, nur die Begruendung. */
+        katze:{low:2,high:10,unit:'mg/kg',route:'IV/IM (Kombi)',conc:'100 mg/mL',indication:'Einleitung/Kombi',notes:'Häufig mit Midazolam/Dexmedetomidin. Analgesie-CRI wie Hund: 0,25–0,5 mg/kg Bolus, dann ~2–10 µg/kg/min.',caution:'Bei HCM gefährlich: Ketamin erhöht den myokardialen Sauerstoffverbrauch, und die höhere Frequenz verkürzt die diastolische Koronarperfusionszeit — Dekompensation möglich (Santilli 2018 S.318). Beim kritisch kranken Tier fehlt die sympathische Gegenregulation; dann überwiegt die negativ inotrope Wirkung und der Blutdruck FÄLLT. Renal-/HKM-Vorsicht.'},
         kaninchen:{low:15,high:35,unit:'mg/kg',route:'IM (Kombi)',conc:'100 mg/mL',indication:'Kombi mit Medetomidin/Midazolam',notes:'',caution:''},
         meerschwein:{low:20,high:40,unit:'mg/kg',route:'IM (Kombi)',conc:'100 mg/mL',indication:'Kombi',notes:'',caution:''},
         reptil:{low:10,high:40,unit:'mg/kg',route:'IM/IV',conc:'100 mg/mL',indication:'Kombi',notes:'',caution:'Sehr lange Erholung; POTZ halten.'}
@@ -526,13 +549,22 @@ window.ANAES = {
 
     { id:'hypotension', name:'Hypotension', icon:'📉', cls:'Kreislauf', color:'#ff4d4d', tag:'MAP ↓', short:'Blutdruck zu niedrig',
       thresholds:{ all:'WARNUNG MAP < 70 mmHg (SAP < 90) → Ursache suchen · HANDELN MAP < 60 → Organperfusion gefährdet, jetzt behandeln. Ziel MAP 60–70+.' },
-      causes:['Zu tiefe Narkose (Iso-Vasodilatation/Kardiodepression)','Hypovolämie / Blutverlust','Bradykardie','α2-/Ace-bedingte Vasodilatation','Sepsis/Anaphylaxie'],
-      steps:['Isofluran reduzieren (häufigste Ursache!).','Volumenstatus: Kristalloid-Bolus geben.','Bradykardie? → Anticholinergikum (siehe Bradykardie).','Wenn trotz Volumen + weniger Iso: Vasopressor/Inotropikum.','Blutverlust kontrollieren; Wärme halten; MAP-Ziel > 60–70.'],
+      causes:['Zu tiefe Narkose (Iso-Vasodilatation/Kardiodepression)','Hypovolämie / Blutverlust','Bradykardie','α2-/Ace-bedingte Vasodilatation','ACE-Hemmer am OP-Tag gegeben','Sepsis/Anaphylaxie'],
+      /* DER ACE-HEMMER-SATZ IST NEU (15.08.2026, Praxis der Kardiologie S.426) und steht
+         bewusst NICHT AN ERSTER STELLE - obwohl der Vorschlag genau das wollte.
+         tools/vollauslesung-test.js verlangt, dass der erste Schritt einer Zwischenfall-Karte
+         eine SOFORTMASSNAHME ist und keine Feststellung, und der Test hat recht: wer
+         "Hypotension" aufschlaegt, steht am Tisch. Dort hilft "Isofluran reduzieren", nicht
+         ein Blick in den Vorbericht. Die Erkenntnis bleibt trotzdem wertvoll - sie steht
+         deshalb am Ende als Lehre fuer das naechste Mal, und die Ursachenliste nennt sie oben.
+         WORTLAUT GENAU SO: es geht um die EINZELGABE am Operationstag, nicht um das Absetzen
+         der Therapie - das waere ein ganz anderer und gefaehrlicher Rat. */
+      steps:['Isofluran reduzieren (häufigste Ursache!).','Volumenstatus: Kristalloid-Bolus geben.','Bradykardie? → Anticholinergikum (siehe Bradykardie).','Wenn trotz Volumen + weniger Iso: Vasopressor/Inotropikum.','Blutverlust kontrollieren; Wärme halten; MAP-Ziel > 60–70.','Fürs nächste Mal: ACE-Hemmer (Benazepril/Enalapril/Imidapril/Ramipril) am Tag der Narkose nicht geben — die Dauertherapie bleibt, nur die Gabe am OP-Tag entfällt (Praxis der Kardiologie S.426).'],
       machine:'Isofluran senken; O₂ 100 %; ggf. IPPV mit niedrigem Mitteldruck (hoher PIP senkt Vorlast).',
       drugs:[ {id:'ephedrin',low:0.05,high:0.2,unit:'mg/kg',route:'IV Bolus',note:'Schneller Bolus bei Anästhesie-Hypotension.'},
               {id:'noradrenalin',low:null,high:null,unit:'mcg/kg/min',route:'CRI',note:'Bei vasodilatatorischer Hypotension, titrieren.'},
               {id:'dopamin',low:null,high:null,unit:'mcg/kg/min',route:'CRI',note:'Inotrop und gefäßverengend. Katze höchstens 5 µg/kg/min; bei der Katze verhindert Dopamin die Isofluran-Hypotonie nicht (VAA 2021) — dort Noradrenalin oder Phenylephrin.'},
-              {id:'dobutamin',low:null,high:null,unit:'mcg/kg/min',route:'CRI',note:'Bei Myokarddepression oder niedrigem Herzzeitvolumen. Kann ventrikuläre Extrasystolen verstärken — bei bestehender Ektopie nur unter EKG.'} ],
+              {id:'dobutamin',low:null,high:null,unit:'mcg/kg/min',route:'CRI',note:'Bei Myokarddepression oder niedrigem Herzzeitvolumen. NICHT bei HOCM/SAM, Aorten- oder Pulmonalstenose — dort verschlimmert mehr Kontraktilität die Obstruktion (Praxis der Kardiologie S.436/437). Kann ventrikuläre Extrasystolen verstärken — bei bestehender Ektopie nur unter EKG.'} ],
       speciesNotes:{ all:'Kristalloid-Bolus Hund 10–20 mL/kg / Katze 5–10 mL/kg über 10–15 min, dann re-evaluieren (siehe Einstellungen/Infusion).' },
       red:['Iso zu hoch ist die häufigste Narkose-Hypotension – zuerst Verdampfer runter','Niemals einen Vasopressor auf einen unbestätigten Manschettenwert — am kalten oder engstellten Tier zuerst Manschettengröße, Sitz und Doppler prüfen'] },
 
