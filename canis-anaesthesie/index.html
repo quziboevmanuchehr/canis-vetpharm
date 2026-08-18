@@ -4143,8 +4143,12 @@ function renderInjection(){
   var rb=$('#injReversal'); if(rb) rb.innerHTML=(A.reversal||[]).map(function(r){
     var d=r.sp[state.sp];
     var dose=d?(fmtRange(d[0],d[1])+' mg/kg'+(r.conc?' · '+r.conc+' mg/mL':'')):'für '+s.name+' nicht standardisiert';
-    var mg=d?'<span class="dpill mg"><b>'+fmtRange(d[0]*state.wt,d[1]*state.wt)+' mg</b></span>':'';
-    var ml=(d&&r.conc)?'<span class="dpill ml">≈ <b>'+fmtRange(d[0]*state.wt/r.conc,d[1]*state.wt/r.conc)+' mL</b></span>':'';
+    /* Ohne Gewicht keine ausgerechnete Menge (18.08.2026). Diese Ansicht rechnet an calc()
+     * vorbei und kannte die Sperre aus doseLine() deshalb nicht - sie zeigte "0 mg, 0 mL". */
+    var ohneG=!state.wtGesetzt;
+    var mg=ohneG?'<span class="dpill">Gewicht eintragen → dann mg und mL</span>'
+      :(d?'<span class="dpill mg"><b>'+fmtRange(d[0]*state.wt,d[1]*state.wt)+' mg</b></span>':'');
+    var ml=(!ohneG&&d&&r.conc)?'<span class="dpill ml">≈ <b>'+fmtRange(d[0]*state.wt/r.conc,d[1]*state.wt/r.conc)+' mL</b></span>':'';
     var giv=(state.givenDrugs||[]).indexOf(r.id)>=0;
     var giveR='<button class="chip give-chip'+(giv?' on':'')+'" data-give-rev="'+r.id+'" style="cursor:pointer" data-vp-tip="Als am Tier verabreicht markieren – erst dann steht der Antagonist im Narkoseprotokoll, und Berater/Coach rechnen ihn mit">'+(giv?'✓ gegeben':'○ als gegeben')+'</button>';
     return '<div class="dose-card" id="rev-'+r.id+'" style="margin-bottom:8px'+(giv?';border-color:var(--green);box-shadow:0 0 0 1px var(--green) inset':'')+'"><div class="dose-top"><span class="dose-name">↩ '+r.name+'</span><span class="dose-cls">'+r.route+'</span></div>'+
@@ -4240,6 +4244,8 @@ function medKomboText(c){
 /* Dosistext eines Antagonisten. */
 function medRevText(r){
   var d=r&&r.sp?r.sp[state.sp]:null; if(!d) return '';
+  /* Ohne Gewicht keine Zahl im Protokoll - dort waere "0 mg" dauerhaft dokumentiert. */
+  if(!state.wtGesetzt) return 'Dosis nach Gewicht — Gewicht fehlt'+(r.route?' '+r.route:'');
   var t=fmtRange(d[0]*state.wt,d[1]*state.wt)+' mg';
   if(r.conc) t+=' ≈ '+fmtRange(d[0]*state.wt/r.conc,d[1]*state.wt/r.conc)+' mL';
   return t+(r.route?' '+r.route:'');
@@ -4439,7 +4445,11 @@ function boot(){
    * "verbreitert" gemeldet - ein Verdacht auf ventrikulaeren Ursprung, der nur aus einem
    * Vorgabewert entstand. Der Zweig "OHNE GEWICHT WIRD NICHT GERATEN" in normFuer() war
    * dadurch unerreichbar. (Gegenpruefung 09.08.2026) */
-  $('#wt').addEventListener('input',function(e){ var v=parseFloat(e.target.value); state.wt=(v>0?v:0); state.wtGesetzt=true; syncPatient(); rerender(); });
+  /* BERICHTIGT 18.08.2026: hier stand wtGesetzt=true ohne Bedingung. Wer das Feld leerte,
+   * um ein neues Gewicht zu tippen, hatte danach wt=0 bei gesetzter Marke - und die Karten
+   * zeigten "0 mg, 0 mL" statt "Gewicht fehlt". Im Browser gemessen an Propofol. */
+  $('#wt').addEventListener('input',function(e){ var v=parseFloat(e.target.value);
+    state.wt=(v>0?v:0); state.wtGesetzt=(v>0); syncPatient(); rerender(); });
   /* Das ALTER geht in die Alarmgrenzen ein (Jungtier: Frequenzobergrenze hoch, Spitzendruck
    * gedeckelt; geriatrisch: Blutdruckuntergrenze hoeher). Vorher zog der Wechsel nur die
    * Einstellungsseite nach — im Cockpit standen danach noch die Grenzen des vorigen Alters,
