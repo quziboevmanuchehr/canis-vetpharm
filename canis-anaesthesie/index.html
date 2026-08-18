@@ -1184,6 +1184,19 @@ function parseConcEinheit(s, einheit){
   var m = String(s).replace(',','.').match(re);
   return m? parseFloat(m[1]) : null;
 }
+/* Eine Angabe wie "50 mg/mL (stark verduennen)" nennt die STAMMloesung. Die daraus
+ * gerechnete Milliliterzahl waere die Menge des Konzentrats. Gemessen 18.08.2026:
+ * Carprofen/Hamster zeigte 0,0090 mL, waehrend die Warnung im selben Eintrag 0,14 mL nennt;
+ * 0,009 mL gibt keine Spritze ab. Stehen ZWEI Konzentrationen im Text
+ * ("0.05 mg/mL (aus 0.5 mg/mL verduennt)"), ist die erste die fertige Verduennung - die
+ * bleibt rechenbar. Betrifft 11 der 207 Eintraege mit Konzentration. */
+function konzentrationNurStamm(s){
+  if(!s) return false;
+  if(!/verd(ü|ue)nn|unverd/i.test(s)) return false;
+  var t = String(s).match(/[0-9]*[.,]?[0-9]+\s*(mg|mcg|µg|g|iu|u|units?|mmol|meq)\s*\/\s*ml/gi);
+  return !t || t.length < 2;
+}
+
 /* returns {amtLo,amtHi,amtUnit,mlLo,mlHi,takt} for a species dose object + weight */
 function calc(d, w){
   if(!d||d.low==null) return null;
@@ -1217,7 +1230,11 @@ function calc(d, w){
       mlLo=amtMg[0]/conc; mlHi=amtMg[1]/conc;
     }
   }
-  return { amtLo:amtLo, amtHi:amtHi, amtUnit:perKg+takt, mlLo:mlLo, mlHi:mlHi, takt:takt };
+  /* Form B (nur Stammloesung genannt): keine Milliliterzahl. Siehe konzentrationNurStamm(). */
+  var nurStamm = konzentrationNurStamm(d.conc);
+  if(nurStamm){ mlLo=null; mlHi=null; }
+  return { amtLo:amtLo, amtHi:amtHi, amtUnit:perKg+takt, mlLo:mlLo, mlHi:mlHi, takt:takt,
+           nurStamm:nurStamm };
 }
 function sp(){ return A.species.find(function(s){return s.id===state.sp;})||A.species[0]||{name:'—'}; }
 /*
@@ -1551,7 +1568,8 @@ function doseLine(ref){
     capLine='<div class="dose-caution"'+(over?' style="border-color:var(--red);background:rgba(255,77,77,.14);color:#ffb0b0"':'')+'>🧪 <b>Höchst-Gesamtdosis '+sp().name+': '+capV+' mg/kg'+capZahl+'</b>'+(over?' – ÜBERSCHRITTEN, Dosis kappen!':' – nicht überschreiten')+'</div>'; }
   /* c.takt tragt "/min" bzw. "/h" — eine Rate darf nicht als Einzelmenge dastehen (17.08.2026). */
   var mlTxt = ohneGewicht ? ''
-    : (c&&c.mlLo!=null ? '<span class="dpill ml">≈ <b>'+fmtRange(c.mlLo,c.mlHi)+' mL'+c.takt+'</b></span>' : (conc?'':'<span class="dpill">mL: Konz. angeben</span>'));
+    : (c&&c.nurStamm ? '<span class="dpill">mL erst nach Verdünnung — Zielkonzentration festlegen</span>'
+    : (c&&c.mlLo!=null ? '<span class="dpill ml">≈ <b>'+fmtRange(c.mlLo,c.mlHi)+' mL'+c.takt+'</b></span>' : (conc?'':'<span class="dpill">mL: Konz. angeben</span>')));
   var amtTxt = ohneGewicht ? '<span class="dpill">Gewicht eintragen → dann mg und mL</span>'
     : (c ? '<span class="dpill mg"><b>'+fmtRange(c.amtLo,c.amtHi)+' '+c.amtUnit+'</b></span>' : '');
   var perkg = (dd.low!=null)?('<span class="dose-cls">'+fmtRange(dd.low,dd.high)+' '+(dd.unit||'')+' '+(ref.route||(spd&&spd.route)||'')+'</span>'):'';
