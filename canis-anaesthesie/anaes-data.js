@@ -91,10 +91,13 @@ window.ANAES = {
         katze:{low:0.8,high:0.8,unit:'U/kg',route:'IV/IO',conc:'20 U/mL',indication:'CPR',notes:'Wie Hund.',caution:'Bei katecholaminrefraktaerer Hypotonie als Dauertropf 0,5–2 mU/kg/min; kein Erstlinienmittel bei der Hypotonie unter Inhalationsnarkose. Austritt aus der Vene fuehrt zur Nekrose.'}
       }},
     { id:'noradrenalin', name:'Noradrenalin', icon:'⚡', cls:'Vasopressor', aliases:['norepinephrin'],
-      sources:['ACVAA'],
+      /* Bis 19.08.2026 stand hier nur 'ACVAA' - eine Fachgesellschaft ist keine Fundstelle,
+       * und die damalige Obergrenze 2 mcg/kg/min stand in KEINER greifbaren Quelle. Jetzt
+       * die Stelle, die die Zahl wirklich traegt. */
+      sources:['CliniPharm/vetpharm UZH (Kraft 2003a)','ACVAA'],
       species:{
-        hund:{low:0.05,high:2,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'Vasodilatatorische Hypotension',notes:'CRI, nach MAP titrieren. Zentraler/gut laufender Zugang.',caution:'Extravasation → Nekrose.'},
-        katze:{low:0.05,high:2,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'Hypotension',notes:'CRI titrieren.',caution:'Austritt aus der Vene fuehrt zur Nekrose — sicherer Zugang, moeglichst zentral. Kein Ersatz fuer Volumen bei Hypovolaemie.'}
+        hund:{low:0.05,high:1,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'Vasodilatatorische Hypotension',notes:'CRI, nach MAP titrieren. Zentraler/gut laufender Zugang.',caution:'Extravasation → Nekrose.'},
+        katze:{low:0.05,high:1,unit:'mcg/kg/min',route:'CRI IV',conc:'',indication:'Hypotension',notes:'CRI titrieren.',caution:'Austritt aus der Vene fuehrt zur Nekrose — sicherer Zugang, moeglichst zentral. Kein Ersatz fuer Volumen bei Hypovolaemie.'}
       }},
     { id:'ephedrin', name:'Ephedrin', icon:'⚡', cls:'Vasopressor',
       sources:['Plumb’s'],
@@ -449,7 +452,7 @@ window.ANAES = {
         rennmaus:{low:0.5,high:1,unit:'mg/kg',route:'SC/IM',conc:'5 mg/mL (verduennen)',indication:'Antagonisierung von Medetomidin/Dexmedetomidin/Xylazin',notes:'Quelle: universitaere Versuchstier-Formularien fuer die Rennmaus - Atipamezol 0,5 mg/kg SC zur Umkehr von Dexmedetomidin; allgemein 5-fache Dexmedetomidin-Menge.',caution:'Analgesieverlust - Schmerz kann bei dieser Art einen Anfall triggern. Erst Analgesie sichern, dann antagonisieren. Waermezufuhr weiterlaufen lassen.'},
         hamster:{low:0.15,high:1,unit:'mg/kg',route:'SC/IM (IV nur im Notfall, langsam)',conc:'0,5 mg/mL (aus 5 mg/mL verduennt)',indication:'Antagonisierung von Medetomidin/Dexmedetomidin/Xylazin; Notfallmassnahme bei Alpha-2-Zwischenfall',notes:'Quelle: Nakamura et al., J Vet Med Sci 2017 - 0,15 mg/kg Atipamezol (dieselbe mg-Menge wie Medetomidin) liess Hamster rasch aufwachen und normalisierte auch die anaesthesiebedingte Hyperglykaemie/Insulinstoerung innerhalb von ~10 min. Faustregel sonst: 5-fache mg-Menge des gegebe',caution:'Zu schnelle IV-Gabe verursacht Tachykardie, Erregung und Blutdruckabfall - SC/IM bevorzugen. Hebt auch die Analgesie des Alpha-2 auf: vorher Buprenorphin/Meloxicam geben. Waermezufuhr nach Antagonisierung fortsetzen, sonst kuehlt das erwach'},
         hund:{low:0.05,high:0.2,unit:'mg/kg',route:'IM',conc:'5 mg/mL',indication:'Umkehr Medetomidin/Dexmed.',notes:'Faustregel: gleiches Volumen wie das gegebene Domitor/Dexdomitor (Antisedan 5 mg/mL) = 5× Medetomidin-µg = 10× Dexmedetomidin-µg. Katze: HALBES Volumen. IM, nicht IV (außer Notfall langsam).',caution:'Beim HUND nicht < 1 Stunde nach Ketamin, bei der Katze nicht < 30 min (Demuth 2003a) — sonst Exzitation/Krämpfe. Rasche Erweckung; Vasodilatation/Hypotension bei IV.'},
-        katze:{low:0.025,high:0.1,unit:'mg/kg',route:'IM',conc:'5 mg/mL',indication:'Umkehr α2',notes:'',caution:'Bei der Katze etwa halbes Volumen. Nach der Umkehr faellt der Blutdruck ab und die Analgesie des α2 endet — Schmerzmittel bereithalten. Nicht bei Hypovolaemie ohne Volumenersatz.'},
+        katze:{low:0.04,high:0.2,unit:'mg/kg',route:'IM',conc:'5 mg/mL',indication:'Umkehr α2',notes:'',caution:'Bei der Katze etwa halbes Volumen. Nach der Umkehr faellt der Blutdruck ab und die Analgesie des α2 endet — Schmerzmittel bereithalten. Nicht bei Hypovolaemie ohne Volumenersatz.'},
         kaninchen:{low:0.1,high:1,unit:'mg/kg',route:'IM/SC',conc:'5 mg/mL',indication:'Umkehr α2',notes:'',caution:''}
       }},
     { id:'flumazenil', name:'Flumazenil', icon:'🔄', cls:'Benzodiazepin-Antagonist',
@@ -1284,8 +1287,8 @@ window.ANAES.injection = [
 /* =================== ANTAGONISTEN / REVERSAL =================== */
 window.ANAES.reversal = [
   { id:'atipamezol', name:'Atipamezol (Antisedan)', conc:5, unit:'mg', target:'α2-Agonisten (Medetomidin/Dexmed/Xylazin)', route:'IM (IV nur Notfall/CPR)',
-    sp:{ ratte:[0.5,1], rennmaus:[0.5,1], hamster:[0.15,1], hund:[0.05,0.2], katze:[0.025,0.1], kaninchen:[0.1,1], frettchen:[0.5,1], meerschwein:[0.1,1] },
-    rule:'MASSGEBLICH IST DAS VOLUMEN, NICHT DIE mg/kg-SPANNE: die Menge richtet sich danach, wieviel Alpha-2 gegeben wurde. Die Spanne daneben ist nur ein Korridor und setzt die Agonistendosen dieser Station voraus (Medetomidin 5-20 µg/kg, Dexmedetomidin 1-5 µg/kg). Wer die Zulassungsdosis gibt (Dexdomitor 40 µg/kg bei der Katze), braucht nach derselben Regel MEHR als die Obergrenze. Hund: gleiches Volumen wie das gegebene Domitor/Dexdomitor = 5× Medetomidin-µg = 10× Dexmedetomidin-µg. Katze: HALBES Volumen (= 2,5× Med-µg / 5× Dexmed-µg). Frettchen: 5× Med (= gleiches Volumen). NIE „5× Dexmed-µg" rechnen – das unterdosiert um das 2-Fache.',
+    sp:{ ratte:[0.5,1], rennmaus:[0.5,1], hamster:[0.15,1], hund:[0.05,0.2], katze:[0.04,0.2], kaninchen:[0.1,1], frettchen:[0.5,1], meerschwein:[0.1,1] },
+    rule:'MASSGEBLICH IST DAS VOLUMEN, NICHT DIE mg/kg-SPANNE: die Menge richtet sich danach, wieviel Alpha-2 gegeben wurde. Die Spanne daneben ist nur ein Korridor und setzt die Agonistendosen dieser Station voraus (Medetomidin 5-20 µg/kg, Dexmedetomidin 1-5 µg/kg). Bei der Zulassungsdosis Dexdomitor 40 µg/kg ergibt die Regel für die Katze genau 0,2 mg/kg — das ist seit 19.08.2026 auch die Obergrenze der Spanne (vetpharm: Granholm 2006a). Hund: gleiches Volumen wie das gegebene Domitor/Dexdomitor = 5× Medetomidin-µg = 10× Dexmedetomidin-µg. Katze: HALBES Volumen (= 2,5× Med-µg / 5× Dexmed-µg). Frettchen: 5× Med (= gleiches Volumen). NIE „5× Dexmed-µg" rechnen – das unterdosiert um das 2-Fache.',
     caution:'NICHT < 30–40 min nach Ketamin (unmaskiert Restketamin → Exzitation/Rigidität/Krämpfe). Nicht mit Anticholinergika (Tachy/Hypertonie). Hebt Analgesie mit auf; Resedierung 30–60 min möglich. IV nur Notfall (Kollaps).' },
   { id:'naloxon', name:'Naloxon (Narcan)', conc:0.4, unit:'mg', target:'Opioide (Methadon/Butorphanol/Buprenorphin)', route:'IV/IM/SC – titriert',
     sp:{ ratte:[0.1,0.2], rennmaus:[0.01,0.1], hamster:[0.01,0.1], hund:[0.01,0.04], katze:[0.01,0.04], kaninchen:[0.01,0.1], frettchen:[0.01,0.04] },
