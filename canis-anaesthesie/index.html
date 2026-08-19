@@ -13328,6 +13328,27 @@ function anmeldeFehler(e){
  * aber am alten Konto haengengeblieben — das Protokoll blieb dauerhaft leer. Seit diesem Umbau
  * speichert protAbos die ABMELDEFUNKTION, und der Schluessel traegt zusaetzlich den Saal.
  */
+/*
+ * ABGEMELDET HEISST TRAINING, UND TRAINING HEISST OFFEN (Befund 19.08.2026).
+ *
+ * activate() setzt <html class="vetlive-on">. Daran haengt die Regel, die Tierart,
+ * Gewicht, Alter, Rasse und die Monitor-Eingaben sperrt - richtig, solange die Werte vom
+ * Praxis-PC kommen und eine Aenderung hier nur eine zweite Wahrheit waere.
+ *
+ * abmelden() hat die Klasse aber stehen lassen. Wer sich abmeldete, sass danach vor einer
+ * Trainingshilfe, in der sich nichts mehr eintragen liess - und ohne Weg zurueck, weil
+ * activate() den Einstiegsknopf entfernt hatte. Diese Funktion stellt den Zustand VOR der
+ * Anmeldung wieder her: Klasse weg, Leiste weg, Polsterung zurueck, Einstiegsknopf zurueck.
+ */
+function zurueckZumTraining(){
+  try{ document.documentElement.classList.remove('vetlive-on'); }catch(e){}
+  try{ document.body.style.paddingTop=''; }catch(e){}
+  try{ if(bar){ bar.remove(); bar=null; } }catch(e){}
+  try{ var d=document.getElementById('druckblatt'); if(d) d.innerHTML=''; }catch(e){}
+  activated=false;
+  /* Ohne den Knopf gaebe es keinen Weg zurueck in die Fern-Ansicht. */
+  try{ if(!document.getElementById('vetlive-launch')) injectLauncher(); }catch(e){}
+}
 function abmelden(){
   if(!FB) return;
   FB.A.signOut(FB.auth).then(function(){
@@ -13335,7 +13356,8 @@ function abmelden(){
     saele={}; patientsSaal={}; protokoll={}; protAbos={};
     lastRecvSid={}; laufzeitSid={}; laufzeitMinSid={}; laufzeitMaxSid={}; taktSid={};
     selSaal=null; sel=null; kurvenSigGezeigt=null;
-    connState='auth'; render();
+    connState='auth';
+    zurueckZumTraining();
   });
 }
 
