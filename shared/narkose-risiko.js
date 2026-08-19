@@ -745,7 +745,7 @@
       zeichen: 'Wacht nicht auf, Muskelzucken, Krampf, Bradykardie — unter Narkose ohne Messung NICHT erkennbar.',
       schritte: [
         'Blutzucker messen (nicht raten).',
-        'Glukose 50 % 1:4 verdünnen und 0,5–1 mL/kg der verdünnten Lösung langsam i.v. über 5 min geben (entspricht etwa 0,25–0,5 g/kg).',
+        '0,5–1 mL/kg der UNVERDÜNNTEN 50-%-Lösung abmessen (= 0,25–0,5 g/kg), mindestens 1:4 verdünnen und langsam i.v. über 5 min geben. Die mL/kg beziehen sich auf die 50-%-Stammlösung, nicht auf die fertige Verdünnung.',
         'Danach glukosehaltige Dauerinfusion 2,5–5 % und alle 30 min nachmessen.',
         'Ursache klären: zu lange nüchtern, Insulinom, Leber-Shunt, Sepsis, Insulinüberdosierung.',
         'Beim Frettchen mit Insulinom: nie über Nacht nüchtern, Dextrose-Infusion schon ab Prämedikation.'
