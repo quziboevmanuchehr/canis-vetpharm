@@ -1192,9 +1192,12 @@ function parseConcEinheit(s, einheit){
  * bleibt rechenbar. Betrifft 11 der 207 Eintraege mit Konzentration. */
 function konzentrationNurStamm(s){
   if(!s) return false;
-  if(!/verd(ü|ue)nn|unverd/i.test(s)) return false;
-  var t = String(s).match(/[0-9]*[.,]?[0-9]+\s*(mg|mcg|µg|g|iu|u|units?|mmol|meq)\s*\/\s*ml/gi);
-  return !t || t.length < 2;
+  var t=String(s);
+  if(!/verd(ü|ue)nn|unverd/i.test(t)) return false;
+  /* "unverduennt" enthaelt "verduennt" - sonst gaelte "NIE unverduennt" als Herkunft. */
+  var o=t.replace(/unverd(ü|ue)nnt/gi, " ");
+  /* Herkunft der Gebrauchsloesung: "(aus 0,5 mg/mL verduennt)", auch mit inneren Klammern. */
+  return !/\baus\b[\s\S]{0,60}?[0-9][\s\S]{0,60}?verd(ü|ue)nnt/i.test(o);
 }
 
 /* returns {amtLo,amtHi,amtUnit,mlLo,mlHi,takt} for a species dose object + weight */
