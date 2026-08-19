@@ -1158,7 +1158,15 @@ var state = { sp: (A.species[0]&&A.species[0].id)||'hund', wt: 10, age:'adult', 
 
 /* ---------- helpers: dose math ---------- */
 function parseConc(s){ if(!s) return null; var m = String(s).replace(',','.').match(/([0-9]*\.?[0-9]+)\s*(mg|mcg|µg|g|iu|u|units?)\s*\/\s*ml/i); if(!m) return null; var v=parseFloat(m[1]); var u=m[2].toLowerCase(); if(u==='g') v=v*1000; if(u==='mcg'||u==='µg') v=v/1000; return v; /* mg per mL, bzw. U/mL für Einheiten-Präparate (vasopressin/insulin) */ }
-function fmt(n){ if(n==null||isNaN(n)) return '–'; if(n>=100) return Math.round(n).toString(); if(n>=10) return (Math.round(n*10)/10).toString(); if(n>=1) return (Math.round(n*100)/100).toString(); return (Math.round(n*1000)/1000).toString(); }
+/* Unterhalb der Anzeigeaufloesung NIE "0" zeigen (Befund 18.08.2026): die Adrenalin-Karte
+ * der 25-g-Maus stand auf "0-0.003 mg", die Untergrenze sind 0,00025 mg. Eine Null ist
+ * eine Zahl, und sie ist falsch - bei einer Reanimationsdosis liest sie sich als "nichts". */
+function fmt(n){ if(n==null||isNaN(n)) return '–';
+  if(n>=100) return Math.round(n).toString();
+  if(n>=10) return (Math.round(n*10)/10).toString();
+  if(n>=1) return (Math.round(n*100)/100).toString();
+  if(n>0&&n<0.0005) return '<0.001';
+  return (Math.round(n*1000)/1000).toString(); }
 function fmtRange(a,b){ a=fmt(a); b=fmt(b); return a===b? a : a+'–'+b; }
 /*
  * parseConcEinheit(text, einheit) — liest aus der Konzentrationsangabe die Zahl, die WIRKLICH
