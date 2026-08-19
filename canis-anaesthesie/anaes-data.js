@@ -459,8 +459,8 @@ window.ANAES = {
         ratte:{low:0.1,high:0.2,unit:'mg/kg',route:'SC/IV',conc:'0.1 mg/mL',indication:'Benzodiazepin-Antagonist, Bestandteil der AFN-Antagonisierung',notes:'Quelle: AFN-Antagonisierung Ratte 0,2 mg/kg SC (MMF-Protokoll, GV-SOLAS-Schema).',caution:'Kurze Wirkdauer, Resedierung moeglich. Nur zusammen mit Atipamezol und Naloxon sinnvoll, wenn MMF antagonisiert wird.'},
         rennmaus:{low:0.05,high:0.1,unit:'mg/kg',route:'IV/IO/IM',conc:'0,1 mg/mL',indication:'Benzodiazepin-Ueberhang',notes:'EXTRAPOLIERT aus Kleinsaeugerempfehlungen. Keine Rennmausdaten.',caution:'Extrapoliert. ACHTUNG bei dieser Art: Flumazenil hebt den antikonvulsiven Schutz des Midazolams auf und kann bei krampfneigenden Zuchtlinien einen Anfall demaskieren. Nur bei echter Atemdepression.'},
         hamster:{low:0.05,high:0.1,unit:'mg/kg',route:'IV/IO/IM',conc:'0,1 mg/mL',indication:'Benzodiazepin-Ueberhang (Midazolam/Diazepam)',notes:'EXTRAPOLIERT aus Kleinsaeugerempfehlungen (0,05-0,1 mg/kg). Keine hamsterspezifische Studie; in der MMB-Studie wurde nur Atipamezol untersucht und reichte fuer das Aufwachen aus.',caution:'Extrapoliert. Kurze Wirkdauer, Resedierung moeglich. Bei Mischnarkosen zuerst Atipamezol geben - oft ist Flumazenil dann gar nicht noetig.'},
-        hund:{low:0.01,high:0.01,unit:'mg/kg',route:'IV',conc:'0.1 mg/mL',indication:'Umkehr Midazolam/Diazepam',notes:'Titrieren; kurze Wirkung.',caution:''},
-        katze:{low:0.01,high:0.01,unit:'mg/kg',route:'IV',conc:'0.1 mg/mL',indication:'Umkehr Benzo',notes:'',caution:''}
+        hund:{low:0.01,high:0.02,unit:'mg/kg',route:'IV',conc:'0.1 mg/mL',indication:'Umkehr Midazolam/Diazepam',notes:'Titrieren; kurze Wirkung (ca. 1 h) - Rueckfall in die Sedation moeglich. Spanne 0,01-0,02 mg/kg (Plumb\u2019s); dieselbe Zahl fuehrt die Station in ihrem Rettungsweg \u201eBenzodiazepin-Ueberhang\u201c.',caution:'Bei bekanntem Krampfleiden nur im Notfall - Flumazenil senkt die Krampfschwelle.'},
+        katze:{low:0.01,high:0.02,unit:'mg/kg',route:'IV',conc:'0.1 mg/mL',indication:'Umkehr Benzodiazepin',notes:'Titrieren; Wirkdauer (ca. 1 h) kuerzer als die des Benzodiazepins - Rueckfall in die Sedation moeglich. Spanne 0,01-0,02 mg/kg (Plumb’s), wie beim Hund.',caution:'Bei bekanntem Krampfleiden nur im Notfall - Flumazenil senkt die Krampfschwelle.'}
       }},
     { id:'meloxicam', name:'Meloxicam', icon:'🌡️', cls:'NSAID',
       sources:['Plumb’s','WSAVA'],
@@ -1284,15 +1284,15 @@ window.ANAES.injection = [
 /* =================== ANTAGONISTEN / REVERSAL =================== */
 window.ANAES.reversal = [
   { id:'atipamezol', name:'Atipamezol (Antisedan)', conc:5, unit:'mg', target:'α2-Agonisten (Medetomidin/Dexmed/Xylazin)', route:'IM (IV nur Notfall/CPR)',
-    sp:{ ratte:[0.5,1], rennmaus:[0.5,1], hamster:[0.15,1], hund:[0.1,0.2], katze:[0.05,0.1], kaninchen:[0.25,1], frettchen:[0.5,1], meerschwein:[0.5,1] },
-    rule:'Hund: gleiches Volumen wie das gegebene Domitor/Dexdomitor = 5× Medetomidin-µg = 10× Dexmedetomidin-µg. Katze: HALBES Volumen (= 2,5× Med-µg / 5× Dexmed-µg). Frettchen: 5× Med (= gleiches Volumen). NIE „5× Dexmed-µg" rechnen – das unterdosiert um das 2-Fache.',
+    sp:{ ratte:[0.5,1], rennmaus:[0.5,1], hamster:[0.15,1], hund:[0.05,0.2], katze:[0.025,0.1], kaninchen:[0.1,1], frettchen:[0.5,1], meerschwein:[0.1,1] },
+    rule:'MASSGEBLICH IST DAS VOLUMEN, NICHT DIE mg/kg-SPANNE: die Menge richtet sich danach, wieviel Alpha-2 gegeben wurde. Die Spanne daneben ist nur ein Korridor und setzt die Agonistendosen dieser Station voraus (Medetomidin 5-20 µg/kg, Dexmedetomidin 1-5 µg/kg). Wer die Zulassungsdosis gibt (Dexdomitor 40 µg/kg bei der Katze), braucht nach derselben Regel MEHR als die Obergrenze. Hund: gleiches Volumen wie das gegebene Domitor/Dexdomitor = 5× Medetomidin-µg = 10× Dexmedetomidin-µg. Katze: HALBES Volumen (= 2,5× Med-µg / 5× Dexmed-µg). Frettchen: 5× Med (= gleiches Volumen). NIE „5× Dexmed-µg" rechnen – das unterdosiert um das 2-Fache.',
     caution:'NICHT < 30–40 min nach Ketamin (unmaskiert Restketamin → Exzitation/Rigidität/Krämpfe). Nicht mit Anticholinergika (Tachy/Hypertonie). Hebt Analgesie mit auf; Resedierung 30–60 min möglich. IV nur Notfall (Kollaps).' },
   { id:'naloxon', name:'Naloxon (Narcan)', conc:0.4, unit:'mg', target:'Opioide (Methadon/Butorphanol/Buprenorphin)', route:'IV/IM/SC – titriert',
-    sp:{ ratte:[0.1,0.2], rennmaus:[0.01,0.1], hamster:[0.01,0.1], hund:[0.01,0.04], katze:[0.01,0.04], kaninchen:[0.01,0.04], frettchen:[0.01,0.04] },
+    sp:{ ratte:[0.1,0.2], rennmaus:[0.01,0.1], hamster:[0.01,0.1], hund:[0.01,0.04], katze:[0.01,0.04], kaninchen:[0.01,0.1], frettchen:[0.01,0.04] },
     rule:'1 Amp (0,4 mg) in 10 mL NaCl verdünnen, mL-weise IV bis Atmung/Wachheit reichen. CPR/opioid: 0,04 mg/kg.',
     caution:'Kürzer als Opioid → Renarkotisierung (nachdosieren, ggf. CRI 0,02 mg/kg/h). Volle Reversierung → akuter Schmerz, Tachykardie, Hypertonie. Bei Polamivet: Fenpipramid-Überhang → Tachykardie. Buprenorphin nur partiell reversierbar.' },
   { id:'flumazenil', name:'Flumazenil (Anexate)', conc:0.1, unit:'mg', target:'Benzodiazepine (Diazepam/Midazolam)', route:'IV – titriert',
-    sp:{ ratte:[0.1,0.2], rennmaus:[0.05,0.1], hamster:[0.05,0.1], hund:[0.01,0.02], katze:[0.01,0.02], kaninchen:[0.01,0.02], frettchen:[0.01,0.02] },
+    sp:{ ratte:[0.1,0.2], rennmaus:[0.05,0.1], hamster:[0.05,0.1], hund:[0.01,0.02], katze:[0.01,0.02], kaninchen:[0.05,0.1], frettchen:[0.05,0.05] },
     rule:'~1 mg Flumazenil pro 13 mg Diazepam; titriert. Onset 1–2 min.',
     caution:'Wirkdauer (~1 h) kürzer als Benzodiazepin → Resedierung (nachdosieren/CRI). Selten Krämpfe (v.a. wenn Benzo als Antikonvulsivum diente).' },
   { id:'yohimbin', name:'Yohimbin (Yobine)', conc:2, unit:'mg', target:'Xylazin', route:'langsam IV (IM)',

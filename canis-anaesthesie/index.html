@@ -4015,7 +4015,11 @@ var DRUGFX={
   adrenalin:['vasopressor','tachy','hypertensive'], noradrenalin:['vasopressor','hypertensive'], ephedrin:['vasopressor','tachy','hypertensive'],
   dopamin:['vasopressor','inotrope','tachy'], dobutamin:['inotrope'], vasopressin:['vasopressor'],
   lidocain_iv:['antiarrhythmic'], amiodaron:['antiarrhythmic'], propranolol:['antiarrhythmic','brady','betablock'],
-  naloxon:['revOpioid'], atipamezol:['revAlpha2'], flumazenil:['revBenzo']
+  naloxon:['revOpioid'], atipamezol:['revAlpha2'], flumazenil:['revBenzo'],
+  /* Yohimbin und Tolazolin haben keine eigene Arzneikarte, stehen aber in ANAES.reversal
+   * und tragen dort denselben Knopf. Ohne Eintrag hier bliebe er ohne Wirkung
+   * (Befund 18.08.2026). Beide heben einen Alpha-2-Agonisten auf. */
+  yohimbin:['revAlpha2'], tolazolin:['revAlpha2']
 };
 /* drugContext — ALLES, was das Tier bekommen hat: Injektionsnarkose (injContext) + einzeln als
  * „gegeben" markierte Notfall-/Weitere Medikamente. Vereint die Wirkflags + baut Folgen-Signale. */
@@ -4030,7 +4034,12 @@ function drugContext(){
     anticholinergic:false, vasopressor:false, inotrope:false, antiarrhythmic:false, dissociative:!!inj.ketamine,
     phenothiazine:false, revOpioid:false, revAlpha2:false, revBenzo:false, givenNames:[] };
   (state.givenDrugs||[]).forEach(function(id){
-    var d=(A.drugs||[]).find(function(x){return x.id===id;}); if(!d) return;
+    var d=(A.drugs||[]).find(function(x){return x.id===id;});
+    /* Ein Antagonist ohne Arzneikarte (Yohimbin, Tolazolin) steht nur in ANAES.reversal.
+     * Ohne diesen Rueckfall uebersprang der frueh gesetzte return den ganzen Rumpf, und
+     * der Knopf "als gegeben" blieb wirkungslos (Befund 18.08.2026). */
+    if(!d) d=(A.reversal||[]).find(function(x){return x.id===id;});
+    if(!d) return;
     f.givenNames.push(d.name);
     (DRUGFX[id]||[]).forEach(function(t){
       if(t==='opioid') f.opioid=true; else if(t==='alpha2') f.alpha2=true; else if(t==='benzo') f.benzo=true;
