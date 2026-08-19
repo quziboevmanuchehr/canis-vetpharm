@@ -1,0 +1,19 @@
+# Zeilenenden festnageln (Befund 18.08.2026).
+#
+# Hier stand core.autocrlf=true ohne .gitattributes. Ein Zweigwechsel im Quellrepo hatte
+# dort die Arbeitskopie auf CRLF umgeschrieben; die hiesige Kopie von anaes-data.js war
+# dadurch nicht mehr ZEICHENGLEICH mit der Station, und tools/geraete-profil-test.js hat
+# das gemeldet. Genau dafuer gibt es diese Pruefung: die Fern-App und die Station duerfen
+# nicht auseinanderlaufen.
+#
+# Die Zip-Pakete unter vetstation/ MUESSEN als binary gelten. Eine Zeilenenden-Umwandlung
+# darin wuerde die Pruefsumme brechen, und der Updater lehnt das Paket dann ab - jede
+# Station ab 1.16.0 prueft sha256 UND Ed25519-Signatur.
+* text=auto eol=lf
+
+*.zip  binary
+*.exe  binary
+*.png  binary
+*.jpg  binary
+*.ico  binary
+*.pdf  binary
