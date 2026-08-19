@@ -477,6 +477,37 @@ html[data-theme="light"] .gw-v.unbestaetigt{background:rgba(200,50,50,.14);color
  * Geraetespalte heisst ausserdem, dass die Wertekacheln in weniger Reihen passen — und jede
  * eingesparte Reihe ist Hoehe fuer die Kurven und fuer das Narkosegeraet. */
 .cockpit{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(258px,.46fr);gap:11px;min-height:0}
+/* ============================ VOLLBILD (19.08.2026) ============================
+   Eine feste Schicht ueber dem Dokument statt requestFullscreen(): die Station laeuft im
+   Kiosk ohnehin im Vollbild des Browsers, und ein natives Vollbild darueber springt beim
+   Verlassen unangekuendigt zurueck. Die Analyse bleibt sichtbar, nur schmal - sie ganz
+   auszublenden waere bequemer und falsch. */
+body.mon-voll{overflow:hidden}
+body.mon-voll .cockpit{position:fixed;inset:0;z-index:9000;background:#070b11;
+  grid-template-columns:minmax(0,1fr) 268px;gap:8px;padding:8px;margin:0;border-radius:0}
+body.mon-voll .cockpit>.card{border-radius:10px;max-height:none}
+/* HOEHE MIT !important, WEIL cockpitHoehe() SIE INLINE SETZT (gemessen 19.08.2026).
+   Ohne das blieb der Schirm im Vollbild bei 250 px stehen - er wurde also KLEINER statt
+   groesser, und genau dafuer gibt es den Knopf nicht. Gemessen bei 1280x720: Geraetespalte
+   1858 px Inhalt in 720 px Fenster; mit overflow:hidden war alles unterhalb des Schirms
+   abgeschnitten, auch die Regler des Narkosegeraets. Deshalb rollt die Spalte jetzt. */
+body.mon-voll .cockpit{height:100vh!important}
+body.mon-voll .ck-links{height:calc(100vh - 16px);overflow-y:auto;overflow-x:hidden}
+body.mon-voll .mon-screen{height:calc(100vh - 300px)!important;min-height:320px!important}
+/* Im Vollbild bekommt der Schirm den gewonnenen Platz - darum geht es. */
+body.mon-voll .ck-schirm{flex:1 1 auto;min-height:0}
+body.mon-voll .mon-screen{height:100%;min-height:0}
+/* Ruhiger, aber immer lesbar: kleinere Schrift, gedaempfter Grund, eigener Rollbalken. */
+body.mon-voll .ck-rechts{height:calc(100vh - 16px);overflow-y:auto;font-size:11.5px;
+  background:rgba(12,18,26,.94)}
+body.mon-voll .ck-rechts h3{font-size:12.5px;opacity:.85}
+/* Was im Vollbild nichts zu suchen hat. Die Geraetewahl und die Rhythmuswahl bleiben:
+   beides wird waehrend der Narkose gebraucht. */
+body.mon-voll header,body.mon-voll #tabs,body.mon-voll .warnbar,
+body.mon-voll .patline,body.mon-voll footer{display:none!important}
+body.mon-voll #dmVoll{background:rgba(34,211,238,.22);border-color:#22d3ee}
+@media(max-width:900px){ body.mon-voll .cockpit{grid-template-columns:1fr;grid-template-rows:1fr auto}
+  body.mon-voll .ck-links{height:auto} body.mon-voll .ck-rechts{height:auto;max-height:38vh} }
 .cockpit>.card{min-height:0;margin-bottom:0}
 /* overflow-y:auto statt hidden: auf einem kleinen Fenster passt es beim besten Willen nicht
  * vollstaendig — dann lieber ein kurzer Rollweg als ein Narkosegeraet, das unsichtbar
@@ -956,6 +987,9 @@ html[data-theme="light"] .assess-tr{color:#5a3c00;background:rgba(255,180,60,.16
                    im Baum, weil die Station sie anklickt, wenn ein Geraet den Rhythmus meldet. -->
               <select id="rhySel" title="Welcher Rhythmus ist am EKG zu sehen?"></select>
               <button class="dm-btn" id="dmSilence" title="Alarmton dieses Bildes stummschalten">🔕</button>
+              <!-- Derselbe Knopf hinein und hinaus (verlangt 19.08.2026). Ein zweiter Knopf
+                   zum Verlassen waere im Vollbild genau der, den man nicht findet. -->
+              <button class="dm-btn" id="dmVoll" title="Monitor &amp; Kapnograph auf den ganzen Bildschirm (nochmals drücken: zurück)">⛶</button>
             </div></div>
         </div>
         <div class="dev-head" id="devHead"></div>
@@ -3522,6 +3556,31 @@ function renderRhythmChips(){
     var on=state.rhythm===r.id;
     return '<button class="chip" data-r="'+r.id+'" style="'+(on?'border-color:#28e07a;background:rgba(40,224,122,.16);color:#fff':'')+(r.emergency?';box-shadow:inset 0 0 0 1px rgba(255,77,77,.4)':'')+'">'+r.name+'</button>';
   }).join('');
+  (function(){
+    /*
+     * VOLLBILD EIN UND AUS - mit DEMSELBEN Knopf, und zusaetzlich mit Escape: wer im
+     * Vollbild steht, sucht als erstes diese Taste. Nach dem Umschalten muss die Leinwand
+     * neu vermessen werden, sonst zeichnet sie in der alten Groesse weiter (die Kurve
+     * bliebe gestaucht). monResize() ist die Stelle, die das ohnehin tut.
+     */
+    var b=$('#dmVoll'); if(!b) return;
+    function umschalten(an){
+      document.body.classList.toggle('mon-voll', an);
+      b.textContent = an ? '⛶' : '⛶';
+      b.title = an ? 'Zurück zur normalen Ansicht' : 'Monitor & Kapnograph auf den ganzen Bildschirm';
+      b.setAttribute('aria-pressed', an ? 'true' : 'false');
+      try{ cockpitHoehe(); if(mon._resize) mon._resize(); }catch(e){}
+      /* Zweimal: einmal sofort und einmal nach dem Umbruch, weil die neue Groesse erst
+         nach dem naechsten Bild feststeht. Ohne den zweiten Ruf blieb die Leinwand beim
+         ersten Einschalten in der alten Breite stehen. */
+      requestAnimationFrame(function(){ try{ cockpitHoehe(); if(mon._resize) mon._resize(); }catch(e){} });
+      setTimeout(function(){ try{ cockpitHoehe(); if(mon._resize) mon._resize(); }catch(e){} }, 60);
+    }
+    b.onclick=function(){ umschalten(!document.body.classList.contains('mon-voll')); };
+    document.addEventListener('keydown', function(e){
+      if(e.key==='Escape' && document.body.classList.contains('mon-voll')) umschalten(false);
+    });
+  })();
   $$('#rhythmChips .chip').forEach(function(b){ b.onclick=function(){ state.rhythm=b.dataset.r; renderRhythmChips(); if(mon.running) renderMonValues(); }; });
 }
 
@@ -12267,12 +12326,28 @@ function saalKarte(sid){
     '<div class="s-fuss">'+knopf+stopp+'</div>'+
     '</div>';
 }
+/*
+ * Die Saalleiste laesst sich einklappen (verlangt 19.08.2026). Auf dem Bildschirm des
+ * Praxis-PCs nehmen die Karten genau den Platz weg, auf dem die Werte des virtuellen
+ * Monitors stehen sollen. Der Zustand wird gemerkt - der Kiosk laedt oft neu, und niemand
+ * will nach jedem Neustart wieder wegklappen. Vorgabe ist AUSGEKLAPPT: wer die Fern-Ansicht
+ * zum ersten Mal oeffnet, soll sehen, welche Saele es ueberhaupt gibt.
+ */
+var saeleZu = false;
+try{ saeleZu = localStorage.getItem('vetlive_saele_zu')==='1'; }catch(e){}
 function tafelHtml(){
   var alle = saalListe();
   if(!alle.length) return '';
   var gezeigt = alle.slice(0, DECKEL_SAELE);
   var rest = alle.length - gezeigt.length;
-  return '<div class="vetlive-saele">'+gezeigt.map(saalKarte).join('')+'</div>'+
+  /* Der Knopf steht IMMER da, auch eingeklappt - sonst gaebe es keinen Weg zurueck.
+     Eingeklappt nennt er die Zahl der Saele, damit man weiss, was dahinter liegt. */
+  var knopf = '<button class="vetlive-saele-tog" data-saele-tog="1" title="'+
+    (saeleZu?'OP-Säle wieder einblenden':'OP-Säle einklappen — mehr Platz für die Werte')+'">'+
+    (saeleZu ? '▾ OP-Säle ('+alle.length+')' : '▴ OP-Säle einklappen')+'</button>';
+  if(saeleZu) return '<div class="vetlive-saele-leiste zu">'+knopf+'</div>';
+  return '<div class="vetlive-saele-leiste">'+knopf+'</div>'+
+    '<div class="vetlive-saele">'+gezeigt.map(saalKarte).join('')+'</div>'+
     (rest>0 ? '<div class="vetlive-deckel">'+rest+' weitere OP-Säle werden nicht angezeigt — Deckel erreicht</div>' : '');
 }
 
@@ -12331,6 +12406,13 @@ function render(){
     cfgHint + errHint;
   Array.prototype.forEach.call(bar.querySelectorAll('.vetlive-chip'), function(b){
     b.onclick=function(){ sel=b.dataset.k; kurvenSigGezeigt=null; applySelected(); render(); };
+  });
+  Array.prototype.forEach.call(bar.querySelectorAll('[data-saele-tog]'), function(b){
+    b.onclick=function(){
+      saeleZu = !saeleZu;
+      try{ localStorage.setItem('vetlive_saele_zu', saeleZu?'1':'0'); }catch(e){}
+      render();
+    };
   });
   Array.prototype.forEach.call(bar.querySelectorAll('[data-oeffne]'), function(b){
     b.onclick=function(){ waehleSaal(b.dataset.oeffne); };
@@ -12867,6 +12949,11 @@ function injectCss(){
   var s=document.createElement('style'); s.id='vetlive-saal-css';
   s.textContent =
     '.vetlive-saele{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}'+
+    '.vetlive-saele-leiste{margin-top:6px}'+
+    '.vetlive-saele-leiste.zu{margin-top:4px;margin-bottom:2px}'+
+    '.vetlive-saele-tog{background:rgba(255,255,255,.06);color:#cfe3ff;border:1px solid rgba(255,255,255,.16);'+
+      'border-radius:7px;padding:2px 9px;font-size:11.5px;cursor:pointer;line-height:1.6}'+
+    '.vetlive-saele-tog:hover{background:rgba(255,255,255,.12)}'+
     '.vetlive-saal{flex:1 1 250px;min-width:230px;max-width:420px;border:1px solid var(--line,rgba(255,255,255,.16));'+
       'border-radius:11px;padding:7px 9px;background:rgba(255,255,255,.05)}'+
     'html[data-theme="light"] .vetlive-saal{background:rgba(255,255,255,.6)}'+
