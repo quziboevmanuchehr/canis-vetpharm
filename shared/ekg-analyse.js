@@ -290,10 +290,26 @@
    * 8 % ist der Punkt, an dem die Messung deutlich naeher an der Wahrheit liegt und noch
    * NICHT vom Rauschen getrieben wird.
    *
-   * EINE SCHWELLENMESSUNG BLEIBT SYSTEMATISCH ZU KURZ - rund 20 % gegenueber der gezeichneten
-   * Dauer. Das ist bekannt, gilt fuer echte Streifen genauso und steht in der Eichpruefung
-   * ausdruecklich dabei. Wichtig ist die Richtung des frueheren Fehlers: er BERUHIGTE (eine
-   * verbreiterte Kammer sah schmal aus), und genau das ist jetzt kleiner geworden.
+   * EINE SCHWELLENMESSUNG BLEIBT SYSTEMATISCH ZU KURZ. Die frueher hier genannten "rund 20 %"
+   * waren jedoch FALSCH GEMESSEN (berichtigt 20.08.2026, siehe tools/qrs-breite-test.js):
+   *
+   * Sie stammten aus einem Vergleich mit dem Gauss-Generator in tools/ekg-analyse-test.js:31.
+   * Der zeichnet eine Glocke ueber plus/minus b Abtastwerte mit b aus breiteMs - die
+   * GEZEICHNETE Breite ist also 2b, das Doppelte der Vorgabe, und eine Glocke hat ohnehin
+   * keinen scharfen Rand. Gemessen wurde damit der Massstab, nicht die Messung.
+   *
+   * Gegen eine EINDEUTIGE Referenz (Halbwelle A*sin(pi*t/D), ausserhalb exakt null) ist der
+   * Fehler viermal kleiner und haengt an der ABTASTRATE, nicht an Tierart oder Breite:
+   *      125 Hz  -12..-18 ms      250 Hz   -6..-8 ms  (der uebliche Bereich)
+   *      200 Hz  -10 ms           1000 Hz  -2..-8 ms
+   * Bei hoher Abtastrate bleibt allein der Schwellenanteil: die Halbwelle kreuzt die 8-%-Grenze
+   * rund 2,6 % innen, beidseitig also rund 5 % der Dauer.
+   *
+   * DESHALB WIRD HIER NICHTS "KORRIGIERT". Wer die alten -20/-43 % als Faktor anbraechte,
+   * bliese die Breite um 25 bis 75 % auf - und die Station meldete reihenweise verbreiterte
+   * Kammerkomplexe, wo keine sind. Das ist die gefaehrliche Richtung: ein erfundener Befund.
+   * Die Richtung des verbleibenden Fehlers BERUHIGT (eine verbreiterte Kammer sieht etwas
+   * schmaler aus), und R_ART.qrsBreit ist gegen die so gemessene Breite gesetzt.
    * ================================================================================== */
   /* DIE SCHWELLE HAENGT AN ZWEI DINGEN, NICHT NUR AN DER R-HOEHE.
    *
@@ -1588,6 +1604,40 @@
      * ================================================================================== */
     var filterAktiv = !!(opts && opts.filterAktiv);
     var pFehlt = !filterAktiv && !!(p && p.messbar === false && endlich(p.anteil) && p.anteil < 40);
+    /*
+     * SAUBER HAENGT SEIT 20.08.2026 AN ZWEI DINGEN, nicht nur an der Guete.
+     *
+     * Die Guete ist Spitze/Grundlinie und ein Median ueber den GANZEN Streifen. Sie ist damit
+     * doppelt blind: Stoerzacken landen in ihrem eigenen Zaehler, und ein Schub von einer
+     * halben Sekunde verschwindet im Median. Gemessen (tools/artefakt-test.js): 100 von 100
+     * Bewegungsartefakten ergaben einen Herzbefund, ueberwiegend "ventrikulaere Tachykardie",
+     * bei einer Guete von 71 - also weit im Bereich "sauber".
+     *
+     * stoerAbschnitte() misst statt dessen die RUHE ZWISCHEN den Zacken, fensterweise, mit dem
+     * ruhigsten Viertel des Streifens als Massstab. Ist mehr als ein Siebtel des Streifens
+     * unruhig, gelten die schweren Rhythmusaussagen nicht mehr.
+     *
+     * DIESE SPERRE KANN NUR SCHWEIGEN LASSEN, nie einen Befund erzeugen - Messwerte, HF, ST,
+     * P/PQ und QT laufen unveraendert weiter. Das ist Absicht: eine Erkennung, die selbst
+     * etwas behauptet, braeuchte einen ganz anderen Nachweis.
+     */
+    /*
+     * NOCH NICHT VERDRAHTET, und das ist eine Entscheidung (20.08.2026).
+     *
+     * stoerAbschnitte() wird ausgefuehrt und liegt in ergebnis.stoerung - aber sauber haengt
+     * weiter allein an der Guete. Der Versuch, den Stoeranteil hier einzuhaengen, faerbte
+     * tools/rhythmus-test.js an 12 von 65 Stellen rot: Bigeminus, ventrikulaere Tachykardie,
+     * AV-Block II und Sinusarrest wurden nicht mehr gemeldet.
+     *
+     * Der Grund ist ein Fehler des Massstabs, nicht der Idee: das Ruhemass enthaelt P- und
+     * T-Wellen. Bei UNREGELMAESSIGEM Rhythmus sind manche Fenster leer und andere voll; das
+     * ruhigste Viertel sind dann die leeren, und jedes Fenster mit einem Schlag gilt als
+     * gestoert. Die Erkennung versagt also genau dort, wo sie nicht versagen darf.
+     *
+     * Bevor sie den Befund sperren darf, muss das Ruhemass die eigene Erregung ausschliessen
+     * (etwa die mittleren 40 % jedes RR-Abstands statt fester Fenster). Bis dahin misst sie
+     * und schweigt - so wie es dieses Projekt haelt.
+     */
     var sauber = guete >= 5;
 
     /* ---------------------------------------------------------------------------------
@@ -1820,6 +1870,101 @@
       begruendung: 'gleichmäßige Abstände' + (hf != null ? ', ' + hf + '/min' : '') + mitP + ohneP };
   }
 
+  /* ==================================================================================
+   * STOERABSCHNITTE - wo ist die Grundlinie NICHT ruhig? (Befund 20.08.2026)
+   *
+   * WARUM ES DAS BRAUCHT, gemessen an je 100 kuenstlichen Stoerspuren auf einem sauberen
+   * Hundestreifen:
+   *      Bewegungsartefakt   100 von 100 ergaben einen Herzbefund (55x ventrikulaere
+   *                          Tachykardie, 30x Bigeminus, 15x Trigeminus) - KEIN einziges
+   *                          Mal wurde geschwiegen. Mittlere Guete dabei: 71.
+   *      Diathermie          100 von 100, durchweg "Salve breiter Kammerkomplexe".
+   *      Grundlinienwandern   74 von 100.
+   *
+   * Die vorhandene Guete kann das bauartbedingt nicht sehen, aus ZWEI Gruenden:
+   *   1. Sie ist Spitze/Grundlinie. Jede Stoerung, die selbst Zacken erzeugt, wird als QRS
+   *      gefunden und landet damit im ZAEHLER. Je heftiger sie stoert, desto sauberer sieht
+   *      der Streifen aus.
+   *   2. Sie ist ein MEDIAN ueber den ganzen Streifen. Ein Schub von einer halben Sekunde
+   *      verschwindet darin - gemessen: 0,5 s breitbandige Stoerung reichten fuer
+   *      "ventrikulaere Tachykardie, HF 353" bei einer Guete von 113.
+   *
+   * DIE ANTWORT AUF BEIDES IST DIESELBE: abschnittsweise messen, und zwar die RUHE zwischen
+   * den Zacken, nicht das Verhaeltnis zu ihnen. Massstab ist der Streifen selbst - das
+   * ruhigste Viertel seiner eigenen Fenster. Damit braucht es keine absolute Mikrovoltgrenze
+   * und keine Kenntnis der Geraeteverstaerkung.
+   *
+   * WAS DIESE FUNKTION AUSDRUECKLICH NICHT TUT: sie deutet nichts. Sie sagt nur, WO die
+   * Grundlinie unruhig ist. Ob dort ein Befund steht, entscheidet weiter die Auswertung.
+   * ================================================================================== */
+  var STOER_ANTEIL_GRENZE = 1/7;  /* mehr als ein Siebtel gestoert -> keine schweren Aussagen mehr */
+  var STOER_FENSTER_MS = 250;   /* die Katalogforderung; kurz genug fuer einen einzelnen Schub */
+  var STOER_FAKTOR = 4;         /* gemessen, siehe tools/artefakt-test.js - nicht gewaehlt */
+  function stoerAbschnitte(werte, hz, zacken, faktor) {
+    if (!werte || !werte.length || !hz) return null;
+    faktor = faktor || STOER_FAKTOR;
+    var breite = Math.max(4, Math.round(hz * STOER_FENSTER_MS / 1000));
+    var qrsNah = Math.round(hz * 0.05);
+    var nahFeld = {}, i, z;
+    for (z = 0; z < (zacken || []).length; z++) {
+      for (i = zacken[z] - qrsNah; i <= zacken[z] + qrsNah; i++) nahFeld[i] = 1;
+    }
+    var fenster = [], ruhen = [];
+    for (var a = 0; a + breite <= werte.length; a += breite) {
+      var w = [];
+      for (i = a; i < a + breite; i++) {
+        if (werte[i] == null || nahFeld[i]) continue;
+        w.push(Math.abs(werte[i]));
+      }
+      /* Ein Fenster, das ganz von QRS bedeckt ist, sagt ueber die Grundlinie nichts. */
+      var r = w.length >= Math.max(3, Math.round(breite * 0.25)) ? median(w) : null;
+      fenster.push({ von: a, bis: a + breite, ruhe: r, gestoert: false });
+      if (r != null) ruhen.push(r);
+    }
+    if (ruhen.length < 4) return null;
+    /*
+     * Massstab ist das ruhigste Viertel - NICHT der Median. Bei einer Stoerung ueber die
+     * halbe Aufzeichnung waere der Median selbst schon gestoert, und die Erkennung wuerde
+     * genau dann blind, wenn es am meisten darauf ankommt.
+     */
+    /* perzentil() nimmt den Anteil als BRUCH (Math.floor(n * p)), nicht in Prozent. Mit 25
+     * kam das Maximum heraus - dagegen kann nichts das Vierfache ueberschreiten, und die
+     * Erkennung meldete an 100 von 100 Stoerspuren nichts. (Selbst hineingetreten, 20.08.2026) */
+    var massstab = perzentil(ruhen, 0.25);
+    /*
+     * OHNE MASSSTAB WIRD NICHTS BEHAUPTET (Befund an mir selbst, 20.08.2026).
+     *
+     * Zuerst stand hier ein Rueckfall: ist der Massstab 0, gilt jedes Fenster mit irgendeinem
+     * Ausschlag als gestoert. Auf einem synthetischen Pruefstreifen ist die Grundlinie aber
+     * rechnerisch still - der Massstab wird 0, und die P- und T-Wellen der EIGENEN Schlaege
+     * machten den Streifen "gestoert". Der Sammellauf faerbte daraufhin die halbe
+     * Rhythmusdeutung rot: Bigeminus, ventrikulaere Tachykardie, AV-Block II und Sinusarrest
+     * wurden allesamt nicht mehr gemeldet.
+     *
+     * Eine vollkommen stille Grundlinie ist kein Beweis fuer eine Stoerung, sondern das
+     * Gegenteil. Ohne Vergleichsmass gibt es keine Aussage.
+     */
+    if (!(massstab > 0)) {
+      return {
+        fenster: fenster, massstab: 0, massstabFehlt: true,
+        anzahlGestoert: 0, anzahl: fenster.length, anteil: 0,
+        sekundenGestoert: 0, sekunden: Math.round(fenster.length * breite / hz * 10) / 10
+      };
+    }
+    var gestoert = 0;
+    for (i = 0; i < fenster.length; i++) {
+      if (fenster[i].ruhe == null) continue;
+      if (fenster[i].ruhe > massstab * faktor) { fenster[i].gestoert = true; gestoert++; }
+    }
+    return {
+      fenster: fenster, massstab: massstab,
+      anzahlGestoert: gestoert, anzahl: fenster.length,
+      anteil: fenster.length ? gestoert / fenster.length : 0,
+      sekundenGestoert: Math.round(gestoert * breite / hz * 10) / 10,
+      sekunden: Math.round(fenster.length * breite / hz * 10) / 10
+    };
+  }
+
   /* ------------------------------------------------------------------ *
    * 6) Hauptfunktion
    * ------------------------------------------------------------------ */
@@ -1886,6 +2031,9 @@
     var spitze = median(spitzen), grund = median(ruhe);
     var guete = grund > 0 ? (spitze / grund) : (spitze > 0 ? 99 : 0);
     ergebnis.guete = Math.round(guete * 10) / 10;
+    /* Fensterweise Stoermessung - sie sieht, was der Median ueber den ganzen Streifen
+     * nicht sehen kann. Nur gemessen, noch nichts entschieden. */
+    ergebnis.stoerung = stoerAbschnitte(werte, hz, zacken);
     if (guete < 3) {
       ergebnis.brauchbar = false;
       ergebnis.warum = 'Signal zu verrauscht für eine Aussage (Ausschlag nur ' + ergebnis.guete +
@@ -1969,6 +2117,7 @@
     ergebnis.alternans = alternans(werte, zacken, rrMs);
     ergebnis.rhythmus = rhythmus(rrMs, qrsM, opts.bandHr || null, {
       guete: ergebnis.guete, art: art, p: ergebnis.p, muster: ergebnis.muster,
+      stoerAnteil: ergebnis.stoerung ? ergebnis.stoerung.anteil : 0,
       pausen: ergebnis.pausen, pausenP: ergebnis.pausenP, wechsel: ergebnis.wechsel,
       filterAktiv: !!opts.filterAktiv
     });
@@ -1989,6 +2138,8 @@
     qrsForm: qrsForm, formVergleich: formVergleich, korrelation: korrelation,
     wechselVerdacht: wechselVerdacht, hrv: hrv, HRV_MIN_RR: HRV_MIN_RR,
     pausen: pausen, ektopieMuster: ektopieMuster, alternans: alternans, pausenP: pausenP,
+    stoerAbschnitte: stoerAbschnitte, STOER_FAKTOR: STOER_FAKTOR, STOER_FENSTER_MS: STOER_FENSTER_MS,
+    STOER_ANTEIL_GRENZE: STOER_ANTEIL_GRENZE,
     P_ART: P_ART, T_ART: T_ART, R_ART: R_ART,
     MIN_SEKUNDEN: MIN_SEKUNDEN, MIN_SCHLAEGE: MIN_SCHLAEGE,
     P_MIN_HZ: P_MIN_HZ, P_MIN_SCHLAEGE: P_MIN_SCHLAEGE, P_ANTEIL: P_ANTEIL,
