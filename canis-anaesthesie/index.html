@@ -89,6 +89,9 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
 .ew-keine{font-size:13px;line-height:1.55;color:var(--muted);margin-top:9px}
 .ew-merk{font-size:12.5px;line-height:1.55;margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
 .ew-fuss{font-size:11.5px;color:var(--muted);margin-top:9px;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+/* Der Alterssatz ist eine Einschraenkung, keine Fussnote — er wird deshalb hervorgehoben. */
+.ew-alter{color:#ffd7a8}
+html[data-theme="light"] .ew-alter{color:#8a4a00}
 .ew-leer{border:1px dashed var(--line);border-radius:11px;padding:11px 13px;font-size:12.5px;line-height:1.55;color:var(--muted);margin-bottom:14px}
 /* Der Hochdosis-Schalter fuer Adrenalin. Er sieht im eingeschalteten Zustand ALARMIEREND aus,
  * und das ist Absicht: er verzehnfacht eine Notfalldosis, und RECOVER 2024 empfiehlt ihn nicht. */
@@ -797,6 +800,13 @@ body.mon-voll #dmVoll{background:rgba(34,211,238,.22);border-color:#22d3ee}
  * Werte in EINE Reihe statt in zwei — und die eingesparte Reihe ist Hoehe fuer die Regler. */
 .ck-links .mon-tiles{flex:0 0 auto;margin-top:0;display:grid;gap:5px;
   grid-template-columns:repeat(auto-fit,minmax(86px,1fr));align-content:start}
+/* EINE KACHEL DARF ZWEI SPALTEN NEHMEN, WENN IHRE ZAHL SIE BRAUCHT (21.08.2026).
+ * Der Blutdruck traegt zwei dreistellige Zahlen und einen Schraegstrich — in 86 px passt das
+ * nicht, und Abschneiden ist bei einem Messwert keine Loesung. renderMonValues() setzt die
+ * Klasse anhand der wirklichen Ziffernzahl, nicht pauschal: bei 80/40 bleibt die Kachel
+ * schmal und die Reihe voll. */
+.mon-tiles .mon-tile.mt-breit{grid-column:span 2}
+@media(max-width:380px){ .mon-tiles .mon-tile.mt-breit{grid-column:span 1} }
 /* !important, und zwar mit Absicht: das Geraetebild ist in BEIDEN Farbschemata dunkel — ein
  * Patientenmonitor ist dunkel, und ein heller waere im OP nicht lesbar. Im hellen Schema kam
  * die Kachel sonst ganz ohne Hintergrund heraus (gemessen: backgroundColor transparent), und
@@ -856,14 +866,20 @@ html[data-theme="light"] .ck-schalter select{background:#fff;color:#15202e}
  * die Bahn zu hoch, das Flex-Layout stauchte daraufhin die Kopfzeile — und deren Buchstaben
  * ragten unten wieder heraus, mitten in die Zahl. Das Feld ist jetzt genau so hoch wie sein
  * Text; display:block, damit es nicht zusaetzlich auf der Grundlinie verrutscht. */
-.mt-in,.ml-in{width:100%;border:0;background:transparent;color:inherit;font:inherit;padding:0;outline:none;
+/* width:100% ist weg — sie zwang jede Zahl in die Kachelbreite und schnitt lange Werte ab.
+ * Die Breite setzt wertFeld() je nach Ziffernzahl; max-width haelt sie in der Kachel.
+ * cursor:text und das Auswaehlen beim Antippen machen die Zahl zum Eingabefeld, das sie ist —
+ * das ist der "einfachere Weg mit Tastatur und Touch", der die Schrittknoepfe ersetzt. */
+.mt-in,.ml-in{max-width:100%;border:0;background:transparent;color:inherit;font:inherit;padding:0;outline:none;cursor:text;
   display:block;line-height:1;box-sizing:border-box;height:1.15em;
   -moz-appearance:textfield;border-bottom:1px dashed rgba(120,150,180,.45)}
 .mt-in::-webkit-outer-spin-button,.mt-in::-webkit-inner-spin-button,
 .ml-in::-webkit-outer-spin-button,.ml-in::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .mt-in:focus,.ml-in:focus{border-bottom-color:var(--cyan)}
-.mt-paar{display:flex;align-items:baseline;gap:2px}
-.mt-paar .mt-in{width:44%;display:inline-block}
+/* Die Breite kommt jetzt aus wertFeld()/wertFeldPaar() in ch, passend zur Ziffernzahl.
+ * Hier stand width:44% je Zahl — bei 200/140 waren das 32 px fuer eine 40 px breite Zahl. */
+.mt-paar{display:flex;align-items:baseline;gap:1px;justify-content:flex-start}
+.mt-paar .mt-in{display:inline-block;flex:0 0 auto}
 .mt-paar span{color:var(--muted);font-size:.6em}
 /* Zweitwert in der Zusatzzeile: schmales Feld, damit zwei davon nebeneinander passen. */
 .ml-zwin{width:38px;display:inline-block;height:auto;vertical-align:baseline;text-align:left}
@@ -983,35 +999,9 @@ html[data-theme="light"] .ck-schalter .mon-mode{background:rgba(255,255,255,.7);
  * sich baulich nicht mehr ueberlagern. min-width:0 + Kuerzung, damit auch eine lange
  * Einheit die Zeile nur verkuerzt statt sie zu sprengen. */
 .mon-tile{position:relative}
-/* ===== Schrittknoepfe an der Wertekachel (21.08.2026) =====
- * 34 px, weil das die Groesse ist, die dieses Projekt bei den Reglern des Narkosegeraets
- * schon einmal gemessen hat: darunter trifft ein Finger im Handschuh nicht sicher (1.4.5).
- * Sie sitzen im Fluss UNTER dem Wert, nicht absolut in der Ecke — position:absolute
- * reserviert keinen Platz, und genau daran lag im Cockpit schon einmal die Einheit auf der
- * Zahl (Befund 1.4.6, "mm¹²⁰Hg").
- * touch-action:manipulation nimmt die 300-ms-Wartezeit auf den Doppeltipp: ohne sie fuehlt
- * sich jeder Schritt traege an, und wer zweimal tippt, bekommt einen Zoom statt zwei Schritte. */
-/* In der Kurvenbahn ist kein Platz fuer eine zweite Zeile (Bahn ~66 px). Die beiden Knoepfe
- * stehen deshalb NEBEN der Zahl, uebereinander, und teilen sich ihre Hoehe. */
-.ml-step{display:inline-flex;flex-direction:column;gap:2px;margin-left:7px;flex:0 0 auto;vertical-align:middle}
-.ml-step button{width:30px;min-height:19px;border-radius:6px;border:1px solid rgba(120,150,180,.35);
-  background:rgba(255,255,255,.07);color:var(--text);font:700 13px var(--font);cursor:pointer;
-  touch-action:manipulation;user-select:none;padding:0;line-height:1}
-.ml-step button:hover{border-color:var(--lc,var(--cyan));background:rgba(255,255,255,.14)}
-.ml-step button:active{background:var(--lc,var(--cyan));color:#05080d}
-/* Die Bahn ist eine Flex-Zeile; ohne min-width:0 kann die Zahl nicht schrumpfen und die
- * Knoepfe schoeben sie aus der Bahn — dieselbe min-width:auto-Falle wie ueberall sonst. */
-.mon-lane .ml-v{min-width:0}
-.mt-step{display:flex;gap:5px;margin-top:6px}
-.mt-step button{flex:1 1 0;min-height:34px;border-radius:8px;border:1px solid rgba(120,150,180,.35);
-  background:rgba(255,255,255,.06);color:var(--text);font:700 16px var(--font);cursor:pointer;
-  touch-action:manipulation;user-select:none;padding:0}
-.mt-step button:hover{border-color:var(--mtc,var(--cyan));background:rgba(255,255,255,.12)}
-.mt-step button:active{background:var(--mtc,var(--cyan));color:#05080d}
-html[data-theme="light"] .mt-step button{background:rgba(255,255,255,.10);color:#dfe9f5}
-/* Auf sehr schmalen Schirmen sind die Kacheln zweispaltig — dort waeren zwei Knoepfe je
- * Kachel zu viel Hoehe. Sie bleiben, werden aber flacher. */
-@media(max-width:560px){ .mt-step button{min-height:30px;font-size:15px} }
+/* Die Schrittknoepfe der Kacheln und der Kurvenbahnen sind am 21.08.2026 wieder entfernt
+ * worden: sie kosteten Breite und Hoehe in genau der Kachel, in der die Zahl stehen muss.
+ * Begruendung bei renderMonValues(). */
 .mon-tile .mt-ab{display:flex;align-items:baseline;gap:5px;min-width:0}
 .mon-tile .mt-k{flex:0 0 auto;font-weight:700}
 .mon-tile .mt-e{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1338,7 +1328,13 @@ html[data-theme="light"] .devr .dv.dv-ab{color:#a01414 !important}   /* 4,04 -> 
 
 <div class="patient"><div class="patient-in">
   <div class="sp-chips" id="spChips"></div>
-  <div class="pfield"><label>Gewicht (kg)</label><input class="wt" id="wt" type="number" inputmode="decimal" min="0.05" step="0.1" value="10"></div>
+  <!-- KEIN value="10" MEHR (21.08.2026). Das Feld zeigte 10, waehrend die Anwendung ueberall
+       "Gewicht fehlt" schrieb und keine Milliliterzahl ausrechnete: state.wtGesetzt wird erst
+       durch eine EINGABE wahr. Auf dem Bildschirm standen damit zwei sich widersprechende
+       Aussagen nebeneinander, und der Tierarzt hielt das Gewicht fuer eingetragen. state.wt
+       bleibt intern bei 10, damit Regler und Kurven etwas anzuzeigen haben — sichtbar ist die
+       Zahl aber erst, wenn sie jemand eingetragen hat. -->
+  <div class="pfield"><label>Gewicht (kg)</label><input class="wt" id="wt" type="number" inputmode="decimal" min="0.05" step="0.1" placeholder="kg?" aria-label="Gewicht in Kilogramm"></div>
   <div class="pfield"><label>Alter</label><select id="age">
     <option value="adult">adult</option><option value="pediatric">Jungtier / neonatal</option><option value="senior">geriatrisch</option></select></div>
   <div class="pfield" id="anModeWrap"><label>Narkose-Typ</label><select id="anMode" data-vp-tip="Bestimmt die Logik: Gasnarkose (Iso), Injektion als Einleitung mit anschließendem Gas, oder NUR Injektion ohne Gas (Iso aus → reine Spontanatmung).">
@@ -2682,11 +2678,26 @@ function renderMonValues(){
      * Knoepfe — man wuerde sonst eine Messung von Hand verstellen und haette danach eine Zahl,
      * die weder gemessen noch eingetragen ist.
      */
-    var stepper = istEingabe(p)
-      ? '<div class="mt-step" aria-hidden="true"><button type="button" class="mt-mi" data-step="-1" data-p="'+p.id+'" tabindex="-1">−</button>'+
-        '<button type="button" class="mt-pl" data-step="1" data-p="'+p.id+'" tabindex="-1">+</button></div>'
-      : '';
-    return '<div class="mon-tile'+(isAl?' alarm':'')+abg+(stepper?' mt-hat-step':'')+'" data-p="'+p.id+'"'+erklaerAttr(p.id)+' style="--mtc:'+(isAl?'#ff7a7a':p.color)+'"><div class="mt-ab"><span class="mt-k">'+ab+'</span><span class="mt-e">'+p.unit+'</span>'+lim+'</div><div class="mt-v">'+disp+'</div><div class="mt-u">'+nm+srcTag+'</div>'+stepper+'</div>';
+    /* DIE SCHRITTKNOEPFE SIND WIEDER WEG (21.08.2026, auf Ansage aus der Praxis).
+     * Sie kosteten Breite und Hoehe in genau der Kachel, in der die ZAHL stehen muss — bei
+     * einem Blutdruck von 200/140 war die Haelfte jeder Zahl abgeschnitten. Gewuenscht war
+     * nicht ein zweiter Bedienweg, sondern ein besserer erster: antippen, tippen, fertig.
+     * Was BLEIBT: die Tastatur (Pfeile schritten, Eingabetaste springt weiter) und das
+     * Auswaehlen beim Antippen — beides kostet keinen Platz. */
+    var stepper = '';
+    /*
+     * BREITE KACHEL FUER BREITE ZAHLEN (21.08.2026).
+     *
+     * Gezaehlt wird, was WIRKLICH in der Kachel steht — nicht pauschal je Kanal. Bei einem
+     * Blutdruck 80/40 bleibt die Kachel schmal und die Reihe voll; bei 200/140 nimmt sie zwei
+     * Spalten, statt die Zahl abzuschneiden. Schwelle 7 Zeichen: "200/140" sind genau 7,
+     * "80/40" sind 5.
+     */
+    var zeichen = (p.id==='nibp')
+      ? (String(state.istVals.sys||'').length + String(state.istVals.dia||'').length + 1)
+      : String((state.istVals[p.id]!=null?state.istVals[p.id]:'')).length;
+    var breit = (zeichen>=7) ? ' mt-breit' : '';
+    return '<div class="mon-tile'+(isAl?' alarm':'')+abg+breit+'" data-p="'+p.id+'"'+erklaerAttr(p.id)+' style="--mtc:'+(isAl?'#ff7a7a':p.color)+'"><div class="mt-ab"><span class="mt-k">'+ab+'</span><span class="mt-e">'+p.unit+'</span>'+lim+'</div><div class="mt-v">'+disp+'</div><div class="mt-u">'+nm+srcTag+'</div>'+stepper+'</div>';
   }).join('');
   $$('#monTiles .mon-tile').forEach(function(t){ t.onclick=function(){ showMonParam(t.dataset.p); }; });
   wertFelderVerdrahten(); fokusZurueck(fok); renderRhySel();
@@ -2828,6 +2839,11 @@ function renderLaneWerte(r,al){
     return '<div class="mon-lane'+(alarm?' alarm':'')+'" data-p="'+haupt.id+'" style="--lc:'+(haupt.color||kd.color||'#9fb0c4')+';--kc:'+(kd.color||'#9fb0c4')+'" title="'+escH(wertErklaerung(haupt.id)||(kd.name+' · '+haupt.name))+' – klicken für Normbereich'+'" data-vp-tip="'+escH(wertErklaerung(haupt.id)||'')+'">'+
       (zeigeKopf?('<div class="ml-kopf"><b>'+haupt.abbr+'</b><span>'+haupt.unit+'</span>'+lim+'</div>'):'')+
       /*
+       * HIER STANDEN AUCH SCHRITTKNOEPFE — sie sind mit denen der Kacheln zusammen wieder
+       * entfernt worden (Begruendung dort). Die Bahn ist der engste Platz der ganzen
+       * Oberflaeche; jeder Punkt gehoert dort der Zahl.
+       *
+       * ALT:
        * DIE VIER WICHTIGSTEN WERTE LIEGEN IN DER BAHN, NICHT IN DER KACHEL (21.08.2026).
        *
        * HF, SpO2, EtCO2 und Spitzendruck stehen seit 1.4.2 an ihrer Kurve — genau die vier,
@@ -2838,10 +2854,7 @@ function renderLaneWerte(r,al){
        * Zeile passt dort nicht. 30 px breit und so hoch wie die Zahl.
        */
       '<div class="ml-v">'+(zeigeKopf?'':('<u>'+haupt.abbr+'</u> '))+wert+
-        (istEingabe(haupt)&&haupt.id!=='nibp'
-          ? '<span class="ml-step" aria-hidden="true"><button type="button" data-step="1" data-p="'+haupt.id+'" tabindex="-1">+</button>'+
-            '<button type="button" data-step="-1" data-p="'+haupt.id+'" tabindex="-1">−</button></span>'
-          : '')+'</div>'+
+        '</div>'+
       ((zw&&zeigeZusatz)?('<div class="ml-zw">'+zw+'</div>'):'')+'</div>';
   }).join('');
   $$('#monLanes .mon-lane').forEach(function(l){ if(l.dataset.p) l.onclick=function(){ showMonParam(l.dataset.p); }; });
@@ -2861,17 +2874,33 @@ function renderLaneWerte(r,al){
  * zusaetzlich dorthin gespiegelt, damit beide Seiten dieselbe Zahl sehen.
  * ===================================================================================== */
 function istEingabe(p){ return state.monMode==='ist' && !liveDaten() && p.eingabe; }
+/*
+ * DAS FELD IST SO BREIT WIE SEINE ZAHL (21.08.2026, aus der Praxis gemeldet).
+ *
+ * Die Breite stand fest: 100 % der Kachel, beim Blutdruckpaar 44 % je Zahl. Gemessen bei
+ * 200/140 in einer 95-px-Kachel: jedes Feld 32 px breit, gebraucht 40 — die HAELFTE JEDER
+ * ZAHL war abgeschnitten. Ein Blutdruck, den man nicht lesen kann, ist schlimmer als keiner.
+ *
+ * ch ist die Breite der Ziffer 0 in der laufenden Schrift; die Zahlen stehen ohnehin in
+ * Tabellenziffern (font-variant-numeric:tabular-nums), also passt das genau. Mindestens 2,2
+ * (sonst huepft die Kachel bei jedem Tastendruck), plus 0,4 Luft fuer die Schreibmarke.
+ */
+function feldBreite(v){
+  var t=String(v==null?'':v);
+  return Math.max(2.2, t.length+0.4);
+}
 function wertFeld(p, wert, klasse){
   var st=(p.dez>=2?0.01:(p.dez===1?0.1:1));
   var v=(wert==null||wert===''||isNaN(wert))?'':wert;
-  return '<input class="'+klasse+'" type="number" inputmode="decimal" step="'+st+'" data-p="'+p.id+'" value="'+v+'" aria-label="'+p.abbr+' '+p.unit+'">';
+  return '<input class="'+klasse+'" type="number" inputmode="decimal" step="'+st+'" data-p="'+p.id+'" value="'+v+'" style="width:'+feldBreite(v)+'ch" aria-label="'+p.abbr+' '+p.unit+'">';
 }
 /* Blutdruck braucht ZWEI Zahlen — der Mitteldruck folgt daraus und wird nicht getippt. */
 function wertFeldPaar(iv){
+  var sy=(iv.sys||''), di=(iv.dia||'');
   return '<span class="mt-paar">'+
-    '<input class="mt-in" type="number" inputmode="decimal" step="1" data-p="sys" value="'+(iv.sys||'')+'" aria-label="systolisch">'+
+    '<input class="mt-in" type="number" inputmode="decimal" step="1" data-p="sys" value="'+sy+'" style="width:'+feldBreite(sy)+'ch" aria-label="systolisch">'+
     '<span>/</span>'+
-    '<input class="mt-in" type="number" inputmode="decimal" step="1" data-p="dia" value="'+(iv.dia||'')+'" aria-label="diastolisch">'+
+    '<input class="mt-in" type="number" inputmode="decimal" step="1" data-p="dia" value="'+di+'" style="width:'+feldBreite(di)+'ch" aria-label="diastolisch">'+
     '</span>';
 }
 /*
@@ -2926,18 +2955,31 @@ function wertFelderVerdrahten(){
       }
     });
   });
-  /* Die Schrittknoepfe haengen an der KACHEL, nicht am Feld: die Kachel wird bei jedem Takt
-   * neu geschrieben, ein Zuhoerer am Knopf waere danach weg. Ereignis-Delegation statt
-   * Einzelverdrahtung — dieselbe Lehre wie beim Regler des Narkosegeraets (1.4.6). */
+  /*
+   * DER TOUCH-WEG: DIE ZAHL ANTIPPEN GENUEGT (21.08.2026).
+   *
+   * Hier stand eine Ereignis-Delegation fuer die Schrittknoepfe. Die sind wieder weg (sie
+   * kosteten die Breite, die der Zahl fehlte). Was an ihre Stelle tritt, kostet keinen Platz:
+   *
+   *   - Antippen waehlt den ganzen Wert aus. Ohne das landet die Schreibmarke irgendwo in der
+   *     Zahl, und aus 40 wird beim Tippen von 120 schnell 41200. Mit Auswahl ersetzt der erste
+   *     Anschlag die alte Zahl — so, wie man es an jedem Monitor erwartet.
+   *   - inputmode="decimal" holt am Telefon das Zahlenfeld statt der Schreibtastatur (steht
+   *     schon an jedem Feld).
+   *   - Die Tastatur bleibt: Pfeile schritten ueber wertSchritt(), die Eingabetaste springt
+   *     ins naechste Feld (beides eine Zeile weiter oben).
+   *
+   * setTimeout(0) beim Auswaehlen: manche Browser setzen die Schreibmarke NACH dem
+   * focus-Ereignis und machen ein select() darin wirkungslos.
+   */
   ['#monTiles','#monLanes'].forEach(function(sel){
     var wirt=$(sel);
-    if(!wirt || wirt.__stepHooked) return;
-    wirt.__stepHooked=1;
-    wirt.addEventListener('click',function(e){
-      var b=e.target.closest && e.target.closest('[data-step]');
-      if(!b) return;
-      e.stopPropagation();         /* sonst oeffnet der Klick die Werterklaerung darunter */
-      wertSchritt(b.dataset.p, parseInt(b.dataset.step,10)*(e.shiftKey?10:1));
+    if(!wirt || wirt.__tippHooked) return;
+    wirt.__tippHooked=1;
+    wirt.addEventListener('focusin',function(e){
+      var f=e.target;
+      if(!f||!f.classList||!(f.classList.contains('mt-in')||f.classList.contains('ml-in'))) return;
+      setTimeout(function(){ try{ f.select(); }catch(x){} },0);
     });
   });
 }
@@ -3543,10 +3585,47 @@ function erstwahlRef(id, incId){
   if(eingegrenzt) return { id:id, low:d.low, high:d.high, unit:d.unit, route:d.route||spd.route, note:note };
   return { id:id, low:spd.low, high:spd.high, unit:spd.unit, route:spd.route, conc:spd.conc, note:note };
 }
+/*
+ * erstNachKoennen(e, incId) — DIE ERSTE REIHE MUSS FUER DIESE TIERART RECHENBAR SEIN.
+ *
+ * GEMESSEN 21.08.2026 ueber alle Zwischenfaelle x alle zwoelf Tierarten: an zwei Stellen stand
+ * an erster Stelle ein Mittel ohne Artdosis, waehrend weiter unten eines mit Artdosis wartete
+ * (Kaninchen und Frettchen bei Tachykardie: vorn Fentanyl, das fuer beide keine Dosis fuehrt,
+ * dahinter Methadon bzw. Lidocain, die eine haben). Die Karte sagte dann korrekt "keine
+ * Standard-Dosis hinterlegt" — nur eben als ERSTE Zeile des roten SOFORT-Kastens, und der
+ * ueberspringt Mittel ohne Artdosis ganz, zeigte also "Keine Arznei an erster Stelle",
+ * obwohl es eine gab. Im Notfall liest niemand weiter nach unten.
+ *
+ * UMGESTELLT WIRD NUR DIE REIHENFOLGE, NIE EINE ZAHL. Die Rangfolge innerhalb der rechenbaren
+ * Mittel bleibt genau die des Zwischenfalls — die traegt die fachliche Aussage. Die Mittel ohne
+ * Artdosis verschwinden nicht, sie ruecken ans Ende und behalten ihre Begruendung.
+ *
+ * NICHT ANGETASTET wird eine Lage, die bewusst mit leerer erster Reihe kommt (Hypoxaemie:
+ * dort IST die Massnahme die Handlung, nicht die Arznei) — sonst zoege diese Funktion ein
+ * Mittel nach vorn, das der Zwischenfall absichtlich nicht an erster Stelle fuehrt.
+ */
+function erstNachKoennen(e, incId){
+  if(!e || !(e.reihe||[]).length) return e;
+  var tot=function(id){ return !!erstwahlRef(id, incId).ohneArtdosis; };
+  if(!(e.reihe||[]).some(tot)) return e;
+  var alle=(e.reihe||[]).concat(e.nach||[]);
+  var geht=alle.filter(function(id){ return !tot(id); });
+  if(!geht.length) return e;
+  var nicht=alle.filter(tot);
+  var neu={}; for(var k in e){ if(Object.prototype.hasOwnProperty.call(e,k)) neu[k]=e[k]; }
+  neu.reihe=geht.slice(0, (e.reihe||[]).length);
+  neu.nach=geht.slice((e.reihe||[]).length).concat(nicht);
+  /* Warum die Reihe anders aussieht als im Zwischenfall-Reiter, muss dastehen — sonst wirkt es
+   * wie ein Widerspruch zwischen zwei Ansichten derselben Anwendung. */
+  var nm=nicht.map(function(id){ var d=drugById(id); return (d&&d.name)||id; }).join(', ');
+  neu.merk=[(e.merk||''), 'Für '+sp().name+' nach vorn gestellt, was eine hinterlegte Artdosis hat; '+
+            nm+' führt für diese Tierart keine und steht deshalb hinten.'].filter(function(x){return x;}).join(' ');
+  return neu;
+}
 function erstwahlHtml(){
   var q=state.erstwahl||erstwahlAusZwischenfall();
   if(!q) return '<div class="ew-leer">⚡ <b>Erstwahl</b> — sobald die Station am Patienten ein Problem erkennt (oder du links unter „Notfall" einen Zwischenfall wählst), stehen hier die Mittel der ersten Wahl mit der Menge für '+gewichtTxt()+'.</div>';
-  var e=q.erst||{}, lage=q.lage||{}, hin=e.hinweis||{}, sp2=e.sperre||{};
+  var e=erstNachKoennen(q.erst||{}, q.inc), lage=q.lage||{}, hin=e.hinweis||{}, sp2=e.sperre||{};
   var h='<div class="ew-box" style="--ewc:'+(q.farbe||'var(--red)')+'">';
   h+='<div class="ew-h"><span class="ew-blitz">⚡</span><b>Erstwahl jetzt</b>'+
      '<span class="ew-tag">'+escH(q.tag||'')+'</span>'+
@@ -3631,7 +3710,25 @@ function erstwahlHtml(){
   if(teile.length) h+='<div class="ew-liste">'+teile.join('')+'</div>';
   else h+='<div class="ew-keine">Für diese Lage steht KEINE Arznei an erster Stelle — die Schritte oben sind die Maßnahme.</div>';
   if(e.merk) h+='<div class="ew-merk">ℹ️ '+e.merk+'</div>';
-  h+='<div class="ew-fuss">Mengen für <b>'+sp().name+' '+gewichtTxt()+'</b>, gerechnet aus derselben Arzneikarte wie das Zwischenfall-Protokoll. '+
+  /*
+   * DIE FUSSZEILE SAGT, WORAUF DIE MENGE GERECHNET IST — UND WORAUF NICHT (21.08.2026).
+   *
+   * Tierart, Gewicht und Rasse gehen in die Zahl ein: die Artdosis kommt aus der Arzneikarte,
+   * das Gewicht aus calc(), und breedWarnHtml() haengt die Rassewarnung an jede Dosiskarte.
+   * DAS ALTER GEHT NICHT EIN. Es verstellt Alarmgrenzen und Geraetesollwerte (Jungtier: HF-Band
+   * x1,25, Ppeak <= 12; geriatrisch: MAP +5), aber es gibt im ganzen Datenbestand keine
+   * altersabhaengige DOSIS — und einen Faktor zu erfinden waere genau die falsche Zahl, vor der
+   * die erste Projektregel warnt.
+   *
+   * Also steht es da. Ein Tierarzt, der bei einem Jungtier oder einem geriatrischen Patienten
+   * ohnehin vorsichtiger dosiert, muss wissen, ob die Station das schon getan hat oder nicht.
+   * Zu schweigen hiesse, ihn im Unklaren zu lassen, ob die Zahl bereits angepasst ist.
+   */
+  var alterTxt={adult:'adult', pediatric:'Jungtier/neonatal', senior:'geriatrisch'}[state.age]||state.age;
+  var alterHinweis=(state.age==='adult')
+    ? ''
+    : ' <b class="ew-alter">Alter ' + alterTxt + ': die Menge ist NICHT altersangepasst</b> — die Station kennt dafür keine belegte Dosisregel. Alarmgrenzen und Gerätesollwerte sind angepasst.';
+  h+='<div class="ew-fuss">Mengen für <b>'+sp().name+' '+gewichtTxt()+'</b>'+(state.breed?' · Rassewarnungen an der jeweiligen Karte':'')+', gerechnet aus derselben Arzneikarte wie das Zwischenfall-Protokoll.'+alterHinweis+' '+
      '<button class="chip" id="ewProto" type="button">→ Volles Protokoll dieses Zwischenfalls</button></div>';
   h+='</div>';
   return h;
@@ -4126,7 +4223,7 @@ function renderAssess(){
    */
   var qE = state.erstwahl;
   if(qE && qE.erst){
-    var eE=qE.erst, hinE=eE.hinweis||{}, spE=eE.sperre||{};
+    var eE=erstNachKoennen(qE.erst, qE.inc), hinE=eE.hinweis||{}, spE=eE.sperre||{};
     var mittel=[];
     (eE.reihe||[]).forEach(function(id){
       if(spE[id] || arzneiSperre(id, qE.lage||{})) return;
