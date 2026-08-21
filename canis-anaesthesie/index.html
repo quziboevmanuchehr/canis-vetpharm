@@ -1595,10 +1595,6 @@ html[data-theme="light"] .devr .dv.dv-ab{color:#a01414 !important}   /* 4,04 -> 
      das Plethysmogramm mit Zeiten in Millisekunden. Muss VOR dem Monitorblock stehen - er
      zeichnet daraus. Ohne diese Datei zeichnet das Geraet KEINE Kurve statt einer erfundenen. -->
 <script src="../shared/ekg-modell.js?v=1"></script>
-<!-- Das Herzmodell MUSS nach ekg-modell.js kommen: es holt sich Zeiten und QRS-Anteile von
-     dort, damit Bild und Kurve nicht auseinanderlaufen koennen (tools/herz3d-test.js Block 8
-     erzwingt beides - die Einbindung und die Reihenfolge). -->
-<script src="../shared/herz3d.js?v=1"></script>
 <!-- Wissensbasis: 203 belegte Befundregeln aus der Fachrecherche (Nachschlagewerk +
      Regelgrundlage). Reine Daten, keine Diagnosemaschine. -->
 <script src="../shared/ekg-befunde.js?v=1"></script>
@@ -2889,18 +2885,60 @@ function feldBreite(v){
   var t=String(v==null?'':v);
   return Math.max(2.2, t.length+0.4);
 }
+/*
+ * WARUM DIESE FELDER NICHT type="number" SIND (berichtigt 21.08.2026, aus der Praxis gemeldet).
+ *
+ * DER BEFUND: "wenn ich 87 eingeben moechte nimmt erstmal 7 und danach 8". Nachgestellt im
+ * Browser, Ziffern EINZELN mit Pause getippt (schnell hintereinander faellt es nicht auf):
+ *
+ *     getippt 8 ... 7   ->   im Feld steht 7
+ *
+ * URSACHE, ZWEI SCHICHTEN TIEF:
+ * renderMonValues() baut #monTiles bei JEDEM Tastendruck ueber innerHTML neu auf. Dagegen
+ * gibt es seit jeher fokusMerken()/fokusZurueck() - und deren Kommentar behauptet, die
+ * Schreibmarke werde gemerkt und zurueckgesetzt. Sie wurde es NIE: bei type="number" gibt
+ * selectionStart laut HTML-Norm null zurueck (gemessen: "ok:null", es wirft nicht einmal),
+ * und setSelectionRange wirft. Die Absicherung war also von Anfang an wirkungslos, nur
+ * unsichtbar - solange die Schreibmarke zufaellig am Ende landete, fiel nichts auf.
+ *
+ * Sichtbar wurde es erst durch das Antippen-waehlt-aus vom 21.08.2026: fokusZurueck() ruft
+ * focus() auf dem NEUEN Knoten, das loest focusin aus, und das select() darin markierte den
+ * ganzen Wert - der naechste Anschlag ersetzte ihn. Aus 8 wurde 7.
+ *
+ * type="text" mit inputmode="decimal" behebt beides: die Schreibmarke ist lesbar und
+ * setzbar, und das Zahlenfeld erscheint am Telefon und am Touchschirm genauso. Was der
+ * Browser dabei nicht mehr abfaengt - Buchstaben - faengt nurZahl() ab. Als Zugabe wird das
+ * Komma der deutschen Zehnertastatur angenommen; type="number" hat es verworfen.
+ *
+ * step steht nicht mehr dran: es wirkt an einem Textfeld nicht, und geschritten wird ohnehin
+ * ueber wertSchritt() (Pfeiltasten), damit Knopf und Tastatur dieselbe Stufe nehmen.
+ */
 function wertFeld(p, wert, klasse){
-  var st=(p.dez>=2?0.01:(p.dez===1?0.1:1));
   var v=(wert==null||wert===''||isNaN(wert))?'':wert;
-  return '<input class="'+klasse+'" type="number" inputmode="decimal" step="'+st+'" data-p="'+p.id+'" value="'+v+'" style="width:'+feldBreite(v)+'ch" aria-label="'+p.abbr+' '+p.unit+'">';
+  return '<input class="'+klasse+'" type="text" inputmode="decimal" data-p="'+p.id+'" value="'+v+'" style="width:'+feldBreite(v)+'ch" aria-label="'+p.abbr+' '+p.unit+'">';
+}
+/*
+ * nurZahl() - was der Browser am Zahlenfeld erledigt hat, erledigt jetzt diese Zeile.
+ * Ohne Regex geschrieben, damit kein Sonderzeichen ueber eine Zwischenschicht verlorengeht;
+ * das ist in diesem Baum schon zweimal passiert.
+ */
+function nurZahl(roh){
+  var s=String(roh==null?'':roh), aus='', punkt=false, c, i;
+  for(i=0;i<s.length;i++){
+    c=s.charAt(i);
+    if(c===',') c='.';
+    if(c>='0'&&c<='9') aus+=c;
+    else if(c==='.'&&!punkt){ aus+=c; punkt=true; }
+  }
+  return aus;
 }
 /* Blutdruck braucht ZWEI Zahlen — der Mitteldruck folgt daraus und wird nicht getippt. */
 function wertFeldPaar(iv){
   var sy=(iv.sys||''), di=(iv.dia||'');
   return '<span class="mt-paar">'+
-    '<input class="mt-in" type="number" inputmode="decimal" step="1" data-p="sys" value="'+sy+'" style="width:'+feldBreite(sy)+'ch" aria-label="systolisch">'+
+    '<input class="mt-in" type="text" inputmode="decimal" data-p="sys" value="'+sy+'" style="width:'+feldBreite(sy)+'ch" aria-label="systolisch">'+
     '<span>/</span>'+
-    '<input class="mt-in" type="number" inputmode="decimal" step="1" data-p="dia" value="'+di+'" style="width:'+feldBreite(di)+'ch" aria-label="diastolisch">'+
+    '<input class="mt-in" type="text" inputmode="decimal" data-p="dia" value="'+di+'" style="width:'+feldBreite(di)+'ch" aria-label="diastolisch">'+
     '</span>';
 }
 /*
@@ -2912,18 +2950,39 @@ function fokusMerken(){
   if(!a||!a.classList||!(a.classList.contains('mt-in')||a.classList.contains('ml-in'))) return null;
   return { p:a.dataset.p, k:a.classList.contains('ml-in')?'ml-in':'mt-in', pos:(function(){ try{ return a.selectionStart; }catch(e){ return null; } })() };
 }
+/*
+ * fokusStelltZurueck unterscheidet den ECHTEN Fokus (Tierarzt tippt das Feld an) vom
+ * WIEDERHERGESTELLTEN (die Anwendung setzt ihn nach dem Neuaufbau zurueck). Nur der erste
+ * darf den Wert auswaehlen. Ohne diese Unterscheidung markiert jeder Tastendruck den
+ * bisher getippten Wert, und der naechste ersetzt ihn - genau der Befund aus der Praxis.
+ * Die Fahne wird SYNCHRON gelesen: focusin feuert waehrend n.focus(), noch vor der Zeile,
+ * die sie zuruecknimmt.
+ */
+var fokusStelltZurueck=false;
 function fokusZurueck(f){
   if(!f) return;
   var n=document.querySelector('#monTiles .'+f.k+'[data-p="'+f.p+'"]')||document.querySelector('#monLanes .'+f.k+'[data-p="'+f.p+'"]')
       ||document.querySelector('.'+f.k+'[data-p="'+f.p+'"]');
   if(!n) return;
-  n.focus(); if(f.pos!=null){ try{ n.setSelectionRange(f.pos,f.pos); }catch(e){} }
+  fokusStelltZurueck=true;
+  try{
+    n.focus();
+    /* Jetzt lesbar, weil die Felder Textfelder sind. Ohne Position: ans Ende, nie an den
+     * Anfang - sonst wandert jede weitere Ziffer VOR die bisherigen. */
+    var ziel=(f.pos!=null)?f.pos:String(n.value||'').length;
+    try{ n.setSelectionRange(ziel,ziel); }catch(e){}
+  } finally { fokusStelltZurueck=false; }
 }
 function wertFelderVerdrahten(){
   $$('#monTiles .mt-in, #monLanes .ml-in').forEach(function(inp){
     if(inp.__hooked) return; inp.__hooked=1;
     inp.addEventListener('input',function(){
-      var k=inp.dataset.p, roh=inp.value, val=parseFloat(roh);
+      /* Seit die Felder Textfelder sind, kommt hier alles an, was die Tastatur hergibt.
+       * nurZahl() raeumt auf; steht danach etwas anderes da als vorher, wird es sofort
+       * zurueckgeschrieben, damit der Tierarzt sieht, was die Station gelesen hat. */
+      var k=inp.dataset.p, roh=nurZahl(inp.value);
+      if(inp.value!==roh) inp.value=roh;
+      var val=parseFloat(roh);
       state.istVals[k]=(roh===''?null:(isNaN(val)?0:val));
       state.istHand=state.istHand||{}; state.istHand[k]=1;
       if(k==='sys'||k==='dia'){ var s=state.istVals.sys||0,d=state.istVals.dia||0;
@@ -2979,7 +3038,13 @@ function wertFelderVerdrahten(){
     wirt.addEventListener('focusin',function(e){
       var f=e.target;
       if(!f||!f.classList||!(f.classList.contains('mt-in')||f.classList.contains('ml-in'))) return;
-      setTimeout(function(){ try{ f.select(); }catch(x){} },0);
+      if(fokusStelltZurueck) return;   /* Neuaufbau, kein Antippen - Begruendung an der Fahne */
+      setTimeout(function(){
+        /* In der Zwischenzeit kann der Neuaufbau gelaufen sein; dann gehoert das Feld nicht
+         * mehr zum Dokument und ein select() darauf traefe einen Knoten, den niemand sieht. */
+        if(!f.isConnected || document.activeElement!==f) return;
+        try{ f.select(); }catch(x){}
+      },0);
     });
   });
 }
@@ -3260,7 +3325,35 @@ function cockpitHoehe(){
    * Reihenfolge ist Absicht: erst ohne ck-eng messen, dann entscheiden — so schwingt es bei
    * wiederholten Aufrufen nicht zwischen beiden Zustaenden hin und her. */
   var links=el.querySelector('.ck-links');
-  if(links && links.scrollHeight>links.clientHeight+8){ el.classList.add('ck-eng'); el.style.height=''; }
+  if(links && links.scrollHeight>links.clientHeight+8){ el.classList.add('ck-eng'); el.style.height=''; return; }
+  /*
+   * UND JETZT DAS, WORAUF ES ANKOMMT: WIE HOCH IST DIE KURVENFLAECHE GEWORDEN?
+   * (gemessen 21.08.2026, aus der Praxis gemeldet: "beim gross und klein machen sieht
+   * danach alles komisch klein aus")
+   *
+   * Die Zeile darueber ist BLIND, und zwar baulich: die Bloecke INNERHALB von .ck-links
+   * haben eigene Rollwege. Sobald der Platz knapp wird, quetschen sie sich zusammen und
+   * melden brav "passt" - scrollHeight und clientHeight sind dann gleich, obwohl nichts
+   * mehr zu gebrauchen ist. Gemessen bei 1920x1080 nach einmal Vollbild ein und aus:
+   *
+   *     .ck-links  scrollHeight 749 = clientHeight 749   -> "passt"
+   *     .mon-screen                          223 px      -> und genau das ist zu klein
+   *
+   * Vorher stand derselbe Bildschirm auf 250 px (ck-eng). Ein Umschalter, nach dem die
+   * Kurve KLEINER ist als vorher, ist genau der Befund.
+   *
+   * Deshalb wird das gemessen, was der Tierarzt ansieht. 250 ist keine gegriffene Zahl,
+   * sondern die Hoehe, die ck-eng dem Schirm fest gibt (.cockpit.ck-eng .mon-screen): die
+   * Betriebsart FUER kleine Fenster darf nie mehr Kurve zeigen als die fuer grosse.
+   *
+   * Im Vollbild wird nicht geprueft - dort soll der Schirm gross sein, und ck-eng wuerde
+   * ihm die gewonnene Hoehe wieder nehmen.
+   */
+  if(document.body.classList.contains('mon-voll')) return;
+  var schirm=el.querySelector('.mon-screen');
+  if(schirm && schirm.getBoundingClientRect().height < 250){
+    el.classList.add('ck-eng'); el.style.height='';
+  }
 }
 /* Die Station meldet, dass ein Geraet gerade geliefert hat. Erster Ruf startet die Falluhr. */
 window.__setFallLauf=function(ts){
@@ -7219,47 +7312,6 @@ fab.addEventListener('click',function(){ dock.classList.remove('collapsed'); fab
 .ekg-zoom .zfoot b{color:#eaf4ff;font-family:Consolas,monospace;font-size:14px}
 .ekg-zoom .zfoot .hint{color:#6f8aa4;font-size:11px}
 
-/* ---- Herzmodell: eigene Ebene, gleiche Bauart wie die Zoom-Ebene ---- */
-.ekg-herz{position:absolute;inset:0;z-index:16;display:none;flex-direction:column;background:#05080d}
-.ekg-herz.open{display:flex}
-.ekg-herz .hbar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:7px 11px;background:#0c1420;border-bottom:1px solid #1d2a3a}
-.ekg-herz .htitle{font:800 15px var(--tech,Segoe UI,Inter,sans-serif);color:#ffd166}
-.ekg-herz .hpat{font-size:12px;color:#9fb6cc}
-.ekg-herz .hbody{flex:1 1 auto;display:flex;min-height:0}
-.ekg-herz .hstage{flex:1 1 auto;position:relative;min-width:0;touch-action:none;cursor:grab;background:radial-gradient(circle at 50% 44%,#101826,#05080d 70%)}
-.ekg-herz .hstage:active{cursor:grabbing}
-.ekg-herz .hstage canvas{position:absolute;inset:0;width:100%;height:100%}
-.ekg-herz .hhint{position:absolute;left:10px;bottom:8px;font-size:11px;color:#5d738a;pointer-events:none}
-.ekg-herz .hside{flex:0 0 330px;max-width:44vw;overflow:auto;padding:10px 12px;background:#080d15;border-left:1px solid #1d2a3a;font-size:12.5px;color:#cfe0f0;line-height:1.5}
-.ekg-herz .hside h5{margin:12px 0 5px;font:800 11px var(--mono,Consolas,monospace);text-transform:uppercase;letter-spacing:.7px;color:#6f8aa4}
-.ekg-herz .hside h5:first-child{margin-top:0}
-.ekg-herz .hjetzt{border:1px solid #23425e;border-radius:9px;padding:8px 10px;background:rgba(0,216,255,.07)}
-.ekg-herz .hjetzt b{color:#7fe3ff;font-size:13.5px}
-.ekg-herz .hjetzt .w{display:block;margin-top:4px;color:#9fb6cc;font-size:11.5px}
-.ekg-herz .hrow{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px dotted #1b2938}
-.ekg-herz .hrow .k{color:#8fa6bc}
-.ekg-herz .hrow .v{color:#eaf4ff;font-family:var(--mono,Consolas,monospace)}
-.ekg-herz .hfluss{margin:3px 0;padding-left:14px;position:relative;color:#a8c0d6;font-size:11.5px}
-.ekg-herz .hfluss:before{content:"→";position:absolute;left:0;color:#28e07a}
-/* Dieselben zwei Farben wie die Stroeme im Bild (14.08.2026) - venoes tuerkis, arteriell rot.
-   Der Pfeil traegt sie, nicht der Text: farbiger Fliesstext liest sich schlechter. */
-.ekg-herz .hfluss.ven:before{color:#50cdd7}
-.ekg-herz .hfluss.art:before{color:#ff5c78}
-.ekg-herz .hbef{display:block;width:100%;text-align:left;margin:4px 0;padding:7px 9px;border-radius:8px;border:1px solid #23334a;background:rgba(255,255,255,.03);color:#dceaf7;font:inherit;cursor:pointer}
-.ekg-herz .hbef:hover{border-color:#00d8ff;background:rgba(0,216,255,.09)}
-.ekg-herz .hbef.an{border-color:#ffd166;background:rgba(255,209,102,.12)}
-.ekg-herz .hbef .n{font-weight:700;display:block}
-.ekg-herz .hbef .o{font-size:11px;color:#9fb6cc;display:block;margin-top:2px}
-.ekg-herz .hbef.tech .o{color:#ffb37a}
-.ekg-herz .hwarn{margin-top:8px;border:1px dashed rgba(255,140,102,.5);background:rgba(255,140,102,.08);border-radius:8px;padding:7px 9px;font-size:11.5px;color:#ffcdb4}
-.ekg-herz .hgrenze{margin-top:10px;font-size:11px;color:#6f8aa4;line-height:1.45}
-.ekg-herz .hfoot{flex:0 0 auto;background:#0a1018;border-top:1px solid #1d2a3a;padding:5px 10px 7px}
-.ekg-herz .hfoot canvas{display:block;width:100%;height:92px}
-.ekg-herz .hfoot-txt{font-size:11.5px;color:#9fb6cc;margin-top:3px}
-@media (max-width:900px){
-  .ekg-herz .hbody{flex-direction:column}
-  .ekg-herz .hside{flex:0 0 auto;max-width:none;max-height:42vh;border-left:none;border-top:1px solid #1d2a3a}
-}
 table.ekg-eich{width:100%;border-collapse:collapse;font-size:11.5px;margin:2px 0 6px}
 table.ekg-eich td{padding:3px 4px;border-bottom:1px solid rgba(120,150,180,.14)}
 table.ekg-eich td.s{color:#7fa6c8;text-align:right;font-family:Consolas,monospace}
@@ -7381,7 +7433,6 @@ table.ekg-eich td.i{color:#eaf4ff;text-align:right;font-family:Consolas,monospac
     <button class="ekg-btn big" id="ekgPrint" title="Direkt auf weißem Millimeterpapier drucken">🖨️ Drucken</button>
     <button class="ekg-btn big rec" id="ekgSave" title="Streifen im Archiv sichern">💾 Speichern</button>
     <button class="ekg-btn big" id="ekgAnlegenBtn" title="Elektroden anlegen: Kabelfarben (IEC/AHA) und Anlegeschema">🔌 Anlegen</button>
-    <button class="ekg-btn big" id="ekgHerzBtn" title="Herzmodell: wo im Herzen entsteht gerade welcher Teil der Kurve – drehbar, im Schnitt, in Zeitlupe">🫀 Herz</button>
     <button class="ekg-btn big" id="ekgWissenBtn" title="Befund-Nachschlagewerk: 203 belegte Regeln, nach Tierart gefiltert und durchsuchbar">📚 Befunde</button>
     <button class="ekg-btn big" id="ekgPatBtn" title="Patientendaten – aus der Narkose übernommen oder für den Kardio-Termin von Hand">🐾 Patient</button>
     <button class="ekg-btn big" id="ekgArchBtn" title="Gespeicherte Streifen">📁 Archiv</button>
@@ -7445,42 +7496,6 @@ table.ekg-eich td.i{color:#eaf4ff;text-align:right;font-family:Consolas,monospac
       <span class="hint" id="zHint">Ziehen mit der Maus setzt die Marken. Doppelklick auf die Fläche = Marken löschen.</span>
     </div>
   </div>
-  <!-- ============================================================================
-       HERZMODELL — dieselbe Bauart wie die Zoom-Schicht darueber: eine eigene Ebene im
-       EKG-Fenster, die sich mit Esc wieder schliesst. Es holt Geometrie und Zeitplan aus
-       ui/shared/herz3d.js und zeichnet hier nur. Dieselbe Trennung wie beim 3D-Tiermodell,
-       und aus demselben gemessenen Grund: die Vorschau drosselt den Bildtakt, wer eine
-       canvas ausliest, misst alte Bilder.
-       ============================================================================ -->
-  <div class="ekg-herz" id="ekgHerz">
-    <div class="hbar">
-      <button class="ekg-btn big close" id="hBack" title="Zurück zur Übersicht (Esc)">← Übersicht</button>
-      <span class="htitle">🫀 Herzmodell</span>
-      <span class="hpat" id="hPat">—</span>
-      <span class="ekg-spacer"></span>
-      <span class="ekg-grp"><span class="lbl">Blick</span>
-        <button class="ekg-btn" data-hs="0" title="Von links – die Seite, auf die der Untersucher am liegenden Tier sieht">Links</button>
-        <button class="ekg-btn" data-hs="1" title="Von rechts">Rechts</button>
-        <button class="ekg-btn" data-hs="2" title="Von kranial – aus dieser Richtung sieht man in den Schnitt">Vorn</button>
-        <button class="ekg-btn" data-hs="3" title="Schräg von oben">Schräg</button></span>
-      <button class="ekg-btn big" id="hSchnitt" title="Aufschneiden: nur so sind Scheidewand, Klappen und das Reizleitungssystem zu sehen">✂️ Schnitt</button>
-      <span class="ekg-grp"><span class="lbl">Tempo</span>
-        <button class="ekg-btn" data-ht="1" title="Echtzeit">1×</button>
-        <button class="ekg-btn" data-ht="0.25" title="Vierfache Zeitlupe">¼</button>
-        <button class="ekg-btn" data-ht="0.08" title="Starke Zeitlupe – hier sieht man die Erregung durch den AV-Knoten kriechen">1/12</button></span>
-      <button class="ekg-btn big" id="hPlay" title="Anhalten / weiterlaufen">⏸️ Anhalten</button>
-    </div>
-    <div class="hbody">
-      <div class="hstage" id="hStage"><canvas id="hCv"></canvas>
-        <div class="hhint">Ziehen zum Drehen</div></div>
-      <aside class="hside" id="hSide"></aside>
-    </div>
-    <div class="hfoot">
-      <canvas id="hKurve"></canvas>
-      <div class="hfoot-txt" id="hFootTxt">—</div>
-    </div>
-  </div>
-
   <div id="ekgPdfView">
     <div class="pdfhead">
       <button class="ekg-btn big close" id="pdfBack" title="Zurück zum EKG (Esc)">← Zurück zum EKG</button>
@@ -12003,419 +12018,6 @@ function m3dBinde(sp){
   /* Beim Wechsel der Fensterbreite neu zeichnen: die Leinwand haengt an clientWidth. */
   if(!M3D._resize){ M3D._resize=true; window.addEventListener('resize',function(){ try{ m3dZeichne(); }catch(e){} }); }
 }
-
-/* ==================================================================================
- * HERZMODELL — Oberflaeche  (13.08.2026)
- *
- * WAS HIER STEHT UND WAS NICHT: hier wird nur GEZEICHNET und BEDIENT. Geometrie, Zeitplan
- * und die Zuordnung Befund -> Ort stehen in ui/shared/herz3d.js und sind dort mit einem
- * Node-Test abgesichert (tools/herz3d-test.js). Dieselbe Trennung wie beim 3D-Tiermodell
- * und aus demselben gemessenen Grund: die Browser-Vorschau drosselt den Bildtakt, wer eine
- * canvas ausliest, misst alte Bilder.
- *
- * DIE EINE NAHT, AUF DIE ES ANKOMMT: die Kurve unten wird mit ekgWaveMv() gezeichnet - genau
- * der Funktion, die auch die grosse Ableitung zeichnet - und die Zeitmarke darauf ist
- * DIESELBE Zykluszeit, aus der das Herzbild seinen Zustand holt. Bild und Kurve koennen
- * daher nicht gegeneinander verrutschen; sie sind zwei Ansichten derselben Zahl.
- * ================================================================================== */
-var HERZ={
-  offen:false, gier:0, nick:10, schnitt:false, tempo:0.25, laeuft:true,
-  t:0, rr:0.8, beat:0, raf:null, letzte:0, netz:null, art:null,
-  zieht:false, x0:0, y0:0, g0:0, n0:0,
-  markiert:null      /* welcher Befund gerade hervorgehoben ist */
-};
-var HERZ_SICHT=[{g:0,n:10},{g:180,n:10},{g:-90,n:10},{g:40,n:28}];
-/* Farben der Zustaende. Sie tragen die ganze Aussage des Bildes, deshalb stehen sie
- * beisammen: erregt = warm, gerade rueckbildend = kuehl, ruhend = die Eigenfarbe. */
-/*
- * Erregtes Gewebe wird warm, gerade rueckbildendes kuehl. Die Zone behaelt dabei ihren
- * Farbstich: mit einem einzigen Gelb fuer alles verschmolzen linke Kammer, rechte Kammer und
- * Scheidewand in der ST-Strecke zu EINEM Klumpen (13.08.2026 im Browser gesehen) - und
- * ausgerechnet dann, wenn das Bild sagen soll "der GANZE Ventrikel ist erregt", konnte man
- * nicht mehr sehen, welcher Teil das ist.
- */
-var HERZ_FARBE={ erregt:[255,206,84], repol:[96,178,255], halt:[255,86,86], leitet:[120,240,170] };
-var HERZ_ERREGT_ZONE={ lv:[255,196,72], rv:[236,186,120], septum:[255,166,72],
-  ra:[226,190,130], la:[255,186,110] };
-var HERZ_MISCH=0.66;      /* wie stark die Erregungsfarbe die Eigenfarbe ueberlagert */
-
-function herzArt(){
-  var H=(window.VS&&VS.herz3d)?VS.herz3d:null;
-  var a=(typeof modellArt==='function')?modellArt():'hund';
-  return (H&&H.hatModell(a))?a:'hund';
-}
-function herzW(){ var f=M.feed||currentFeed()||{}; return (f.def&&f.def.w)||{p:1,pq:1,qrs:1}; }
-function herzRR(){ var f=M.feed||currentFeed()||{}; var hr=f.hr||90; return 60/Math.max(20,Math.min(320,hr)); }
-
-function herzOeffnen(){
-  var H=(window.VS&&VS.herz3d)?VS.herz3d:null; if(!H) return;
-  var el=$('#ekgHerz'); if(!el) return;
-  HERZ.offen=true; HERZ.art=herzArt(); HERZ.netz=H.netz(HERZ.art);
-  HERZ.rr=herzRR(); HERZ.t=0; HERZ.beat=0; HERZ.letzte=0; HERZ.laeuft=true;
-  el.classList.add('open');
-  herzKnoepfe();
-  herzSchleife();
-}
-function herzSchliessen(){
-  HERZ.offen=false;
-  if(HERZ.raf){ cancelAnimationFrame(HERZ.raf); HERZ.raf=null; }
-  var el=$('#ekgHerz'); if(el) el.classList.remove('open');
-}
-function herzKnoepfe(){
-  var i,b,el=$('#ekgHerz'); if(!el) return;
-  el.querySelectorAll('[data-hs]').forEach(function(x,k){ x.classList.toggle('on', HERZ_SICHT[k].g===HERZ.gier); });
-  el.querySelectorAll('[data-ht]').forEach(function(x){ x.classList.toggle('on', Math.abs(+x.getAttribute('data-ht')-HERZ.tempo)<1e-6); });
-  var s=$('#hSchnitt'); if(s) s.classList.toggle('on',HERZ.schnitt);
-  var p=$('#hPlay'); if(p) p.textContent=HERZ.laeuft?'⏸️ Anhalten':'▶️ Weiter';
-}
-
-/* Die Schleife. Sie zaehlt die Zykluszeit selbst hoch - unabhaengig von der Bildrate, damit
- * eine langsame Vorschau die Zeitlupe nicht zusaetzlich verlangsamt. */
-function herzSchleife(){
-  if(!HERZ.offen) return;
-  HERZ.raf=requestAnimationFrame(herzSchleife);
-  var jetzt=(window.performance&&performance.now)?performance.now():Date.now();
-  var dt=HERZ.letzte?Math.min(0.12,(jetzt-HERZ.letzte)/1000):0;
-  HERZ.letzte=jetzt;
-  if(HERZ.laeuft){
-    HERZ.rr=herzRR();
-    HERZ.t+=dt*HERZ.tempo;
-    while(HERZ.t>=HERZ.rr){ HERZ.t-=HERZ.rr; HERZ.beat++; }
-  }
-  herzZeichne();
-}
-
-function herzZeichne(){
-  var H=(window.VS&&VS.herz3d)?VS.herz3d:null;
-  var cv=$('#hCv'); if(!H||!cv||!HERZ.netz) return;
-  var dpr=Math.min(2,window.devicePixelRatio||1);
-  var st=$('#hStage'), b=st.clientWidth||520, h=st.clientHeight||420;
-  if(cv.width!==Math.round(b*dpr)||cv.height!==Math.round(h*dpr)){
-    cv.width=Math.round(b*dpr); cv.height=Math.round(h*dpr);
-  }
-  var ctx=cv.getContext('2d');
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.clearRect(0,0,b,h);
-
-  var W=herzW();
-  var Z=H.zustand(HERZ.t,HERZ.rr,W,HERZ.beat,HERZ.art);
-  var A=H.ansicht(HERZ.netz,{breite:b,hoehe:h,gier:HERZ.gier,nick:HERZ.nick,zustand:Z,schnitt:HERZ.schnitt});
-
-  /* Welche Zonen sind gerade hervorgehoben, weil ein Befund angeklickt wurde? */
-  var hv={}, ort=HERZ.markiert?H.ortFuer(HERZ.markiert):null;
-  if(ort) for(var q=0;q<ort.zonen.length;q++) hv[ort.zonen[q]]=1;
-
-  var i,j,f;
-  for(i=0;i<A.flaechen.length;i++){
-    f=A.flaechen[i];
-    ctx.beginPath();
-    ctx.moveTo(f.eck[0].x,f.eck[0].y);
-    for(j=1;j<f.eck.length;j++) ctx.lineTo(f.eck[j].x,f.eck[j].y);
-    ctx.closePath();
-    var grund=hexRgb(f.farbe), hell=f.hell;
-    var akt=H.aktiv(f);
-    /* Die Rueckbildung ist dort am deutlichsten, wo sie GERADE laeuft - am Anfang und am
-     * Ende sieht man nichts davon. erregt*repol*(1-repol) ist genau diese Front. */
-    var rueck=Math.max(0,Math.min(1,(f.erregt||0)*(f.repol||0)*(1-(f.repol||0))*4));
-    var c=[grund[0]*hell,grund[1]*hell,grund[2]*hell];
-    var warm=HERZ_ERREGT_ZONE[f.zone]||HERZ_FARBE.erregt;
-    /* Auch die Erregungsfarbe wird beschattet - sonst leuchtet die Innenwand einer
-     * aufgeschnittenen Kammer heller als ihre Aussenseite und der Hohlraum kippt wieder um. */
-    var wh=Math.max(0.42,hell);
-    c=mischRgb(c,[warm[0]*wh,warm[1]*wh,warm[2]*wh],akt*HERZ_MISCH);
-    c=mischRgb(c,HERZ_FARBE.repol,rueck*0.55);
-    if(hv[f.zone]) c=mischRgb(c,[255,255,255],0.20);
-    ctx.fillStyle='rgb('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+')';
-    ctx.fill();
-    /* Duenne Kante in der Fuellfarbe schliesst die Haarrisse zwischen den Vierecken. */
-    ctx.strokeStyle=ctx.fillStyle; ctx.lineWidth=0.6; ctx.stroke();
-  }
-
-  /* Klappen: offen = duenner Ring, geschlossen = zusaetzlich ein Querstrich. Zusammen mit dem
-   * Abschnittsnamen im Seitenfeld ist das die ganze Mechanik-Aussage.
-   *
-   * GEDAEMPFT, WENN NICHT AUFGESCHNITTEN (13.08.2026, im Browser gesehen): als gefuellte
-   * Scheiben legten sie sich wie Milchglas ueber die Vorhoefe und waren das Auffaelligste im
-   * Bild - dabei liegen sie INNEN und sind von aussen gar nicht zu sehen. Ein Zeichen, das
-   * lauter ist als die Sache, die es zeigt, verzerrt das Bild. */
-  var kAlpha=HERZ.schnitt?1:0.34;
-  for(i=0;i<A.klappen.length;i++){
-    var k=A.klappen[i], kr=Math.max(4,k.r*0.72);
-    ctx.globalAlpha=kAlpha;
-    ctx.beginPath(); ctx.arc(k.x,k.y,kr,0,2*Math.PI);
-    ctx.strokeStyle=k.offen?'rgba(120,210,255,.85)':'rgba(240,248,255,.9)';
-    ctx.lineWidth=k.offen?2:1.6; ctx.stroke();
-    if(!k.offen){
-      ctx.beginPath(); ctx.moveTo(k.x-kr,k.y); ctx.lineTo(k.x+kr,k.y);
-      ctx.strokeStyle='rgba(240,248,255,.75)'; ctx.lineWidth=1.6; ctx.stroke();
-    }
-    ctx.globalAlpha=1;
-  }
-
-  /*
-   * BLUTFLUSS — die zweite Naht zum EKG (14.08.2026).
-   *
-   * Bis hierher stand der Fluss nur als Satz im Seitenfeld. Er war gerechnet, aber im Bild
-   * nicht zu sehen — und damit blieb die Frage unbeantwortet, auf die es ankommt: WANN im
-   * Herzzyklus fliesst wohin.
-   *
-   * WAS DIESE ROUTINE NICHT ENTSCHEIDET: welche Bahn gerade fuehrt (das ist Z.fluss, und das
-   * kommt aus Z.mech — derselben Zykluszeit wie die Kurve unten), wo ein Teilchen auf seiner
-   * Bahn steht (H.flussPhase, aus demselben Bruchteil des Zyklus) und wo eine Bahn anfaengt
-   * und aufhoert (A.anker, aus dem Modell gedreht). Hier wird ausschliesslich gemalt. Genau
-   * diese Trennung ist der Grund, warum ein Node-Test die Naht ueberhaupt pruefen kann.
-   *
-   * SICHTBAR AUCH IM GESCHLOSSENEN HERZEN, aus demselben Grund wie bei den Leitungspunkten:
-   * ein Blutstrom, den die Kammerwand verdeckt, waere in einem Lehrmodell nutzlos. Deshalb
-   * bleiben die Teilchen klein und die Bahn nur angedeutet — ein Zeichen darf nicht lauter
-   * werden als die Sache, die es zeigt (dieselbe Lehre wie bei den Klappen, 13.08.2026).
-   */
-  var FL_FARBE={venoes:[80,205,215], arteriell:[255,92,120]};
-  ctx.lineCap='round';
-  for(i=0;i<Z.fluss.length;i++){
-    var bh=Z.fluss[i], av=A.anker[bh.von], an=A.anker[bh.nach];
-    if(!av||!an) continue;          /* herz3d-test.js verbietet diesen Fall - hier nur Vorsicht */
-    var fc=FL_FARBE[bh.blut]||[220,220,220];
-    /* Was hinten liegt, wird blasser. Ohne das schwebt ein Strom von der Rueckseite genauso
-     * kraeftig vorn wie einer, der wirklich vorn liegt, und die Tiefe des Bildes kippt um. */
-    var tf=Math.max(0.35,Math.min(1,0.62+((av.tiefe+an.tiefe)/2)*0.55));
-    ctx.strokeStyle='rgba('+fc[0]+','+fc[1]+','+fc[2]+','+(0.13*tf).toFixed(3)+')';
-    ctx.lineWidth=Math.max(6,12*bh.staerke);
-    ctx.beginPath(); ctx.moveTo(av.x,av.y); ctx.lineTo(an.x,an.y); ctx.stroke();
-    /* Die STAERKE steuert Anzahl und Deckkraft, nicht das Tempo: sie springt beim
-     * Vorhofkontrahieren von 0,6 auf 1, und ein Sprung im Tempo waere ein Sprung im Ort. */
-    var nT=Math.round(4+bh.staerke*4);
-    for(j=0;j<nT;j++){
-      var ph=H.flussPhase(HERZ.t,HERZ.rr,j,nT);
-      var px=av.x+(an.x-av.x)*ph, py=av.y+(an.y-av.y)*ph;
-      /* An beiden Enden weich ein- und ausblenden - sonst blitzen die Teilchen auf und weg. */
-      var al=Math.max(0,Math.min(1,Math.min(ph,1-ph)*5))*tf*(0.45+0.55*bh.staerke);
-      var r0=Math.max(1.8,3.4*bh.staerke);
-      ctx.beginPath(); ctx.arc(px,py,r0*2.1,0,2*Math.PI);
-      ctx.fillStyle='rgba('+fc[0]+','+fc[1]+','+fc[2]+','+(al*0.22).toFixed(3)+')'; ctx.fill();
-      ctx.beginPath(); ctx.arc(px,py,r0,0,2*Math.PI);
-      ctx.fillStyle='rgba('+fc[0]+','+fc[1]+','+fc[2]+','+al.toFixed(3)+')'; ctx.fill();
-    }
-  }
-  ctx.lineCap='butt';
-
-  /* Die Leitungspunkte. Sie liegen INNEN und werden trotzdem immer gezeigt - ein
-   * Sinusknoten, den die Vorhofwand verdeckt, waere in einem Lehrmodell nutzlos. Wo die
-   * Erregung STEHEN BLEIBT, wird der Punkt rot: genau das ist die Aussage bei jedem Block. */
-  /* Beschriftungen duerfen einander nicht ueberdecken (13.08.2026, im Browser gesehen:
-   * "Crus dx" lag auf "Pap re"). Wer zwei Namen uebereinander liest, liest keinen von beiden.
-   * Deshalb wird jede gesetzte Beschriftung gemerkt und eine zu nahe uebersprungen - der
-   * Punkt selbst bleibt sichtbar, nur sein Name weicht. */
-  var belegt=[];
-  function platzFrei(x,y){
-    for(var q=0;q<belegt.length;q++){
-      if(Math.abs(belegt[q][0]-x)<58 && Math.abs(belegt[q][1]-y)<13) return false;
-    }
-    return true;
-  }
-  for(i=0;i<A.punkte.length;i++){
-    var s=A.punkte[i], zn=H.zone(s.id);
-    var fa = s.halt?HERZ_FARBE.halt : (s.erregt>0.15?HERZ_FARBE.erregt : (s.leitet?HERZ_FARBE.leitet:[110,140,170]));
-    var r0 = s.halt?10:(s.erregt>0.15?9:7);
-    if(hv[s.id]){ ctx.beginPath(); ctx.arc(s.x,s.y,r0+7,0,2*Math.PI);
-      ctx.fillStyle='rgba(255,209,102,.22)'; ctx.fill(); }
-    ctx.beginPath(); ctx.arc(s.x,s.y,r0+4,0,2*Math.PI);
-    ctx.fillStyle='rgba('+fa[0]+','+fa[1]+','+fa[2]+',.22)'; ctx.fill();
-    ctx.beginPath(); ctx.arc(s.x,s.y,r0,0,2*Math.PI);
-    ctx.fillStyle='rgb('+fa[0]+','+fa[1]+','+fa[2]+')'; ctx.fill();
-    ctx.lineWidth=1.6; ctx.strokeStyle='#06101a'; ctx.stroke();
-    var lx=s.x+r0+5, ly=s.y+3.5;
-    if(zn&&platzFrei(lx,ly)){
-      belegt.push([lx,ly]);
-      ctx.font='700 10px Consolas,monospace'; ctx.textAlign='left';
-      /* Dunkler Grund unter der Schrift: ueber der hellen Kammerwand war sie sonst weg. */
-      var txt=herzKurz(s.id), br=ctx.measureText(txt).width;
-      ctx.fillStyle='rgba(5,8,13,.62)'; ctx.fillRect(lx-2,ly-9,br+4,12);
-      ctx.fillStyle=s.halt?'#ffbdbd':'#e6f1fb';
-      ctx.fillText(txt,lx,ly);
-    }
-  }
-  herzKurve(Z);
-  herzSeite(Z);
-}
-function herzKurz(id){
-  return {sinus:'SA',ra:'RA',la:'LA',avk:'AV',his:'His',crusD:'Crus dx',crusS:'Crus sin',
-    papD:'Pap re',papS:'Pap li',purkinje:'Purkinje'}[id]||id;
-}
-function hexRgb(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; }
-function mischRgb(a,b,t){ return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]; }
-
-/*
- * Die Kurve unter dem Herzen. Sie kommt aus ekgWaveMv() - DERSELBEN Funktion, die die grosse
- * Ableitung zeichnet - und traegt eine Marke an der Zykluszeit, aus der das Herzbild oben
- * seinen Zustand nimmt. Genau diese Doppelverwendung ist die Naht: waere sie hier
- * nachgebaut, koennten Bild und Kurve auseinanderlaufen, ohne dass es auffaellt.
- */
-function herzKurve(Z){
-  var cv=$('#hKurve'); if(!cv) return;
-  var dpr=Math.min(2,window.devicePixelRatio||1);
-  var b=cv.clientWidth||600, h=92;
-  if(cv.width!==Math.round(b*dpr)||cv.height!==Math.round(h*dpr)){ cv.width=Math.round(b*dpr); cv.height=Math.round(h*dpr); }
-  var ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.clearRect(0,0,b,h);
-  var W=herzW(), rr=HERZ.rr, mitte=h*0.62, mvPx=h*0.30;   /* 1 mV = 30 % der Hoehe */
-  var i,x,y;
-  /* Zwei Zyklen, damit man den Uebergang sieht - bei Wenckebach ist genau der die Aussage. */
-  var zyklen=2, ges=rr*zyklen;
-  ctx.strokeStyle='#16324a'; ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(0,mitte); ctx.lineTo(b,mitte); ctx.stroke();
-  ctx.beginPath();
-  for(i=0;i<=b;i++){
-    var t=(i/b)*ges;
-    var zyk=Math.floor(t/rr), tz=t-zyk*rr;
-    var mv=ekgWaveMv(tz,rr,W,HERZ.beat+zyk,HERZ.art);
-    x=i; y=mitte-mv*mvPx;
-    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-  }
-  ctx.strokeStyle='#28e07a'; ctx.lineWidth=1.7; ctx.stroke();
-  /* Die Abschnitte einfaerben, damit die Zuordnung Welle -> Vorgang sichtbar wird. */
-  var P=Z.plan, p0=(window.VS&&VS.modell)?VS.modell.pBeginnSek(HERZ.art):0;
-  var band=[[P.pBeginn,P.pEnde,'rgba(120,240,170,.16)','P'],
-            [P.pEnde,P.qrsVon,'rgba(96,178,255,.14)','PQ'],
-            [P.qrsVon,P.qrsBis,'rgba(255,206,84,.18)','QRS'],
-            [P.stVon,P.stBis,'rgba(255,255,255,.06)','ST'],
-            [P.tVon,P.tBis,'rgba(96,178,255,.16)','T']];
-  for(i=0;i<band.length;i++){
-    var xa=((p0+band[i][0]/1000)/ges)*b, xb=((p0+band[i][1]/1000)/ges)*b;
-    if(xb<=xa) continue;
-    ctx.fillStyle=band[i][2]; ctx.fillRect(xa,4,xb-xa,h-8);
-    ctx.fillStyle='#8fa6bc'; ctx.font='700 9px Consolas,monospace'; ctx.textAlign='center';
-    ctx.fillText(band[i][3],(xa+xb)/2,13);
-  }
-  /* Die Zeitmarke: DIESELBE Zeit wie im Herzbild. */
-  x=(HERZ.t/ges)*b;
-  ctx.strokeStyle='#ffd166'; ctx.lineWidth=2;
-  ctx.beginPath(); ctx.moveTo(x,2); ctx.lineTo(x,h-2); ctx.stroke();
-}
-
-function herzSeite(Z){
-  var H=(window.VS&&VS.herz3d)?VS.herz3d:null, side=$('#hSide'); if(!H||!side) return;
-  /* Nur neu bauen, wenn sich der Text wirklich aendert - sonst flackert das Feld bei 60 Hz
-   * und jeder Klick auf einen Befund ginge verloren. */
-  var R=H.richtung(Z), mech=Z.mech;
-  var schluessel=[R.text,mech.abschnitt,Z.halt,Z.ursprung,HERZ.markiert,Z.vulnerabel].join('|');
-  if(side.dataset.k===schluessel) return;
-  side.dataset.k=schluessel;
-
-  var f=M.feed||currentFeed()||{};
-  var html='<h5>Was gerade geschieht</h5>'+
-    '<div class="hjetzt"><b>'+esc2(R.text)+'</b><span class="w">'+esc2(R.warum)+'</span></div>';
-  if(Z.halt){
-    var zh=H.zone(Z.halt);
-    html+='<div class="hwarn"><b>Die Erregung bleibt hier stehen:</b> '+esc2(zh?zh.name:Z.halt)+'.<br>'+
-      esc2(zh?zh.wo:'')+'</div>';
-  }
-  if(Z.vulnerabel){
-    html+='<div class="hwarn"><b>Vulnerable Phase.</b> In der relativen Refraktärzeit ist die '+
-      'Erregbarkeit ungleich verteilt — hier kann aus einem eingestreuten Schlag eine kreisende '+
-      'Erregung werden („R auf T“).</div>';
-  }
-  html+='<h5>Mechanik <small style="text-transform:none;letter-spacing:0">— angehängt, nicht gemessen</small></h5>'+
-    '<div class="hrow"><span class="k">Abschnitt</span><span class="v">'+esc2(mech.abschnitt)+'</span></div>'+
-    '<div class="hrow"><span class="k">Segelklappen</span><span class="v">'+(mech.avOffen?'offen':'zu')+'</span></div>'+
-    '<div class="hrow"><span class="k">Taschenklappen</span><span class="v">'+(mech.semiOffen?'offen':'zu')+'</span></div>'+
-    '<div class="hrow"><span class="k">Diastole</span><span class="v">'+Math.round(Z.diastoleMs||0)+' ms</span></div>';
-  if((Z.diastoleMs||0)<80){
-    html+='<div class="hwarn">Die Diastole ist sehr kurz. Die <b>Koronararterien füllen sich nur in '+
-      'der Diastole</b> — bei hoher Frequenz arbeitet das Herz also mehr und wird dabei schlechter '+
-      'versorgt. (Killich, Kleintierkardiologie 2019, S. 33)</div>';
-  }
-  html+='<h5>Blutfluss</h5>';
-  if(!Z.fluss.length) html+='<div class="hfluss">kein Auswurf</div>';
-  /* Der Satz traegt dieselbe Farbe wie sein Strom im Bild, und beide holen sie aus DEMSELBEN
-   * Feld (bahn.blut aus herz3d.js). Zwei getrennte Zuordnungen waeren hier der uebliche stille
-   * Fehler: die eine sagt venoes, die andere arteriell, und beide sehen fuer sich richtig aus. */
-  for(var i=0;i<Z.fluss.length;i++){
-    html+='<div class="hfluss '+(Z.fluss[i].blut==='venoes'?'ven':'art')+'">'+esc2(Z.fluss[i].text)+'</div>';
-  }
-
-  /* Die Befunde der laufenden Auswertung, jeder mit SEINEM Ort. Anklicken hebt ihn hervor. */
-  var bef=[];
-  /* Die Liste, die die Hinweis-Maschine zuletzt erzeugt hat. Sie steht in M.letzteBefunde
-   * (dort legt sie updateMeasures ab) - hier wird NICHTS neu bewertet. Das Herzmodell darf
-   * keine eigene Meinung ueber den Patienten haben; es ordnet nur zu, was die Auswertung
-   * ohnehin gemessen hat. */
-  try{ bef=M.letzteBefunde||[]; }catch(e){ bef=[]; }
-  html+='<h5>Befunde und ihr Ort</h5>';
-  if(!bef.length){
-    html+='<div style="color:#6f8aa4;font-size:11.5px">Zurzeit meldet die Auswertung nichts. '+
-      'Sobald ein Hinweis auftaucht, steht hier, WO im Herzen er entsteht.</div>';
-  }
-  for(i=0;i<bef.length;i++){
-    var o=H.ortFuer(bef[i].id);
-    if(!o) continue;
-    var techn=(o.art==='technik'||o.art==='artefakt');
-    html+='<button class="hbef'+(HERZ.markiert===bef[i].id?' an':'')+(techn?' tech':'')+'" data-hb="'+esc2(bef[i].id)+'">'+
-      '<span class="n">'+esc2(bef[i].name)+'</span>'+
-      '<span class="o">'+(techn?'⚠︎ kein Ort im Herzen — ':'')+esc2(o.was)+'</span></button>';
-    if(HERZ.markiert===bef[i].id){
-      html+='<div style="font-size:11.5px;color:#9fb6cc;margin:2px 0 8px 4px">'+esc2(o.warum)+'</div>';
-    }
-  }
-  html+='<div class="hgrenze"><b>Grenzen.</b> Das Modell zeigt, wo das <i>Gemessene</i> entsteht — '+
-    'es misst nichts selbst und ist kein Abbild dieses Patienten. Erregungszeiten sind aus den '+
-    'Normwerten der Tierart abgeleitet ('+esc2(H.bauFuer(HERZ.art).name)+'), die Mechanik ist an sie '+
-    'angehängt und nicht gemessen. Anatomie nach Killich, <i>Kleintierkardiologie</i>, Thieme 2019, '+
-    'Kap. 1.3 und 2.7.</div>';
-  side.innerHTML=html;
-  side.querySelectorAll('[data-hb]').forEach(function(btn){
-    btn.onclick=function(){
-      var id=btn.getAttribute('data-hb');
-      HERZ.markiert=(HERZ.markiert===id)?null:id;
-      side.dataset.k='';                       /* Neuaufbau erzwingen */
-    };
-  });
-  var ft=$('#hFootTxt');
-  if(ft) ft.textContent='Rhythmus: '+((f.def&&f.def.name)||f.rhythm||'Sinus')+
-    ' · HF '+(f.hr||'—')+'/min · '+(HERZ.tempo===1?'Echtzeit':'Zeitlupe '+Math.round(1/HERZ.tempo)+'×')+
-    ' — die Marke auf der Kurve ist derselbe Augenblick wie im Herzbild.';
-}
-
-function herzBinden(){
-  var el=$('#ekgHerz'); if(!el) return;
-  $('#ekgHerzBtn').addEventListener('click',function(){
-    if(HERZ.offen) herzSchliessen(); else herzOeffnen();
-  });
-  $('#hBack').onclick=herzSchliessen;
-  $('#hPlay').onclick=function(){ HERZ.laeuft=!HERZ.laeuft; herzKnoepfe(); };
-  $('#hSchnitt').onclick=function(){
-    HERZ.schnitt=!HERZ.schnitt;
-    /* Beim Aufschneiden von selbst dorthin drehen, wo die Schnittflaeche hinzeigt - sonst
-     * schneidet man auf und sieht weiter auf die Aussenwand. Die Richtung kommt aus dem
-     * Modell (SCHNITT_GIER), damit sie nicht an zwei Stellen verschieden gesetzt wird. */
-    var H=(window.VS&&VS.herz3d)?VS.herz3d:null;
-    if(HERZ.schnitt&&H) HERZ.gier=H.SCHNITT_GIER;
-    herzKnoepfe();
-  };
-  el.querySelectorAll('[data-hs]').forEach(function(x,k){
-    x.onclick=function(){ HERZ.gier=HERZ_SICHT[k].g; HERZ.nick=HERZ_SICHT[k].n; herzKnoepfe(); };
-  });
-  el.querySelectorAll('[data-ht]').forEach(function(x){
-    x.onclick=function(){ HERZ.tempo=+x.getAttribute('data-ht'); herzKnoepfe(); if($('#hSide')) $('#hSide').dataset.k=''; };
-  });
-  var st=$('#hStage');
-  function ab(e){ HERZ.zieht=true; HERZ.x0=(e.touches?e.touches[0]:e).clientX; HERZ.y0=(e.touches?e.touches[0]:e).clientY;
-    HERZ.g0=HERZ.gier; HERZ.n0=HERZ.nick; }
-  function zieh(e){
-    if(!HERZ.zieht) return;
-    var p=e.touches?e.touches[0]:e;
-    HERZ.gier=HERZ.g0+(p.clientX-HERZ.x0)*0.55;
-    /* Nach oben/unten nur so weit, dass man nicht ueber den Pol kippt - dahinter steht das
-     * Herz auf dem Kopf und die Seiten vertauschen sich, was hier besonders schaedlich waere. */
-    HERZ.nick=Math.max(-78,Math.min(78,HERZ.n0+(p.clientY-HERZ.y0)*0.45));
-    if(e.cancelable) e.preventDefault();
-  }
-  function auf(){ HERZ.zieht=false; herzKnoepfe(); }
-  st.addEventListener('mousedown',ab); window.addEventListener('mousemove',zieh); window.addEventListener('mouseup',auf);
-  st.addEventListener('touchstart',ab,{passive:true}); st.addEventListener('touchmove',zieh,{passive:false}); st.addEventListener('touchend',auf);
-  herzKnoepfe();
-}
-
 function renderAnlegen(){
   var side=$('#ekgSide'), ov=$('#ekgOverlay');
   ov.dataset.seite='anlegen';
@@ -13300,9 +12902,6 @@ function wire(){
     document.addEventListener('pointerup',function(){ Z.drag=null; });
     stage.addEventListener('dblclick',function(){ Z.t1=Z.t2=Z.a1=Z.a2=null; zZeigeMesswerte(); });
   }
-
-  herzBinden();
-
   /* ===== Patientendaten ===== */
   $('#ekgPatBtn').addEventListener('click',function(){
     var ov=$('#ekgOverlay');
@@ -13329,8 +12928,6 @@ function wire(){
   document.addEventListener('keydown',function(e){
     if(e.key!=='Escape') return;
     if($('#ekgPdfView')&&$('#ekgPdfView').classList.contains('open')){ closePDF(); return; }
-    /* Das Herzmodell liegt ueber der Zoom-Ebene und geht deshalb VOR ihr zurueck. */
-    if(HERZ.offen){ herzSchliessen(); return; }
     if(Z.open){ schliesseZoom(); return; }
     if(M.open) closeEkg();
   });
