@@ -3122,6 +3122,7 @@ function setMonMode(m){
    */
   if(ip) ip.style.display=(m==='ist' && !liveDaten())?'grid':'none';
   renderRhythmChips();
+  vollbildBinden();   /* unabhaengig von Rhythmus und Datenquelle - Begruendung an der Funktion */
   renderMonValues();
   cockpitHoehe(); if(mon._resize) mon._resize();
 }
@@ -5071,6 +5072,50 @@ function renderEkgGallery(){
   }).join('');
   $$('#ekgGrid .capno-card').forEach(function(c){ c.onclick=function(){ state.rhythm=c.dataset.r; renderRhythmChips(); if(mon.running) renderMonValues(); if(c.dataset.inc) gotoIncident(c.dataset.inc); }; });
 }
+/*
+ * VOLLBILD IST KEINE RHYTHMUSWAHL (berichtigt 21.08.2026, aus der Praxis gemeldet).
+ *
+ * Die Verdrahtung des Vollbild-Knopfes stand IN renderRhythmChips() - und zwar HINTER
+ * der Zeile
+ *     if(state.monMode!=='ist' || liveDaten()){ box.style.display='none'; return; }
+ * Sobald ein Geraet Werte liefert - und in der Fern-Ansicht ist das der Normalfall -
+ * stieg die Funktion vorher aus, und der Knopf bekam NIE einen Zuhoerer.
+ *
+ * GEMESSEN in der Fern-Ansicht mit laufenden Werten:  #dmVoll.onclick === null.
+ * Wer im Vollbild stand, kam mit dem Knopf nicht mehr heraus.
+ *
+ * ZWEITER FEHLER AN DERSELBEN STELLE: das keydown fuer Escape hing mitten in einer
+ * Renderfunktion. Jeder Durchlauf legte einen weiteren Zuhoerer nach - bei einem Rhythmus-
+ * wechsel je Klick einen. Ein Zuhoerer, den niemand wieder abmeldet, gehoert nicht in
+ * etwas, das oft laeuft.
+ *
+ * Beides gehoert hierher: EINMAL beim Start, unabhaengig von Rhythmus und Datenquelle.
+ * Der Riegel __vollHooked haelt das fest, falls boot() jemals zweimal liefe.
+ */
+function vollbildBinden(){
+  var b=$('#dmVoll'); if(!b || b.__vollHooked) return; b.__vollHooked=1;
+  /*
+   * VOLLBILD EIN UND AUS - mit DEMSELBEN Knopf, und zusaetzlich mit Escape: wer im
+   * Vollbild steht, sucht als erstes diese Taste. Nach dem Umschalten muss die Leinwand
+   * neu vermessen werden, sonst zeichnet sie in der alten Groesse weiter (die Kurve
+   * bliebe gestaucht). monResize() ist die Stelle, die das ohnehin tut.
+   */
+  function umschalten(an){
+    document.body.classList.toggle('mon-voll', an);
+    b.title = an ? 'Zurück zur normalen Ansicht' : 'Monitor & Kapnograph auf den ganzen Bildschirm';
+    b.setAttribute('aria-pressed', an ? 'true' : 'false');
+    try{ cockpitHoehe(); if(mon._resize) mon._resize(); }catch(e){}
+    /* Zweimal: einmal sofort und einmal nach dem Umbruch, weil die neue Groesse erst
+       nach dem naechsten Bild feststeht. Ohne den zweiten Ruf blieb die Leinwand beim
+       ersten Einschalten in der alten Breite stehen. */
+    requestAnimationFrame(function(){ try{ cockpitHoehe(); if(mon._resize) mon._resize(); }catch(e){} });
+    setTimeout(function(){ try{ cockpitHoehe(); if(mon._resize) mon._resize(); }catch(e){} }, 60);
+  }
+  b.onclick=function(){ umschalten(!document.body.classList.contains('mon-voll')); };
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Escape' && document.body.classList.contains('mon-voll')) umschalten(false);
+  });
+}
 function renderRhythmChips(){
   var box=$('#rhythmChips'); if(!box) return;
   /* Die Rhythmusauswahl ist Handbetrieb: sie sagt der App, WAS man am EKG sieht. Liefert ein
@@ -5081,31 +5126,6 @@ function renderRhythmChips(){
     var on=state.rhythm===r.id;
     return '<button class="chip'+(on?' rr-on':'')+'" data-r="'+r.id+'" style="'+(r.emergency?'box-shadow:inset 0 0 0 1px rgba(255,77,77,.4)':'')+'">'+r.name+'</button>';
   }).join('');
-  (function(){
-    /*
-     * VOLLBILD EIN UND AUS - mit DEMSELBEN Knopf, und zusaetzlich mit Escape: wer im
-     * Vollbild steht, sucht als erstes diese Taste. Nach dem Umschalten muss die Leinwand
-     * neu vermessen werden, sonst zeichnet sie in der alten Groesse weiter (die Kurve
-     * bliebe gestaucht). monResize() ist die Stelle, die das ohnehin tut.
-     */
-    var b=$('#dmVoll'); if(!b) return;
-    function umschalten(an){
-      document.body.classList.toggle('mon-voll', an);
-      b.textContent = an ? '⛶' : '⛶';
-      b.title = an ? 'Zurück zur normalen Ansicht' : 'Monitor & Kapnograph auf den ganzen Bildschirm';
-      b.setAttribute('aria-pressed', an ? 'true' : 'false');
-      try{ cockpitHoehe(); if(mon._resize) mon._resize(); }catch(e){}
-      /* Zweimal: einmal sofort und einmal nach dem Umbruch, weil die neue Groesse erst
-         nach dem naechsten Bild feststeht. Ohne den zweiten Ruf blieb die Leinwand beim
-         ersten Einschalten in der alten Breite stehen. */
-      requestAnimationFrame(function(){ try{ cockpitHoehe(); if(mon._resize) mon._resize(); }catch(e){} });
-      setTimeout(function(){ try{ cockpitHoehe(); if(mon._resize) mon._resize(); }catch(e){} }, 60);
-    }
-    b.onclick=function(){ umschalten(!document.body.classList.contains('mon-voll')); };
-    document.addEventListener('keydown', function(e){
-      if(e.key==='Escape' && document.body.classList.contains('mon-voll')) umschalten(false);
-    });
-  })();
   $$('#rhythmChips .chip').forEach(function(b){ b.onclick=function(){ state.rhythm=b.dataset.r; renderRhythmChips(); if(mon.running) renderMonValues(); }; });
 }
 
@@ -13009,6 +13029,38 @@ html[data-theme="light"] #vetlive-launch{color:#06556f !important;
   box-shadow:0 6px 18px rgba(0,0,0,.4)}
 html.vetlive-on body{padding-top:96px}
 /*
+ * IM VOLLBILD LIEGT DIE LEISTE UEBER DEM COCKPIT - UND DAMIT UEBER DEM AUSGANG.
+ * (Befund 21.08.2026, aus der Praxis gemeldet)
+ *
+ * Im gewoehnlichen Betrieb SCHIEBT die Leiste die App nach unten (padding-top oben) und
+ * verdeckt nichts. Im Vollbild ist .cockpit aber position:fixed;inset:0 und nimmt keine
+ * Polsterung an - die Leiste (z-index 9999) liegt dann ueber dem Cockpit (9000).
+ *
+ * GEMESSEN bei 1920x700, Vollbild, Fern-Ansicht offen:
+ *     Leiste 68 px hoch, Unterkante 68
+ *     #dmVoll (Vollbild verlassen), #gwMon, #gwNark alle bei y=35
+ *     elementFromPoint auf dem Zurueck-Knopf -> .vetlive-pats, also NICHT klickbar
+ * Der Tierarzt kam aus dem Vollbild nicht mehr heraus und an die Geraetewahl nicht heran.
+ *
+ * WARUM AUSBLENDEN UND NICHT VERSCHIEBEN: das Vollbild-Layout ist ueber mehrere Fassungen
+ * eingemessen (Hoehen der Spalten, Rollwege, Schirmhoehe). Ein Versatz von oben muesste an
+ * vier Stellen nachgezogen werden und wuerde genau die Masse verstellen, die dort stimmen.
+ * Die Leiste verschwindet stattdessen ganz - und ein kleiner Anker unten links sagt weiter,
+ * dass fern gearbeitet wird, und fuehrt mit einem Klick aus dem Vollbild zurueck.
+ *
+ * Unten LINKS, weil dort weder das Notfall-Dock noch Bedienknoepfe liegen - dieselbe Stelle,
+ * die der Rueckfall des Einstiegsknopfes schon benutzt.
+ */
+body.mon-voll #vetlive-bar{display:none !important}
+#vetlive-mini{display:none}
+body.mon-voll #vetlive-mini{display:inline-flex;align-items:center;gap:7px;position:fixed;
+  left:12px;bottom:12px;z-index:9998;padding:7px 12px;border-radius:22px;cursor:pointer;
+  border:1px solid rgba(0,216,255,.5);background:rgba(8,12,20,.92);color:#e8f2ff;
+  font:700 12.5px var(--tech,Segoe UI,Inter,system-ui,sans-serif);
+  box-shadow:0 6px 18px rgba(0,0,0,.45)}
+html[data-theme="light"] body.mon-voll #vetlive-mini{background:rgba(240,248,255,.96);color:#0b3b5c;border-color:rgba(0,140,190,.45)}
+body.mon-voll #vetlive-mini:hover{border-color:#00d8ff}
+/*
  * DER RIEGEL HAENGT AN "ES LIEGT EIN PATIENT AN", NICHT AN "DIE FERN-ANSICHT IST OFFEN".
  * (berichtigt 21.08.2026, aus der Praxis gemeldet)
  *
@@ -13398,6 +13450,7 @@ var laufzeitSid = {}, laufzeitMinSid = {}, laufzeitMaxSid = {};
 var taktSid = {};           // sid -> {n, t0, rate} fuer "Aktualisierungen hier"
 
 var connState = demo ? 'live' : 'init', lastError = '', switched = false;
+var mini = null;   /* kleiner Anker unten links, nur im Vollbild sichtbar */
 var bar = null, activated = false, kurvenSigGezeigt = null;
 var wechselFrisch = false;  // gesetzt von waehleSaal(): der naechste applySelected() setzt zurueck
 /* Anmeldung + Laufzeitmessung */
@@ -14008,6 +14061,13 @@ function polsterSetzen(){
   /* Ohne Leiste (abgemeldet) NICHTS schreiben: zurueckZumTraining() hat die Polsterung
      gerade absichtlich geleert, ein Wert von hier würde die App wieder nach unten drücken. */
   if(!bar || !bar.parentNode) return;
+  /*
+   * Im Vollbild ist die Leiste ausgeblendet, offsetHeight also 0. Wuerde hier 0 geschrieben
+   * (z. B. weil jemand waehrend des Vollbilds die Fenstergroesse aendert), stuende die App
+   * nach dem Verlassen des Vollbilds ohne Polsterung unter der wieder sichtbaren Leiste.
+   * Der Wert von vorher ist der richtige - also nichts anfassen.
+   */
+  if(document.body.classList.contains('mon-voll')) return;
   try{ document.body.style.paddingTop = bar.offsetHeight+'px'; }catch(e){}
 }
 function polsterNachziehen(){
@@ -14032,6 +14092,11 @@ function render(){
    */
   var liegtAn = !!(sel && pats[sel]);
   try{ document.documentElement.classList.toggle('vetlive-fremd', liegtAn); }catch(e){}
+  /* Derselbe Zustand, nur klein: im Vollbild ist das die einzige Stelle, die noch sagt,
+   * dass hier fremde Werte laufen. */
+  if(mini){ mini.textContent = liegtAn
+    ? '📡 fern · ' + (selSaal ? saalTitel(selSaal) : 'verbunden')
+    : '📡 Fern-Ansicht'; }
   var chips = keys.slice(0, DECKEL_KACHELN).map(function(k){
     var p=pats[k], pri=p.pri||0, col=priColor(pri), colH=priColorHell(pri);
     var top=(p.top&&p.top.title)?p.top.title:'stabil';
@@ -14938,7 +15003,22 @@ function zeigeAnmeldung(vorbelegt, hinweis){
    * Zurück schließt nur dieses Fenster; die Fern-Ansicht selbst bleibt eingeschaltet und der
    * Reiter „📡 Fern-Live" führt jederzeit wieder hierher.
    */
-  var zurueck=function(){ versteckeAnmeldung(); };
+  /*
+   * OHNE ANMELDUNG BLEIBT OBEN NICHTS STEHEN (berichtigt 21.08.2026, aus der Praxis).
+   *
+   * Hier stand nur versteckeAnmeldung(): das Anmeldefenster ging zu, die Fern-Leiste blieb.
+   * Wer den Fern-Zugang nur ausprobiert hat, sass danach dauerhaft unter 68 Punkten Leiste,
+   * die nichts anzeigte ausser 'nicht angemeldet' - und im Vollbild ueber dem Ausgang.
+   *
+   * Wer NICHT angemeldet ist, bekommt deshalb den Zustand von vorher zurueck: keine Leiste,
+   * Einstiegsknopf wieder da, App frei benutzbar. Der Weg zurueck geht ueber genau diesen
+   * Knopf UND weiter ueber den Reiter 'Fern-Live' - injectTab() laesst ihn stehen.
+   * Wer angemeldet IST, behaelt seine Leiste; dort schliesst Zurueck nur das Fenster.
+   */
+  var zurueck=function(){
+    versteckeAnmeldung();
+    if(!nutzer) zurueckZumTraining();
+  };
   w.querySelector('#vlZurueck').onclick=zurueck;
   w.addEventListener('keydown', function(e){ if(e.key==='Escape') zurueck(); });
   var mail=w.querySelector('#vlMail'), pw=w.querySelector('#vlPw'), msg=w.querySelector('#vlMsg');
@@ -15099,6 +15179,7 @@ function zurueckZumTraining(){
   try{ document.documentElement.classList.remove('vetlive-fremd'); }catch(e){}
   try{ document.body.style.paddingTop=''; }catch(e){}
   try{ if(bar){ bar.remove(); bar=null; } }catch(e){}
+  try{ if(mini){ mini.remove(); mini=null; } }catch(e){}
   try{ var d=document.getElementById('druckblatt'); if(d) d.innerHTML=''; }catch(e){}
   activated=false;
   /* Ohne den Knopf gaebe es keinen Weg zurueck in die Fern-Ansicht. */
@@ -15578,6 +15659,16 @@ function activate(){
   injectCss();
   bar = document.createElement('div'); bar.id='vetlive-bar';
   document.body.appendChild(bar);
+  /*
+   * Der Anker fuers Vollbild. Er ruft NICHT selbst das Vollbild ab, sondern klickt den Knopf
+   * der Anwendung (#dmVoll) - dort haengen cockpitHoehe() und das Neuvermessen der Leinwand.
+   * Ein zweiter Weg aus dem Vollbild waere genau der zweite Rechenweg, den dieses Projekt
+   * schon zweimal teuer bezahlt hat.
+   */
+  mini = document.createElement('button'); mini.id='vetlive-mini'; mini.type='button';
+  mini.title='Vollbild verlassen und zur Fern-Leiste zurueck';
+  mini.onclick=function(){ var v=document.getElementById('dmVoll'); if(v) v.click(); };
+  document.body.appendChild(mini);
   document.documentElement.classList.add('vetlive-on');
   var lb=document.getElementById('vetlive-launch'); if(lb) lb.remove();
   if(!document.getElementById('druckblatt')){
