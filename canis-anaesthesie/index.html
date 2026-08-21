@@ -3166,7 +3166,38 @@ function cockpitHoehe(){
   var dockH=0;
   if(dock && getComputedStyle(dock).position==='fixed'){ var dr=dock.getBoundingClientRect();
     if(dr.height>0 && dr.top>window.innerHeight*0.55) dockH=dr.height+6; }
-  var h=window.innerHeight-el.getBoundingClientRect().top-14-dockH;
+  /*
+   * ==========================================================================================
+   * DER BEZUGSPUNKT DARF NICHT AM ROLLWEG HAENGEN (Befund 21.08.2026, aus der Praxis gemeldet).
+   * ==========================================================================================
+   * Hier stand:  var h = window.innerHeight - el.getBoundingClientRect().top - 14 - dockH;
+   *
+   * getBoundingClientRect().top wird NEGATIV, sobald das Cockpit ueber den oberen Fensterrand
+   * hinausgerollt ist. Aus dem Minus wird ein Plus, und die Hoehe waechst um genau den
+   * Rollweg. Gemessen bei 1600x900, Rollweg 510:
+   *
+   *     top -303  ->  h = 900 + 303 - 14 - dock  =  1127 px in einem 900-px-Fenster
+   *
+   * Und schlimmer: die Pruefung weiter unten ("passt es ueberhaupt?") rechnet dann mit einem
+   * viel zu grossen clientHeight, findet keinen Ueberlauf mehr und nimmt ck-eng WIEDER WEG.
+   * Das Cockpit sprang damit beim Rollen zwischen zwei Betriebsarten hin und her: oben lief
+   * es als normale Seite, gescrollt zwang es sich in eine feste Hoehe groesser als der
+   * Bildschirm. Auf dem Foto aus der Praxis war die Kurvenflaeche dadurch schmal und die
+   * Zahlen daneben lagen ineinander.
+   *
+   * Bis zum 21.08.2026 fiel das nicht auf, weil cockpitHoehe() nur bei Reiterwechsel,
+   * Geraetewechsel und resize lief — also praktisch immer am Seitenanfang. Erst der
+   * mitwachsende Kopfbereich ruft sie WAEHREND des Rollens.
+   *
+   * Der Bezugspunkt ist jetzt die Unterkante der klebenden Reiterleiste, sobald das Cockpit
+   * darunter gewandert ist. Das ist die Stelle, an der es beim Arbeiten wirklich beginnt.
+   */
+  var nav=document.querySelector('.navbar');
+  var klebt=0;
+  if(nav){ var np=getComputedStyle(nav).position;
+    if(np==='sticky'||np==='fixed'){ var nr=nav.getBoundingClientRect(); if(nr.height>0) klebt=nr.bottom; } }
+  var oben=Math.max(el.getBoundingClientRect().top, klebt);
+  var h=window.innerHeight-oben-14-dockH;
   /* Zu niedriges Fenster: dann NICHT mehr auf Bildschirmhoehe zwingen.
    *
    * Gemessen bei 1200x860: fuer die Geraetespalte blieben 434 px, gebraucht wurden 757 —
@@ -5895,6 +5926,23 @@ function kopfMessen(){
   W.style.setProperty('--navbar-top', (kh + ph) + 'px');
 }
 function kopfScroll(){
+  /*
+   * AUF DEM GERAETE-REITER GILT DER MITWACHSENDE KOPF NICHT (21.08.2026).
+   *
+   * Dieser Reiter hat seit 1.4.3 seinen EIGENEN kompakten Kopf (html[data-view="geraet"],
+   * gemessen 379 -> 265 px) und darunter ein Cockpit mit fest gerechneter Hoehe. Zwei
+   * Mechanismen, die dieselbe Hoehe verstellen, ergeben beim Rollen ein Springen: der Kopf
+   * schrumpft, cockpitHoehe() rechnet neu, das Cockpit wird groesser, die Seite wird laenger,
+   * der Rollweg aendert sich — und das Ganze von vorn. In der Praxis sah man den virtuellen
+   * Monitor dabei "komisch klein und sehr hoch".
+   *
+   * Der Reiter verliert dadurch nichts: sein Kopf ist ohnehin schon der kleinste der
+   * Anwendung. Alle anderen Reiter behalten den mitwachsenden Kopf.
+   */
+  try{ if(document.documentElement.getAttribute('data-view')==='geraet'){
+    if(kopfStand.klein){ kopfStand.klein=false; document.documentElement.setAttribute('data-kopf','gross'); kopfPlanen(); }
+    return;
+  } }catch(e){}
   var y = window.pageYOffset || document.documentElement.scrollTop || 0;
   /* Hysterese: hinunter ab 130 px, hinauf erst wieder unter 50. Ohne den Abstand schwingt der
    * Zustand an der Schwelle, weil das Schrumpfen die Seite kuerzer macht und damit die
