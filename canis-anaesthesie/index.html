@@ -13008,9 +13008,27 @@ html[data-theme="light"] #vetlive-launch{color:#06556f !important;
   border-radius:22px;border:1px solid rgba(0,216,255,.5);font:700 12.5px var(--tech,Segoe UI,Inter,system-ui,sans-serif);
   box-shadow:0 6px 18px rgba(0,0,0,.4)}
 html.vetlive-on body{padding-top:96px}
-/* Read-only: Patienten-/Monitor-Eingaben kommen vom Praxis-PC (nicht fern editierbar) */
-html.vetlive-on #spChips,html.vetlive-on #wt,html.vetlive-on #age,html.vetlive-on #breedIn,html.vetlive-on #breedClear,html.vetlive-on #monInputs,html.vetlive-on #anMode{pointer-events:none;opacity:.92}
-html.vetlive-on #spChips::after{content:"🔒 vom Praxis-PC"}
+/*
+ * DER RIEGEL HAENGT AN "ES LIEGT EIN PATIENT AN", NICHT AN "DIE FERN-ANSICHT IST OFFEN".
+ * (berichtigt 21.08.2026, aus der Praxis gemeldet)
+ *
+ * BEFUND: Wer die Fern-Ansicht oeffnete und sich NICHT anmeldete, sass vor einer Anwendung,
+ * in der Tierart, Gewicht, Alter, Rasse und Narkosetyp gesperrt waren - gemessen alle fuenf
+ * auf pointer-events:none, waehrend die Kopfzeile "nicht angemeldet" und "bitte anmelden..."
+ * meldete. Gesperrt gegen Werte, die es gar nicht gab.
+ *
+ * Die Sperre ist richtig, SOLANGE ein Patient vom Praxis-PC angezeigt wird: eine Aenderung
+ * hier waere dann eine zweite Wahrheit neben der Station. Ohne Patient ist sie sinnlos - die
+ * Anwendung ist dann genau das, was sie ohne Anmeldung sein soll: eine Simulation, in der
+ * jeder alles eintragen kann.
+ *
+ * vetlive-on bleibt, was es war (Leiste da, Polsterung). Die Sperre bekommt eine eigene
+ * Klasse, die render() setzt und wieder nimmt. Beides in EINE Klasse zu legen war der
+ * Fehler: der Zustand "Leiste sichtbar" und der Zustand "fremde Werte liegen an" sind
+ * nicht dasselbe.
+ */
+html.vetlive-fremd #spChips,html.vetlive-fremd #wt,html.vetlive-fremd #age,html.vetlive-fremd #breedIn,html.vetlive-fremd #breedClear,html.vetlive-fremd #monInputs,html.vetlive-fremd #anMode{pointer-events:none;opacity:.92}
+html.vetlive-fremd #spChips::after{content:"🔒 vom Praxis-PC"}
 
 /* ---- Submenü "Fern-Live": der komplette Stand der Station auf einer Seite ---- */
 #fernlive .fl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:9px;margin-top:4px}
@@ -14006,6 +14024,14 @@ function render(){
    * eines Menschen. Der Saal bleibt gewaehlt und seine Karte meldet den Ausfall. */
   var pats = patientenVon(selSaal);
   var keys = Object.keys(pats);
+  /*
+   * DIE EINE FRAGE, AN DER DIE SPERRE HAENGT: liegt gerade ein Patient vom Praxis-PC an?
+   * Nur dann sind Tierart, Gewicht und Rasse fremde Werte. Ohne Patient - nicht angemeldet,
+   * kein Saal, leerer Saal - ist die Anwendung eine Simulation und alles frei.
+   * Genau hier stand vorher gar nichts, und die Sperre kam blind aus activate().
+   */
+  var liegtAn = !!(sel && pats[sel]);
+  try{ document.documentElement.classList.toggle('vetlive-fremd', liegtAn); }catch(e){}
   var chips = keys.slice(0, DECKEL_KACHELN).map(function(k){
     var p=pats[k], pri=p.pri||0, col=priColor(pri), colH=priColorHell(pri);
     var top=(p.top&&p.top.title)?p.top.title:'stabil';
@@ -14026,7 +14052,9 @@ function render(){
       '<span class="vetlive-station">'+esc(selSaal?saalTitel(selSaal):'kein Saal gewählt')+'</span>'+
       '<span class="vetlive-conn '+cb.cls+'"><i></i>'+esc(cb.txt)+'</span>'+
       konto+
-      '<span class="vetlive-ro">🔒 nur Ansicht · Werte &amp; Empfehlungen vom Praxis-PC</span>'+
+      (liegtAn
+        ? '<span class="vetlive-ro">🔒 nur Ansicht · Werte &amp; Empfehlungen vom Praxis-PC</span>'
+        : '<span class="vetlive-ro">🎓 Simulation · Tierart, Gewicht, Rasse und Werte frei einstellbar</span>')+
     '</div>'+
     tafelHtml()+
     '<div class="vetlive-pats">'+(keys.length?chips:'<span class="vetlive-wait">'+warte+'</span>')+'</div>'+
@@ -15066,6 +15094,9 @@ function anmeldeFehler(e){
  */
 function zurueckZumTraining(){
   try{ document.documentElement.classList.remove('vetlive-on'); }catch(e){}
+  /* Die Sperrklasse getrennt abraeumen - render() laeuft ohne Leiste nicht mehr und koennte
+   * sie sonst nie zuruecknehmen. */
+  try{ document.documentElement.classList.remove('vetlive-fremd'); }catch(e){}
   try{ document.body.style.paddingTop=''; }catch(e){}
   try{ if(bar){ bar.remove(); bar=null; } }catch(e){}
   try{ var d=document.getElementById('druckblatt'); if(d) d.innerHTML=''; }catch(e){}
