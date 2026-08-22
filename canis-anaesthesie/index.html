@@ -13990,11 +13990,30 @@ function saalKarte(sid){
  * Die Saalleiste laesst sich einklappen (verlangt 19.08.2026). Auf dem Bildschirm des
  * Praxis-PCs nehmen die Karten genau den Platz weg, auf dem die Werte des virtuellen
  * Monitors stehen sollen. Der Zustand wird gemerkt - der Kiosk laedt oft neu, und niemand
- * will nach jedem Neustart wieder wegklappen. Vorgabe ist AUSGEKLAPPT: wer die Fern-Ansicht
- * zum ersten Mal oeffnet, soll sehen, welche Saele es ueberhaupt gibt.
+ * will nach jedem Neustart wieder wegklappen.
+ *
+ * VORGABE UMGEDREHT AUF EINGEKLAPPT (verlangt 22.08.2026).
+ *
+ * Hier stand AUSGEKLAPPT, mit der Begruendung: wer die Fern-Ansicht zum ersten Mal
+ * oeffnet, soll sehen, welche Saele es ueberhaupt gibt. Gemessen bei 1920x700 kostet das
+ * aber:
+ *     ausgeklappt  Leiste 354 px von 700 px Fensterhoehe - die Geraetezeile lag darunter
+ *     eingeklappt  Leiste 135 px, Geraetezeile sichtbar
+ *
+ * Und die alte Begruendung traegt weiter, ohne die Karten zu zeigen: der Knopf nennt
+ * eingeklappt die ZAHL der Saele ('OP-Saele (3)'). Man sieht also weiterhin, dass und
+ * wie viele es gibt - nur nicht mehr auf Kosten der halben Bildschirmhoehe.
+ *
+ * EINE GETROFFENE WAHL WIRD NICHT UEBERSCHRIEBEN. Geprueft wird auf null, nicht auf '1':
+ * wer schon einmal ausgeklappt hat, hat '0' gespeichert und behaelt es. Nur wer nie
+ * angefasst hat, bekommt die neue Vorgabe. Ein Vorgabewechsel, der gesetzte
+ * Einstellungen mitnimmt, ist keine Vorgabe mehr, sondern eine Zwangsumstellung.
  */
-var saeleZu = false;
-try{ saeleZu = localStorage.getItem('vetlive_saele_zu')==='1'; }catch(e){}
+var saeleZu = true;
+try{
+  var saeleGemerkt = localStorage.getItem('vetlive_saele_zu');
+  if(saeleGemerkt !== null) saeleZu = (saeleGemerkt === '1');
+}catch(e){}
 function tafelHtml(){
   var alle = saalListe();
   if(!alle.length) return '';
