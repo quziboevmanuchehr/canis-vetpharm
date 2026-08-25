@@ -514,6 +514,7 @@ window.ANAES = {
               {id:'glyco',low:0.005,high:0.01,unit:'mg/kg',route:'IV',note:'Alternative, längere Wirkung.'},
               {id:'atipamezol',low:null,high:null,unit:'mg/kg',route:'IM',note:'Nur wenn die Lage alpha2-bedingt ist (Dexmedetomidin/Medetomidin/Xylazin im Protokoll). Der Schritt daneben nennt das Mittel seit jeher beim Namen - eine Menge stand dazu nur nirgends. Hebt mit der Sedierung auch die Analgesie auf; danach ist ein Schmerzmittel faellig.'} ],
       speciesNotes:{ kaninchen:'Glycopyrrolat bevorzugen (Atropinesterase). Stress minimieren.', reptil:'Zuerst Körpertemperatur/POTZ prüfen – „Bradykardie" oft temperaturbedingt.' },
+      rescue:['alpha2-ueberdosis','opioid-ueberhang','hyperkaliaemie','hypothermie','kaninchen-notfall'],
       red:['Bradykardie + Hypotension ist ein Warnsignal – rasch handeln','HF-Abfall spät bei Hypoxie = präterminal → CPR-Bereitschaft','AV-Block II° Mobitz II und III° sind infranodal — Atropin einmalig als Test, bei Nichtansprechen NICHT nachdosieren; Dopamin 5–10 µg/kg/min als Dauertropf und Bereitschaft zum Pacing'] },
 
     { id:'tachykardie', name:'Tachykardie', icon:'💓', cls:'Kreislauf', color:'#ff8c6b', tag:'HF ↑', short:'Herzfrequenz zu hoch',
@@ -528,6 +529,7 @@ window.ANAES = {
               {id:'butorphanol',low:null,high:null,unit:'mg/kg',route:'IV/IM',note:'Zweite belegte Opioid-Wahl fuer Heimtiere (Plumb’s). Kurz wirksam, Wirkdecke bei viszeralem Schmerz — bei starkem Schmerz reicht es allein nicht.'},
               {id:'amiodaron',low:null,high:null,unit:'mg/kg',route:'IV/IO',note:'Fuer die KATZE die Antwort, die der Lidocain-Text daneben selbst nennt (RECOVER 2024 raet dort von Lidocain ab). Nur bei kreislaufwirksamer Kammertachykardie und erst, wenn Ursache, Sauerstoff, EtCO2, Narkosetiefe, Volumen, Temperatur, Kalium und Magnesium geprueft sind.'} ],
       speciesNotes:{ katze:'Bei der Katze KEIN Standard-Lidocain (RECOVER 2024). Zuerst die Ursachenkette: Oxygenierung, EtCO₂, Narkosetiefe, Analgesie, Volumen, Temperatur, Kalium und Magnesium. Bleibt eine kreislaufwirksame Kammertachykardie: Amiodaron 5 mg/kg IV/IO.', all:'Immer erst Ursache (Schmerz/Volumen/CO₂) – nicht „blind" β-Blocker.' },
+      rescue:['blutung-vwd','anaphylaxie','mh-krise'],
       red:['Sinustachykardie ist meist Symptom – Ursache suchen, nicht nur Frequenz senken'] },
 
     { id:'tachypnoe', name:'Tachypnoe / hohe Atemfrequenz', icon:'🌬️', cls:'Atmung', color:'#ffd166', tag:'AF ↑', short:'Atemfrequenz zu hoch',
@@ -548,6 +550,7 @@ window.ANAES = {
       machine:'O₂-Fluss maximal, FiO₂ 100 %; Vapor kurz reduzieren; O₂-Flush nutzen; auf Manual/IPPV. PIP kontrolliert (Hund/Katze ≤ 15–20, Exoten niedriger).',
       drugs:[],   /* Adrenalin steht in der CPR-Karte. Hier stand es als erste Dosis des Zwischenfalls "Hypoxaemie" — ein Tier mit SpO2 94 und tastbarem Puls bekam damit eine ausgerechnete Adrenalin-Milliliterzahl. Am schlagenden, hypoxischen Herzen ist das der Weg ins Kammerflimmern. */
       speciesNotes:{ reptil:'Pulsoxymetrie oft unzuverlässig – klinisch (Farbe, Doppler) beurteilen; bei O₂-Beatmung Atemantrieb sinkt.', kaninchen:'Immer präoxygenieren; Intubation schwierig → Larynxmaske/Maske.' },
+      rescue:['anaphylaxie','regurgitation','propofol-apnoe','ketamin-hcm'],
       red:['SpO₂ < 90 % ist ein Notfall – zuerst Gerät/Tubus, dann Patient','Erst nach Beatmung an Medikamente denken'] },
 
     { id:'hypoventilation', name:'Hypoventilation / hohes EtCO₂', icon:'☁️', cls:'Atmung', color:'#a78bfa', tag:'EtCO₂ ↑', short:'CO₂-Anstieg',
@@ -557,6 +560,7 @@ window.ANAES = {
       machine:'Auf VCV/PCV oder Manual umschalten; AF art-typisch, AZV 10–15 mL/kg (Exoten weniger), PIP-Grenze beachten; Kapnografie bis EtCO₂ 35–45.',
       drugs:[ {id:'naloxon',low:0.01,high:0.04,unit:'mg/kg',route:'IV',note:'Nur wenn opioidbedingte Atemdepression überwiegt (titrieren, Analgesie geht verloren).'} ],
       speciesNotes:{ reptil:'Physiologisch niedriges EtCO₂; Beatmung 2–4/min genügt oft.' },
+      rescue:['opioid-ueberhang','propofol-apnoe'],
       red:['Hyperkapnie unbehandelt → Azidose, Arrhythmien'] },
 
     { id:'hypotension', name:'Hypotension', icon:'📉', cls:'Kreislauf', color:'#ff4d4d', tag:'MAP ↓', short:'Blutdruck zu niedrig',
@@ -579,6 +583,7 @@ window.ANAES = {
               {id:'dobutamin',low:null,high:null,unit:'mcg/kg/min',route:'CRI',note:'Bei Myokarddepression oder niedrigem Herzzeitvolumen. NICHT bei HOCM/SAM, Aorten- oder Pulmonalstenose — dort verschlimmert mehr Kontraktilität die Obstruktion (Praxis der Kardiologie S.436/437). Kann ventrikuläre Extrasystolen verstärken — bei bestehender Ektopie nur unter EKG.'},
               {id:'phenylephrin',low:null,high:null,unit:'mcg/kg/min',route:'CRI',note:'Reiner alpha1-Stoff. Die Anwendung nennt ihn in der Dopamin-Zeile selbst als Antwort fuer die Katze (VAA 2021) und in der Arzneikarte fuer die Hypotonie unter Isofluran und nach Acepromazin (AJVR 2023) - er stand hier bisher nur nicht, also gab es dazu keine Menge. Reflexbradykardie moeglich; nichts fuer den geschwaechten Herzmuskel.'} ],
       speciesNotes:{ all:'Kristalloid-Bolus Hund 10–20 mL/kg / Katze 5–10 mL/kg über 10–15 min, dann re-evaluieren (siehe Einstellungen/Infusion).' },
+      rescue:['alpha2-ueberdosis','ace-hypotension','anaphylaxie','blutung-vwd'],
       red:['Iso zu hoch ist die häufigste Narkose-Hypotension – zuerst Verdampfer runter','Niemals einen Vasopressor auf einen unbestätigten Manschettenwert — am kalten oder engstellten Tier zuerst Manschettengröße, Sitz und Doppler prüfen'] },
 
     { id:'apnoe', name:'Apnoe / Atemstillstand', icon:'⛔', cls:'Atmung', color:'#ff4d4d', tag:'AF 0', short:'keine Spontanatmung',
@@ -590,6 +595,7 @@ window.ANAES = {
               {id:'atipamezol',low:null,high:null,unit:'mg/kg',route:'IM',note:'α2-Überhang. Katze etwa halbes Volumen.'},
               {id:'flumazenil',low:0.01,high:0.01,unit:'mg/kg',route:'IV',note:'Benzodiazepin-Überhang.'} ],
       speciesNotes:{ reptil:'Apnoe/„Breath-Hold" häufig – IPPV 2–4/min, Raumluft kann Atemantrieb fördern als 100 % O₂.' },
+      rescue:['propofol-apnoe','opioid-ueberhang','reptil-notfall'],
       red:['Kein Puls → sofort CPR (siehe 🚨)'] },
 
     { id:'asystolie', name:'Herzstillstand / CPR (RECOVER)', icon:'🚨', cls:'Reanimation', color:'#ff2d2d', tag:'CPR', short:'Asystolie / PEA / Kammerflimmern',
@@ -603,6 +609,7 @@ window.ANAES = {
               {id:'atropin',low:0.04,high:0.04,unit:'mg/kg',route:'IV/IO',note:'EINMALIG bei nicht-defibrillierbarem Rhythmus (Asystolie/PEA), v.a. hoher Vagotonus; so früh wie möglich. NICHT wiederholen (lange HWZ; wiederholte/höhere Dosen mit schlechterem Outcome assoziiert).'},
               {id:'naloxon',low:0.04,high:0.04,unit:'mg/kg',route:'IV/IO',note:'Wenn opioidassoziiert.'} ],
       speciesNotes:{ katze:'Kleine Hände – Thorax mit einer Hand umgreifend komprimieren.', kaninchen:'Sehr fragiler Thorax – vorsichtig, hohe Frequenz.', reptil:'CPR wenig etabliert; beatmen, Adrenalin IV/IO (intratracheal möglich; intrakardial nur ohne anderen Zugang), langer Versuch (kältetolerant).' },
+      rescue:['cpr','hyperkaliaemie','blutung-vwd','kaninchen-notfall','reptil-notfall'],
       red:['Kompressionen früh & ununterbrochen','Verdampfer AUS nicht vergessen','Nach ROSC: Nachsorge, Ursache, Wärme, Monitoring'] },
 
     { id:'hyperthermie', name:'Hyperthermie', icon:'🔥', cls:'Temperatur', color:'#ff8c6b', tag:'T ↑', short:'Körpertemperatur zu hoch',
@@ -612,6 +619,7 @@ window.ANAES = {
       machine:'Wärmematte reduzieren; Frischgas-O₂ hoch (bei malignem Verdacht Kreislauf spülen).',
       drugs:[],
       speciesNotes:{ katze:'Opioide (v.a. Hydromorphon) können bei Katzen Hyperthermie auslösen.' },
+      rescue:['mh-krise'],
       red:['> 41 °C → aggressiv kühlen, Organschäden drohen'] },
 
     { id:'hypothermie', name:'Hypothermie', icon:'❄️', cls:'Temperatur', color:'#66a6ff', tag:'T ↓', short:'Körpertemperatur zu niedrig',
@@ -621,6 +629,7 @@ window.ANAES = {
       machine:'Warmluftgebläse/Wärmematte; MAC/Iso-Bedarf sinkt – Verdampfer entsprechend zurück.',
       drugs:[],
       speciesNotes:{ kaninchen:'Sehr rasche Auskühlung – von Beginn an aktiv wärmen.', meerschwein:'Wie Kaninchen; kleine Masse.', reptil:'„Hypothermie" ist Zieltemperatur-Problem – POTZ-Bereich sichern (Reptil braucht Wärme für Metabolismus/Aufwachen).' },
+      rescue:['hypothermie'],
       red:['Hypothermie verlängert Aufwachphase & verstärkt Iso-Wirkung'] },
 
     { id:'hypertension', name:'Hypertonie (Blutdruck zu hoch)', icon:'📈', cls:'Kreislauf', color:'#ff8c6b', tag:'MAP ↑', short:'Blutdruck zu hoch',
@@ -634,6 +643,7 @@ window.ANAES = {
               {id:'butorphanol',low:null,high:null,unit:'mg/kg',route:'IV/IM',note:'Zweite belegte Opioid-Wahl fuer Heimtiere (Plumb’s). Kurz wirksam, Wirkdecke bei viszeralem Schmerz — bei starkem Schmerz reicht es allein nicht.'},
               {id:'atipamezol',low:null,high:null,unit:'mg/kg',route:'IM',note:'Nur wenn die Lage alpha2-bedingt ist (Dexmedetomidin/Medetomidin/Xylazin im Protokoll). Der Schritt daneben nennt das Mittel seit jeher beim Namen - eine Menge stand dazu nur nirgends. Hebt mit der Sedierung auch die Analgesie auf; danach ist ein Schmerzmittel faellig.'} ],
       speciesNotes:{ all:'Vasodilatatoren nur titriert unter Blutdruckmonitoring – können in Hypotonie umschlagen. Bei α2-Hypertonie zuerst Zeit/Antagonist statt Atropin. Refraktär: Labetalol (α/β) oder Na-Nitroprussid 0,5–5 µg/kg/min CRI durch Anästhesist.' },
+      rescue:['alpha2-ueberdosis'],
       red:['NICHT blind senken – erst Ursache (zu flach/Schmerz, Hyperkapnie, α2) klären.','Kein Anticholinergikum bei α2-bedingter Hypertonie.'] }
   ],
 

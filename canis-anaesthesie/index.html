@@ -190,6 +190,10 @@ html[data-theme="light"] .gabe-warn{background:#fff5f5}
 .plan-card .pc-z b{color:var(--brand)}
 .plan-meiden{border-left:4px solid var(--red)}
 .plan-rettung{border-left:4px solid #ff8c3c}
+/* Der Rettungsblock der Zwischenfallkarte. KEINE eigene Farbe: summary traegt .sec-h und
+ * erbt damit var(--amber), die Karten erben .plan-card. So gilt in beiden Themen genau das,
+ * was der Kontrastwaechter fuer diese Klassen ohnehin schon vermessen hat. */
+.proto-rettung>summary{cursor:pointer;user-select:none}
 .plan-ziel{border-left:4px solid #7fd6ff}
 /* Beatmungsmodi-Konfigurator */
 .vent-modebar{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
@@ -2149,6 +2153,39 @@ function doseLine(ref){
     (ref.note?'<div class="dose-meta">'+ref.note+'</div>':'')+
     (spd&&spd.caution?'<div class="dose-caution">⚠️ '+spd.caution+'</div>':'')+capLine+breedWarnHtml(ref.id||(d&&d.id)||name)+'</div>';
 }
+/* ==========================================================================================
+ * rettungHtml(i) — DER WEG ZURÜCK, WENN DIE MASSNAHME NICHT GREIFT (24.08.2026)
+ *
+ * WAS WAR: die Zwischenfallkarte sagte, was zu TUN ist. Half es nicht, stand nichts mehr da.
+ * Die 24 allgemeinen Rettungswege (α2-Überdosis, Anaphylaxie, LAST, Regurgitation, CPR …)
+ * lagen die ganze Zeit im Katalog und waren nur über das Rasseprofil erreichbar — also über
+ * einen anderen Reiter, den im Zwischenfall niemand aufschlägt.
+ *
+ * NUR GEDECKTE WEGE: jeder Eintrag in incident.rescue ist durch eine Ursache ODER einen
+ * Artenhinweis DERSELBEN Karte gedeckt. „Tachypnoe" bekommt deshalb mit Absicht keinen —
+ * keiner der vorhandenen Wege deckt ihre Ursachen. Lieber leer als schwach gefüllt.
+ *
+ * DIE ARTFILTERUNG MACHT rescueFor(): ein Weg mit eigener Art (kaninchen-notfall,
+ * reptil-notfall, ketamin-hcm) erscheint nur dort. Gemessen über alle elf Karten und zwölf
+ * Arten: keine einzige Kombination bleibt leer, außer der absichtlich leeren.
+ *
+ * EINGEKLAPPT: im Zwischenfall zählt die Schrittliste oben. Ein aufgeklappter Block mit bis
+ * zu fünf Karten schöbe sie aus dem Bild — das ist genau der Fehler, der am 21.08.2026 beim
+ * Sofort-Block schon einmal gemacht wurde (Meldung richtig, aber außer Sicht).
+ * ========================================================================================== */
+function rettungHtml(i){
+  if(!VB||!VB.rescueFor||!i||!i.rescue||!i.rescue.length) return '';
+  var wege=VB.rescueFor(i.rescue, state.sp)||[];
+  if(!wege.length) return '';
+  return '<details class="proto-rettung"><summary class="sec-h">🆘 Greift es nicht – so wird stabilisiert ('+wege.length+')</summary>'+
+    wege.map(function(r){
+      return '<div class="plan-card plan-rettung"><div class="pc-h">'+escH(r.name||'')+'</div>'+
+        (r.zeichen?'<div class="pc-z"><b>Erkennen:</b> '+escH(r.zeichen)+'</div>':'')+
+        ((r.schritte&&r.schritte.length)?'<ol style="margin:6px 0 0 17px;font-size:12.5px;line-height:1.55">'+r.schritte.map(function(s){return '<li>'+escH(s)+'</li>';}).join('')+'</ol>':'')+
+        ((r.nicht&&r.nicht.length)?'<div class="pc-z nicht-zeile" style="margin-top:5px"><b>NICHT:</b> '+escH(r.nicht.join(' · '))+'</div>':'')+
+        ((r.sources&&r.sources.length)?'<div class="src">Quelle: '+escH(r.sources.join('; '))+'</div>':'')+'</div>';
+    }).join('')+'</details>';
+}
 function renderProto(){
   var i=A.incidents.find(function(x){return x.id===state.incident;});
   var box=$('#protoBox');
@@ -2166,6 +2203,9 @@ function renderProto(){
   var sn = i.speciesNotes && (i.speciesNotes[state.sp]||i.speciesNotes.all);
   if(sn) html+='<div class="dose-caution" style="margin-top:10px">🐾 <b>'+s.name+':</b> '+sn+'</div>';
   if(i.red&&i.red.length) html+='<div class="thr thr-rot">⛔ '+i.red.join(' · ')+'</div>';
+  /* GANZ ANS ENDE und in dieselbe Zeichenkette: box.innerHTML ersetzt den Inhalt vollständig,
+   * ein appendChild danach wäre beim nächsten Takt wieder weg. */
+  html+=rettungHtml(i);
   box.innerHTML=html;
   var at=$('#adrTog'); if(at) at.onclick=function(){ state.adrHigh=!state.adrHigh; renderProto(); };
 }
@@ -2201,7 +2241,7 @@ function renderDrugs(){
     if(ix>=0) state.givenDrugs.splice(ix,1); else state.givenDrugs.push(id);
     /* Erst JETZT wird protokolliert — die angezeigte Empfehlung allein erzeugt keine Zeile. */
     medBuchen({kind:'medikament', kindText:(dd&&dd.cls)||'Medikament', id:id, name:(dd&&dd.name)||id,
-               dosis:medDosisText(id), storno:(ix>=0)});
+               dosis:medDosisText(id), storno:(ix>=0), quelle:'liste'});
     renderDrugs(); renderInjection(); if(mon.running) renderMonValues(); else { ventCoach(); renderVentPanel(); } }; });
 }
 /* Kurzes Folgen-Etikett fürs Medikament (aus DRUGFX-Tags) */
@@ -3827,6 +3867,16 @@ function erstwahlHtml(){
   h+='</div>';
   return h;
 }
+/* ewRang(id) — der wievielte Vorschlag war dieses Mittel? (24.08.2026)
+ * NUR aus `reihe`, nie aus `nach`: `nach` ist ausdrücklich eine Auswahl und keine Rangfolge
+ * (Begründung steht ausführlich in erstwahlSetzen()). Wer den Nachlauf durchnummeriert,
+ * schreibt eine Reihenfolge ins Protokoll, die die Station nie behauptet hat — und die
+ * spätere Auswertung würde genau diese erfundene Zahl für eine Empfehlung halten.
+ * Kein Treffer heißt deshalb null und nicht etwa eine hohe Zahl. */
+function ewRang(id){
+  var E=state.erstwahl&&state.erstwahl.erst, r=(E&&E.reihe)||[], k=r.indexOf(id);
+  return k>=0?(k+1):null;
+}
 function renderErstwahl(){
   var box=$('#erstwahl'); if(!box) return;
   box.innerHTML=erstwahlHtml();
@@ -3846,7 +3896,15 @@ function renderErstwahl(){
     /* DENSELBEN ref wie die Anzeige — sonst steht im Protokoll eine andere Zahl als auf der
      * Karte, auf die geklickt wurde. Begruendung ausfuehrlich bei medDosisText(). */
     medBuchen({kind:'medikament', kindText:(dd&&dd.cls)||'Medikament', id:id, name:(dd&&dd.name)||id,
-               dosis:medDosisText(id, erstwahlRef(id, (state.erstwahl&&state.erstwahl.inc)||state.incident)), storno:(ix>=0)});
+               dosis:medDosisText(id, erstwahlRef(id, (state.erstwahl&&state.erstwahl.inc)||state.incident)), storno:(ix>=0),
+               /* 'erstwahl' steht hier als fester Text und NICHT als state.erstwahl.quelle:
+                * erstwahlSetzen() überschreibt dieses Feld für jeden Eintrag mit 'analyse',
+                * auch für den von Hand gewählten Zwischenfall. Es würde also im Protokoll
+                * behaupten, eine Messung habe die Lage gefunden. Was hier sicher stimmt, ist
+                * die Stelle des Klicks — und nur die wird geschrieben. */
+               quelle:'erstwahl', rang:ewRang(id),
+               incId:(state.erstwahl&&state.erstwahl.inc)||state.incident||null,
+               incName:(state.erstwahl&&state.erstwahl.titel)||null});
     renderErstwahl(); renderDrugs(); renderInjection(); if(mon.running) renderMonValues(); }; });
 }
 
@@ -5791,7 +5849,7 @@ function renderInjection(){
       name:(c&&c.name)||cid, dosis:c?medKomboText(c):'', route:(c&&c.route)||'', storno:!!storno,
       /* Eine Kombination heisst z. B. „Ketamin-Medetomidin" – die Rasseregeln greifen aber je
        * WIRKSTOFF. Ohne diese Liste bliebe eine Ketamin-Warnung bei der HCM-Katze stumm. */
-      wirkstoffe:((c&&c.comp)||[]).map(function(k){ return k.n; })}); };
+      wirkstoffe:((c&&c.comp)||[]).map(function(k){ return k.n; }), quelle:'injektion'}); };
     if(kind==='Nachdosierung'){ var ix=state.injTopups.indexOf(id); if(ix>=0) state.injTopups.splice(ix,1); else state.injTopups.push(id); buche(id, ix>=0); }
     else {
       /* Beim Wechsel der Einleitung fällt die vorherige stillschweigend weg — das muss im
@@ -5810,7 +5868,7 @@ function renderInjection(){
     var r=(A.reversal||[]).find(function(x){return x.id===id;});
     var ix=state.givenDrugs.indexOf(id); if(ix>=0) state.givenDrugs.splice(ix,1); else state.givenDrugs.push(id);
     medBuchen({kind:'antagonist', kindText:'Antagonist', id:id, name:(r&&r.name)||id, dosis:medRevText(r),
-               route:(r&&r.route)||'', storno:(ix>=0)});
+               route:(r&&r.route)||'', storno:(ix>=0), quelle:'antagonist'});
     renderInjection(); renderDrugs(); if(mon.running) renderMonValues(); else { ventCoach(); renderVentPanel(); }
   }; });
   var ir=$('#injReset'); if(ir) ir.onclick=function(){
@@ -5823,7 +5881,7 @@ function renderInjection(){
     state.injInduction=null; state.injTopups=[]; state.givenDrugs=[]; state.adrHigh=false;
     /* Die Markierungen gehen, die Protokollzeilen bleiben: eine Dokumentation, die sich mit einem
      * Knopfdruck ausradieren lässt, wäre keine. Der Vorgang selbst wird als Zeile vermerkt. */
-    medBuchen({kind:'hinweis', kindText:'Markierungen', name:'Alle „gegeben"-Markierungen zurückgesetzt', dosis:'', storno:true});
+    medBuchen({kind:'hinweis', kindText:'Markierungen', name:'Alle „gegeben"-Markierungen zurückgesetzt', dosis:'', storno:true, quelle:'reset'});
     renderInjection(); renderDrugs(); if(mon.running) renderMonValues(); else { ventCoach(); renderVentPanel(); } };
 }
 /* =========================================================================
@@ -5988,6 +6046,17 @@ function medBuchen(rec){
     rec.warnText=pr.warnungen.map(function(w){ return warnLabel(w.level)+': '+w.text; }).join(' | ').slice(0,900);
     gabeWarnZeigen(pr, rec);
   }
+  /* HERKUNFT DER GABE MITSCHREIBEN (24.08.2026)
+   * Im Protokoll stand bisher "Atropin 0,04 mg/kg" — aber nicht, WESHALB es gegeben wurde.
+   * Damit lässt sich hinterher nicht feststellen, ob die von der Station empfohlene Maßnahme
+   * auch die genommene war; genau daran hängt jede spätere Verbesserung der Empfehlungen.
+   * Gekappt wird HIER und nicht an den fünf Aufrufstellen — eine einzelne Stelle kann es dann
+   * nicht vergessen. Erst NACH gabePruefen(): die Prüfung liest keines dieser Felder, und
+   * tools/rassen-test.js verlangt zu Recht, dass sie dicht am Anfang steht. */
+  rec.quelle=(typeof rec.quelle==='string')?rec.quelle.slice(0,24):null;
+  rec.incId=(typeof rec.incId==='string')?rec.incId.slice(0,40):null;
+  rec.incName=(typeof rec.incName==='string')?rec.incName.slice(0,80):null;
+  rec.rang=(rec.rang!=null&&isFinite(Number(rec.rang)))?Number(rec.rang):null;
   state.medGaben.push(rec);
   if(state.medGaben.length>400) state.medGaben.shift();
   /* An die Shell melden. '*' als Ziel ist hier richtig: die Shell liegt auf DEMSELBEN Ursprung
