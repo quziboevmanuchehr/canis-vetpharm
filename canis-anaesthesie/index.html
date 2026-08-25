@@ -7313,6 +7313,16 @@ fab.addEventListener('click',function(){ dock.classList.remove('collapsed'); fab
  * Spalte auf ihrer vollen Breite fest. */
 .ekg-arch-item{display:flex;gap:9px;align-items:center;padding:8px;border:1px solid #23303f;border-radius:9px;margin-bottom:8px;background:rgba(255,255,255,.02);flex-wrap:wrap;min-width:0}
 .ekg-arch-item img{width:96px;height:44px;object-fit:cover;border-radius:5px;background:#fff;flex:0 0 auto}
+/* Die Urteilszeile. Eigene Zeile (flex-basis 100%), damit sie im schmalen Fenster nicht mit
+ * den Aktionsknoepfen um denselben Platz kaempft — das Archiv liegt in der Seitenleiste.
+ * KEINE eigenen Farben: #ekgOverlay ist in BEIDEN Themen dunkel, deshalb erben Knopf und Text
+ * von .ekg-btn und dem Umfeld. Der gewaehlte Knopf bekommt denselben Gruenton, den .on hier
+ * schon traegt. */
+.ekg-urteil{flex:0 0 100%;display:flex;align-items:center;gap:5px;margin-top:5px;
+  padding-top:6px;border-top:1px dashed #23303f}
+.ekg-urteil .lbl{font-size:10.5px;color:#7fa6c8;margin-right:auto}
+.ekg-urteil .ekg-btn{height:24px;min-width:28px;padding:0 7px;font-size:12px}
+.ekg-urteil .ekg-btn.on{border-color:#28e07a;color:#28e07a;background:rgba(40,224,122,.12)}
 .ekg-arch-item .meta{flex:1;min-width:0;font-size:11px;color:#b9cbe0;line-height:1.4}
 .ekg-arch-item .meta b{color:#eaf4ff;font-size:12px}
 .ekg-arch-item .acts{display:flex;flex-direction:column;gap:4px}
@@ -9928,11 +9938,50 @@ function archDatensatz(anlass, befundListe){
     rhythm:f.rhythm, name2:(B&&B.rhythmus&&B.rhythmus.name)||(f.def&&f.def.name)||f.rhythm||'',
     mess:B?{ hf:B.hf, qrs:B.qrsBreiteMs, rr:(B.rr&&B.rr.mittelMs)||null,
              pq:(B.p&&B.p.pqMs)||null, qt:(B.t&&B.t.qtMs)||null, qtc:(B.t&&B.t.qtcMs)||null,
-             sdnn:(B.hrv&&B.hrv.messbar)?B.hrv.sdnnMs:null, guete:B.guete }:null,
+             sdnn:(B.hrv&&B.hrv.messbar)?B.hrv.sdnnMs:null, guete:B.guete,
+             /* DIE DREI RAUSCHZAHLEN GEHOEREN IN DEN BELEG (25.08.2026)
+              * `guete` allein taeuscht: gemessen an einem 20-s-Streifen mit 2 s Bewegung meldet
+              * die Auswertung "Salve breiter Kammerkomplexe" bei einer Guete von 171,9 — also
+              * blitzsauber. Bei 5 s Stoerung STEIGT die Guete sogar auf 291,2, weil die
+              * Stoerzacken im Zaehler landen. stoer/stoerSek fangen genau diese Faelle
+              * (0,03 / 0,09 / 0,24 bei 0,5 / 2 / 5 s), stoerMass ist das absolute Rauschmass
+              * in der Einheit des Streifens (sauber 4,5 gegen 1327,8 bei Bewegung).
+              * Ohne diese Zahlen laesst sich an einem archivierten Streifen hinterher nicht
+              * mehr entscheiden, ob ein Befund echt war oder eine Bewegungsspur. */
+             stoer:(B.stoerung&&B.stoerung.anteil!=null)?Math.round(B.stoerung.anteil*100)/100:null,
+             stoerSek:(B.stoerung&&B.stoerung.sekundenGestoert!=null)?B.stoerung.sekundenGestoert:null,
+             stoerMass:(B.stoerung&&B.stoerung.massstab)?Math.round(B.stoerung.massstab*10)/10:null }:null,
     befunde:(befundListe||[]).map(function(x){ return { id:x.id, name:x.name, stufe:x.stufe }; })
   };
 }
 
+/* ==========================================================================================
+ * DAS URTEIL DES TIERARZTES — DIE EINZIGE ZAHL, DIE DIE STATION NICHT SELBST MESSEN KANN
+ * (25.08.2026)
+ *
+ * WARUM: Ohne Urteil passt man die Auswertung nur an ihre EIGENE Ausgabe an — dieselbe Falle
+ * wie beim Septum-Test, eine Ebene hoeher. Hundert beurteilte Faelle sind mehr wert als ein
+ * Jahr unbeurteilter Daueruebertragung.
+ *
+ * DREI KNOEPFE, NICHT MEHR: „stimmt", „Artefakt", „etwas anderes". Wer fuenf Stufen anbietet,
+ * bekommt die mittlere. Und es gibt ausdruecklich KEINE Vorauswahl — ein voreingestelltes
+ * „stimmt" waere kein Urteil, sondern ein Klickzaehler.
+ *
+ * NICHTS WIRD ERZWUNGEN: ein Streifen ohne Urteil bleibt ein Streifen ohne Urteil. Er wandert
+ * dann NICHT in das Beleg-Paket — lieber neunzig geurteilte Faelle als tausend geratene.
+ * ========================================================================================== */
+var URTEILE = { ok:'stimmt', art:'Artefakt', anders:'etwas anderes' };
+function urteilHtml(r){
+  var u = r && r.urteil;
+  var knopf = function(k){
+    return '<button class="ekg-btn'+(u===k?' on':'')+'" data-urteil="'+r.id+'" data-wert="'+k+'"'+
+      ' title="'+esc2(URTEILE[k])+'"'+(u===k?' aria-pressed="true"':'')+'>'+
+      (k==='ok'?'✓':(k==='art'?'〰':'?'))+'</button>';
+  };
+  return '<div class="ekg-urteil">'+
+    '<span class="lbl">'+(u?('Beurteilt: <b>'+esc2(URTEILE[u])+'</b>'):'Stimmt dieser Befund?')+'</span>'+
+    knopf('ok')+knopf('art')+knopf('anders')+'</div>';
+}
 function archAblegen(rec, stillschweigend){
   if(!rec) return false;
   var list=archLoad(); list.unshift(rec);
@@ -10154,12 +10203,28 @@ function renderArch(){
           '</span>'+vb+'</div>'+
         '<div class="acts"><button class="ekg-btn" data-view="'+r.id+'" title="Drucken">🖨️</button>'+
         '<button class="ekg-btn" data-csv="'+r.id+'" title="Abtastwerte als CSV">⬇️</button>'+
-        '<button class="ekg-btn close" data-del="'+r.id+'" title="Löschen">🗑️</button></div></div>';
+        '<button class="ekg-btn close" data-del="'+r.id+'" title="Löschen">🗑️</button></div>'+
+        urteilHtml(r)+'</div>';
     }
   }
   side.innerHTML=html;
   $('#ekgOverlay').dataset.seite='arch';
   $('#ekgArchBack').onclick=function(){ $('#ekgOverlay').dataset.seite=''; rebuildSide(); updateMeasures(); };
+  /* Das Urteil wird SOFORT geschrieben, nicht erst beim Verlassen der Ansicht: der Tierarzt
+   * klickt es zwischen zwei Handgriffen, und ein Urteil, das beim Schliessen verlorengeht,
+   * wird nie wieder abgegeben. Nochmal auf denselben Knopf nimmt es zurueck — ein Fehlklick
+   * darf keine Aussage zementieren, die spaeter ein Modell anlernt. */
+  side.querySelectorAll('[data-urteil]').forEach(function(b){ b.onclick=function(){
+    var id=b.getAttribute('data-urteil'), wert=b.getAttribute('data-wert');
+    var list=archLoad();
+    for(var i=0;i<list.length;i++){ if(list[i].id!==id) continue;
+      if(list[i].urteil===wert){ delete list[i].urteil; delete list[i].urteilTs; }
+      else { list[i].urteil=wert; list[i].urteilTs=Date.now(); }
+      break; }
+    var erg=archSave(list);
+    if(!erg.ok){ flash('⚠️ Urteil NICHT gespeichert: '+(erg.fehler||'Speicher voll'), true); return; }
+    renderArch();
+  }; });
   side.querySelectorAll('[data-del]').forEach(function(b){ b.onclick=function(){ var id=b.getAttribute('data-del'); archSave(archLoad().filter(function(x){return x.id!==id;})); renderArch(); }; });
   /* CSV STATT PNG: die Abtastwerte sind das, was ein Ueberweisungsempfaenger braucht - ein
    * Bild kann er nicht nachmessen. Kopfzeilen tragen alles, was zur Deutung noetig ist. */
