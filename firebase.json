@@ -50,7 +50,6 @@
       "**/node_modules/**",
       "vetstation/**",
       "vetstation-version.json",
-      "canis-reise/**",
       "**/*.bat",
       "**/*.cmd",
       "**/*.exe",
