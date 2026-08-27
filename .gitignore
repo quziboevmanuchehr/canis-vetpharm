@@ -1,0 +1,6 @@
+# Zwischenspeicher der Firebase-CLI. Er merkt sich die Pruefsummen der zuletzt
+# hochgeladenen Dateien und aendert sich bei JEDER Veroeffentlichung. Am 27.08.2026
+# ist er durch ein "git add -A" versehentlich mit eingecheckt worden - danach war der
+# Arbeitsbaum nach jedem Deploy schmutzig, und eine echte Aenderung waere darin
+# untergegangen. Er gehoert dem Rechner, nicht dem Repo.
+.firebase/
