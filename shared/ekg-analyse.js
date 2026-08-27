@@ -32,6 +32,10 @@
   var MIN_SCHLAEGE = 3;        // fuer RR-Abstaende braucht es mindestens 3 Zacken
   var MAX_LUECKEN_ANTEIL = 0.2; // ab 20 % ungueltigen Werten ist der Streifen unbrauchbar
   var RR_MIN_MS = 180;         // 333/min - darueber ist es kein einzelner Schlag mehr (Katze!)
+  /* Laenge eines Schwellen-Abschnitts in findeQRS(). Begruendung und Messreihe stehen dort.
+   * Kuerzere Streifen als dieser bekommen genau EINEN Abschnitt und rechnen damit wie vor
+   * dem 26.08.2026 - der Live-Weg mit seinen 4-Sekunden-Fenstern bleibt unberuehrt. */
+  var QRS_FENSTER_S = 10;
 
   function endlich(x) { return typeof x === 'number' && isFinite(x); }
 
@@ -175,27 +179,98 @@
       if (i >= w) summe -= quad[i - w];
       glatt[i] = summe;
     }
-    // Schwelle aus dem Signal selbst: Median + Abstand zum Hoechstwert. Ein fester Wert waere
-    // von der Verstaerkung abhaengig und damit von Geraet zu Geraet verschieden.
-    var hoch = 0;
-    for (i = 0; i < n; i++) if (glatt[i] > hoch) hoch = glatt[i];
     /*
-     * Grundrauschen ueber ALLE Werte schaetzen, nicht nur ueber die positiven.
-     * Vorher stand hier .filter(x > 0). Zwischen zwei Schlaegen ist die Huellkurve aber genau 0 -
-     * der Filter warf also die Ruhephasen weg und bildete den Median aus den AKTIVEN Abschnitten.
-     * Die geschaetzte Grundlinie lag dadurch fast so hoch wie ein QRS selbst (gemessen 14882 bei
-     * Spitzen von 40452), und die flachere ventrikulaere Extrasystole (17410) blieb darunter -
-     * sie wurde uebersehen. Der Median ueber alle Werte ist das tatsaechliche Grundrauschen.
+     * ======================================================================================
+     * DIE SCHWELLE GILT ABSCHNITTSWEISE, NICHT FUER DEN GANZEN STREIFEN (26.08.2026)
+     * ======================================================================================
+     * Die Schwelle kommt aus dem Signal selbst: Median plus ein Viertel des Abstands zum
+     * Hoechstwert. Ein fester Wert waere von der Verstaerkung abhaengig und damit von Geraet
+     * zu Geraet verschieden — das war und bleibt richtig.
+     *
+     * FALSCH war der BEZUGSRAUM. "Hoechstwert" hiess bis heute: der groesste Wert im GANZEN
+     * Streifen. Enthaelt eine Aufzeichnung EINEN grossen Stoerausschlag, richtet sich die
+     * Schwelle nach ihm — und liegt dann weit ueber jedem echten Kammerkomplex.
+     *
+     * ERSTMALS AN ECHTEN TIERSIGNALEN NACHGEMESSEN (17 offene Hundeaufzeichnungen, 500 Hz,
+     * 10.860 vom Menschen korrigierte R-Zacken, PhysioZoo/PhysioNet):
+     *
+     *     Energie an den echten Schlaegen (Median) gegen die gesetzte Schwelle
+     *       Dog_02   5,74e5  gegen 6,84e7   Faktor 119 zu hoch
+     *       Dog_03   1,20e6  gegen 1,09e8   Faktor  91
+     *       Dog_04   2,08e6  gegen 2,22e8   Faktor 107
+     *       Dog_17   7,35e6  gegen 5,07e8   Faktor  69
+     *
+     * Gefunden wurden dort 5, 8, 32 und 11 Schlaege statt 851, 762, 586 und 701. Und die
+     * Anwendung schwieg dazu NICHT: an 30-s-Ausschnitten meldete sie "Verdacht auf
+     * ventrikulaere Tachykardie" (Dog_04, 184/min, Guete 183,5), "AV-Block II" (Dog_13,
+     * Dog_10) und "Sinusarrest" (Dog_17) — an wachen, unbehandelten Hunden, deren Goldmarken
+     * ausnahmslos "Normal" lauten.
+     *
+     * WARUM ABSCHNITTE UND NICHT EIN QUANTIL. Beides wurde durchgemessen:
+     *
+     *     Bezugsgroesse          Sensitivitaet   PPV       Fehlalarme
+     *     Hoechstwert (vorher)       66,73 %   99,96 %          3
+     *     95-%-Quantil               97,35 %   98,74 %        135
+     *     Abschnitte zu 10 s         98,03 %   99,75 %         27
+     *
+     * Das Quantil erkauft seine Sensitivitaet mit dem Fuenffachen an Fehlalarmen, und
+     * Fehlalarme sind in dieser Anwendung teurer als Luecken (siehe die falschen
+     * Extrasystolen in 1.20.7). Die Abschnittsschwelle ist in BEIDEN Richtungen besser.
+     *
+     * WARUM 10 SEKUNDEN. Ein Abschnitt muss genug Schlaege enthalten, damit sein Median das
+     * Grundrauschen trifft und nicht einen Zufall: bei 60/min sind das 10 Schlaege, bei der
+     * an diesen Aufnahmen gemessenen mittleren Frequenz von 127/min rund 21. Nach unten
+     * gemessen: 5 s bringen nur noch 0,9 Prozentpunkte und dafuer mehr Funde mitten in den
+     * Stoerstrecken. Nach oben verliert man die Trennschaerfe wieder (20 s: 95,97 %,
+     * 30 s: 95,29 %).
+     *
+     * WAS SICH FUER DIE LAUFENDE UEBERWACHUNG AENDERT: NICHTS. Der Live-Weg wertet
+     * 4-Sekunden-Fenster aus (registry.js). Ein Streifen, der kuerzer ist als EIN Abschnitt,
+     * bekommt genau einen — und damit dieselbe Rechnung wie vorher, Wert fuer Wert. Die
+     * Aenderung greift ausschliesslich bei langen aufgezeichneten Streifen, also dort, wo der
+     * Fehler auch entstand. tools/qrs-referenz-test.js haelt beides fest.
+     *
+     * WAS SIE NICHT LEISTET: sie macht aus einem verstoerten Abschnitt keinen guten. Sie
+     * verhindert nur, dass EIN gestoerter Abschnitt alle uebrigen mitreisst.
+     *
+     * Grundrauschen weiterhin ueber ALLE Werte des Abschnitts schaetzen, nicht nur ueber die
+     * positiven: vorher stand hier .filter(x > 0). Zwischen zwei Schlaegen ist die Huellkurve
+     * aber genau 0 — der Filter warf also die Ruhephasen weg und bildete den Median aus den
+     * AKTIVEN Abschnitten. Die geschaetzte Grundlinie lag dadurch fast so hoch wie ein QRS
+     * selbst (gemessen 14882 bei Spitzen von 40452), und die flachere ventrikulaere
+     * Extrasystole (17410) blieb darunter — sie wurde uebersehen.
+     * ======================================================================================
      */
-    var basis = median(glatt);
-    if (!hoch || hoch <= basis) return [];
-    var schwelle = basis + (hoch - basis) * 0.25;
+    var fenLen = Math.max(1, Math.round(hz * QRS_FENSTER_S));
+    var fenAnz = Math.max(1, Math.ceil(n / fenLen));
+    var schwelleJe = new Array(fenAnz), nachJe = new Array(fenAnz);
+    var brauchbar = false;
+    for (var f = 0; f < fenAnz; f++) {
+      var fVon = f * fenLen, fBis = Math.min(n, fVon + fenLen);
+      var teil = glatt.slice(fVon, fBis);
+      var basis = median(teil);
+      var hoch = 0;
+      for (i = 0; i < teil.length; i++) if (teil[i] > hoch) hoch = teil[i];
+      if (!hoch || hoch <= basis) { schwelleJe[f] = Infinity; nachJe[f] = Infinity; continue; }
+      schwelleJe[f] = basis + (hoch - basis) * 0.25;
+      nachJe[f] = basis + (hoch - basis) * 0.15;
+      brauchbar = true;
+    }
+    /* Kein einziger Abschnitt traegt eine Schwelle: der Streifen ist voellig flach. */
+    if (!brauchbar) return [];
     var refrakt = Math.round(hz * RR_MIN_MS / 1000);
 
-    function suche(vonIdx, bisIdx, grenze, bereits) {
+    /* welche: 'haupt' fuer den ersten Durchgang, 'nach' fuer die Nachsuche in Luecken. */
+    function grenzeBei(idx, welche) {
+      var f2 = Math.floor(idx / fenLen);
+      if (f2 >= fenAnz) f2 = fenAnz - 1;
+      return welche === 'nach' ? nachJe[f2] : schwelleJe[f2];
+    }
+
+    function suche(vonIdx, bisIdx, welche, bereits) {
       var treffer = [], letzte = bereits;
       for (var i2 = Math.max(1, vonIdx); i2 < Math.min(n - 1, bisIdx); i2++) {
-        if (glatt[i2] < grenze) continue;
+        if (glatt[i2] < grenzeBei(i2, welche)) continue;
         if (!(glatt[i2] >= glatt[i2 - 1] && glatt[i2] >= glatt[i2 + 1])) continue;
         if (i2 - letzte < refrakt) continue;
         // Auf die tatsaechliche R-Spitze zuruecklaufen (der Gipfel der Huellkurve liegt spaeter).
@@ -211,7 +286,7 @@
       return treffer;
     }
 
-    var zacken = suche(1, n - 1, schwelle, -1e9);
+    var zacken = suche(1, n - 1, 'haupt', -1e9);
 
     /*
      * NACHSUCHE IN GROSSEN LUECKEN (Pan-Tompkins "search back") — klinisch der wichtigste Teil.
@@ -234,7 +309,7 @@
           var luecke = zacken[i] - zacken[i - 1];
           if (luecke <= mitte * 1.5) continue;
           var nach = suche(zacken[i - 1] + refrakt, zacken[i] - refrakt,
-            basis + (hoch - basis) * 0.15, zacken[i - 1]);
+            'nach', zacken[i - 1]);
           for (var q = 0; q < nach.length; q++) {
             if (nach[q] - zacken[i - 1] >= refrakt && zacken[i] - nach[q] >= refrakt) ergaenzt.push(nach[q]);
           }
@@ -1383,7 +1458,30 @@
       }
       return beste;
     }
-    var bi = taktreihe(2), tri = taktreihe(3);
+    /*
+     * DER VIERERTAKT FEHLTE (26.08.2026).
+     *
+     * Hier standen nur taktreihe(2) und taktreihe(3). Eine ventrikulaere Quadrigeminie —
+     * jeder VIERTE Schlag formfremd — fiel damit durch: sie ist kein Bigeminus, kein
+     * Trigeminus, kein Couplet und keine Salve. Uebrig blieb "unregelmaessig", also die
+     * schwaechste Aussage, die es gibt. Ein regelmaessiger Takt ist aber genau das Gegenteil
+     * von unregelmaessig, und er wiegt klinisch schwerer als vereinzelte Extrasystolen.
+     *
+     * Anlass ist ein dokumentierter Streifen aus einer fremden Literatur-Ernte: Mastino
+     * Napoletano, 0,42 Jahre, HF 180/min, Sinus-QRS 60 ms gegen ektopen QRS 80 ms, Muster
+     * "jeder vierte Schlag", Pause vollstaendig kompensatorisch.
+     *
+     * WICHTIG AN DIESEM BEISPIEL: der ektope Komplex war nur 80 ms breit und haette eine
+     * starre Breitenschwelle (Hund typisch 70-80 ms) nicht sicher ausgeloest. Der Vierertakt
+     * wird deshalb — wie Bi- und Trigeminus auch — NICHT an "breit" gebunden; die Breite
+     * kommt nur als Zusatz in die Begruendung. Erkannt wird die Formfremdheit, nicht die
+     * Breite.
+     *
+     * Es gibt KEINE Kreuzwirkung zwischen den Takten: eine Bigeminie liegt auf Abstaenden von
+     * 2, dort ist kein Abstand 4 zu finden, und umgekehrt. Nachgerechnet in
+     * tools/rhythmus-test.js.
+     */
+    var bi = taktreihe(2), tri = taktreihe(3), quad = taktreihe(4);
     return {
       messbar: true,
       fremd: fremdIdx.length, verglichen: n,
@@ -1392,6 +1490,7 @@
       salven: salven.length, laengsterLauf: laengste,
       bigeminusLaeufe: bi >= 3 ? bi : 0,
       trigeminusLaeufe: tri >= 3 ? tri : 0,
+      quadrigeminusLaeufe: quad >= 3 ? quad : 0,
       /* DIE BREITE DER FREMDEN SCHLAEGE, nicht die des ganzen Streifens (Befund beim
        * Schreiben des Selbsttests 10.08.2026): eine Salve von vier breiten Komplexen in
        * einem sonst schmalen Sinusstreifen laesst den MEDIAN der QRS-Breite schmal - genau
@@ -1671,8 +1770,24 @@
      * Median knapp schmal genug, und der Fehlbefund blieb zufaellig aus.
      * Ein regelmaessiger Zweier- oder Dreiertakt ist per Definition keine Salve; er wird
      * weiter unten als das benannt, was er ist. */
+    /*
+     * DER VIERERTAKT STEHT HIER MIT, IST ABER NICHT DURCH EINEN TEST GEDECKT — und das soll
+     * hier stehen, statt es zu verschweigen (26.08.2026).
+     *
+     * Beim Zerbrechen der eigenen Pruefung liess sich der Vierertakt aus dieser Zeile
+     * entfernen, ohne dass tools/rhythmus-test.js rot wurde. Nachgemessen ist der Grund
+     * baulich: `breit` haengt am MEDIAN der QRS-Breite (Zeile ~1610), und in einer echten
+     * Quadrigeminie sind nur 25 % der Schlaege ektop — der Median bleibt schmal. Gemessen an
+     * einem Streifen mit 167/min und 80 ms breiten ektopen Komplexen: qrsBreiteMs 32,
+     * qrsFremdMs 80. Der vtach-Zweig kann also gar nicht greifen.
+     *
+     * Beim BIGEMINUS ist das anders — dort sind 50 % ektop, und genau dort hat der Median
+     * schon einmal gekippt (siehe der Absatz darueber). Fuer den Vierertakt ist die Zeile
+     * damit Symmetrie und Vorsorge, kein nachgewiesener Schutz. Wer sie entfernt, bricht
+     * heute nichts; wer sie behaelt, haelt die drei Takte gleich behandelt.
+     */
     var taktMuster = !!(muster && muster.messbar &&
-      (muster.bigeminusLaeufe >= 3 || muster.trigeminusLaeufe >= 3));
+      (muster.bigeminusLaeufe >= 3 || muster.trigeminusLaeufe >= 3 || muster.quadrigeminusLaeufe >= 3));
     if (hf != null && bandHr && hf > bandHr[1] && breit && !taktMuster) {
       return { id: 'vtach', name: 'Verdacht auf ventrikuläre Tachykardie', sicherheit: 'Verdacht',
         begruendung: 'schnelle Folge (' + hf + '/min) mit verbreitertem QRS (' + qrsMs + ' ms)' };
@@ -1793,6 +1908,19 @@
         begruendung: muster.trigeminusLaeufe + ' Schläge im Dreiertakt (' + muster.fremd + ' von ' +
           muster.verglichen + ' Schlägen formfremd)' +
           (breit ? ', dabei verbreiterter QRS ' + qrsMs + ' ms' : '') + '.' };
+    }
+    /* Der Vierertakt steht NACH Bi- und Trigeminus: eine Bigeminie erzeugt keine Abstaende
+     * von 4, die Reihenfolge ist also nicht die Entscheidung, sondern nur die Lesbarkeit —
+     * vom haeufigsten zum seltensten. Er steht VOR den Paaren, weil ein regelmaessiger Takt
+     * die genauere Aussage ist als "irgendwo Paare". */
+    if (sauber && muster && muster.messbar && muster.quadrigeminusLaeufe >= 3) {
+      return { id: 'quadrigeminus', name: 'Quadrigeminus — jeder vierte Schlag ist formfremd',
+        sicherheit: 'Verdacht',
+        begruendung: muster.quadrigeminusLaeufe + ' Schläge im Vierertakt (' + muster.fremd + ' von ' +
+          muster.verglichen + ' Schlägen formfremd)' +
+          (breit ? ', dabei verbreiterter QRS ' + qrsMs + ' ms' : '') +
+          '. Ein fester Takt spricht für einen einzelnen Ursprungsort, nicht für zufällige ' +
+          'Extrasystolen — den Puls am Tier zählen, nicht am Monitor.' };
     }
     if (sauber && muster && muster.messbar && (muster.couplets > 0 || muster.tripletts > 0)) {
       return { id: 'couplet', name: 'Formfremde Schläge in Paaren' + (muster.tripletts ? ' und Dreiergruppen' : ''),

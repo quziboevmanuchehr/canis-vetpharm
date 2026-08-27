@@ -22,7 +22,34 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);min
  * .vp-xl{color:var(--text)} (0-1-0) — jeder Verweis-Chip der Zusammenhang-Leiste haette im
  * Hellmodus still die Linkfarbe bekommen. Gemessen: var(--cyan) auf der Glaskarte 3,44. */
 a{color:var(--link,var(--cyan))}button,input,select{font:inherit}
-header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 16px}
+
+/* ======================================================================================
+ * --ueberbau: WAS UEBER DIESER SEITE FEST AM FENSTER KLEBT (26.08.2026)
+ * ======================================================================================
+ * position:sticky misst NICHT vom Anfang des Elternelements, sondern vom oberen Rand des
+ * Fensters. Eine fremde Leiste mit position:fixed nimmt der Seite deshalb keinen Haftpunkt
+ * weg — sie legt sich einfach darueber.
+ *
+ * In der Fern-Web-App gibt es genau so eine Leiste (#vetlive-bar, tools/web-fern-modul.html).
+ * Gemessen am 26.08.2026 in Chrome bei 1251x1222, angemeldet, gescrollt:
+ *
+ *     #vetlive-bar   0 .. 134,5   (fixed, z-index 9999)
+ *     header         0 ..  40,7   -> 100 % darunter, UNSICHTBAR
+ *     .patient      41 .. 141     -> 93,5 von 100 px darunter
+ *     .navbar      131 .. 170     -> 3,5 px darunter
+ *
+ * Der ganze Kopf der Anwendung — Zeichen, Start, CPR, Hell/Dunkel, Zahnrad, Menue — und
+ * fast die ganze Patientenzeile mit Tierart, Gewicht, Alter und Rasse waren beim Rollen
+ * nicht mehr zu sehen und nicht mehr zu bedienen. Den CPR-Knopf zu verdecken ist der Fall,
+ * der diese Aenderung erzwingt. Die Leiste hat body{padding-top} gesetzt, das schiebt aber
+ * nur den FLUSS nach unten und nicht den Haftpunkt.
+ *
+ * Ohne Leiste (VetStation selbst, und die Web-App vor der Anmeldung) ist die Variable nicht
+ * gesetzt, der Ersatzwert 0px greift, und nichts aendert sich gegenueber vorher.
+ * Gesetzt wird sie NUR dort, wo auch body{padding-top} gesetzt wird — beides gehoert
+ * zusammen und darf nicht auseinanderlaufen; tools/kopfbereich-test.js erzwingt das.
+ * ====================================================================================== */
+header{position:sticky;top:var(--ueberbau,0px);z-index:40;background:rgba(10,12,16,.9);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 16px}
 .brand{display:flex;gap:11px;align-items:center;min-width:0}
 .logo{width:38px;height:38px;border-radius:10px;background:conic-gradient(from 210deg,#0aa2c4,#16a06a,#e0a020,#e23b6d,#0aa2c4);display:grid;place-items:center;color:#fff;font-weight:900;box-shadow:0 0 18px rgba(10,162,196,.45);flex:0 0 auto}
 .title{min-width:0}.title h1{margin:0;font-size:18px;letter-spacing:.6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -44,7 +71,7 @@ header{position:sticky;top:0;z-index:40;background:rgba(10,12,16,.9);backdrop-fi
  * klebte also 41 px ZU HOCH und lag mit ihrer ersten Chipreihe dauerhaft unter dem Kopf —
  * verdeckt, weil der Kopf nicht durchsichtig ist. kopfMessen() setzt die Variablen aus der
  * tatsaechlichen Hoehe; der Rueckfallwert ist der alte Stand, falls das Skript nie laeuft. */
-.patient{position:sticky;top:var(--kopf-h,60px);z-index:35;background:rgba(10,12,16,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:10px 14px}
+.patient{position:sticky;top:calc(var(--ueberbau,0px) + var(--kopf-h,60px));z-index:35;background:rgba(10,12,16,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:10px 14px}
 .patient-in{max-width:1560px;margin:0 auto;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 .sp-chips{display:flex;gap:7px;flex-wrap:wrap}
 .sp-chip{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:66px;border:1px solid var(--line);background:rgba(255,255,255,.035);color:var(--text);border-radius:10px;padding:7px 9px;cursor:pointer;transition:.15s}
@@ -343,7 +370,7 @@ html[data-theme="light"] .vm-btn.vm-good::before{border-color:rgba(18,148,96,.5)
 /* tabs */
 /* Die Sticky-Eigenschaft ist von .tabs auf .navbar gewandert: die Zurück/Weiter-Knöpfe müssen
    stehen bleiben, während die Reiterleiste daneben waagerecht scrollt. */
-.navbar{position:sticky;top:var(--navbar-top,132px);z-index:30;display:flex;align-items:center;gap:8px;background:rgba(10,12,16,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:8px 14px}
+.navbar{position:sticky;top:calc(var(--ueberbau,0px) + var(--navbar-top,132px));z-index:30;display:flex;align-items:center;gap:8px;background:rgba(10,12,16,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:8px 14px}
 .tabs{display:flex;gap:8px;overflow:auto;flex:1;min-width:0;padding:0;background:none;border:0}
 .tab{flex:0 0 auto;border:1px solid var(--line);background:rgba(255,255,255,.035);color:var(--muted);height:38px;border-radius:9px;padding:0 14px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:7px}
 .tab.active{background:rgba(10,162,196,.16);color:#fff;border-color:var(--brand);box-shadow:inset 0 0 0 1px rgba(10,162,196,.45),0 6px 18px rgba(10,162,196,.16)}
@@ -6191,9 +6218,10 @@ function rerender(){ renderProto(); renderErstwahl(); renderLaCalc(); renderDrug
  * doppelt, ohne jede Fehlermeldung. Der Aufruf ist mit typeof abgesichert, weil dieselbe
  * Datei auch als Fern-Web-App laeuft.
  */
-var kopfStand = { klein:false, kh:0, ph:0, geplant:false };
+var kopfStand = { klein:false, kh:0, ph:0, geplant:false, wecker:0 };
 function kopfMessen(){
   kopfStand.geplant = false;
+  if(kopfStand.wecker){ clearTimeout(kopfStand.wecker); kopfStand.wecker = 0; }
   var W = document.documentElement; if(!W) return;
   var h = document.querySelector('header'), p = document.querySelector('.patient');
   var kh = h ? Math.round(h.getBoundingClientRect().height) : 0;
@@ -6230,7 +6258,30 @@ function kopfScroll(){
   if(klein !== kopfStand.klein){
     kopfStand.klein = klein;
     try{ document.documentElement.setAttribute('data-kopf', klein ? 'klein' : 'gross'); }catch(e){}
-    /* Der Uebergang dauert 160 ms (CSS) — erst danach steht die neue Hoehe fest. */
+    /*
+     * SOFORT NACHMESSEN, NICHT ERST IM NAECHSTEN BILD (26.08.2026, aus der Praxis gemeldet:
+     * "beim Runterscrollen rutscht die Reiterleiste runter und die App zittert").
+     *
+     * Die Zeile darueber schrumpft den Kopf SOFORT — data-kopf wirkt im selben Bild, seit der
+     * CSS-Uebergang absichtlich entfernt wurde. Die Haftpunkte wurden aber nur ueber
+     * kopfPlanen() -> requestAnimationFrame nachgezogen, also FRUEHESTENS ein Bild spaeter.
+     * Dazwischen gehoerten die Hoehen zum kleinen Kopf und die Haftpunkte noch zum grossen.
+     *
+     * Gemessen in Chrome bei 1251x1222, eine Radraste nach unten:
+     *   133 ms  data-kopf=klein, .patient endet bei 161 — .navbar klebt aber noch bei 209
+     *           => die Reiterleiste stand 57 px ZU TIEF, darueber ein 48 px hohes Loch
+     *   174 ms  Haftpunkte nachgezogen, .navbar schnappt auf 152 zurueck
+     * Also 41 ms (drei Bilder) sichtbares Rutschen und Zurueckschnappen, bei JEDER Raste.
+     *
+     * getBoundingClientRect() unmittelbar nach setAttribute erzwingt eine Layoutrechnung und
+     * liefert deshalb schon die NEUEN Hoehen. Das kostet einen erzwungenen Umbruch — aber nur
+     * zweimal je Rollvorgang (hinunter und wieder herauf), nicht je Ereignis. Nachgemessen
+     * mit derselben Aufzeichnung: das Zwischenbild mit 209 kommt danach nicht mehr vor.
+     */
+    kopfMessen();
+    /* Das Cockpit bleibt auf dem alten Weg: es rechnet seine Hoehe aus der Unterkante der
+     * Reiterleiste, und die steht erst jetzt richtig. Der Abstand ist Absicht — cockpitHoehe()
+     * schaltet Betriebsarten um (ck-eng) und gehoert nicht in den Rollpfad. */
     setTimeout(function(){ kopfMessen(); try{ if(typeof cockpitHoehe==='function') cockpitHoehe(); }catch(e){} }, 200);
   }
   kopfPlanen();
@@ -6238,6 +6289,22 @@ function kopfScroll(){
 function kopfPlanen(){
   if(kopfStand.geplant) return; kopfStand.geplant = true;
   if(window.requestAnimationFrame) window.requestAnimationFrame(kopfMessen); else setTimeout(kopfMessen, 16);
+  /*
+   * NOTUHR NEBEN requestAnimationFrame (26.08.2026).
+   *
+   * Der Rueckfall auf setTimeout griff bisher nur, wenn es requestAnimationFrame GAR NICHT
+   * gibt. Der Fall, der wirklich vorkommt, ist ein anderer: es gibt die Funktion, sie feuert
+   * aber nicht. Nachgemessen am 26.08.2026 in der Vorschau dieses Projekts — der Rueckruf kam
+   * auch nach Sekunden nicht (document.visibilityState 'hidden'). Dasselbe gilt fuer einen
+   * verborgenen Reiter und fuer einen Kiosk-Bildschirm im Ruhezustand.
+   *
+   * Ohne Notuhr bliebe kopfStand.geplant dann fuer immer auf true stehen: aus einer
+   * Verzoegerung wuerde ein Dauerausfall, und JEDE weitere Aenderung des Kopfes waere
+   * wirkungslos — die Haftpunkte behielten den Stand von vor dem Ausfall. Genau dieselbe
+   * Ueberlegung steht schon bei polsterNachziehen() in tools/web-fern-modul.html.
+   * kopfMessen() raeumt die Uhr als Erstes wieder ab, es laeuft also nie doppelt.
+   */
+  kopfStand.wecker = setTimeout(kopfMessen, 250);
 }
 function kopfBinden(){
   try{
@@ -6249,6 +6316,30 @@ function kopfBinden(){
      * (das geschieht auf DOMContentLoaded und macht den Kopf auf schmalen Schirmen 42 px hoeher).
      * Ohne diese zweite Messung stuende der Haftpunkt auf der Hoehe VOR dem Einhaengen. */
     setTimeout(kopfMessen, 0); setTimeout(kopfMessen, 400);
+    /*
+     * GROESSENWAECHTER STATT ABZAEHLEN VON ZEITPUNKTEN (26.08.2026).
+     *
+     * Die beiden Uhren darueber sind geratene Zeitpunkte fuer EINEN bekannten Fall. Der Kopf
+     * aendert seine Hoehe aber aus vielen Gruenden, und keiner davon meldet sich: ein
+     * Reiterwechsel (der Geraete-Reiter traegt einen eigenen kompakten Kopf), ein Rassebalken,
+     * der auftaucht, eine nachgeladene Schrift, eine Chipreihe, die umbricht.
+     *
+     * Gemessen am 26.08.2026 in Chrome nach einem Wechsel vom Geraete- auf den Notfall-Reiter:
+     * die Patientenzeile wuchs von 126 auf 148,3 px, --navbar-top stand aber weiter auf 191 —
+     * die Reiterleiste lag dadurch 18,3 px UEBER der Unterkante der Patientenzeile und schnitt
+     * sie an. Nichts war rot, nichts meldete etwas, es sah nur falsch aus.
+     *
+     * ResizeObserver ruft VOR dem Zeichnen und NACH der Layoutrechnung zurueck — hier direkt
+     * zu messen ist deshalb richtig und kommt im selben Bild an; ueber kopfPlanen() waere es
+     * wieder ein Bild zu spaet. Eine Rueckkopplung gibt es nicht: kopfMessen() schreibt nur
+     * --kopf-h und --navbar-top, und die aendern ausschliesslich den HAFTPUNKT von .patient
+     * und .navbar, nie deren Hoehe.
+     */
+    if(window.ResizeObserver){
+      var waechter = new ResizeObserver(function(){ kopfMessen(); });
+      var kEl = document.querySelector('header'); if(kEl) waechter.observe(kEl);
+      var pEl = document.querySelector('.patient'); if(pEl) waechter.observe(pEl);
+    }
   }catch(e){}
 }
 
@@ -8218,7 +8309,7 @@ function zeigeHinweise(B,f,N,mea){
     rhythmusId:(B.rhythmus&&B.rhythmus.id)||null,
     /* Ist der Rhythmus ektop? Davon haengt ab, ob die GEZAEHLTE Frequenz auch die WIRKSAME
      * ist - bei Bigeminus, Salve und Vorhofflimmern ist sie es nicht. */
-    ektopischerRhythmus:/^(ves|vtach|bigeminus|trigeminus|couplet|aivr|vhf)$/.test(
+    ektopischerRhythmus:/^(ves|vtach|bigeminus|trigeminus|quadrigeminus|couplet|aivr|vhf)$/.test(
       (B.rhythmus&&B.rhythmus.id)||''),
     rhythmusGrund:(B.rhythmus&&B.rhythmus.begruendung)?(B.rhythmus.begruendung+'.'):'',
     netzStoerung:netzStoerung(streifenFuerMessung(),hzJetzt()),
@@ -8255,6 +8346,10 @@ function zeigeHinweise(B,f,N,mea){
      * ================================================================================== */
     bigeminus:!!(B.muster&&B.muster.messbar&&B.muster.bigeminusLaeufe>=3),
     trigeminus:!!(B.muster&&B.muster.messbar&&B.muster.trigeminusLaeufe>=3),
+    /* Der Vierertakt kam am 26.08.2026 dazu. Er MUSS hier mit auftauchen, sonst waere er
+     * genau der Fall, vor dem der Kasten darueber warnt: in ekg-analyse.js gemessen und von
+     * keiner Regel gelesen. */
+    quadrigeminus:!!(B.muster&&B.muster.messbar&&B.muster.quadrigeminusLaeufe>=3),
     couplets:(B.muster&&B.muster.messbar?B.muster.couplets:null),
     laengsterLauf:(B.muster&&B.muster.messbar?B.muster.laengsterLauf:null),
     qrsFremd:(B.muster&&B.muster.messbar?B.muster.qrsFremdMs:null),
@@ -11054,8 +11149,8 @@ var BEFUNDREGELN=[
     differenzial:'AV-Block II (dann P in der Pause), Vorhofstillstand, blockierte SVES',
     sicherheit:'Verdacht', quelle:'Pausenmessung mit P-Wellen-Suche in der Pause; EKG-Interpretation in der Kleintierpraxis' },
 
-  { id:'bigeminus-erkannt', name:'Bigeminus / Trigeminus', stufe:'auffaellig', art:'alle',
-    pruef:function(m){ return m.rhythmusId==='bigeminus' || m.rhythmusId==='trigeminus'; },
+  { id:'bigeminus-erkannt', name:'Bigeminus / Trigeminus / Quadrigeminus', stufe:'auffaellig', art:'alle',
+    pruef:function(m){ return m.rhythmusId==='bigeminus' || m.rhythmusId==='trigeminus' || m.rhythmusId==='quadrigeminus'; },
     hinweis:'{rhythmusGrund} Ein fester Kopplungstakt spricht für einen einzelnen, regelmäßig einfallenden Ursprungsort. Entscheidend für die Bedeutung ist, ob der eingeschobene Schlag einen tastbaren Puls erzeugt.',
     differenzial:'supraventrikuläre Extrasystolen mit aberranter Überleitung, Erkennung zählt abwechselnd die P mit (bei hoher P-Welle beschrieben)',
     sicherheit:'Verdacht', quelle:'Formvergleich über Kreuzkorrelation + Taktanalyse' },
@@ -11242,7 +11337,7 @@ function naechsteSchritte(liste,m){
    * AV-Block II, Sinusarrest, Bigeminus, Salve) kommen von dort und nicht aus einer Regel. */
   if(m.rhythmusId){
     ids['rhythmus-'+m.rhythmusId]=true;
-    if(/^(bigeminus|trigeminus|couplet|ves|vtach|aivr)$/.test(m.rhythmusId)) ids['rhythmus-ektopie']=true;
+    if(/^(bigeminus|trigeminus|quadrigeminus|couplet|ves|vtach|aivr)$/.test(m.rhythmusId)) ids['rhythmus-ektopie']=true;
     if(m.rhythmusId==='vtach') ids['vtach-verdacht']=true;
     if(m.rhythmusId==='sinusarrest'||m.rhythmusId==='pause') ids['pause-lang']=true;
     if(m.rhythmusId==='avblock2') ids['schlag-ausgefallen']=true;
@@ -13161,7 +13256,14 @@ html[data-theme="light"] #vetlive-launch{color:#06556f !important;
 #vetlive-launch.frei{position:fixed;left:12px;bottom:12px;z-index:9997;padding:8px 13px;
   border-radius:22px;border:1px solid rgba(0,216,255,.5);font:700 12.5px var(--tech,Segoe UI,Inter,system-ui,sans-serif);
   box-shadow:0 6px 18px rgba(0,0,0,.4)}
+/* Die Polsterung schiebt den FLUSS nach unten, der Haftpunkt eines sticky-Elements haengt aber
+ * am Fensterrand und nicht am Fluss. --ueberbau sagt der Anwendung, wie viel ueber ihr klebt;
+ * ohne die Variable lagen Kopfleiste und halbe Patientenzeile beim Rollen unsichtbar unter
+ * dieser Leiste (gemessen 26.08.2026, Begruendung steht bei --ueberbau in ui/app/index.html).
+ * 96px ist derselbe geschaetzte Anfangswert wie bei der Polsterung; polsterSetzen() ersetzt
+ * beide gleich danach durch die gemessene Hoehe. */
 html.vetlive-on body{padding-top:96px}
+html.vetlive-on{--ueberbau:96px}
 /*
  * IM VOLLBILD LIEGT DIE LEISTE UEBER DEM COCKPIT - UND DAMIT UEBER DEM AUSGANG.
  * (Befund 21.08.2026, aus der Praxis gemeldet)
@@ -13507,6 +13609,9 @@ html[data-theme="light"] .medwarn.lvl-avoid{background:#c62828}
   .fl-scroll{overflow:visible !important}
   #vetlive-bar,#vetlive-launch,#vetlive-login,#vetlive-signup,#tabs,.navbar,.nf-dock,.nf-fab,.topbar,header,footer{display:none !important}
   html.vetlive-on body{padding-top:0 !important}
+  /* Auf Papier gibt es keine feste Leiste — also auch keinen Ueberbau. Der Kopf ist hier zwar
+     ohnehin display:none, aber Polsterung und Ueberbau werden ueberall gemeinsam gefuehrt. */
+  html.vetlive-on{--ueberbau:0 !important}
   body{background:#fff !important;color:#000 !important}
   main.shell,.view{display:none !important}
   #druckblatt{display:block !important;color:#000;font:11px/1.45 "Segoe UI",Arial,sans-serif}
@@ -14222,6 +14327,10 @@ function polsterSetzen(){
    */
   if(document.body.classList.contains('mon-voll')) return;
   try{ document.body.style.paddingTop = bar.offsetHeight+'px'; }catch(e){}
+  /* Polsterung UND Haftpunkt aus derselben Messung — sie duerfen nicht auseinanderlaufen.
+   * tools/kopfbereich-test.js verlangt, dass jede Stelle, die paddingTop setzt oder leert,
+   * auch --ueberbau setzt oder leert. */
+  try{ document.documentElement.style.setProperty('--ueberbau', bar.offsetHeight+'px'); }catch(e){}
 }
 function polsterNachziehen(){
   if(polsterOffen) return;
@@ -15331,6 +15440,10 @@ function zurueckZumTraining(){
    * sie sonst nie zuruecknehmen. */
   try{ document.documentElement.classList.remove('vetlive-fremd'); }catch(e){}
   try{ document.body.style.paddingTop=''; }catch(e){}
+  /* Ohne diese Zeile blieben die Haftpunkte nach dem Abmelden um die Hoehe einer Leiste
+   * verschoben, die es gar nicht mehr gibt: der Kopf haette dann ein 134 px hohes Loch
+   * ueber sich. */
+  try{ document.documentElement.style.removeProperty('--ueberbau'); }catch(e){}
   try{ if(bar){ bar.remove(); bar=null; } }catch(e){}
   try{ if(mini){ mini.remove(); mini=null; } }catch(e){}
   try{ var d=document.getElementById('druckblatt'); if(d) d.innerHTML=''; }catch(e){}
