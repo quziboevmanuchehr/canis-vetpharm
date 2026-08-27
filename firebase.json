@@ -19,19 +19,67 @@
   ],
   "hosting": {
     "public": ".",
+    "//ignore": [
+      "AUSFUEHRBARE DATEIEN MUESSEN DRAUSSEN BLEIBEN (Befund 27.08.2026).",
+      "Firebase Hosting lehnt sie im Spark-Tarif ab:",
+      "  HTTP 400 - Executable files are forbidden on the Spark billing plan",
+      "Der Abbruch kommt erst NACH dem Hochladen aller Dateien, und wer die Ausgabe nicht",
+      "bis zum Ende liest, haelt die Veroeffentlichung fuer gelungen.",
+      "",
+      "Die einzige solche Datei hier war VEROEFFENTLICHEN-firebase.bat - also ausgerechnet",
+      "die, die die Veroeffentlichung durchfuehrt. Sie hat sich selbst blockiert. Beide,",
+      "die .bat und diese Datei, kamen am 29.07.2026 im selben Commit dazu; die letzte",
+      "erfolgreiche Veroeffentlichung stammt vom 20.07.2026. Seit dem Tag, an dem der",
+      "Veroeffentlichungsweg angelegt wurde, hat er also nie funktioniert.",
+      "",
+      "Die Endungen stehen einzeln da und nicht als eine Sammelregel, damit beim naechsten",
+      "Mal zu sehen ist, WELCHE Art Datei gemeint ist. Ins Netz gehoert hier ohnehin keine",
+      "davon - es ist eine Web-App.",
+      "",
+      "DER UPDATE-KANAL BLEIBT GANZ DRAUSSEN (27.08.2026). vetstation/** war schon immer",
+      "ausgeschlossen, vetstation-version.json aber nicht - das Manifest wurde also",
+      "ausgeliefert, seine Pakete nicht. Ein Manifest ohne seine Pakete ist schlimmer als",
+      "gar keines, und eine ZWEITE Adresse fuer dieselbe Freigabeangabe ist genau die",
+      "Sorte doppelte Quelle, an der dieses Projekt sich schon mehrfach verbrannt hat.",
+      "Der Kanal wohnt auf GitHub Pages. Nur dort."
+    ],
     "ignore": [
       "firebase.json",
       ".firebaserc",
       "**/.*",
       "**/node_modules/**",
       "vetstation/**",
-      "canis-reise/**"
+      "vetstation-version.json",
+      "canis-reise/**",
+      "**/*.bat",
+      "**/*.cmd",
+      "**/*.exe",
+      "**/*.ps1",
+      "**/*.msi",
+      "**/*.dll"
     ],
     "cleanUrls": true,
     "headers": [
       {
-        "//": "Die App wird oft geaendert; ein zwischengespeichertes altes index.html waere hier das Schlimmste - der Tierarzt saehe eine Version, die es nicht mehr gibt.",
-        "source": "**/*.html",
+        "//": [
+          "Die App wird oft geaendert; ein zwischengespeicherter alter Stand waere hier das",
+          "Schlimmste - der Tierarzt saehe eine Fassung, die es nicht mehr gibt.",
+          "",
+          "HIER STAND source: '**/*.html' UND DAS HAT NIE GEGRIFFEN (Befund 27.08.2026).",
+          "cleanUrls leitet /canis-anaesthesie/index.html auf /canis-anaesthesie um - KEINE",
+          "Adresse, die ein Browser je anfordert, endet also auf .html. Die Regel traf nichts,",
+          "und ausgeliefert wurde die Vorgabe max-age=3600. Nachgemessen:",
+          "    /canis-anaesthesie/            200  Cache-Control: max-age=3600",
+          "    /canis-anaesthesie/index.html  301  Location: /canis-anaesthesie",
+          "",
+          "Jetzt '**', also alles. Zwei Gruende, warum das nicht zu weit gefasst ist:",
+          "no-cache heisst NICHT 'nicht speichern', sondern 'vor Gebrauch nachfragen' - der",
+          "Browser behaelt die Datei und bekommt bei unveraendertem Stand ein winziges 304.",
+          "Und die Dateien tragen keine Fassungsnummer im Namen: waere index.html frisch und",
+          "shared/ekg-analyse.js eine Stunde alt, liefen Oberflaeche und Auswertung",
+          "auseinander. Beides zusammen frisch zu halten ist die einzige Fassung, die haelt."
+        ],
+        "source": "**",
         "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
       }
     ]
