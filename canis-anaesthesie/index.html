@@ -9600,8 +9600,12 @@ function buildPDF(){
     zeile('R-Amplitude', MK.rAmp!=null?MK.rAmp+' mV':null, bandTxt(NB&&NB.rAmp,'mV'), normUrteil(NB&&NB.rAmp,MK.rAmp,'mV'));
     zeile('QT', MK.qt!=null?MK.qt+' ms':null, bandTxt(NB&&NB.qt,'ms'), normUrteil(NB&&NB.qt,MK.qt,'ms'));
     if(MK.qtc!=null) zeile('QTc (Van de Water)', MK.qtc+' ms', 'nur beim Hund belegt', null);
+    /* Der Vorbehalt zum Filterband steht in der Spalte, in der sonst das Normband steht, und
+     * nicht als eigene Zeile: er gehoert zu DIESER Zahl. ekg-analyse.js liefert ihn seit dem
+     * 27.08.2026 unbedingt mit, weil kein Geraet sein Filterband meldet — Begruendung dort. */
     zeile('ST-Abweichung', (BB.st&&BB.st.messbar)?((BB.st.mv>0?'+':'')+BB.st.mv+' mV'):null,
-      (NB&&NB.stSenkung!=null)?('Orientierung ±'+NB.stSenkung+'/'+NB.stHebung):'', null);
+      ((NB&&NB.stSenkung!=null)?('Orientierung ±'+NB.stSenkung+'/'+NB.stHebung+' · '):'')
+        + ((BB.st&&BB.st.filterVorbehalt)?BB.st.filterVorbehalt:''), null);
     zeile('T-Amplitude', MK.tAmp!=null?MK.tAmp+' mV'+(MK.tAnteilVonR!=null?' ('+Math.round(MK.tAnteilVonR*100)+' % der R)':''):null, '', null);
     zeile('El. Achse', MK.achse!=null?MK.achse+'°':null, bandTxt(NB&&NB.achse,'°'), normUrteil(NB&&NB.achse,MK.achse,'°'));
     if(BB.hrv&&BB.hrv.messbar) zeile('Variabilität', BB.hrv.sdnnMs+' ms SDNN / '+BB.hrv.rmssdMs+' RMSSD', 'gemessen, nicht bewertet', null);

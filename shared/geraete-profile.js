@@ -511,7 +511,13 @@
       ventModi: [], ventFelder: [], gase: [],
       grenzen: true, fallTimer: false, inspHold: false,
       haut: 'mindray', vertrauen: 'belegt',
-      quellen: ['eigene Messung am Praxisgerät SN V7-53011693A, 24.–26.07.2026'],
+      // 29.08.2026: hier stand die Seriennummer des gemessenen Geräts. Diese Datei wird von
+      // tools/web-app-bauen.js unverändert in die ÖFFENTLICHE Web-App kopiert und liegt dort live —
+      // die Kennung benannte damit weltweit lesbar ein einzelnes Gerät in einer einzelnen Praxis.
+      // Die Belegkraft der Quelle hängt nicht an ihr: tragend ist „selbst gemessen, nicht aus dem
+      // Handbuch abgeschrieben", und das sagen Baureihe + Messdatum genauso. Die Seriennummer steht
+      // in den privaten Notizen des Entwicklers außerhalb des Repos. Bitte nicht wieder eintragen.
+      quellen: ['eigene Messung an einem Gerät dieser Baureihe, 24.–26.07.2026'],
       hinweis: 'Über HL7 liefert dieses Exemplar nur Blutdruck (aperiodisch) und Alarmtexte — HF/SpO₂/Temp misst es, ' +
         'sendet sie aber nicht. Die Kacheln bleiben dann leer; das ist kein Fehler der Station.',
     },

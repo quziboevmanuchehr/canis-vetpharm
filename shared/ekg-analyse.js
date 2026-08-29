@@ -37,6 +37,13 @@
    * dem 26.08.2026 - der Live-Weg mit seinen 4-Sekunden-Fenstern bleibt unberuehrt. */
   var QRS_FENSTER_S = 10;
 
+  /* Ab welchem Verhaeltnis zu ihren NACHBARN eine lange Strecke als ausgefallener Schlag gilt.
+   * Nicht artabhaengig: das Mass beschreibt die Bauart des Ausfalls (der Sinus laeuft weiter,
+   * das Intervall verdoppelt sich gegenueber den Nachbarn), nicht das Tier. Herleitung und
+   * Messreihe stehen bei nachbarVerhaeltnis in pausen(). 1,7 liegt zwischen dem gemessenen
+   * Hoechstwert der Atemarrhythmie (1,49) und der konstruktionsbedingten 2,0 des Ausfalls. */
+  var PAUSE_NACHBAR = 1.7;
+
   function endlich(x) { return typeof x === 'number' && isFinite(x); }
 
   /* ------------------------------------------------------------------ *
@@ -191,8 +198,24 @@
      * Streifen. Enthaelt eine Aufzeichnung EINEN grossen Stoerausschlag, richtet sich die
      * Schwelle nach ihm — und liegt dann weit ueber jedem echten Kammerkomplex.
      *
-     * ERSTMALS AN ECHTEN TIERSIGNALEN NACHGEMESSEN (17 offene Hundeaufzeichnungen, 500 Hz,
-     * 10.860 vom Menschen korrigierte R-Zacken, PhysioZoo/PhysioNet):
+     * ERSTMALS AN ECHTEN TIERSIGNALEN NACHGEMESSEN. Die Schwelle unten ist aus einem FREMDEN
+     * Datensatz abgeleitet, deshalb steht seine Herkunft hier und nicht nur im Werkzeug
+     * (27.08.2026): 17 offene Hundeaufzeichnungen, 500 Hz, 10.860 vom Menschen korrigierte
+     * R-Zacken aus
+     *
+     *     PhysioZoo - mammalian NSR databases, Hunde-Teilmenge im WFDB-Format, Fassung 1.0.0
+     *     PhysioNet, DOI 10.13026/p63q-hq95
+     *     Lizenz: Open Data Commons Attribution License v1.0 (ODC-By)
+     *
+     * Die Lizenz verlangt die Namensnennung bei jeder Weitergabe UND an jedem Ergebnis, das
+     * aus den Daten abgeleitet ist. Diese Datei ist genau so ein Ergebnis - QRS_FENSTER_S
+     * steht und faellt mit dieser Messreihe - und sie geht in BEIDE oeffentlichen Wege: in die
+     * Web-App (tools/web-app-bauen.js) und in das Update-Paket (installer/make-dist.ps1).
+     * Bis heute stand die Nennung nur in der Bildschirmausgabe von tools/qrs-referenz-test.js,
+     * die keinen Empfaenger erreicht, und ohne DOI. Die Daten selbst werden NICHT
+     * weitergegeben (sie liegen ausserhalb von Repo und Paket).
+     *
+     * Die Messreihe im Einzelnen:
      *
      *     Energie an den echten Schlaegen (Median) gegen die gesetzte Schwelle
      *       Dog_02   5,74e5  gegen 6,84e7   Faktor 119 zu hoch
@@ -471,8 +494,35 @@
     }
     // In mV umrechnen: skala ist der Faktor je Rohwert, Einheit uV oder mV.
     var mv = mittel * skala * (/mv/i.test(String(einheit)) ? 1 : 0.001);
+    /*
+     * ==================================================================================
+     * DER MESSWERT BLEIBT - MIT EINEM VORBEHALT, DER HEUTE IMMER GILT (27.08.2026)
+     * ==================================================================================
+     * Die eigene Wissensbasis sagt es deutlich (ekg-befunde.js:2047 und :2261, Quelle
+     * "Small Animal ECGs", Kapitel Artefacts): ein Hochpassfilter ueber 0,05 Hz verschiebt
+     * die ST-Strecke; gemessen werden darf sie nur mit dem Diagnostikfilter 0,05-150 Hz.
+     * Ein Ueberwachungsmonitor laeuft aber im Regelfall mit 0,5-40 Hz.
+     *
+     * Diese Einsicht war bisher NICHT wirksam: ekg-befunde.js ist eine durchsuchbare Liste,
+     * keine geprueft Regel. stMessung() sperrte allein bei unbekannter VERSTAERKUNG (oben).
+     * Die beiden Filterschalter der Oberflaeche sind keine Hochpaesse (M.musk ist ein
+     * EMG-Tiefpass, M.netz eine 50-Hz-Kerbe).
+     *
+     * WARUM HIER KEIN GERECHNETES FELD STEHT: das Filterband des Quellgeraets wird nirgends
+     * mitgefuehrt - kein Adapter meldet es, der Archivsatz kennt es nicht. Ein Parameter
+     * "filterband", der nie einen anderen Wert annehmen kann, waere Code, der eine Messung
+     * vortaeuscht. Der Vorbehalt gilt deshalb unbedingt und sagt genau das. Meldet spaeter
+     * ein Geraet sein Band, gehoert hier eine Bedingung hin - und erst dann.
+     *
+     * Der mV-Wert wird NICHT unterdrueckt: ihn wegzunehmen waere eine klinische Entscheidung
+     * und nicht die eines Programmierers. Er wird eingeordnet, nicht verschwiegen.
+     * ==================================================================================
+     */
     return {
       messbar: true,
+      filterVorbehalt: 'Das Filterband des Geräts ist nicht dokumentiert. Für die ST-Messung ' +
+        'muss der Diagnostikfilter (0,05–150 Hz) eingestellt sein; ein Überwachungsmonitor ' +
+        'läuft meist mit 0,5–40 Hz und verschiebt die ST-Strecke selbst.',
       mv: Math.round(mv * 1000) / 1000,
       richtung: mv > 0.02 ? 'angehoben' : (mv < -0.02 ? 'gesenkt' : 'unauffällig'),
       schlaege: werteST.length,
@@ -1396,11 +1446,51 @@
       if (v >= 1.8 && v <= 2.4) doppelt++;
       if (rrMs[i] >= A.pauseS * 1000) ueberlang++;
     }
+    /*
+     * ======================================================================================
+     * DIE PAUSE GEGEN IHRE NACHBARN, NICHT NUR GEGEN DEN MITTELWERT (27.08.2026)
+     * ======================================================================================
+     * `verhaeltnis` (Pause gegen den MITTELWERT aller Abstaende) kann eine atemabhaengige
+     * Sinusarrhythmie nicht von einem ausgefallenen Schlag unterscheiden. Nachgemessen an
+     * synthetischen Streifen mit BEKANNTER Wahrheit:
+     *
+     *                                  max/Mittel      max/Nachbarn
+     *     Atemarrhythmie 30 %              1,40             1,19
+     *     Atemarrhythmie 45 %              1,83             1,36
+     *     Atemarrhythmie 50 %              2,03             1,42
+     *     Atemarrhythmie 55 %              2,15             1,49
+     *     echter AV-Block II               1,99             2,01
+     *
+     * Die linke Spalte ueberlappt (2,03 gegen 1,99) - sie KANN die beiden Faelle nicht
+     * trennen. Die rechte trennt sauber. Folge im Betrieb: ein synthetischer Streifen mit
+     * reinem Sinus, P vor JEDEM QRS und ohne einen einzigen Ausfall wurde ab 45 % Atemhub
+     * als "Sinusarrest / SA-Block" gemeldet - ein schwerer Befund auf einem Muster, das beim
+     * Hund PHYSIOLOGISCH ist. Die App weiss das sogar (EKGNORM: sinusarrhythmie 'normal' beim
+     * Hund), aber die Rhythmusdeutung faellt VOR der Befundschicht, und die Regel
+     * "sinusarrhythmie-hund" kommt zu spaet, um noch zu korrigieren.
+     *
+     * WARUM DAS NACHBARMASS TRAEGT, und zwar ohne geratene Zahl: faellt ein Schlag aus, laeuft
+     * der Sinus weiter - das Intervall wird per KONSTRUKTION doppelt so lang wie seine
+     * Nachbarn, also 2,0. Bei Atemarrhythmie aendert sich der Takt allmaehlich, die Nachbarn
+     * wandern mit und das Verhaeltnis bleibt klein. Die Schwelle unten liegt zwischen dem
+     * gemessenen Hoechstwert der Atemarrhythmie (1,49 bei 55 %, jenseits des Physiologischen)
+     * und der konstruktionsbedingten 2,0 des Ausfalls - mit Abstand nach beiden Seiten.
+     *
+     * Der Wert wird hier nur GEMESSEN. Wer ihn benutzt, steht in rhythmus().
+     * ====================================================================================== */
+    var nachbarn = [];
+    if (maxIdx > 0) nachbarn.push(rrMs[maxIdx - 1]);
+    if (maxIdx < rrMs.length - 1) nachbarn.push(rrMs[maxIdx + 1]);
+    var nbSumme = 0;
+    for (i = 0; i < nachbarn.length; i++) nbSumme += nachbarn[i];
+    var nachbarV = (nachbarn.length && nbSumme > 0) ? (maxMs / (nbSumme / nachbarn.length)) : null;
+
     return {
       messbar: true,
       mittelMs: Math.round(mittel),
       maxMs: Math.round(maxMs), maxIndex: maxIdx,
       verhaeltnis: Math.round(verhaeltnis * 100) / 100,
+      nachbarVerhaeltnis: nachbarV == null ? null : Math.round(nachbarV * 100) / 100,
       ausfallAehnlich: doppelt,        // Pausen von etwa doppelter Laenge
       ueberlang: ueberlang,            // Pausen ueber der artabhaengigen Sekundengrenze
       grenzeS: A.pauseS
@@ -1825,7 +1915,28 @@
      * wechseln, ist die lange Strecke die Pause NACH einem vorgezogenen Schlag und nicht der
      * Ausfall eines erwarteten. */
     var wechselMuster = !!(opts && opts.wechsel);
-    if (sauber && !wechselMuster && pau && pau.messbar && pau.verhaeltnis >= 1.8 && pP && pP.messbar) {
+    /*
+     * ZWEITES VETO: DIE ATEMABHAENGIGE SINUSARRHYTHMIE (27.08.2026).
+     *
+     * Der Absatz darueber beschreibt das erste Veto (Bigeminus). Dies ist das zweite, und es
+     * hat denselben Anlass: eine harmlose Rhythmusform, die rechnerisch wie eine Pause aussieht.
+     * Beim HUND ist die atemabhaengige Sinusarrhythmie physiologisch - sie verschwindet bei
+     * Aufregung, Belastung und nach Atropin. Gemessen an synthetischen Streifen mit bekannter
+     * Wahrheit meldete die Auswertung ab 45 % Atemhub einen "Sinusarrest"; die Zahlen stehen
+     * bei nachbarVerhaeltnis in pausen().
+     *
+     * Die Bedingung ist NICHT artabhaengig gemacht, obwohl der Anlass der Hund ist. Grund: das
+     * Nachbarmass misst eine BAULICHE Eigenschaft des Ausfalls (der Sinus laeuft weiter, das
+     * Intervall verdoppelt sich gegenueber den Nachbarn), nicht eine Tiereigenschaft. Bei der
+     * Katze, wo eine ausgepraegte Sinusarrhythmie NICHT physiologisch ist, bleibt die Aussage
+     * damit unveraendert erhalten: eine echte Pause hat dort dieselben 2,0.
+     *
+     * Fehlt das Mass (zu wenige Abstaende), wird NICHT gesperrt - dann gilt wie bisher allein
+     * das Verhaeltnis zum Mittelwert. Eine fehlende Messung darf keine Aussage unterdruecken.
+     */
+    var atemMuster = !!(pau && pau.messbar && pau.nachbarVerhaeltnis != null &&
+      pau.nachbarVerhaeltnis < PAUSE_NACHBAR);
+    if (sauber && !wechselMuster && !atemMuster && pau && pau.messbar && pau.verhaeltnis >= 1.8 && pP && pP.messbar) {
       if (pP.deutung === 'vorhof-schlaegt-weiter') {
         var typ = (p && p.pqVerlauf === 'zunehmend')
           ? 'Die PQ-Zeit nimmt vor dem Ausfall zu — das ist das Muster des Typs Mobitz I (Wenckebach), meist vagal und gutartig.'
